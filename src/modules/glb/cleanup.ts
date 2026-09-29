@@ -50,6 +50,20 @@ export async function cleanupGlb(input: Uint8Array) {
         weldPrimitive(primitive, { overwrite: true });
     await document.transform(
       dedup({ propertyTypes: [PropertyType.ACCESSOR], keepUniqueNames: true }),
+    );
+    const blended = json.materials?.some((m: any) => m.alphaMode === "BLEND");
+    if (!blended) {
+      await MeshoptEncoder.ready;
+      await document.transform(
+        reorder({
+          encoder: MeshoptEncoder,
+          target: "performance",
+          cleanup: false,
+        }),
+      );
+    }
+    // Reordering clones accessors: prune only after all geometry transforms.
+    await document.transform(
       prune({
         propertyTypes: [
           PropertyType.ACCESSOR,
@@ -64,26 +78,15 @@ export async function cleanupGlb(input: Uint8Array) {
         keepExtras: true,
       }),
     );
-    const blended = json.materials?.some((m: any) => m.alphaMode === "BLEND");
-    if (!blended) {
-      await MeshoptEncoder.ready;
-      await document.transform(
-        reorder({
-          encoder: MeshoptEncoder,
-          target: "performance",
-          cleanup: false,
-        }),
-      );
-    }
     return {
       bytes: await io.writeBinary(document),
       cleanup: {
         status: "applied",
         steps: [
-          "dedup-accessors",
           "weld-exact-vertices",
-          "prune-unused-resources",
+          "dedup-accessors",
           ...(!blended ? ["reorder-indices"] : []),
+          "prune-unused-resources",
         ],
       },
     };

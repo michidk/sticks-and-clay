@@ -171,3 +171,16 @@ test("cleanup preserves embedded image bytes, material bindings, normals and nod
   expect(normals.getCount()).toBe(5); // Opposite normal at otherwise identical position/UV remains split.
   expect(Array.from(normals.getArray()!)).toContain(-1);
 });
+
+test("reordering leaves no unreferenced accessors or buffer views", async () => {
+  const result = await cleanupGlb(await fixture());
+  const { json } = await new NodeIO().binaryToJSON(result.bytes);
+  const used = new Set(
+    json.meshes!.flatMap((m) =>
+      m.primitives.flatMap((p) => [p.indices, ...Object.values(p.attributes)]),
+    ),
+  );
+  expect(json.accessors!.every((_, i) => used.has(i))).toBe(true);
+  const views = new Set(json.accessors!.map((a) => a.bufferView));
+  expect(json.bufferViews!.every((_, i) => views.has(i))).toBe(true);
+});

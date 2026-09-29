@@ -1,55 +1,87 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import { extractMeshes } from "./extract";
 const execute = promisify(execFile);
 
-/** Advisory only; no quality gate. Included in the persisted judge input. */
+/** Advisory only; partial reports survive expensive-check failures. Logged in judge input. */
 export async function analyzeModel(path: string) {
   let directory: string | undefined;
   let sha256: string | undefined;
+  let reportPath: string | undefined;
+  const unavailable: string[] = [];
   try {
-    sha256 = createHash("sha256")
-      .update(await readFile(path))
-      .digest("hex");
+    const bytes = await readFile(path);
+    sha256 = createHash("sha256").update(bytes).digest("hex");
+    const extracted = await extractMeshes(bytes);
+    unavailable.push(...extracted.unavailable);
     directory = await mkdtemp(resolve(tmpdir(), "studio-analysis-"));
-    const extracted = resolve(directory, "mesh.json");
-    const report = resolve(directory, "report.json");
-    await execute(
-      process.env.BLENDER_BIN || "blender",
-      [
-        "--background",
-        "--factory-startup",
-        "--python-exit-code",
-        "1",
-        "--python",
-        resolve("blender/analyze_extract.py"),
-        "--",
-        path,
-        extracted,
-      ],
-      { timeout: 90_000, maxBuffer: 1024 * 1024 },
+    const raw = resolve(directory, "raw.json");
+    const topology = resolve(directory, "topology.json");
+    reportPath = resolve(directory, "report.json");
+    await writeFile(
+      raw,
+      JSON.stringify(extracted.objects, (_key, value) =>
+        typeof value === "number" && !Number.isFinite(value)
+          ? String(value)
+          : value,
+      ),
     );
+    let input = raw;
+    try {
+      await execute(
+        process.env.BLENDER_BIN || "blender",
+        [
+          "--background",
+          "--factory-startup",
+          "--python-exit-code",
+          "1",
+          "--python",
+          resolve("blender/analyze_extract.py"),
+          "--",
+          raw,
+          topology,
+        ],
+        { timeout: 90_000, maxBuffer: 1024 * 1024 },
+      );
+      input = topology;
+    } catch {
+      unavailable.push(
+        "BMesh topology unavailable; raw geometry and UV checks still run",
+      );
+    }
     await execute(
       process.env.ANALYSIS_PYTHON || resolve(".venv/bin/python"),
-      [resolve("blender/analyze_mesh.py"), extracted, report],
+      [resolve("blender/analyze_mesh.py"), input, reportPath],
       { timeout: 60_000, maxBuffer: 1024 * 1024 },
     );
-    const findings = JSON.parse(await readFile(report, "utf8"));
-    return { ...findings, sha256 };
-  } catch (error) {
-    // Do not turn infrastructure failure into a clean bill of health or a failed build.
+    const report = JSON.parse(await readFile(reportPath, "utf8"));
     return {
-      version: 1,
+      ...report,
+      unavailable: [...unavailable, ...report.unavailable],
       sha256,
+    };
+  } catch (error) {
+    unavailable.push(
+      `Deterministic analysis incomplete (${(error as NodeJS.ErrnoException).code || "execution failed or timed out"})`,
+    );
+    const partial = reportPath
+      ? await readFile(reportPath, "utf8")
+          .then(JSON.parse)
+          .catch(() => undefined)
+      : undefined;
+    return {
+      version: 2,
       findings: [],
-      unavailable: [
-        `Deterministic analysis unavailable (${(error as NodeJS.ErrnoException).code || "execution failed or timed out"})`,
-      ],
+      ...partial,
+      sha256,
+      unavailable: [...unavailable, ...(partial?.unavailable || [])],
     };
   } finally {
-    if (directory) await rm(directory, { recursive: true, force: true });
+    if (directory)
+      await rm(directory, { recursive: true, force: true }).catch(() => {});
   }
 }

@@ -185,17 +185,23 @@ Model photography now provides seven review images: front/rear three-quarter, de
 
 The existing judge handler runs read-only analysis of the exact archived GLB used
 for photography. Its JSON report (including GLB SHA-256, object names, sampled
-Blender triangle/polygon IDs, counts and coverage limitations) is included in the
+original GLB node/mesh/primitive triangle IDs, counts and coverage limitations) is included in the
 persisted judge input. There is no new stage or pass/fail gate. Missing tools or
 timeouts are reported as unavailable evidence, not a clean model.
 
-- `blender/analyze_extract.py`: disposable Blender import; BMesh checks exact-position
-  topology copies so UV/normal seams do not appear as holes.
+- `src/modules/model-analysis/extract.ts`: glTF-Transform decodes original GLB
+  accessors without importing through Blender or repairing invalid faces. Each
+  texture slot is checked against its actual UV set, including texCoord overrides.
+- `blender/analyze_extract.py`: BMesh checks exact-position topology copies of
+  those raw arrays so UV/normal seams do not appear as holes.
 - `blender/analyze_mesh.py`: Trimesh checks degenerate/duplicate triangles, winding,
   inverted closed shells, tiny islands, collapsed/missing textured UVs and extreme
   extents. libigl CGAL uses `detect_only=True` for within-object self-intersections
   on meshes up to 100,000 triangles without duplicate/degenerate faces. It stops
   at the first intersection; its count is explicitly marked as a lower bound.
+  Fast findings are saved atomically before CGAL and after each intersection check;
+  native failures/timeouts preserve partial evidence. Missing BMesh does not prevent
+  the raw geometry and UV checks.
 - `src/modules/model-analysis/`: bounded subprocess adapter (90s Blender, 60s analysis).
   Install `blender/requirements.txt` in `.venv`; `BLENDER_BIN` and `ANALYSIS_PYTHON`
   can override executable paths. Open boundaries and islands may be intentional.
@@ -205,7 +211,8 @@ timeouts are reported as unavailable evidence, not a clean model.
 
 At the existing per-export archive handoff, `src/modules/glb/cleanup.ts` uses
 glTF-Transform to weld bitwise-equivalent vertices, deduplicate accessors and prune
-unused resources. Meshoptimizer reorders opaque triangle indices without changing
+unused resources after index optimization, including its replaced accessors.
+Meshoptimizer reorders opaque triangle indices without changing
 vertex values. Texture image bytes, UV/normal seams, materials and scene nodes are
 preserved. Transparent exports skip reordering. Extensions, skins, animations,
 morph targets, non-triangle primitives, URI resources and unknown chunks bypass
