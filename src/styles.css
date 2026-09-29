@@ -1249,6 +1249,76 @@ pre {
 .image-fallback { display: grid; place-items: center; width: 100%; height: 100%; padding: 24px; text-align: center; font-size: 12px; color: var(--muted-foreground); background: var(--muted); }
 .viewer { position: relative; }
 .viewer [data-slot="skeleton"] { height: 100%; }
+.model-lightbox {
+  isolation: isolate;
+  border: 1px solid #cdd9ca;
+  background: #e9ede8;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 75%), 0 16px 38px rgb(35 66 47 / 10%);
+}
+.model-lightbox.is-night {
+  border-color: #4b6370;
+  background: #17232e;
+  box-shadow: 0 16px 38px rgb(17 31 37 / 20%);
+}
+.model-lightbox canvas { display: block; }
+.viewer-toolbar, .viewer-direction, .viewer-help {
+  position: absolute;
+  z-index: 2;
+}
+.viewer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  top: 13px;
+  left: 13px;
+  max-width: calc(100% - 150px);
+}
+.viewer-toolbar-group, .viewer-direction {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid rgb(106 133 107 / 25%);
+  border-radius: 9px;
+  background: rgb(252 252 248 / 91%);
+  box-shadow: 0 4px 14px rgb(36 67 45 / 10%);
+  backdrop-filter: blur(10px);
+}
+.model-lightbox.is-night .viewer-toolbar-group,
+.model-lightbox.is-night .viewer-direction,
+.model-lightbox.is-night .viewer-help {
+  border-color: rgb(156 190 206 / 24%);
+  background: rgb(32 48 59 / 90%);
+  color: #e4efea;
+}
+.viewer-toolbar svg, .viewer-direction svg { width: 16px; height: 16px; }
+.viewer-direction {
+  top: 105px;
+  right: 13px;
+  flex-direction: column;
+}
+.viewer-direction > div { display: flex; gap: 2px; }
+.viewer-help {
+  bottom: 13px;
+  left: 13px;
+  max-width: calc(100% - 26px);
+  padding: 7px 10px;
+  border: 1px solid rgb(106 133 107 / 20%);
+  border-radius: 7px;
+  background: rgb(252 252 248 / 85%);
+  color: #48614d;
+  font-size: 11px;
+  line-height: 1.3;
+  pointer-events: none;
+}
+@media (max-width: 600px) {
+  .viewer-toolbar { top: 9px; left: 9px; gap: 4px; max-width: calc(100% - 85px); }
+  .viewer-toolbar-group { padding: 2px; }
+  .viewer-toolbar [data-slot="button"], .viewer-direction [data-slot="button"] { width: 28px; height: 28px; }
+  .viewer-toolbar svg, .viewer-direction svg { width: 14px; height: 14px; }
+  .viewer-direction { top: 86px; right: 9px; padding: 2px; }
+  .viewer-help { bottom: 9px; left: 9px; }
+}
 @media (prefers-reduced-motion: reduce) {
   .studio-nav-link { transition: none; }
   [data-slot="skeleton"] { animation: none; }

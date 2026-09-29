@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.66",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.1",
     "@tanstack/ai": "^0.63.0",
     "@tanstack/ai-openai": "^0.25.1",
     "@tanstack/react-router": "^1.170.36",

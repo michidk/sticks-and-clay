@@ -1,6 +1,6 @@
 # Asset Studio
 
-A working game-asset pipeline application, built alongside CodeTend with the same core stack: **Bun, React 19, TanStack Start/Router, Vite, Tailwind 4, Drizzle/PostgreSQL, and Eve**. Three.js provides the interactive GLB viewer; Blender runs locally through an isolated MCP adapter.
+A working game-asset pipeline application, built alongside CodeTend with the same core stack: **Bun, React 19, TanStack Start/Router, Vite, Tailwind 4, Drizzle/PostgreSQL, and Eve**. React Three Fiber provides the interactive GLB viewer; Blender runs locally through an isolated MCP adapter.
 
 The interface uses locally owned [shadcn components](https://ui.shadcn.com/) and a custom ivory, forest-green, and sage theme in `src/styles.css`. Configure/add primitives through `components.json` and keep app-specific layout in the routes. Skeletons cover initial page, image, and viewer loading; polling retains already loaded content.
 
@@ -59,7 +59,10 @@ Copy `.env.example` to `.env` if needed. The service supervisor loads `.env` onc
 
 ## Architecture and persistence
 
-- `src/routes/`: project list, project workspace, colocated viewer/history components, and API route.
+- `src/routes/`: project list, project workspace, colocated history components, and API route.
+- `src/components/model-viewer/`: reusable React Three Fiber GLB lightbox and scene controls.
+
+`ModelViewer` accepts an optional GLB `src` (omit it to show sample cubes), `height`, and `alt`. Scene defaults can be set with `lighting="day" | "night"`, `showGround`, `showGrid`, and `showCubes`; interaction defaults use `mode="orbit" | "object" | "firstPerson"`, `autoRotate`, and `autoRotateSpeed`. `showOrientation` controls the view cube, while `showUi={false}` removes the toolbar and hints for compact previews. `onLoad`, `onError`, `onModeChange`, and `onLightingChange` expose viewer events. The built-in toolbar changes scene options locally, so a parent that needs synchronized state should use the callbacks. First-person mode uses pointer lock: click the scene, move with WASD or arrow keys, and press Escape to release. Import the viewer lazily on pages that do not always show a model.
 - `src/lib/api.server.ts`: validated project/design/generation endpoints, uploads and downloads.
 - `src/lib/pipeline.server.ts`: designer → planner → builder/judge → collection workflow.
 - `src/modules/ai/internal/eve.server.ts`: fresh Eve sessions, structured output validation, event persistence and token accounting.

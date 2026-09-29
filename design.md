@@ -27,7 +27,7 @@ These colors now back semantic shadcn tokens in `src/styles.css` (`--background`
 | Card border | `#dce1d5` | Fine structural outlines |
 | Brand tile | `#e7ebdf` | Background behind the brand icon |
 | Progress fill | `#829e5e` | On a `#e4ead9` track |
-| Viewer background | `#e9ede8` | Neutral Three.js stage |
+| Viewer background | `#e9ede8` | Daytime React Three Fiber lightbox stage |
 
 Status badges pair text with color:
 
@@ -72,6 +72,8 @@ At phone sizes, dialogs use 12px outer padding and smaller inner padding. Render
 ## Interaction and content rules
 
 Use concise, specific actions such as “New project,” “Generate models,” and “Save and approve.” Keep failure, review, approval, and completion with issues distinguishable. Progress describes workflow milestones, not a time estimate. Label model costs as estimates and retain access to their breakdown.
+
+The shared model viewer is a quiet lightbox, not a separate visual language: soft sage daylight, a charcoal-blue night option, a subtle ground plane, and an optional grid. Its floating controls use the app's existing shadcn buttons and translucent ivory surfaces. Offer orbit, object rotation, and first-person movement; keep the view cube and directional arrows in the top-right, and make all UI optional for small previews. Model loading uses the shared viewer skeleton. Keep controls reachable at phone width and provide accessible labels for icon-only actions.
 
 Use semantic links for navigation and buttons for actions, associated form labels, descriptive image alternatives, visible keyboard focus, and text alongside status colors. For new or revised dialogs, verify keyboard operation, focus management, and Escape behavior. Check contrast and touch targets when adding controls; the existing small muted labels are a visual baseline, not an accessibility certification. Respect reduced-motion preferences when extending animation.
 

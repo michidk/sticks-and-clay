@@ -54,7 +54,7 @@ import {
 import { request, json, money, fileUrl } from "../../../lib/client";
 import { Progress } from "../../../components/progress";
 import { History } from "./-components/history";
-const Viewer = lazy(() => import("./-components/viewer"));
+const Viewer = lazy(() => import("@/components/model-viewer").then((module) => ({ default: module.ModelViewer })));
 export const Route = createFileRoute("/projects/$projectId/")({
   component: ProjectPage,
 });
@@ -1012,7 +1012,7 @@ function ProjectPage() {
                   </section>
                 ) : view === "3d" ? (
                   <Suspense fallback={<ViewerSkeleton />}>
-                    <Viewer url={fileUrl(shownArtifacts.glb)} />
+                    <Viewer src={fileUrl(shownArtifacts.glb)} alt={selected.name} />
                   </Suspense>
                 ) : (
                   <div className="render-grid">
