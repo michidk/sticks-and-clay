@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { db } from "../db/client";
 import { batches, models } from "../db/schema";
-import { DATA, filePath } from "./storage.server";
+import { DATA, filePath, publishFiles } from "./storage.server";
 export async function renderCollection(batchId: string) {
   const assets = await db
     .select()
@@ -55,6 +55,11 @@ export async function renderCollection(batchId: string) {
     if (exit !== 0)
       throw new Error("Collection rendering failed: " + err.slice(-1000));
     await assertJobActive();
+    await publishFiles(
+      ["lineup.png", "scene.png", "collection.blend"].map(
+        (file) => `${directory}/${file}`,
+      ),
+    );
     await db
       .update(batches)
       .set({

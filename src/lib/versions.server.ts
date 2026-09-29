@@ -11,7 +11,7 @@ import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { runs } from "../db/schema";
-import { DATA } from "./storage.server";
+import { DATA, publishFiles } from "./storage.server";
 
 export async function archiveVersion(runId: string, directory: string) {
   const [run] = await db.select().from(runs).where(eq(runs.id, runId));
@@ -103,6 +103,14 @@ export async function archiveVersion(runId: string, directory: string) {
       await readFile(resolve(DATA, destination, "metrics.json"), "utf8"),
     ),
   };
+  await publishFiles([
+    artifacts.glb,
+    artifacts.blend,
+    ...artifacts.renders,
+    `${destination}/metrics.json`,
+    `${destination}/textures.json`,
+    ...artifacts.textures.map((texture: { key: string }) => texture.key),
+  ]);
   await db
     .update(runs)
     .set({ result: { ...result, artifacts } })

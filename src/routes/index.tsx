@@ -13,37 +13,36 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CardsSkeleton } from "@/components/loading";
+import { PictureUploader } from "@/components/picture-uploader";
+import { useImageUpload } from "@/hooks/use-image-upload";
+import { appendReferenceImages } from "@/lib/image-file";
 import { AssetImage } from "@/components/asset-image";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import {
-  Plus,
-  ArrowUpRight,
-  Layers,
-  ImagePlus,
-  LoaderCircle,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Plus, ArrowUpRight, Layers, LoaderCircle } from "lucide-react";
 import { request, money, fileUrl } from "../lib/client";
 import { Progress } from "../components/progress";
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 function ProjectsPage() {
+  const uploader = useImageUpload();
+  const dialogOpener = useRef<HTMLElement | null>(null);
   const [projects, setProjects] = useState<any[]>([]),
     [loading, setLoading] = useState(true),
     [creating, setCreating] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [files, setFiles] = useState<File[]>([]),
     [name, setName] = useState(""),
     [description, setDescription] = useState(""),
     [triangleBudget, setTriangleBudget] = useState(""),
     [draftId, setDraftId] = useState<string | null>(null),
     [briefing, setBriefing] = useState(false);
-  function newProject() {
+  function newProject(event: React.MouseEvent<HTMLElement>) {
+    dialogOpener.current = event.currentTarget;
     setName("");
     setDescription("");
     setTriangleBudget("");
     setDraftId(null);
-    setFiles([]);
+    uploader.reset();
     setCreating(true);
   }
   async function generateBrief() {
@@ -55,15 +54,20 @@ function ProjectsPage() {
       form.set("description", description);
       form.set("triangleBudget", triangleBudget);
       if (draftId) form.set("draftId", draftId);
-      for (const file of files) form.append("images", file);
+      appendReferenceImages(form, uploader.images);
       const result = await request("projects/brief", {
         method: "POST",
         body: form,
       });
       setDraftId(result.id);
+      uploader.reset(result.references);
       setDescription(result.brief);
     } catch (e) {
-      if ((e as any).data?.draftId) setDraftId((e as any).data.draftId);
+      if ((e as any).data?.draftId) {
+        setDraftId((e as any).data.draftId);
+        if ((e as any).data.references)
+          uploader.reset((e as any).data.references);
+      }
       setError((e as Error).message);
     } finally {
       setBriefing(false);
@@ -95,13 +99,14 @@ function ProjectsPage() {
   }, []);
   async function create(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (busy || briefing || uploader.isBusy) return;
     setBusy(true);
     setError("");
     try {
       const form = new FormData(e.currentTarget);
       if (draftId) form.set("draftId", draftId);
       form.delete("images");
-      for (const file of files) form.append("images", file);
+      appendReferenceImages(form, uploader.images);
       const p = await request("projects", { method: "POST", body: form });
       await navigate({
         to: "/projects/$projectId",
@@ -160,12 +165,13 @@ function ProjectsPage() {
                 onClick={
                   p.status === "draft"
                     ? (e) => {
+                        dialogOpener.current = e.currentTarget;
                         e.preventDefault();
                         setName(p.name);
                         setDescription(p.description);
                         setTriangleBudget(p.triangleBudget?.toString() || "");
                         setDraftId(p.id);
-                        setFiles([]);
+                        uploader.reset(p.references);
                         setCreating(true);
                       }
                     : undefined
@@ -232,10 +238,19 @@ function ProjectsPage() {
       <Dialog
         open={creating}
         onOpenChange={(open) => {
-          if (!open && !busy && !briefing) setCreating(false);
+          if (!open && !busy && !briefing && !uploader.isBusy) {
+            setCreating(false);
+            uploader.reset();
+          }
         }}
       >
-        <DialogContent showCloseButton={!busy && !briefing}>
+        <DialogContent
+          showCloseButton={!busy && !briefing && !uploader.isBusy}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            dialogOpener.current?.focus();
+          }}
+        >
           <DialogHeader>
             <div className="eyebrow">START A COLLECTION</div>
             <DialogTitle className="text-[27px]">
@@ -275,7 +290,7 @@ function ProjectsPage() {
             <Button
               variant="outline"
               type="button"
-              disabled={busy || briefing || !name.trim()}
+              disabled={busy || briefing || uploader.isBusy || !name.trim()}
               onClick={generateBrief}
             >
               {briefing && <LoaderCircle className="spin" size={16} />}
@@ -285,23 +300,15 @@ function ProjectsPage() {
               The generated text fills the field above. Edit and correct it
               before continuing.
             </p>
-            <Label className="upload">
-              <ImagePlus size={24} />
-              <strong>Reference images (optional)</strong>
-              <span>Choose up to 6 PNG, JPG or WebP images · 8 MB each</span>
-              <Input
-                name="images"
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                multiple
-                onChange={(e) =>
-                  setFiles(Array.from(e.target.files || []).slice(0, 6))
-                }
-              />
-            </Label>
-            {files.length > 0 && (
-              <p className="muted">{files.map((f) => f.name).join(" · ")}</p>
-            )}
+            <PictureUploader
+              images={uploader.images}
+              fileInputRef={uploader.fileInputRef}
+              onFilesAdded={uploader.addFiles}
+              onImportFromUrl={uploader.importFromUrl}
+              onRemove={uploader.remove}
+              disabled={busy || briefing}
+              isBusy={uploader.isBusy}
+            />
             {error && (
               <Alert variant="destructive" className="error">
                 {error}
@@ -323,7 +330,7 @@ function ProjectsPage() {
             <Button
               variant="default"
               className="wide"
-              disabled={busy || briefing}
+              disabled={busy || briefing || uploader.isBusy}
             >
               {busy ? (
                 <LoaderCircle className="spin" size={18} />

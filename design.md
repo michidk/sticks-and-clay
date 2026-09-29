@@ -84,3 +84,7 @@ Start with `src/styles.css`, `src/components/ui/`, `src/routes/__root.tsx`, and 
 ## Administration and texture inspection
 
 The header groups Projects, Queue and Agents as icon-and-text links, with a forest-green active section (Projects remains active inside a project). At phone widths, the brand and outlined WORKSHOP badge sit above a full-width navigation row with 44px touch targets. The read-only Agents page uses responsive panels with model, effort, engine and prompt settings. Model dialogs have a Textures tab beside History, 3D model and Renders; tabs wrap on small screens. Texture cards open the selected version's image for inspection/download. Project setup offers an optional, initially blank triangle-budget field.
+
+## Reference image intake
+
+The project setup dialog uses a shared picture uploader inspired by Roastbook. A sage drop area offers file selection, drag-and-drop and scoped clipboard paste, with a separate **From URL** disclosure below it. Show the six-image count, supported formats and 8 MB limit before selection. Selected and saved images share a thumbnail grid with individually labelled remove buttons; use three columns on desktop and two on phones. Keep URL import errors inside the uploader, retain selections after errors, and disable competing intake/submission actions while importing. Do not intercept text paste in form fields. Use existing shadcn Button, Input, Collapsible and Alert components and the workshop's semantic colors.

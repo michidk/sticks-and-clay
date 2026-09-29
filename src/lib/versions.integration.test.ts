@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { projects, runs } from "../db/schema";
-import { DATA } from "./storage.server";
+import { DATA, getStorage } from "./storage.server";
 import { archiveVersion } from "./versions.server";
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 integration(
@@ -34,19 +34,17 @@ integration(
     await db
       .insert(projects)
       .values({ id, name: "Texture archive fixture", description: "test" });
-    await db
-      .insert(runs)
-      .values({
-        id: runId,
-        projectId: id,
-        role: "builder",
-        model: "fixture",
-        promptVersion: "test",
-        systemPrompt: "test",
-        input: "test",
-        result: { summary: "fixture" },
-        rates: { input: 0, cached: 0, output: 0, source: "test" },
-      });
+    await db.insert(runs).values({
+      id: runId,
+      projectId: id,
+      role: "builder",
+      model: "fixture",
+      promptVersion: "test",
+      systemPrompt: "test",
+      input: "test",
+      result: { summary: "fixture" },
+      rates: { input: 0, cached: 0, output: 0, source: "test" },
+    });
     try {
       await mkdir(resolve(DATA, directory, "textures"), { recursive: true });
       await writeFile(resolve(DATA, directory, "textures/stone.png"), png);
@@ -64,6 +62,14 @@ integration(
       await writeFile(resolve(DATA, directory, "metrics.json"), "{}");
       const first = await archiveVersion(runId, directory);
       expect(first.textures).toHaveLength(2);
+      expect(await getStorage().exists(first.glb)).toBe(true);
+      expect(
+        new Uint8Array(
+          await (
+            await getStorage().download(first.textures[1].key)
+          ).arrayBuffer(),
+        ),
+      ).toEqual(new Uint8Array(png));
       expect(await readFile(resolve(DATA, first.textures[1].key))).toEqual(png);
       await writeFile(
         resolve(DATA, directory, "textures/stone.png"),
@@ -76,6 +82,8 @@ integration(
     } finally {
       await db.delete(runs).where(eq(runs.id, runId));
       await db.delete(projects).where(eq(projects.id, id));
+      for (const key of await getStorage().list(`versions/${runId}`))
+        await getStorage().delete(key);
       await rm(resolve(DATA, directory), { recursive: true, force: true });
       await rm(resolve(DATA, "versions", runId), {
         recursive: true,

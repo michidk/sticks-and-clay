@@ -1,6 +1,5 @@
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { readFile } from "node:fs/promises";
 import { db } from "../db/client";
 import {
   projects,
@@ -22,7 +21,10 @@ async function draftBrief(
   const { result, runId } = await runRole(args);
   return { ...result, runId };
 }
-import { filePath, upload } from "./storage.server";
+import { readStoredFile } from "./storage.server";
+import { fileMimeType } from "./storage/path";
+import { prepareReferences } from "./reference-images.server";
+import { downloadImage } from "./remote-image.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   kinds: string[],
@@ -135,22 +137,21 @@ export async function api(request: Request) {
         await generateTexture(textureRequest.parse(await request.json())),
       );
     }
+    if (
+      path[0] === "images" &&
+      path[1] === "import" &&
+      request.method === "POST"
+    ) {
+      const { url } = z
+        .object({ url: z.string().url().max(2048) })
+        .parse(await request.json());
+      return reply(await downloadImage(url));
+    }
     if (path[0] === "files" && request.method === "GET") {
       const key = path.slice(1).map(decodeURIComponent).join("/");
-      const file = await filePath(key);
-      const types: Record<string, string> = {
-        png: "image/png",
-        jpg: "image/jpeg",
-        webp: "image/webp",
-        glb: "model/gltf-binary",
-        blend: "application/octet-stream",
-        json: "application/json",
-        py: "text/plain",
-      };
-      return new Response(await readFile(file), {
+      return new Response(await readStoredFile(key), {
         headers: {
-          "Content-Type":
-            types[file.split(".").pop()!] || "application/octet-stream",
+          "Content-Type": fileMimeType(key),
           "X-Content-Type-Options": "nosniff",
           "Cache-Control": "private, max-age=60",
         },
@@ -203,36 +204,57 @@ export async function api(request: Request) {
       const draftId = form.get("draftId")
         ? uuid.parse(form.get("draftId"))
         : crypto.randomUUID();
-      const files = form
-        .getAll("images")
-        .filter((f): f is File => f instanceof File && f.size > 0);
-      if (files.length > 6) throw new Error("Maximum 6 references");
-      const references = await Promise.all(files.map(upload));
-      await db.transaction(async (tx) => {
-        if (form.get("draftId")) {
-          const updated = await tx
-            .update(projects)
-            .set({
+      const saved = form.get("draftId")
+        ? (
+            await db
+              .select()
+              .from(projects)
+              .where(
+                and(
+                  eq(projects.id, uuid.parse(form.get("draftId"))),
+                  eq(projects.status, "draft"),
+                ),
+              )
+          )[0]
+        : undefined;
+      if (form.get("draftId") && !saved)
+        throw new Error("Project setup has already started");
+      const { references, rollback } = await prepareReferences(
+        form,
+        saved?.references,
+      );
+      await db
+        .transaction(async (tx) => {
+          if (form.get("draftId")) {
+            const updated = await tx
+              .update(projects)
+              .set({
+                name,
+                description,
+                triangleBudget,
+                references,
+              })
+              .where(
+                and(eq(projects.id, draftId), eq(projects.status, "draft")),
+              )
+              .returning();
+            if (!updated.length)
+              throw new Error("Project setup has already started");
+          } else
+            await tx.insert(projects).values({
+              id: draftId,
               name,
               description,
               triangleBudget,
-              ...(references.length ? { references } : {}),
-            })
-            .where(and(eq(projects.id, draftId), eq(projects.status, "draft")))
-            .returning();
-          if (!updated.length)
-            throw new Error("Project setup has already started");
-        } else
-          await tx.insert(projects).values({
-            id: draftId,
-            name,
-            description,
-            triangleBudget,
-            references,
-            status: "draft",
-            phase: "Drafting project brief",
-          });
-      });
+              references,
+              status: "draft",
+              phase: "Drafting project brief",
+            });
+        })
+        .catch(async (error) => {
+          await rollback();
+          throw error;
+        });
       const [draft] = await db
         .select()
         .from(projects)
@@ -255,7 +277,10 @@ export async function api(request: Request) {
           .update(projects)
           .set({ description: result.brief, phase: "Review project brief" })
           .where(and(eq(projects.id, draftId), eq(projects.status, "draft")));
-        return reply({ id: draftId, ...result }, 201);
+        return reply(
+          { id: draftId, references: draft.references, ...result },
+          201,
+        );
       } catch (error) {
         return reply(
           {
@@ -264,6 +289,7 @@ export async function api(request: Request) {
                 ? error.message
                 : "Brief generation failed",
             draftId,
+            references: draft.references,
           },
           400,
         );
@@ -283,39 +309,58 @@ export async function api(request: Request) {
         .min(10, "Write a brief or use AI generate brief first")
         .max(12000)
         .parse(form.get("description") || "");
-      const files = form
-        .getAll("images")
-        .filter((f): f is File => f instanceof File && f.size > 0);
-      if (files.length > 6) throw new Error("Maximum 6 references");
-      const references = await Promise.all(files.map(upload));
+      const saved = form.get("draftId")
+        ? (
+            await db
+              .select()
+              .from(projects)
+              .where(
+                and(
+                  eq(projects.id, uuid.parse(form.get("draftId"))),
+                  eq(projects.status, "draft"),
+                ),
+              )
+          )[0]
+        : undefined;
+      if (form.get("draftId") && !saved)
+        throw new Error("Project setup has already started");
+      const { references, rollback } = await prepareReferences(
+        form,
+        saved?.references,
+      );
       const id = form.get("draftId")
         ? uuid.parse(form.get("draftId"))
         : crypto.randomUUID();
-      await db.transaction(async (tx) => {
-        if (form.get("draftId")) {
-          const updated = await tx
-            .update(projects)
-            .set({
-              name,
-              description,
-              triangleBudget,
-              ...(references.length ? { references } : {}),
-              status: "queued",
-              phase: "Waiting for designer",
-              progress: 0,
-            })
-            .where(and(eq(projects.id, id), eq(projects.status, "draft")))
-            .returning();
-          if (!updated.length)
-            throw new Error("Project setup has already started");
-        } else
+      await db
+        .transaction(async (tx) => {
+          if (form.get("draftId")) {
+            const updated = await tx
+              .update(projects)
+              .set({
+                name,
+                description,
+                triangleBudget,
+                references,
+                status: "queued",
+                phase: "Waiting for designer",
+                progress: 0,
+              })
+              .where(and(eq(projects.id, id), eq(projects.status, "draft")))
+              .returning();
+            if (!updated.length)
+              throw new Error("Project setup has already started");
+          } else
+            await tx
+              .insert(projects)
+              .values({ id, name, description, references, triangleBudget });
           await tx
-            .insert(projects)
-            .values({ id, name, description, references, triangleBudget });
-        await tx
-          .insert(jobs)
-          .values({ id: crypto.randomUUID(), kind: "design", targetId: id });
-      });
+            .insert(jobs)
+            .values({ id: crypto.randomUUID(), kind: "design", targetId: id });
+        })
+        .catch(async (error) => {
+          await rollback();
+          throw error;
+        });
       return reply({ id }, 201);
     }
     if (path[0] === "projects" && path[1]) {
