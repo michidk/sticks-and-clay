@@ -6,7 +6,7 @@ This is the application's UI design reference, based on the existing theme in `s
 
 Sticks & Clay feels like a calm creative workshop: warm ivory surfaces, forest-green typography, sage accents, generous space, and restrained outlines. The assets and reference images provide the visual variety. Keep the interface quiet enough to compare models and read detailed design feedback.
 
-The home headline pairs a plain sans-serif statement (“Build a world.”) with a softer italic serif line (“Keep it consistent.”). Use that editorial contrast sparingly. The brand combines a shaded forest-green stick overlapping a softly rounded terracotta cube with a rounded, solid-green Sticks & Clay wordmark and a small outlined WORKSHOP label. The transparent header lockup lives at `public/brand/sticks-and-clay-lockup-v2.png`; the standalone emblem and favicon use `sticks-and-clay-mark-v2.png` and `sticks-and-clay-favicon-v2.png`. Render the lockup at 220px wide on desktop and 200px on phones, with descriptive alternative text and an accessible home link. Reserve terracotta for the brand so forest green remains the action color.
+The home headline pairs a plain sans-serif statement (“Build a world.”) with a softer italic serif line (“Keep it consistent.”). Use that editorial contrast sparingly. The brand combines a shaded forest-green stick overlapping a softly rounded terracotta cube with a rounded, solid-green Sticks & Clay wordmark. The transparent header lockup lives at `public/brand/sticks-and-clay-lockup-v2.png`; the standalone emblem and favicon use `sticks-and-clay-mark-v2.png` and `sticks-and-clay-favicon-v2.png`. Render the lockup at 220px wide on desktop and 200px on phones, with descriptive alternative text and an accessible home link. Reserve terracotta for the brand so forest green remains the action color.
 
 ## Palette
 
@@ -83,7 +83,7 @@ Start with `src/styles.css`, `src/components/ui/`, `src/routes/__root.tsx`, and 
 
 ## Administration and texture inspection
 
-The header groups Projects, Queue and Agents as icon-and-text links, with a forest-green active section (Projects remains active inside a project). At phone widths, the brand and outlined WORKSHOP badge sit above a full-width navigation row with 44px touch targets. The read-only Agents page uses responsive panels with model, effort, engine and prompt settings. Model detail pages put a large 3D viewer and media tabs beside version, metrics and quality panels. Review notes, version history, build brief and activity sit below. On phones the panels stack and detail tabs form two columns. Selected media, section and version persist in the URL. Texture cards open the selected version's image for inspection/download. Project setup offers an optional, initially blank triangle-budget field.
+The header groups Projects, Queue and Agents as icon-and-text links, with a forest-green active section (Projects remains active inside a project). At phone widths, the brand sits above a full-width navigation row with 44px touch targets. The read-only Agents page uses responsive panels with model, effort, engine and prompt settings. Model detail pages put a large 3D viewer and media tabs beside version, metrics and quality panels. Review notes, version history, build brief and activity sit below. On phones the panels stack and detail tabs form two columns. Selected media, section and version persist in the URL. Texture cards open the selected version's image for inspection/download. Project setup offers an optional, initially blank triangle-budget field.
 
 ## Reference image intake
 

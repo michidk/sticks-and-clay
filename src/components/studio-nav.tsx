@@ -1,6 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { FolderOpen, ListTodo, Bot } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 
 const sections = [
   { to: "/", label: "Projects", icon: FolderOpen },
@@ -23,7 +22,6 @@ export function StudioNav() {
             height={252}
           />
         </Link>
-        <Badge variant="outline" className="workshop-badge">Workshop</Badge>
         <nav className="studio-nav" aria-label="Main navigation">
           {sections.map(({ to, label, icon: Icon }) => {
             const active = to === "/"
