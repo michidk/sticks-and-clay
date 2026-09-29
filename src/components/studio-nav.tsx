@@ -15,8 +15,13 @@ export function StudioNav() {
     <header className="topbar">
       <div className="topbar-inner">
         <Link to="/" className="brand" aria-label="Sticks & Clay home">
-          <img className="brand-icon" src="/brand/sticks-and-clay.png" alt="" width={40} height={40} />
-          <span>Sticks & Clay</span>
+          <img
+            className="block h-auto w-[220px] max-[600px]:w-[200px]"
+            src="/brand/sticks-and-clay-lockup-v2.png"
+            alt="Sticks & Clay"
+            width={1100}
+            height={252}
+          />
         </Link>
         <Badge variant="outline" className="workshop-badge">Workshop</Badge>
         <nav className="studio-nav" aria-label="Main navigation">

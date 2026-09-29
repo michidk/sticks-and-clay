@@ -6,7 +6,7 @@ This is the application's UI design reference, based on the existing theme in `s
 
 Sticks & Clay feels like a calm creative workshop: warm ivory surfaces, forest-green typography, sage accents, generous space, and restrained outlines. The assets and reference images provide the visual variety. Keep the interface quiet enough to compare models and read detailed design feedback.
 
-The home headline pairs a plain sans-serif statement (“Build a world.”) with a softer italic serif line (“Keep it consistent.”). Use that editorial contrast sparingly. The brand combines a forest-green stick and terracotta clay-arch emblem, the Sticks & Clay text wordmark, and a small outlined WORKSHOP label. The emblem lives at `public/brand/sticks-and-clay.png`, with a matching PNG favicon. Keep the wordmark as accessible text; reserve terracotta for the brand so forest green remains the action color.
+The home headline pairs a plain sans-serif statement (“Build a world.”) with a softer italic serif line (“Keep it consistent.”). Use that editorial contrast sparingly. The brand combines a shaded forest-green stick overlapping a softly rounded terracotta cube with a rounded, solid-green Sticks & Clay wordmark and a small outlined WORKSHOP label. The transparent header lockup lives at `public/brand/sticks-and-clay-lockup-v2.png`; the standalone emblem and favicon use `sticks-and-clay-mark-v2.png` and `sticks-and-clay-favicon-v2.png`. Render the lockup at 220px wide on desktop and 200px on phones, with descriptive alternative text and an accessible home link. Reserve terracotta for the brand so forest green remains the action color.
 
 ## Palette
 
