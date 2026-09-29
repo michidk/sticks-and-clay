@@ -1,3 +1,4 @@
+import { assertJobActive } from "./queue.server";
 import { eq } from "drizzle-orm";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -40,6 +41,9 @@ export async function renderCollection(batchId: string) {
     ],
     { stdout: "pipe", stderr: "pipe" },
   );
+  const cancellation = setInterval(() => {
+    void assertJobActive().catch(() => proc.kill());
+  }, 1000);
   const timer = setTimeout(() => proc.kill(), 240000);
   try {
     const [exit, out, err] = await Promise.all([
@@ -50,6 +54,7 @@ export async function renderCollection(batchId: string) {
     await writeFile(resolve(output, "render.log"), out + err);
     if (exit !== 0)
       throw new Error("Collection rendering failed: " + err.slice(-1000));
+    await assertJobActive();
     await db
       .update(batches)
       .set({
@@ -65,5 +70,6 @@ export async function renderCollection(batchId: string) {
       .where(eq(batches.id, batchId));
   } finally {
     clearTimeout(timer);
+    clearInterval(cancellation);
   }
 }

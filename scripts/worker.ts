@@ -1,6 +1,11 @@
 import { db, sql } from "../src/db/client";
 import { jobs } from "../src/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+import {
+  assertJobActive,
+  cancelJob,
+  finishCancellation,
+} from "../src/lib/queue.server";
 import { executeJob, failJob } from "../src/lib/pipeline.server";
 import { adoptLegacyJobs } from "../src/lib/legacy-recovery.server";
 import { jobContext } from "../src/lib/checkpoint.server";
@@ -9,6 +14,21 @@ const lock = await sql.reserve();
 const [acquired] = await lock`select pg_try_advisory_lock(91340851) as ok`;
 if (!acquired.ok) throw new Error("An Asset Studio worker is already running");
 await adoptLegacyJobs();
+for (const job of await db
+  .select()
+  .from(jobs)
+  .where(eq(jobs.status, "cancelling"))) {
+  try {
+    await cancelJob(job.id);
+    await finishCancellation({
+      id: job.id,
+      kind: job.kind,
+      targetId: job.targetId,
+    });
+  } catch (error) {
+    console.error("Cancellation still pending", job.id, String(error));
+  }
+}
 // Re-adopt interrupted jobs; Eve retains their sessions and tool checkpoints.
 await db
   .update(jobs)
@@ -32,13 +52,29 @@ async function lane() {
     try {
       await jobContext.run(
         { id: job.id, checkpoint: job.checkpoint || {} },
-        () => executeJob(job.kind, job.targetId),
+        async () => {
+          await assertJobActive();
+          await executeJob(job.kind, job.targetId);
+          await assertJobActive();
+        },
       );
-      await db
+      const finished = await db
         .update(jobs)
         .set({ status: "done", finishedAt: new Date() })
-        .where(eq(jobs.id, job.id));
+        .where(and(eq(jobs.id, job.id), eq(jobs.status, "running")))
+        .returning();
+      if (!finished.length)
+        await finishCancellation({
+          id: job.id,
+          kind: job.kind,
+          targetId: job.targetId,
+        });
     } catch (error) {
+      const [current] = await db.select().from(jobs).where(eq(jobs.id, job.id));
+      if (current && ["cancelling", "cancelled"].includes(current.status)) {
+        await finishCancellation(current);
+        continue;
+      }
       console.error("Job failed", job.id, String(error));
       await failJob(job.kind, job.targetId, String(error));
       await db

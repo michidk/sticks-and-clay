@@ -12,8 +12,8 @@ The application design guide describes Asset Studio itself. Each asset project's
 
 ## Workflow
 
-1. Start a project with a name, optionally adding a description and up to six reference images. You can generate and edit a brief before creating the project.
-2. A designer agent inspects the images and writes a Markdown design reference. The database stores the document and revisions. Edit it, then save and approve it. GFM rendering supports tables, task lists and strikethrough. Immutable database revisions are compared using the `diff` library; Restore as draft loads an older version into the editor, and Save creates a new revision without overwriting history.
+1. Start a project with a name and a brief, plus up to six optional reference images. Use AI generate brief to fill the field, then edit it before continuing. Leaving it empty does not generate implicitly.
+2. A TanStack AI background call inspects the images and writes a Markdown design reference. The database stores the document and revisions. Edit it, then save and approve it. GFM rendering supports tables, task lists and strikethrough. Immutable database revisions are compared using the `diff` library; Restore as draft loads an older version into the editor, and Save creates a new revision without overwriting history.
 3. Request a concrete model or ask the planner to propose a set. Choose 1–20 models and 0–5 maximum judge rounds. A batch snapshots the approved design; later edits cannot change its contract.
 4. A PostgreSQL job queue dispatches independent builders, with two concurrent workers by default. Each attempt and iteration has a unique Blender directory. Complete scripts execute in separate Blender processes, never a shared live scene.
 5. The builder exports an individual GLB, Blender source, metrics, and front/rear/detail renders. It visually inspects renders through Eve's `view_render` vision tool.
@@ -21,7 +21,7 @@ The application design guide describes Asset Studio itself. Each asset project's
 7. Passing assets finish early. At the review limit, remaining issues stay visible as **completed with issues**, not an approval. Zero rounds means one build with no judge. Technical failures are separate and can be retried; every attempt remains in history.
 8. Completed batches render a scale lineup and a staged collection demo, with a downloadable scene. The web app provides orbit/zoom previews, product renders, GLB/source downloads, design history, agent transcripts, and usage/cost breakdowns.
 
-Progress represents workflow milestones, not a predicted wall-clock percentage. A judge round includes a build and its review, so a limit of two allows at most two builds and two reviews per attempt. Retry starts a new attempt and preserves prior files, costs, and feedback.
+Progress represents workflow milestones, not a predicted wall-clock percentage. A judge round includes a build and its review, so a limit of two allows at most two builds and two reviews per attempt. Resume reuses Eve sessions and completed step checkpoints. Every builder iteration retains an archived export and its judge feedback; collection thumbnails use only the latest version.
 
 ## Run locally
 
@@ -66,7 +66,7 @@ Copy `.env.example` to `.env` if needed. The service supervisor loads `.env` onc
 - `src/db/schema.ts`, `drizzle/`: projects, immutable design revisions, batches, models, agent runs, events and jobs.
 - `eve/agent/`: model configuration, authenticated local channel, Blender MCP connection and authored vision tool.
 - `blender/`: isolated MCP service, export/render helpers and collection renderer.
-- `prompts/`: designer, planner, builder, judge, and the reusable asset pipeline developed in the earlier tree/castle work.
+- `prompts/`: all system prompts, role prompts and input templates. Eve loads its shared instructions from this folder at build time.
 - `data/`: immutable upload keys, per-attempt/per-iteration assets, collection renders, runtime logs and temporary build capabilities. Back up this directory together with PostgreSQL.
 
 The worker re-adopts interrupted jobs on restart. Per-job database checkpoints retain Eve run/session IDs and completed step results. Recovery replays the durable Eve stream and reattaches to active work; explicit Resume continues failed turns in the same conversation. Builder workspaces and scoped capabilities survive recovery. Completed design/planner transactions are checkpointed atomically to prevent duplicate revisions or model batches. Token totals are reconstructed from session events with idempotent event storage, rather than added again on replay. Eve session storage and the data directory must be retained; missing/retired sessions and operator approval requests report errors rather than silently starting over. External Blender execution may be retried following an interruption, so scripts should be idempotent. It is a trusted local workshop, not a multi-tenant service: there is no end-user account system, and generated Blender Python runs with the service user's filesystem permissions. MCP and Eve bind to loopback. Put authentication and stronger execution isolation in front of an external deployment.
@@ -116,3 +116,10 @@ The database integration tests create and remove only their own fixtures. They c
 The Stonehaven test exercised an uploaded reference, generated design, browser approval, a two-model plan, concurrent Blender builds, independent vision judges, feedback-driven rebuilding, early approval, and the review limit. Marker B passed at 86/100 (1,496 triangles); marker A finished with issues at 79/100 after two review rounds (1,396 triangles). Both have embedded color/normal textures, source files, product renders, and working GLB downloads. Desktop and phone previews were inspected in the shared T3 browser.
 
 The retained history reports 822,705 input and 31,032 output tokens, with a **$1.7078 estimated model cost** using the snapshotted rates and cache discount. This includes failed integration attempts and the original raw-image transport defect; it is a debugging total, not an estimate of normal per-asset cost. The corrected vision path and its regression test are included.
+
+
+## Direct AI and queue controls
+
+Project/model brief buttons call TanStack AI directly. They create no Eve session and no queue job. Their inputs, outputs, token usage, cached tokens, pricing snapshot, and cost estimate are saved in project history. Design generation is a durable background job using TanStack AI; interruption retries a direct call, while a completed response checkpoint is reused. An interrupted direct request may have unknown usage until the provider reports it.
+
+The header Queue link opens `/admin/queue`. It lists model generation, planning and collection-render jobs, with per-job cancellation and Abort pending queue. Running cancellations are cooperative: the UI shows Cancelling until the worker stops. Cancelled jobs are not resumed automatically. Model iteration history lives in each model viewer; previous GLBs, Blender files, renders and judge reviews stay accessible.

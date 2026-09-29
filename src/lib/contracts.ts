@@ -1,4 +1,5 @@
 import { z } from "zod";
+export const briefResult = z.object({ brief: z.string().min(10).max(12000) });
 export const designResult = z.object({ design: z.string().min(100) });
 export const planResult = z.object({
   models: z

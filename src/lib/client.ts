@@ -4,7 +4,8 @@ export async function request<T = any>(
 ): Promise<T> {
   const response = await fetch("/api/" + url, init);
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error || "Request failed");
+  if (!response.ok)
+    throw Object.assign(new Error(data.error || "Request failed"), { data });
   return data;
 }
 export const json = (body: unknown, method = "POST") => ({

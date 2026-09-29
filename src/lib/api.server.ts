@@ -11,6 +11,9 @@ import {
   events,
   jobs,
 } from "../db/schema";
+import { cancelJob } from "./queue.server";
+import { draftBrief } from "./direct-api.server";
+import { prompt } from "./prompts.server";
 import { filePath, upload } from "./storage.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -50,6 +53,66 @@ export async function api(request: Request) {
         ].includes(new URL(origin).host)
       )
         return reply({ error: "Invalid request origin" }, 403);
+    }
+    if (path[0] === "queue") {
+      if (request.method === "GET") {
+        const [list, assets, collections, workspaces] = await Promise.all([
+          db
+            .select()
+            .from(jobs)
+            .where(inArray(jobs.kind, ["model", "plan", "demo"]))
+            .orderBy(desc(jobs.createdAt)),
+          db.select().from(models),
+          db.select().from(batches),
+          db.select().from(projects),
+        ]);
+        return reply({
+          jobs: list.map((j) => {
+            const model = assets.find((m) => m.id === j.targetId),
+              batch = collections.find(
+                (b) => b.id === (model?.batchId || j.targetId),
+              );
+            const project = workspaces.find((p) => p.id === batch?.projectId);
+            return {
+              id: j.id,
+              kind: j.kind,
+              status: j.status,
+              createdAt: j.createdAt,
+              startedAt: j.startedAt,
+              finishedAt: j.finishedAt,
+              error: j.error,
+              name:
+                model?.name ||
+                (j.kind === "plan" ? "Plan collection" : "Render collection"),
+              projectId: project?.id,
+              projectName: project?.name,
+              phase: model?.phase,
+              progress: model?.progress,
+            };
+          }),
+        });
+      }
+      if (request.method === "POST" && path[1] === "cancel-pending") {
+        const pending = await db
+          .select()
+          .from(jobs)
+          .where(
+            and(
+              eq(jobs.status, "queued"),
+              inArray(jobs.kind, ["model", "plan", "demo"]),
+            ),
+          );
+        for (const j of pending) {
+          const [stillQueued] = await db
+            .select()
+            .from(jobs)
+            .where(and(eq(jobs.id, j.id), eq(jobs.status, "queued")));
+          if (stillQueued) await cancelJob(j.id, true);
+        }
+        return reply({ ok: true });
+      }
+      if (request.method === "POST" && path[2] === "cancel")
+        return reply({ status: await cancelJob(uuid.parse(path[1])) });
     }
     if (path[0] === "files" && request.method === "GET") {
       const key = path.slice(1).map(decodeURIComponent).join("/");
@@ -100,11 +163,84 @@ export async function api(request: Request) {
         })),
       });
     }
+    if (
+      path[0] === "projects" &&
+      path[1] === "brief" &&
+      request.method === "POST"
+    ) {
+      const form = await request.formData();
+      const name = z.string().trim().min(1).max(100).parse(form.get("name"));
+      const description = z
+        .string()
+        .max(12000)
+        .parse(form.get("description") || "");
+      const draftId = form.get("draftId")
+        ? uuid.parse(form.get("draftId"))
+        : crypto.randomUUID();
+      const files = form
+        .getAll("images")
+        .filter((f): f is File => f instanceof File && f.size > 0);
+      if (files.length > 6) throw new Error("Maximum 6 references");
+      const references = await Promise.all(files.map(upload));
+      await db.transaction(async (tx) => {
+        if (form.get("draftId")) {
+          const updated = await tx
+            .update(projects)
+            .set({
+              name,
+              description,
+              ...(references.length ? { references } : {}),
+            })
+            .where(and(eq(projects.id, draftId), eq(projects.status, "draft")))
+            .returning();
+          if (!updated.length)
+            throw new Error("Project setup has already started");
+        } else
+          await tx.insert(projects).values({
+            id: draftId,
+            name,
+            description,
+            references,
+            status: "draft",
+            phase: "Drafting project brief",
+          });
+      });
+      const [draft] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, draftId));
+      try {
+        const result = await draftBrief({
+          projectId: draftId,
+          role: "project-brief",
+          input: await prompt("project-brief-input", { name, description }),
+          images: draft.references,
+        });
+        await db
+          .update(projects)
+          .set({ description: result.brief, phase: "Review project brief" })
+          .where(and(eq(projects.id, draftId), eq(projects.status, "draft")));
+        return reply({ id: draftId, ...result }, 201);
+      } catch (error) {
+        return reply(
+          {
+            error:
+              error instanceof Error
+                ? error.message
+                : "Brief generation failed",
+            draftId,
+          },
+          400,
+        );
+      }
+    }
     if (path[0] === "projects" && !path[1] && request.method === "POST") {
       const form = await request.formData();
       const name = z.string().trim().min(1).max(100).parse(form.get("name"));
       const description = z
         .string()
+        .trim()
+        .min(10, "Write a brief or use AI generate brief first")
         .max(12000)
         .parse(form.get("description") || "");
       const files = form
@@ -112,9 +248,29 @@ export async function api(request: Request) {
         .filter((f): f is File => f instanceof File && f.size > 0);
       if (files.length > 6) throw new Error("Maximum 6 references");
       const references = await Promise.all(files.map(upload));
-      const id = crypto.randomUUID();
+      const id = form.get("draftId")
+        ? uuid.parse(form.get("draftId"))
+        : crypto.randomUUID();
       await db.transaction(async (tx) => {
-        await tx.insert(projects).values({ id, name, description, references });
+        if (form.get("draftId")) {
+          const updated = await tx
+            .update(projects)
+            .set({
+              name,
+              description,
+              ...(references.length ? { references } : {}),
+              status: "queued",
+              phase: "Waiting for designer",
+              progress: 0,
+            })
+            .where(and(eq(projects.id, id), eq(projects.status, "draft")))
+            .returning();
+          if (!updated.length)
+            throw new Error("Project setup has already started");
+        } else
+          await tx
+            .insert(projects)
+            .values({ id, name, description, references });
         await tx
           .insert(jobs)
           .values({ id: crypto.randomUUID(), kind: "design", targetId: id });
@@ -154,10 +310,74 @@ export async function api(request: Request) {
         return reply({
           project,
           models: assets,
+          versions: history
+            .filter((r) => r.role === "builder" && r.modelId)
+            .map((r) => {
+              const next = history
+                .filter(
+                  (n) =>
+                    n.role === "builder" &&
+                    n.modelId === r.modelId &&
+                    n.createdAt > r.createdAt,
+                )
+                .sort(
+                  (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+                )[0];
+              const judges = history.filter(
+                (j) =>
+                  j.role === "judge" &&
+                  j.modelId === r.modelId &&
+                  j.iteration === r.iteration &&
+                  j.createdAt >= r.createdAt &&
+                  (!next || j.createdAt < next.createdAt),
+              );
+              return {
+                id: r.id,
+                modelId: r.modelId,
+                iteration: r.iteration,
+                status: r.status,
+                createdAt: r.createdAt,
+                artifacts: (r.result as any)?.artifacts,
+                summary: (r.result as any)?.summary,
+                error: r.error,
+                judges: judges.map((j) => ({
+                  id: j.id,
+                  status: j.status,
+                  result: j.result,
+                  error: j.error,
+                  createdAt: j.createdAt,
+                })),
+              };
+            }),
           runs: history,
           revisions: versions,
           batches: requests,
         });
+      }
+      if (path[2] === "model-brief" && request.method === "POST") {
+        if (project.status !== "ready")
+          throw new Error("Approve the design first");
+        const input = z
+          .object({
+            count: z.number().int().min(1).max(20),
+            hint: z.string().max(12000).default(""),
+          })
+          .parse(await request.json());
+        const existing = await db
+          .select({ name: models.name })
+          .from(models)
+          .where(eq(models.projectId, id));
+        const text = await prompt("model-brief-input", {
+          name: project.name,
+          version: project.designVersion,
+          design: project.design,
+          count: input.count,
+          assets: existing.map((m) => m.name).join("\n") || "None",
+          hint: input.hint || "Propose a useful set.",
+        });
+        return reply(
+          await draftBrief({ projectId: id, role: "model-brief", input: text }),
+        );
       }
       if (path[2] === "design" && request.method === "PUT") {
         const input = z
@@ -245,13 +465,11 @@ export async function api(request: Request) {
             throw new Error("Setup is already being retried");
           const resumed = await resumeJob(tx, ["design"], id);
           if (!resumed)
-            await tx
-              .insert(jobs)
-              .values({
-                id: crypto.randomUUID(),
-                kind: "design",
-                targetId: id,
-              });
+            await tx.insert(jobs).values({
+              id: crypto.randomUUID(),
+              kind: "design",
+              targetId: id,
+            });
         });
         return reply({ ok: true });
       }

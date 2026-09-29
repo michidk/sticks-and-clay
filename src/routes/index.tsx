@@ -9,6 +9,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 import { request, money, fileUrl } from "../lib/client";
+import { useDialog } from "../components/use-dialog";
 import { Progress } from "../components/progress";
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 function ProjectsPage() {
@@ -17,7 +18,41 @@ function ProjectsPage() {
     [creating, setCreating] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [files, setFiles] = useState<File[]>([]);
+    [files, setFiles] = useState<File[]>([]),
+    [name, setName] = useState(""),
+    [description, setDescription] = useState(""),
+    [draftId, setDraftId] = useState<string | null>(null),
+    [briefing, setBriefing] = useState(false);
+  function newProject() {
+    setName("");
+    setDescription("");
+    setDraftId(null);
+    setFiles([]);
+    setCreating(true);
+  }
+  async function generateBrief() {
+    setBriefing(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.set("name", name);
+      form.set("description", description);
+      if (draftId) form.set("draftId", draftId);
+      for (const file of files) form.append("images", file);
+      const result = await request("projects/brief", {
+        method: "POST",
+        body: form,
+      });
+      setDraftId(result.id);
+      setDescription(result.brief);
+    } catch (e) {
+      if ((e as any).data?.draftId) setDraftId((e as any).data.draftId);
+      setError((e as Error).message);
+    } finally {
+      setBriefing(false);
+    }
+  }
+  useDialog(creating, () => setCreating(false), busy || briefing);
   const navigate = Route.useNavigate();
   useEffect(() => {
     let active = true;
@@ -48,6 +83,7 @@ function ProjectsPage() {
     setError("");
     try {
       const form = new FormData(e.currentTarget);
+      if (draftId) form.set("draftId", draftId);
       form.delete("images");
       for (const file of files) form.append("images", file);
       const p = await request("projects", { method: "POST", body: form });
@@ -77,7 +113,7 @@ function ProjectsPage() {
             Let your agents build, review, and refine the details.
           </p>
         </div>
-        <button className="primary" onClick={() => setCreating(true)}>
+        <button className="primary" onClick={newProject}>
           <Plus size={18} />
           New project
         </button>
@@ -103,6 +139,18 @@ function ProjectsPage() {
               to="/projects/$projectId"
               params={{ projectId: p.id }}
               className="project-card"
+              onClick={
+                p.status === "draft"
+                  ? (e) => {
+                      e.preventDefault();
+                      setName(p.name);
+                      setDescription(p.description);
+                      setDraftId(p.id);
+                      setFiles([]);
+                      setCreating(true);
+                    }
+                  : undefined
+              }
             >
               <div className="project-cover">
                 {p.references[0] ? (
@@ -147,12 +195,12 @@ function ProjectsPage() {
               </div>
             </Link>
           ))}
-          <button className="new-card" onClick={() => setCreating(true)}>
+          <button className="new-card" onClick={newProject}>
             <span className="circle">
               <Plus size={24} />
             </span>
             <strong>A new world starts here</strong>
-            <span>Start with a name. Add a brief or moodboard if you like.</span>
+            <span>Name your project, then write or generate its brief.</span>
           </button>
         </div>
       )}
@@ -184,7 +232,7 @@ function ProjectsPage() {
             <button
               className="icon close"
               aria-label="Close"
-              disabled={busy}
+              disabled={busy || briefing}
               onClick={() => setCreating(false)}
             >
               <X />
@@ -192,26 +240,47 @@ function ProjectsPage() {
             <div className="eyebrow">START A COLLECTION</div>
             <h2 id="new-project-title">Give your world a direction.</h2>
             <p className="muted">
-              Your designer can start from just the project name and generate an editable design brief.
+              Write a brief or let AI draft one from the name and references.
+              Review it before creating your design.
             </p>
             <form onSubmit={create}>
               <label>
                 Project name
                 <input
                   name="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={briefing}
                   required
                   maxLength={100}
                   placeholder="e.g. Stonehaven village"
                 />
               </label>
               <label>
-                The brief (optional)
+                The brief
                 <textarea
                   name="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  disabled={briefing}
+                  required
+                  minLength={10}
                   rows={4}
-                  placeholder="Leave empty to generate from the project name, or describe the setting, style, and what you want to build…"
+                  placeholder="Describe the setting, style, and what you want to build, or use AI generate brief."
                 />
               </label>
+              <button
+                type="button"
+                disabled={busy || briefing || !name.trim()}
+                onClick={generateBrief}
+              >
+                {briefing && <LoaderCircle className="spin" size={16} />}
+                {briefing ? "Writing brief…" : "AI generate brief"}
+              </button>
+              <p className="note">
+                The generated text fills the field above. Edit and correct it
+                before continuing.
+              </p>
               <label className="upload">
                 <ImagePlus size={24} />
                 <strong>Reference images (optional)</strong>
@@ -230,7 +299,7 @@ function ProjectsPage() {
                 <p className="muted">{files.map((f) => f.name).join(" · ")}</p>
               )}
               {error && <p className="error">{error}</p>}
-              <button className="primary wide" disabled={busy}>
+              <button className="primary wide" disabled={busy || briefing}>
                 {busy ? (
                   <LoaderCircle className="spin" size={18} />
                 ) : (

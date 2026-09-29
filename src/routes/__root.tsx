@@ -24,6 +24,7 @@ export const Route = createRootRoute({
           </span>{" "}
           Asset Studio <span className="beta">WORKSHOP</span>
         </Link>
+        <Link to="/admin/queue">Queue</Link>
         <span className="top-note">
           An idea. A shared style. A world of assets.
           <ArrowUpRight size={15} />

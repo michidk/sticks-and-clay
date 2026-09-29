@@ -3,6 +3,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { db } from "../db/client";
 import { projects, revisions, batches, models, jobs, runs } from "../db/schema";
+import { assertJobActive } from "./queue.server";
+import { archiveVersion } from "./versions.server";
+import { prompt } from "./prompts.server";
+import { draftBrief } from "./direct-api.server";
 import { agent } from "./agent.server";
 import { renderCollection } from "./collection.server";
 import {
@@ -19,6 +23,7 @@ async function one<T>(rows: T[]) {
   return rows[0];
 }
 export async function executeJob(kind: string, targetId: string) {
+  await assertJobActive();
   const job = jobContext.getStore();
   if (!job) throw new Error("Missing durable job context");
   if (job.checkpoint.applied === "yes") return;
@@ -39,13 +44,30 @@ export async function executeJob(kind: string, targetId: string) {
         progress: 20,
       })
       .where(eq(projects.id, p.id));
-    const { result } = await agent<{ design: string }>({
-      role: "designer",
-      projectId: p.id,
-      input: `Project: ${p.name}\nBrief: ${p.description}`,
-      images: p.references,
-      schema: designResult,
+    const input = await prompt("designer-input", {
+      name: p.name,
+      description: p.description,
     });
+    const result = job.checkpoint["agent:designer:0"]
+      ? (
+          await agent<{ design: string }>({
+            role: "designer",
+            projectId: p.id,
+            input,
+            images: p.references,
+            schema: designResult,
+          })
+        ).result
+      : await draftBrief({
+          role: "designer",
+          projectId: p.id,
+          input: await prompt("designer-input", {
+            name: p.name,
+            description: p.description,
+          }),
+          images: p.references,
+        });
+    await assertJobActive();
     await db.transaction(async (tx) => {
       await tx
         .update(projects)
@@ -83,7 +105,12 @@ export async function executeJob(kind: string, targetId: string) {
       projectId: batch.projectId,
       batchId: batch.id,
       role: "planner",
-      input: `DESIGN REFERENCE (version ${batch.designVersion})\n${batch.design}\nREQUEST\n${batch.prompt}\nReturn exactly ${batch.count} models.`,
+      input: await prompt("planner-input", {
+        version: batch.designVersion,
+        design: batch.design,
+        request: batch.prompt,
+        count: batch.count,
+      }),
       schema: planResult,
     });
     if (result.models.length !== batch.count) {
@@ -94,6 +121,7 @@ export async function executeJob(kind: string, targetId: string) {
         .where(eq(runs.id, runId));
       throw new Error(error);
     }
+    await assertJobActive();
     await db.transaction(async (tx) => {
       await tx
         .update(jobs)
@@ -158,7 +186,7 @@ export async function executeJob(kind: string, targetId: string) {
         })
         .where(eq(models.id, model.id));
       let buildProgress = Math.round((iteration / rounds) * 100);
-      await agent({
+      const { runId: builderRunId } = await agent({
         role: "builder",
         onActivity: async (tool) => {
           const phase = tool.includes("view_render")
@@ -191,7 +219,16 @@ export async function executeJob(kind: string, targetId: string) {
         iteration,
         images: project.references,
         schema: buildResult,
-        input: `DESIGN REFERENCE (version ${batch.designVersion})\n${batch.design}\nASSET: ${model.name}\n${model.prompt}\nBlender capability: ${capability}\nOutput directory: ${resolve(DATA, directory)}\n${previous ? `Previous source: ${previous}\n` : ""}${feedback ? `JUDGE FEEDBACK:\n${JSON.stringify(feedback, null, 2)}` : ""}`,
+        input: await prompt("builder-input", {
+          version: batch.designVersion,
+          design: batch.design,
+          name: model.name,
+          request: model.prompt,
+          capability,
+          directory: resolve(DATA, directory),
+          previous: previous || "None",
+          feedback: JSON.stringify(feedback || null, null, 2),
+        }),
       });
       let metrics: any;
       let images: string[];
@@ -233,7 +270,10 @@ export async function executeJob(kind: string, targetId: string) {
             .where(eq(runs.id, runId));
         throw error;
       }
-      previous = resolve(DATA, directory, "source.blend");
+      await assertJobActive();
+      artifacts = await archiveVersion(builderRunId, directory);
+      images = artifacts.renders as string[];
+      previous = resolve(DATA, String(artifacts.blend));
       await db
         .update(models)
         .set({
@@ -259,8 +299,14 @@ export async function executeJob(kind: string, targetId: string) {
           iteration,
           images,
           schema: judgeResult,
-          input: `DESIGN REFERENCE\n${batch.design}\nASSET BRIEF\n${model.prompt}\nMETRICS\n${JSON.stringify(metrics)}\nViews in order: front, rear, detail.\nPrevious feedback: ${JSON.stringify(feedback)}`,
+          input: await prompt("judge-input", {
+            design: batch.design,
+            request: model.prompt,
+            metrics: JSON.stringify(metrics),
+            feedback: JSON.stringify(feedback),
+          }),
         });
+        await assertJobActive();
         feedback = result;
         passed = result.passed;
         await db
@@ -273,6 +319,7 @@ export async function executeJob(kind: string, targetId: string) {
         if (nextStage(passed, iteration + 1, rounds) !== "revise") break;
       }
     }
+    await assertJobActive();
     const verdict = !batch.judgeIterations
       ? "unreviewed"
       : passed
@@ -319,7 +366,10 @@ export async function failJob(kind: string, id: string, error: string) {
 }
 async function settleBatch(id: string) {
   const rows = await db.select().from(models).where(eq(models.batchId, id));
-  if (!rows.length || !rows.every((m) => ["done", "failed"].includes(m.status)))
+  if (
+    !rows.length ||
+    !rows.every((m) => ["done", "failed", "cancelled"].includes(m.status))
+  )
     return;
   await db.transaction(async (tx) => {
     const [claimed] = await tx

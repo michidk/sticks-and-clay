@@ -9,9 +9,19 @@ def workspace(capability):
     if not re.fullmatch(r'[0-9a-f-]{36}',capability):raise ValueError('Invalid capability')
     marker=DATA/'capabilities'/f'{capability}.json'
     info=json.loads(marker.read_text())
+    if info.get('cancelled'):raise ValueError('Build cancelled by user')
     dest=(DATA/info['directory']).resolve()
     if not dest.is_relative_to(DATA):raise ValueError('Invalid workspace')
     return dest
+async def watch_cancellation(capability,proc):
+    marker=DATA/'capabilities'/f'{capability}.json'
+    while proc.returncode is None:
+        await asyncio.sleep(.5)
+        try:cancelled=json.loads(marker.read_text()).get('cancelled',False)
+        except (FileNotFoundError,json.JSONDecodeError):continue
+        if cancelled and proc.returncode is None:
+            proc.kill()
+            return
 @mcp.tool()
 async def get_scene_info(capability:str)->dict:
     """Read Blender version and existing export metrics for this authorized builder workspace."""
@@ -24,15 +34,24 @@ async def execute_blender_code(capability:str,code:str)->dict:
     """Execute a complete asset build in an independent Blender process. Call finish_asset() last. bpy, math, random, Vector and OUTPUT_DIR are provided. Outputs: asset.glb, source.blend, metrics.json, front.png, rear.png, detail.png. No shared scene state."""
     dest=workspace(capability)
     async with locks.setdefault(capability,asyncio.Lock()):
+        workspace(capability)
         dest.mkdir(parents=True,exist_ok=True)
         helper=(ROOT/'blender'/'helpers.py').read_text()
         script=dest/f'build-{uuid.uuid4()}.py'
         script.write_text('OUTPUT_DIR = '+repr(str(dest))+'\n'+helper+'\n'+code)
         env={k:v for k,v in os.environ.items() if not any(s in k.upper() for s in ['TOKEN','SECRET','PASSWORD','API_KEY','CREDENTIAL'])}
         proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'-b','--threads','2','--python-exit-code','1','--python',str(script),cwd=dest,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
+        monitor=asyncio.create_task(watch_cancellation(capability,proc))
         try:out,_=await asyncio.wait_for(proc.communicate(),240)
         except asyncio.TimeoutError:
-            proc.kill();await proc.wait();return {'ok':False,'error':'Blender exceeded 240 seconds'}
+            if proc.returncode is None:proc.kill()
+            await proc.wait();return {'ok':False,'error':'Blender exceeded 240 seconds'}
+        except asyncio.CancelledError:
+            if proc.returncode is None:proc.kill()
+            await proc.wait()
+            raise
+        finally:
+            monitor.cancel()
         (dest/'build.log').write_bytes(out)
         return {'ok':proc.returncode==0,'log':out.decode(errors='replace')[-(1200 if proc.returncode==0 else 6000):],'metrics':json.loads((dest/'metrics.json').read_text()) if proc.returncode==0 and (dest/'metrics.json').exists() else None}
 @mcp.tool()

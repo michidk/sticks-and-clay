@@ -5,6 +5,8 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { runs, events } from "../db/schema";
 import { imagePart } from "./storage.server";
+import { assertJobActive } from "./queue.server";
+import { prompt } from "./prompts.server";
 import { price } from "./contracts";
 import { recoveryAction } from "./recovery";
 import { checkpoint, jobContext } from "./checkpoint.server";
@@ -44,6 +46,7 @@ export async function agent<T>(args: {
   schema: any;
   onActivity?: (tool: string) => Promise<void>;
 }): Promise<{ result: T; runId: string }> {
+  await assertJobActive();
   const key = `agent:${args.role}:${args.iteration || 0}`;
   const savedId = jobContext.getStore()?.checkpoint[key];
   const [saved] = savedId
@@ -164,9 +167,7 @@ export async function agent<T>(args: {
       );
     } else if (action === "continue") {
       continuation = await handle.send(
-        "Failure to repair: " +
-          (saved?.error || "Interrupted turn") +
-          "\nContinue the original task from the saved work and conversation. Inspect existing outputs, fix the failure, and return the required structured result. Preserve completed work.",
+        await prompt("resume", { error: saved?.error || "Interrupted turn" }),
         { outputSchema: args.schema, signal },
       );
     } else if (action === "attach") {
@@ -180,6 +181,7 @@ export async function agent<T>(args: {
     }
     const seen = new Set<string>();
     for await (const { event, historical } of replay()) {
+      if (!historical) await assertJobActive();
       if (event.type === "turn.started") {
         complete = false;
         result = undefined;
@@ -282,6 +284,7 @@ export async function agent<T>(args: {
       if (!historical && event.type === "turn.completed") break;
     }
     if (!complete) throw new Error("Agent stream ended without completion");
+    await assertJobActive();
     let parsed: T;
     try {
       parsed = args.schema.parse(

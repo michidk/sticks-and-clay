@@ -17,6 +17,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 import { request, json, money, fileUrl } from "../../../lib/client";
+import { useDialog } from "../../../components/use-dialog";
 import { Progress } from "../../../components/progress";
 import { History } from "./-components/history";
 const Viewer = lazy(() => import("./-components/viewer"));
@@ -34,7 +35,32 @@ function ProjectPage() {
     [generate, setGenerate] = useState(false),
     [busy, setBusy] = useState(false),
     [selected, setSelected] = useState<any>(),
-    [view, setView] = useState("3d");
+    [view, setView] = useState("3d"),
+    [selectedVersion, setSelectedVersion] = useState<string | null>(null),
+    [modelBrief, setModelBrief] = useState(""),
+    [modelCount, setModelCount] = useState(1),
+    [briefSubmitting, setBriefSubmitting] = useState(false);
+  const briefing = briefSubmitting;
+  useDialog(generate || Boolean(selected),()=>{setGenerate(false);setSelected(null);setSelectedVersion(null);},busy||briefing);
+  async function generateBrief() {
+    setBriefSubmitting(true);
+    setError("");
+    try {
+      const result = await request(
+        `projects/${projectId}/model-brief`,
+        json({
+          count: modelCount,
+          hint: modelBrief,
+        }),
+      );
+      setModelBrief(result.brief);
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBriefSubmitting(false);
+    }
+  }
   async function load() {
     const d = await request("projects/" + projectId);
     setData(d);
@@ -46,6 +72,8 @@ function ProjectPage() {
     setDesign("");
     setEditing(false);
     setSelected(undefined);
+    setModelBrief("");
+    setModelCount(1);
     let active = true;
     const refresh = () =>
       request("projects/" + projectId)
@@ -133,6 +161,15 @@ function ProjectPage() {
     { cost: 0, tokens: 0 },
   );
   const ready = p.status === "ready";
+  const modelVersions =
+    data.versions?.filter((v: any) => v.modelId === selected?.id) || [];
+  const historicalVersion = modelVersions.find(
+    (v: any) => v.id === selectedVersion,
+  );
+  const shownArtifacts = historicalVersion?.artifacts || selected?.artifacts;
+  const shownFeedback = historicalVersion
+    ? historicalVersion.judges?.find((j: any) => j.result)?.result
+    : selected?.feedback;
   const completed = data.models.filter((m: any) => m.status === "done").length;
   return (
     <main>
@@ -393,7 +430,6 @@ function ProjectPage() {
               Your collection{" "}
               <span className="count">{data.models.length}</span>
             </h2>
-            <span>One shared style. Individually crafted.</span>
           </div>
           {data.batches
             .filter((b: any) =>
@@ -515,9 +551,9 @@ function ProjectPage() {
                       ) : (
                         <div className="abstract">
                           <Boxes size={56} strokeWidth={1} />
-                          {!["failed", "done"].includes(m.status) && (
-                            <LoaderCircle className="spin" size={20} />
-                          )}
+                          {!["failed", "done", "cancelled"].includes(
+                            m.status,
+                          ) && <LoaderCircle className="spin" size={20} />}
                         </div>
                       )}
                       <span
@@ -539,7 +575,7 @@ function ProjectPage() {
                     <div className="project-body">
                       <h3>{m.name}</h3>
                       <p>{m.prompt}</p>
-                      {!["done", "failed"].includes(m.status) && (
+                      {!["done", "failed", "cancelled"].includes(m.status) && (
                         <Progress value={m.progress} label={m.phase} />
                       )}
                       <div className="card-meta">
@@ -551,6 +587,15 @@ function ProjectPage() {
                         </span>
                         <span>{money(cost)}</span>
                       </div>
+                      <button
+                        onClick={() => {
+                          setSelected(m);
+                          setSelectedVersion(null);
+                          setView("history");
+                        }}
+                      >
+                        Iteration history
+                      </button>
                       {m.error && <p className="error">{m.error}</p>}
                       {m.status === "failed" && (
                         <button
@@ -615,12 +660,44 @@ function ProjectPage() {
                 Model brief
                 <textarea
                   name="prompt"
+                  value={modelBrief}
+                  onChange={(e) => setModelBrief(e.target.value)}
+                  disabled={briefing}
                   required
                   minLength={10}
                   rows={5}
                   placeholder="e.g. Create five distinct village walls: a plain section, an archway, a damaged section…"
                 />
               </label>
+              <div className="actions">
+                <button
+                  type="button"
+                  disabled={
+                    busy ||
+                    briefing ||
+                    !Number.isInteger(modelCount) ||
+                    modelCount < 1 ||
+                    modelCount > 20
+                  }
+                  onClick={() => generateBrief()}
+                >
+                  {briefing ? (
+                    <LoaderCircle className="spin" size={16} />
+                  ) : (
+                    <FileText size={16} />
+                  )}
+                  {briefing ? "Writing brief…" : "AI generate brief"}
+                </button>
+              </div>
+              {briefing && (
+                <p role="status" className="muted">
+                  Writing a brief from your approved design…
+                </p>
+              )}
+              <p className="note">
+                Uses your approved design, model count, and any draft above.
+                Review and edit the result before starting generation.
+              </p>
               <div className="form-row">
                 <label>
                   Number of models
@@ -629,7 +706,9 @@ function ProjectPage() {
                     type="number"
                     min={1}
                     max={20}
-                    defaultValue={1}
+                    value={modelCount}
+                    disabled={briefing}
+                    onChange={(e) => setModelCount(e.target.valueAsNumber)}
                     required
                   />
                 </label>
@@ -651,7 +730,7 @@ function ProjectPage() {
                 early. Zero skips judging.
               </p>
               {error && <p className="error">{error}</p>}
-              <button className="primary wide" disabled={busy}>
+              <button className="primary wide" disabled={busy || briefing}>
                 <Play size={17} />
                 {busy ? "Queueing artists…" : "Start generation"}
               </button>
@@ -670,13 +749,22 @@ function ProjectPage() {
             <button
               className="icon close"
               aria-label="Close viewer"
-              onClick={() => setSelected(null)}
+              onClick={() => {
+                setSelected(null);
+                setSelectedVersion(null);
+              }}
             >
               <X />
             </button>
             <div className="asset-title">
               <h2>{selected.name}</h2>
               <div className="tabs compact">
+                <button
+                  className={view === "history" ? "active" : ""}
+                  onClick={() => setView("history")}
+                >
+                  History
+                </button>
                 <button
                   className={view === "3d" ? "active" : ""}
                   onClick={() => setView("3d")}
@@ -693,44 +781,127 @@ function ProjectPage() {
                 </button>
               </div>
             </div>
-            {view === "3d" ? (
-              <Suspense
-                fallback={<div className="viewer">Loading viewer…</div>}
-              >
-                <Viewer url={fileUrl(selected.artifacts.glb)} />
-              </Suspense>
-            ) : (
-              <div className="render-grid">
-                {selected.artifacts.renders.map((r: string) => (
-                  <a href={fileUrl(r)} target="_blank" rel="noreferrer" key={r}>
-                    <img src={fileUrl(r)} alt={r.split("/").pop()} />
+            <section className="panel">
+              <h3>Iteration history</h3>
+              <label>
+                Viewing version
+                <select
+                  value={selectedVersion || ""}
+                  onChange={(e) => setSelectedVersion(e.target.value || null)}
+                >
+                  <option value="">Latest version</option>
+                  {modelVersions
+                    .filter((v: any) => v.artifacts)
+                    .map((v: any) => (
+                      <option key={v.id} value={v.id}>
+                        Iteration {v.iteration + 1} ·{" "}
+                        {new Date(v.createdAt).toLocaleString()}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              {modelVersions.map((v: any) => (
+                <details key={v.id}>
+                  <summary>
+                    Iteration {v.iteration + 1} · {v.status} ·{" "}
+                    {new Date(v.createdAt).toLocaleString()}
+                  </summary>
+                  <p>{v.summary || v.error}</p>
+                  {v.artifacts && (
+                    <div className="actions">
+                      <button
+                        onClick={() => {
+                          setSelectedVersion(v.id);
+                          setView("renders");
+                        }}
+                      >
+                        View this version
+                      </button>
+                      <a href={fileUrl(v.artifacts.glb)} download>
+                        GLB
+                      </a>
+                      <a href={fileUrl(v.artifacts.blend)} download>
+                        Blender source
+                      </a>
+                    </div>
+                  )}
+                  {!v.artifacts && (
+                    <p className="muted">
+                      No verified export saved for this attempt.
+                    </p>
+                  )}
+                  {v.judges.length ? (
+                    v.judges.map((j: any) => (
+                      <div key={j.id} className="judge-feedback">
+                        <strong>
+                          Judge ·{" "}
+                          {j.result
+                            ? `${j.result.score}/100 · ${j.result.passed ? "Passed" : "Changes requested"}`
+                            : j.status}
+                        </strong>
+                        <p>{j.result?.summary || j.error}</p>
+                        {j.result?.improvements?.map((i: any, n: number) => (
+                          <p key={n}>
+                            <b>{i.priority}</b> · {i.view}: {i.issue}
+                            <br />
+                            {i.action}
+                          </p>
+                        ))}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="muted">No judge review for this attempt.</p>
+                  )}
+                </details>
+              ))}
+            </section>
+            {shownArtifacts && view !== "history" && (
+              <>
+                {view === "3d" ? (
+                  <Suspense
+                    fallback={<div className="viewer">Loading viewer…</div>}
+                  >
+                    <Viewer url={fileUrl(shownArtifacts.glb)} />
+                  </Suspense>
+                ) : (
+                  <div className="render-grid">
+                    {shownArtifacts.renders.map((r: string) => (
+                      <a
+                        href={fileUrl(r)}
+                        target="_blank"
+                        rel="noreferrer"
+                        key={r}
+                      >
+                        <img src={fileUrl(r)} alt={r.split("/").pop()} />
+                      </a>
+                    ))}
+                  </div>
+                )}
+                <div className="asset-info">
+                  <span>
+                    {shownArtifacts.metrics.triangles.toLocaleString()}{" "}
+                    triangles ·{" "}
+                    {shownArtifacts.metrics.dimensions
+                      .map((d: number) => d.toFixed(2))
+                      .join(" × ")}{" "}
+                    m
+                  </span>
+                  <a
+                    className="button primary"
+                    href={fileUrl(shownArtifacts.glb)}
+                    download
+                  >
+                    <Download size={16} />
+                    Download GLB
                   </a>
-                ))}
-              </div>
+                </div>
+              </>
             )}
-            <div className="asset-info">
-              <span>
-                {selected.artifacts.metrics.triangles.toLocaleString()}{" "}
-                triangles ·{" "}
-                {selected.artifacts.metrics.dimensions
-                  .map((d: number) => d.toFixed(2))
-                  .join(" × ")}{" "}
-                m
-              </span>
-              <a
-                className="button primary"
-                href={fileUrl(selected.artifacts.glb)}
-                download
-              >
-                <Download size={16} />
-                Download GLB
-              </a>
-            </div>
-            {selected.feedback && (
+            {shownFeedback && (
               <div className="judge-feedback">
-                <strong>Judge · {selected.feedback.score}/100</strong>
-                <p>{selected.feedback.summary}</p>
-                {selected.feedback.improvements.map((i: any, n: number) => (
+                <strong>Judge · {shownFeedback.score}/100</strong>
+                <p>{shownFeedback.summary}</p>
+                {shownFeedback.improvements.map((i: any, n: number) => (
                   <p key={n}>
                     <span className="badge warning">{i.priority}</span>{" "}
                     {i.issue} — {i.action}

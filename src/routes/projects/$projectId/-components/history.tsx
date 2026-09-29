@@ -33,7 +33,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
     <div className="history">
       <div className="section-title">
         <h2>The process, in full</h2>
-        <span>{runs.length} agent runs</span>
+        <span>{runs.length} AI requests</span>
       </div>
       <p className="muted">
         Every brief, response, visual review, and token accounted for. Bars:
@@ -41,7 +41,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
       </p>
       {!runs.length && (
         <div className="empty">
-          Agent history will appear when setup begins.
+          Request history will appear when you use AI.
         </div>
       )}
       {runs.map((r) => (
@@ -64,7 +64,14 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                 </span>
               </strong>
               <small>
-                {r.model} · {new Date(r.createdAt).toLocaleString()}
+                {r.sessionId
+                  ? "Eve"
+                  : ["designer", "project-brief", "model-brief"].includes(
+                        r.role,
+                      )
+                    ? "TanStack AI"
+                    : "Eve"}{" "}
+                · {r.model} · {new Date(r.createdAt).toLocaleString()}
               </small>
             </span>
             <span className={"badge " + r.status}>{r.status}</span>
