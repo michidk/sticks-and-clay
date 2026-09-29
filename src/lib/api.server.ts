@@ -92,8 +92,6 @@ export async function api(request: Request) {
         .getAll("images")
         .filter((f): f is File => f instanceof File && f.size > 0);
       if (files.length > 6) throw new Error("Maximum 6 references");
-      if (!description.trim() && !files.length)
-        throw new Error("Provide a description or reference image");
       const references = await Promise.all(files.map(upload));
       const id = crypto.randomUUID();
       await db.transaction(async (tx) => {

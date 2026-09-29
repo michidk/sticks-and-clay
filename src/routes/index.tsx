@@ -127,7 +127,7 @@ function ProjectsPage() {
                 </h3>
                 <p>
                   {p.description ||
-                    "A collection inspired by visual references."}
+                    "A collection inspired by its name and references."}
                 </p>
                 {["queued", "designing"].includes(p.status) && (
                   <Progress value={p.progress} label={p.phase} />
@@ -152,7 +152,7 @@ function ProjectsPage() {
               <Plus size={24} />
             </span>
             <strong>A new world starts here</strong>
-            <span>Add a brief, a moodboard, or both.</span>
+            <span>Start with a name. Add a brief or moodboard if you like.</span>
           </button>
         </div>
       )}
@@ -192,7 +192,7 @@ function ProjectsPage() {
             <div className="eyebrow">START A COLLECTION</div>
             <h2 id="new-project-title">Give your world a direction.</h2>
             <p className="muted">
-              Your designer turns this into an editable design reference.
+              Your designer can start from just the project name and generate an editable design brief.
             </p>
             <form onSubmit={create}>
               <label>
@@ -205,16 +205,16 @@ function ProjectsPage() {
                 />
               </label>
               <label>
-                The brief
+                The brief (optional)
                 <textarea
                   name="description"
                   rows={4}
-                  placeholder="Describe the setting, visual style, scale, and what you want to build…"
+                  placeholder="Leave empty to generate from the project name, or describe the setting, style, and what you want to build…"
                 />
               </label>
               <label className="upload">
                 <ImagePlus size={24} />
-                <strong>Reference images</strong>
+                <strong>Reference images (optional)</strong>
                 <span>Choose up to 6 PNG, JPG or WebP images · 8 MB each</span>
                 <input
                   name="images"
