@@ -11,6 +11,7 @@ import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { runs } from "../db/schema";
+import { cleanupGlb } from "../modules/glb/cleanup";
 import { handoverGlb } from "../modules/glb/handover";
 import { DATA, publishFiles } from "./storage.server";
 
@@ -37,13 +38,21 @@ export async function archiveVersion(
       await copyFile(resolve(DATA, directory, file), resolve(temporary, file));
     }
     // Agent -> platform handover: pure local processing before immutable publication.
-    const processed = handoverGlb(
-      await readFile(resolve(temporary, "asset.glb")),
-    );
+    const original = await readFile(resolve(temporary, "asset.glb"));
+    // Preserve existing structural validation before best-effort cleanup.
+    const originalReceipt = handoverGlb(original).receipt;
+    const cleaned = await cleanupGlb(original);
+    const processed = handoverGlb(Buffer.from(cleaned.bytes));
+    const receipt = {
+      ...processed.receipt,
+      cleanup: cleaned.cleanup,
+      inputSha256: originalReceipt.inputSha256,
+      inputBytes: original.length,
+    };
     await writeFile(resolve(temporary, "asset.glb"), processed.bytes);
     await writeFile(
       resolve(temporary, "handover.json"),
-      JSON.stringify(processed.receipt),
+      JSON.stringify(receipt),
     );
     const metrics = JSON.parse(
       await readFile(resolve(temporary, "metrics.json"), "utf8"),

@@ -1,2 +1,4 @@
 mcp==1.26.0
 Pillow==12.3.0
+trimesh==4.11.5
+libigl==2.6.2

@@ -1,3 +1,4 @@
+import { analyzeModel } from "../modules/model-analysis/index.server";
 import { and, eq } from "drizzle-orm";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -487,6 +488,10 @@ export async function executeJob(kind: string, targetId: string) {
             .where(eq(models.id, model.id));
         },
         judge: async ({ iteration, stage, stopOnFail }) => {
+          const analysis = await analyzeModel(
+            resolve(DATA, String(artifacts.glb)),
+          );
+          await assertJobActive();
           const { result } = await runRole({
             role: "judge",
             projectId: model.projectId,
@@ -502,6 +507,7 @@ export async function executeJob(kind: string, targetId: string) {
               design: batch.design,
               stage: stage || "complete",
               target: judgeImageLabels(images, Boolean(target)),
+              analysis: JSON.stringify(analysis),
               request: model.prompt,
               metrics: JSON.stringify(metrics),
               feedback: JSON.stringify(feedback),
