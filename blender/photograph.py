@@ -86,7 +86,7 @@ def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, e
                   ('top',front_azimuth,90),('bottom',front_azimuth,-90)]
     for name, azimuth, altitude in views:
         # Hide only the studio floor for underside inspection; asset stays intact.
-        floor.hide_render = name == 'bottom' 
+        floor.hide_render = name == 'bottom'
         azimuth,altitude=math.radians(azimuth),math.radians(altitude)
         direction=Vector((math.cos(azimuth)*math.cos(altitude),math.sin(azimuth)*math.cos(altitude),math.sin(altitude)))
         camera.location=center+direction*span*4
