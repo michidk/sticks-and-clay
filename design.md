@@ -55,7 +55,7 @@ Status badges pair text with color:
 - **Design reference:** readable Markdown with GFM tables and revision comparisons; a main document column with a 280px reference sidebar. The editable source is monospace. Keep save, approval, and revision restoration distinct.
 - **Activity:** expandable run rows with role icons, status, usage, and cost; details reveal transcripts and technical information. Preserve progressive disclosure.
 - **Forms:** shadcn Label, Input, Textarea, and Button with stacked labels, ivory surfaces, generous padding, and dashed upload areas. Use Alert for errors.
-- **Dialogs:** shadcn Dialog with focus management and Escape behavior; centered on a translucent green overlay with blur. Standard dialogs are 570px wide; asset dialogs are 1000px, constrained by the viewport and a 92vh maximum height.
+- **Dialogs:** shadcn Dialog with focus management and Escape behavior; centered on a translucent green overlay with blur. Standard dialogs are 570px wide, constrained by the viewport and a 92vh maximum height. Model inspection uses a dedicated page.
 - **3D preview:** neutral lighting and background, orbit/zoom controls, loading/error text, and a short interaction hint. Let the asset's material colors remain the focus.
 - **Icons and motion:** use `lucide-react` line icons. Existing hover transitions last 0.15–0.2s; activity spinners rotate over 1.4s. Avoid decorative motion that competes with work in progress.
 
@@ -67,7 +67,7 @@ Status badges pair text with color:
 | 601–900px | Two-column cards, document sidebar moves below into two columns, 380px viewer |
 | 600px and below | One-column cards and collection renders; two-by-two statistics; stacked headings and actions; full-width main actions; two-row header; 19px main side padding; 42px home title and 34px project title; 320px viewer |
 
-At phone sizes, dialogs use 12px outer padding and smaller inner padding. Render grids stack, tabs become more compact, and long text must wrap without widening the page. These breakpoint values come from CSS; desktop pages were visually inspected for this documentation.
+At phone sizes, dialogs use 12px outer padding and smaller inner padding. Render grids stack, tabs become more compact, and long text must wrap without widening the page. These breakpoint values come from CSS; model details are checked at desktop and phone widths.
 
 ## Interaction and content rules
 
@@ -83,7 +83,7 @@ Start with `src/styles.css`, `src/components/ui/`, `src/routes/__root.tsx`, and 
 
 ## Administration and texture inspection
 
-The header groups Projects, Queue and Agents as icon-and-text links, with a forest-green active section (Projects remains active inside a project). At phone widths, the brand and outlined WORKSHOP badge sit above a full-width navigation row with 44px touch targets. The read-only Agents page uses responsive panels with model, effort, engine and prompt settings. Model dialogs have a Textures tab beside History, 3D model and Renders; tabs wrap on small screens. Texture cards open the selected version's image for inspection/download. Project setup offers an optional, initially blank triangle-budget field.
+The header groups Projects, Queue and Agents as icon-and-text links, with a forest-green active section (Projects remains active inside a project). At phone widths, the brand and outlined WORKSHOP badge sit above a full-width navigation row with 44px touch targets. The read-only Agents page uses responsive panels with model, effort, engine and prompt settings. Model detail pages put a large 3D viewer and media tabs beside version, metrics and quality panels. Review notes, version history, build brief and activity sit below. On phones the panels stack and detail tabs form two columns. Selected media, section and version persist in the URL. Texture cards open the selected version's image for inspection/download. Project setup offers an optional, initially blank triangle-budget field.
 
 ## Reference image intake
 

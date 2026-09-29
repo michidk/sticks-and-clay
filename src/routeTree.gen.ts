@@ -14,6 +14,7 @@ import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as AdminAgentsIndexRouteImport } from './routes/admin/agents/index'
 import { Route as AdminQueueIndexRouteImport } from './routes/admin/queue/index'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
+import { Route as ProjectsProjectIdModelsModelIdIndexRouteImport } from './routes/projects/$projectId/models/$modelId/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +41,12 @@ const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
   path: '/projects/$projectId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsProjectIdModelsModelIdIndexRoute =
+  ProjectsProjectIdModelsModelIdIndexRouteImport.update({
+    id: '/projects/$projectId/models/$modelId/',
+    path: '/projects/$projectId/models/$modelId/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +54,7 @@ export interface FileRoutesByFullPath {
   '/admin/agents/': typeof AdminAgentsIndexRoute
   '/admin/queue/': typeof AdminQueueIndexRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/models/$modelId/': typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +62,7 @@ export interface FileRoutesByTo {
   '/admin/agents': typeof AdminAgentsIndexRoute
   '/admin/queue': typeof AdminQueueIndexRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/models/$modelId': typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,6 +71,7 @@ export interface FileRoutesById {
   '/admin/agents/': typeof AdminAgentsIndexRoute
   '/admin/queue/': typeof AdminQueueIndexRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/models/$modelId/': typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -71,8 +81,15 @@ export interface FileRouteTypes {
     | '/admin/agents/'
     | '/admin/queue/'
     | '/projects/$projectId/'
+    | '/projects/$projectId/models/$modelId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/$' | '/admin/agents' | '/admin/queue' | '/projects/$projectId'
+  to:
+    | '/'
+    | '/api/$'
+    | '/admin/agents'
+    | '/admin/queue'
+    | '/projects/$projectId'
+    | '/projects/$projectId/models/$modelId'
   id:
     | '__root__'
     | '/'
@@ -80,6 +97,7 @@ export interface FileRouteTypes {
     | '/admin/agents/'
     | '/admin/queue/'
     | '/projects/$projectId/'
+    | '/projects/$projectId/models/$modelId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,6 +106,7 @@ export interface RootRouteChildren {
   AdminAgentsIndexRoute: typeof AdminAgentsIndexRoute
   AdminQueueIndexRoute: typeof AdminQueueIndexRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
+  ProjectsProjectIdModelsModelIdIndexRoute: typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -127,6 +146,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/$projectId/models/$modelId/': {
+      id: '/projects/$projectId/models/$modelId/'
+      path: '/projects/$projectId/models/$modelId'
+      fullPath: '/projects/$projectId/models/$modelId/'
+      preLoaderRoute: typeof ProjectsProjectIdModelsModelIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -136,6 +162,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminAgentsIndexRoute: AdminAgentsIndexRoute,
   AdminQueueIndexRoute: AdminQueueIndexRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
+  ProjectsProjectIdModelsModelIdIndexRoute:
+    ProjectsProjectIdModelsModelIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

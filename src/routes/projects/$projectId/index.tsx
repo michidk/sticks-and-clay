@@ -20,13 +20,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   WorkspaceSkeleton,
@@ -45,7 +38,6 @@ import {
   Check,
   Download,
   Boxes,
-  Image as ImageIcon,
   Activity,
   FileText,
   Play,
@@ -72,10 +64,7 @@ function ProjectPage() {
     [editing, setEditing] = useState(false),
     [generate, setGenerate] = useState(false),
     [busy, setBusy] = useState(false),
-    [selected, setSelected] = useState<any>(),
     [previewModelId, setPreviewModelId] = useState<string | null>(null),
-    [view, setView] = useState("3d"),
-    [selectedVersion, setSelectedVersion] = useState<string | null>(null),
     [modelBrief, setModelBrief] = useState(""),
     [modelCount, setModelCount] = useState(1),
     [briefSubmitting, setBriefSubmitting] = useState(false);
@@ -109,7 +98,6 @@ function ProjectPage() {
     setVersion(-1);
     setDesign("");
     setEditing(false);
-    setSelected(undefined);
     setPreviewModelId(null);
     setModelBrief("");
     setModelCount(1);
@@ -135,14 +123,6 @@ function ProjectPage() {
       setVersion(data.project.designVersion);
     }
   }, [data, version]);
-  useEffect(() => {
-    if (data)
-      setSelected((current: any) =>
-        current
-          ? (data.models.find((m: any) => m.id === current.id) ?? current)
-          : current,
-      );
-  }, [data]);
   async function save(approve: boolean) {
     setBusy(true);
     setError("");
@@ -207,15 +187,6 @@ function ProjectPage() {
     { cost: 0, tokens: 0, unpriced: 0 },
   );
   const ready = p.status === "ready";
-  const modelVersions =
-    data.versions?.filter((v: any) => v.modelId === selected?.id) || [];
-  const historicalVersion = modelVersions.find(
-    (v: any) => v.id === selectedVersion,
-  );
-  const shownArtifacts = historicalVersion?.artifacts || selected?.artifacts;
-  const shownFeedback = historicalVersion
-    ? historicalVersion.judges?.find((j: any) => j.result)?.result
-    : selected?.feedback;
   const completed = data.models.filter((m: any) => m.status === "done").length;
   return (
     <main>
@@ -649,17 +620,13 @@ function ProjectPage() {
                             />
                           </Suspense>
                         ) : (
-                          <Button
-                            variant="ghost"
-                            size="bare"
+                          <Link
                             className="model-cover-image"
-                            disabled={!m.artifacts && !m.visualTarget}
-                            onClick={() => {
-                              setSelected(m);
-                              setSelectedVersion(null);
-                              setView(
-                                m.artifacts?.renders?.[0] ? "3d" : "target",
-                              );
+                            to="/projects/$projectId/models/$modelId"
+                            params={{ projectId, modelId: m.id }}
+                            search={{
+                              view: m.artifacts ? "3d" : "target",
+                              section: "review",
                             }}
                           >
                             {m.artifacts?.renders?.[0] || m.visualTarget ? (
@@ -686,7 +653,7 @@ function ProjectPage() {
                                   : "Visual target · concept image"}
                               </span>
                             )}
-                          </Button>
+                          </Link>
                         )}
                         <Badge
                           variant="secondary"
@@ -705,7 +672,15 @@ function ProjectPage() {
                         </Badge>
                       </div>
                       <div className="project-body">
-                        <h3>{m.name}</h3>
+                        <h3>
+                          <Link
+                            to="/projects/$projectId/models/$modelId"
+                            params={{ projectId, modelId: m.id }}
+                            search={{ view: "3d", section: "review" }}
+                          >
+                            {m.name}
+                          </Link>
+                        </h3>
                         <p>{m.prompt}</p>
                         {m.artifacts && (
                           <Button
@@ -742,15 +717,14 @@ function ProjectPage() {
                           </span>
                           <span>{money(cost)}</span>
                         </div>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setSelected(m);
-                            setSelectedVersion(null);
-                            setView("history");
-                          }}
-                        >
-                          Iteration history
+                        <Button variant="outline" asChild>
+                          <Link
+                            to="/projects/$projectId/models/$modelId"
+                            params={{ projectId, modelId: m.id }}
+                            search={{ view: "3d", section: "versions" }}
+                          >
+                            Iteration history
+                          </Link>
                         </Button>
                         {m.error && (
                           <Alert variant="destructive" className="error">
@@ -901,268 +875,6 @@ function ProjectPage() {
             </Button>
           </form>
         </DialogContent>
-      </Dialog>
-      <Dialog
-        open={Boolean(selected)}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelected(null);
-            setSelectedVersion(null);
-          }
-        }}
-      >
-        {selected && (
-          <DialogContent
-            className="max-w-[1000px]"
-            aria-describedby={undefined}
-          >
-            <div className="asset-title">
-              <DialogTitle>{selected.name}</DialogTitle>
-              <Tabs
-                value={view}
-                onValueChange={setView}
-                className="workspace-tabs"
-              >
-                <TabsList
-                  variant="line"
-                  className="tabs compact"
-                  aria-label="Asset views"
-                >
-                  <TabsTrigger value="history">History</TabsTrigger>
-                  <TabsTrigger value="3d" disabled={!shownArtifacts}>
-                    <Boxes size={16} />
-                    3D model
-                  </TabsTrigger>
-                  <TabsTrigger value="renders" disabled={!shownArtifacts}>
-                    <ImageIcon size={16} />
-                    Renders
-                  </TabsTrigger>
-                  <TabsTrigger value="textures" disabled={!shownArtifacts}>
-                    Textures
-                  </TabsTrigger>
-                  <TabsTrigger value="target">Visual target</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-            <Card className="panel">
-              <h3>Iteration history</h3>
-              <Label>
-                Viewing version
-                <Select
-                  value={selectedVersion || "latest"}
-                  onValueChange={(value) =>
-                    setSelectedVersion(value === "latest" ? null : value)
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Latest version" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="latest">Latest version</SelectItem>
-                    {modelVersions
-                      .filter((v: any) => v.artifacts)
-                      .map((v: any) => (
-                        <SelectItem key={v.id} value={v.id}>
-                          Iteration {v.iteration + 1} ·{" "}
-                          {v.artifacts?.stage === "geometry"
-                            ? "Geometry · "
-                            : v.artifacts?.stage === "surface"
-                              ? "Materials · "
-                              : ""}{" "}
-                          {new Date(v.createdAt).toLocaleString()}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </Label>
-              {modelVersions.map((v: any) => (
-                <Accordion type="single" collapsible key={v.id}>
-                  <AccordionItem value="content">
-                    <AccordionTrigger>
-                      Iteration {v.iteration + 1} ·{" "}
-                      {v.artifacts?.stage === "geometry"
-                        ? "Geometry · "
-                        : v.artifacts?.stage === "surface"
-                          ? "Materials · "
-                          : ""}
-                      {v.status} · {new Date(v.createdAt).toLocaleString()}
-                    </AccordionTrigger>
-                    <AccordionContent>
-                      <p>{v.summary || v.error}</p>
-                      {v.artifacts && (
-                        <div className="actions">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setSelectedVersion(v.id);
-                              setView("renders");
-                            }}
-                          >
-                            View this version
-                          </Button>
-                          <a href={fileUrl(v.artifacts.glb)} download>
-                            GLB
-                          </a>
-                          <a href={fileUrl(v.artifacts.blend)} download>
-                            Blender source
-                          </a>
-                        </div>
-                      )}
-                      {!v.artifacts && (
-                        <p className="muted">
-                          No verified export saved for this attempt.
-                        </p>
-                      )}
-                      {v.judges.length ? (
-                        v.judges.map((j: any) => (
-                          <div key={j.id} className="judge-feedback">
-                            <strong>
-                              Judge ·{" "}
-                              {j.result
-                                ? `${j.result.score}/100 · ${j.result.passed ? "Passed" : "Changes requested"}`
-                                : j.status}
-                            </strong>
-                            <p>{j.result?.summary || j.error}</p>
-                            {j.result?.improvements?.map(
-                              (i: any, n: number) => (
-                                <p key={n}>
-                                  <b>{i.priority}</b> · {i.view}: {i.issue}
-                                  <br />
-                                  {i.action}
-                                </p>
-                              ),
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <p className="muted">
-                          No judge review for this attempt.
-                        </p>
-                      )}
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              ))}
-            </Card>
-            {view === "target" && (
-              <section>
-                <h3>Visual target</h3>
-                <p className="muted">
-                  Generated design reference, not a 3D render. Used as the
-                  thumbnail until a model render is available.
-                </p>
-                {shownArtifacts?.visualTarget ||
-                (!selectedVersion && selected.visualTarget) ? (
-                  <a
-                    className="mx-auto block aspect-square w-full max-w-[560px]"
-                    href={fileUrl(
-                      shownArtifacts?.visualTarget || selected.visualTarget,
-                    )}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <AssetImage
-                      src={fileUrl(
-                        shownArtifacts?.visualTarget || selected.visualTarget,
-                      )}
-                      alt={`${selected.name} visual target`}
-                    />
-                  </a>
-                ) : (
-                  <p>No visual target was recorded for this version.</p>
-                )}
-              </section>
-            )}
-            {shownArtifacts && view !== "history" && view !== "target" && (
-              <>
-                {view === "textures" ? (
-                  <section>
-                    <h3>Texture images</h3>
-                    <p className="muted">
-                      Generated sources and texture maps embedded in this
-                      version’s GLB.
-                    </p>
-                    {!shownArtifacts.textures?.length && (
-                      <p>
-                        No separate texture images were archived for this
-                        version.
-                      </p>
-                    )}
-                    <div className="render-grid">
-                      {shownArtifacts.textures?.map((texture: any) => (
-                        <a
-                          key={texture.key}
-                          href={fileUrl(texture.key)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <AssetImage
-                            src={fileUrl(texture.key)}
-                            alt={texture.name}
-                          />
-                          <strong>{texture.name}</strong>
-                          <p>{texture.kind} · Open / download</p>
-                        </a>
-                      ))}
-                    </div>
-                  </section>
-                ) : view === "3d" ? (
-                  <Suspense fallback={<ViewerSkeleton />}>
-                    <Viewer
-                      src={fileUrl(shownArtifacts.glb)}
-                      alt={selected.name}
-                    />
-                  </Suspense>
-                ) : (
-                  <div className="render-grid">
-                    {shownArtifacts.renders.map((r: string) => (
-                      <a
-                        href={fileUrl(r)}
-                        target="_blank"
-                        rel="noreferrer"
-                        key={r}
-                      >
-                        <AssetImage src={fileUrl(r)} alt={r.split("/").pop()} />
-                      </a>
-                    ))}
-                  </div>
-                )}
-                <div className="asset-info">
-                  <span>
-                    {shownArtifacts.metrics.triangles.toLocaleString()}{" "}
-                    triangles ·{" "}
-                    {shownArtifacts.metrics.dimensions
-                      .map((d: number) => d.toFixed(2))
-                      .join(" × ")}{" "}
-                    m
-                  </span>
-                  <a
-                    className="button primary"
-                    href={fileUrl(shownArtifacts.glb)}
-                    download
-                  >
-                    <Download size={16} />
-                    Download GLB
-                  </a>
-                </div>
-              </>
-            )}
-            {shownFeedback && (
-              <div className="judge-feedback">
-                <strong>Judge · {shownFeedback.score}/100</strong>
-                <p>{shownFeedback.summary}</p>
-                {shownFeedback.improvements.map((i: any, n: number) => (
-                  <p key={n}>
-                    <Badge variant="secondary" className="badge warning">
-                      {i.priority}
-                    </Badge>{" "}
-                    {i.issue} — {i.action}
-                  </p>
-                ))}
-              </div>
-            )}
-          </DialogContent>
-        )}
       </Dialog>
     </main>
   );
