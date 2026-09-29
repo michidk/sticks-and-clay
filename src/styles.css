@@ -104,46 +104,81 @@ a {
   background: #e8ecdf;
 }
 .topbar {
-  height: 82px;
-  padding: 0 5%;
-  border-bottom: 1px solid #dfe2d8;
+  border-bottom: 1px solid var(--border);
+  background: var(--popover);
+}
+.topbar-inner {
+  max-width: 1330px;
+  min-height: 82px;
+  padding: 16px 40px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  background: #fafbf5;
+  gap: 20px;
 }
 .brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 11px;
+  flex-shrink: 0;
+  border-radius: 7px;
   font-size: 19px;
   font-weight: 650;
   letter-spacing: -0.5px;
 }
 .brand-icon {
-  background: #dce7b7;
-  color: #355236;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  background: var(--secondary);
+  color: var(--primary);
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
   display: grid;
   place-items: center;
 }
-.beta {
+.workshop-badge {
+  color: var(--muted-foreground);
+  border-color: var(--border);
   font-size: 9px;
-  letter-spacing: 1.3px;
-  border: 1px solid #d5dbc9;
-  border-radius: 4px;
-  padding: 4px 6px;
-  margin-left: 8px;
-  color: #7b856f;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
 }
-.top-note {
+.studio-nav {
   display: flex;
-  gap: 16px;
   align-items: center;
-  font-size: 12px;
-  color: #7d8478;
+  gap: 4px;
+  margin-left: auto;
+}
+.studio-nav-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 7px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 550;
+  transition: background 0.15s, color 0.15s;
+}
+.studio-nav-link:hover {
+  color: var(--accent-foreground);
+  background: var(--accent);
+}
+.studio-nav-link[data-current="true"] {
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+.brand:focus-visible,
+.studio-nav-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+@media (min-width: 601px) and (max-width: 760px) {
+  .topbar-inner { padding-inline: 24px; }
+  .workshop-badge { display: none; }
 }
 main {
   max-width: 1330px;
@@ -945,9 +980,6 @@ pre {
   .model-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .top-note {
-    display: none;
-  }
   .design-layout {
     grid-template-columns: 1fr;
   }
@@ -973,9 +1005,23 @@ pre {
   main {
     padding: 28px 19px 40px;
   }
-  .topbar {
-    height: 68px;
-    padding: 0 20px;
+  .topbar-inner {
+    padding: 16px 19px 12px;
+    flex-wrap: wrap;
+    gap: 14px 12px;
+  }
+  .workshop-badge {
+    margin-left: auto;
+  }
+  .studio-nav {
+    width: 100%;
+    margin-left: 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .studio-nav-link {
+    flex: 1;
+    padding-inline: 10px;
   }
   .brand {
     font-size: 17px;
@@ -1176,10 +1222,6 @@ pre {
 .role-settings dt { margin-top: 12px; font-size: 12px; color: #7a8273; }
 .role-settings dd { margin: 3px 0 0; overflow-wrap: anywhere; }
 .asset-title .tabs { flex-wrap: wrap; }
-@media (max-width: 480px) {
-  .topbar .beta { display: none; }
-  .topbar > a:not(.brand) { margin-left: 14px; }
-}
 
 /* shadcn primitives inherit the workshop palette through the tokens above. */
 [data-slot="button"][data-variant="default"]:hover { background: #39634c; }
@@ -1208,6 +1250,7 @@ pre {
 .viewer { position: relative; }
 .viewer [data-slot="skeleton"] { height: 100%; }
 @media (prefers-reduced-motion: reduce) {
+  .studio-nav-link { transition: none; }
   [data-slot="skeleton"] { animation: none; }
   [data-slot="progress-indicator"] { transition: none; }
 }

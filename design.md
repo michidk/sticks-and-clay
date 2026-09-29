@@ -25,7 +25,7 @@ These colors now back semantic shadcn tokens in `src/styles.css` (`--background`
 | Supporting text | `#7a8273` | Introductory copy |
 | Serif accent | `#76846a` | Emphasized home headline |
 | Card border | `#dce1d5` | Fine structural outlines |
-| Brand tile | `#dce7b7` | Background behind the brand icon |
+| Brand tile | `#e7ebdf` | Background behind the brand icon |
 | Progress fill | `#829e5e` | On a `#e4ead9` track |
 | Viewer background | `#e9ede8` | Neutral Three.js stage |
 
@@ -43,7 +43,7 @@ Status badges pair text with color:
 - The font stack starts with Inter, then system sans-serif fonts; the app does not currently load a bundled Inter font. Base text is 14px. Georgia supplies the italic headline accent; code, transcripts, and the design editor use system monospace.
 - Desktop home headlines are 56px with 1.1 line height and −2.8px tracking. Project titles are 40px. Section headings are 20px; card headings are 17px. Most headings use moderate weights around 530–570.
 - Eyebrows are 10px, widely tracked, and uppercase. Supporting text is generally 12–14px with relaxed line height. Small labels and metadata use 9–11px; preserve readability when introducing new information.
-- Main content is centered at a maximum width of 1330px, with desktop padding of 48px 40px 65px. The header is 82px tall. Grids use 23px gaps; panels use 26px padding.
+- Main content is centered at a maximum width of 1330px, with desktop padding of 48px 40px 65px. The header is 82px tall on desktop, with its contents aligned to the main content. Grids use 23px gaps; panels use 26px padding.
 - Use 7px corners for controls, 10px for panels, 12px for cards, and 16px for dialogs. Separation comes primarily from spacing and 1px borders. Card hover shadows are subtle; dialogs use a stronger shadow.
 
 ## Components and layout
@@ -64,8 +64,8 @@ Status badges pair text with color:
 | Width | Existing behavior |
 | --- | --- |
 | Above 900px | Three-column cards, four statistics, document plus sidebar, 480px viewer |
-| 601–900px | Two-column cards, document sidebar moves below into two columns, header note hidden, 380px viewer |
-| 600px and below | One-column cards and collection renders; two-by-two statistics; stacked headings and actions; full-width main actions; 68px header; 19px main side padding; 42px home title and 34px project title; 320px viewer |
+| 601–900px | Two-column cards, document sidebar moves below into two columns, 380px viewer |
+| 600px and below | One-column cards and collection renders; two-by-two statistics; stacked headings and actions; full-width main actions; two-row header; 19px main side padding; 42px home title and 34px project title; 320px viewer |
 
 At phone sizes, dialogs use 12px outer padding and smaller inner padding. Render grids stack, tabs become more compact, and long text must wrap without widening the page. These breakpoint values come from CSS; desktop pages were visually inspected for this documentation.
 
@@ -81,4 +81,4 @@ Start with `src/styles.css`, `src/components/ui/`, `src/routes/__root.tsx`, and 
 
 ## Administration and texture inspection
 
-The header includes Queue and Agents. The read-only Agents page uses responsive panels with model, effort, engine and prompt settings. On narrow phones hide the WORKSHOP badge to keep navigation legible. Model dialogs have a Textures tab beside History, 3D model and Renders; tabs wrap on small screens. Texture cards open the selected version's image for inspection/download. Project setup offers an optional, initially blank triangle-budget field.
+The header groups Projects, Queue and Agents as icon-and-text links, with a forest-green active section (Projects remains active inside a project). At phone widths, the brand and outlined WORKSHOP badge sit above a full-width navigation row with 44px touch targets. The read-only Agents page uses responsive panels with model, effort, engine and prompt settings. Model dialogs have a Textures tab beside History, 3D model and Renders; tabs wrap on small screens. Texture cards open the selected version's image for inspection/download. Project setup offers an optional, initially blank triangle-budget field.
