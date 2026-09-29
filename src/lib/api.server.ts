@@ -405,7 +405,7 @@ export async function api(request: Request) {
           })
           .parse(await request.json());
         const existing = await db
-          .select({ name: models.name })
+          .select({ name: models.name, prompt: models.prompt })
           .from(models)
           .where(eq(models.projectId, id));
         const text = await roleInput("model-brief", {
@@ -413,7 +413,10 @@ export async function api(request: Request) {
           version: project.designVersion,
           design: project.design,
           count: input.count,
-          assets: existing.map((m) => m.name).join("\n") || "None",
+          assets:
+            existing
+              .map((model) => `- ${model.name}: ${model.prompt}`)
+              .join("\n") || "None",
           hint: input.hint || "Propose a useful set.",
         });
         return reply(

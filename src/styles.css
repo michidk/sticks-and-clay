@@ -469,6 +469,17 @@ textarea::placeholder {
   grid-template-columns: 1fr 1fr;
   gap: 18px;
 }
+.brief-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 .note {
   font-size: 11px;
   line-height: 1.7;

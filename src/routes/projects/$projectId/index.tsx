@@ -784,9 +784,32 @@ function ProjectPage() {
                 />
               </Label>
             </div>
-            <Label>
-              Model brief
+            <div className="brief-field">
+              <div className="field-heading">
+                <Label htmlFor="model-brief">Model brief</Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  disabled={
+                    busy ||
+                    briefing ||
+                    !Number.isInteger(modelCount) ||
+                    modelCount < 1 ||
+                    modelCount > 20
+                  }
+                  onClick={() => generateBrief()}
+                >
+                  {briefing ? (
+                    <LoaderCircle className="spin" size={16} />
+                  ) : (
+                    <FileText size={16} />
+                  )}
+                  {briefing ? "Writing brief…" : "AI generate brief"}
+                </Button>
+              </div>
               <Textarea
+                id="model-brief"
                 name="prompt"
                 value={modelBrief}
                 onChange={(e) => setModelBrief(e.target.value)}
@@ -796,27 +819,6 @@ function ProjectPage() {
                 rows={5}
                 placeholder="e.g. Create five distinct village walls: a plain section, an archway, a damaged section…"
               />
-            </Label>
-            <div className="actions">
-              <Button
-                variant="outline"
-                type="button"
-                disabled={
-                  busy ||
-                  briefing ||
-                  !Number.isInteger(modelCount) ||
-                  modelCount < 1 ||
-                  modelCount > 20
-                }
-                onClick={() => generateBrief()}
-              >
-                {briefing ? (
-                  <LoaderCircle className="spin" size={16} />
-                ) : (
-                  <FileText size={16} />
-                )}
-                {briefing ? "Writing brief…" : "AI generate brief"}
-              </Button>
             </div>
             {briefing && (
               <p role="status" className="muted">
