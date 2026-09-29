@@ -7,6 +7,7 @@ import { projects, runs } from "../db/schema";
 import { DATA, getStorage } from "./storage.server";
 import { archiveVersion, archivePhotography } from "./versions.server";
 import { createHash } from "node:crypto";
+import { REVIEW_VIEWS } from "./photo-views";
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 integration(
   "version archives generated sources and exact embedded textures; replay retains original images",
@@ -115,18 +116,16 @@ integration(
         createHash("sha256").update(bytes).digest("hex");
       const receipt = {
         glbSha256: "wrong",
-        images: Object.fromEntries(
-          ["front", "rear", "detail"].map((v) => [v, hash(render)]),
-        ),
+        images: Object.fromEntries(REVIEW_VIEWS.map((v) => [v, hash(render)])),
       };
-      for (const view of ["front", "rear", "detail"])
+      for (const view of REVIEW_VIEWS)
         await writeFile(resolve(DATA, photoDir, `${view}.png`), render);
       await writeFile(
         resolve(DATA, photoDir, "photography.json"),
         JSON.stringify(receipt),
       );
       await expect(
-        archivePhotography(photoId, runId, photoDir, first),
+        archivePhotography(photoId, runId, photoDir, first, REVIEW_VIEWS),
       ).rejects.toThrow("match");
       receipt.glbSha256 = hash(await readFile(resolve(DATA, first.glb)));
       await writeFile(
@@ -135,7 +134,7 @@ integration(
       );
       await writeFile(resolve(DATA, photoDir, "rear.png"), png);
       await expect(
-        archivePhotography(photoId, runId, photoDir, first),
+        archivePhotography(photoId, runId, photoDir, first, REVIEW_VIEWS),
       ).rejects.toThrow("invalid");
       await writeFile(resolve(DATA, photoDir, "rear.png"), render);
       const published = await archivePhotography(
@@ -143,12 +142,19 @@ integration(
         runId,
         photoDir,
         first,
+        REVIEW_VIEWS,
       );
-      expect(published.renders).toHaveLength(3);
+      expect(published.renders).toHaveLength(7);
       expect(published.photography.builderRunId).toBe(runId);
       expect(await getStorage().exists(published.renders[0])).toBe(true);
       await writeFile(resolve(DATA, photoDir, "front.png"), "changed");
-      const resumed = await archivePhotography(photoId, runId, photoDir, first);
+      const resumed = await archivePhotography(
+        photoId,
+        runId,
+        photoDir,
+        first,
+        REVIEW_VIEWS,
+      );
       expect(await readFile(resolve(DATA, resumed.renders[0]))).toEqual(render);
       const [builder] = await db.select().from(runs).where(eq(runs.id, runId));
       expect((builder.result as any).artifacts.renders).toEqual(

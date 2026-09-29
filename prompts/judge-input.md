@@ -4,7 +4,7 @@ ASSET BRIEF
 {{request}}
 METRICS
 {{metrics}}
-Views in order: front, rear, detail.
+Use the numbered image labels below to distinguish actual renders from reference material.
 Previous feedback: {{feedback}}
 PIPELINE STAGE: {{stage}}
 {{target}}

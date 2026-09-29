@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { db } from "../db/client";
 import { projects, revisions, batches, models, jobs, runs } from "../db/schema";
 import { assertJobActive } from "./queue.server";
+import { REVIEW_VIEWS, judgeImageLabels } from "./photo-views";
 import { GlbHandoverError } from "../modules/glb/handover";
 import { archiveVersion, archivePhotography } from "./versions.server";
 import { runRole, roleInput, runImageRole } from "../modules/ai/index.server";
@@ -91,7 +92,17 @@ export async function executeJob(kind: string, targetId: string) {
       .update(batches)
       .set({ status: "planning" })
       .where(eq(batches.id, batch.id));
+    const [referenceProject] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, batch.projectId));
+    if (!job.checkpoint["planner-references"])
+      await checkpoint(
+        "planner-references",
+        JSON.stringify(referenceProject.references),
+      );
     const { result, runId } = await runRole({
+      images: JSON.parse(job.checkpoint["planner-references"]),
       projectId: batch.projectId,
       batchId: batch.id,
       role: "planner",
@@ -388,6 +399,19 @@ export async function executeJob(kind: string, targetId: string) {
             .where(eq(models.id, model.id));
         },
         photographer: async ({ iteration, stage }) => {
+          const coverageKey = `photo-views:${iteration}`;
+          if (!job.checkpoint[coverageKey])
+            await checkpoint(
+              coverageKey,
+              JSON.stringify(
+                job.checkpoint[`agent:photographer:${iteration}`]
+                  ? ["front", "rear", "detail"]
+                  : REVIEW_VIEWS,
+              ),
+            );
+          const requiredViews: string[] = JSON.parse(
+            job.checkpoint[coverageKey],
+          );
           const directory = `models/${model.id}/${attempt}/photography-${iteration}`;
           const capabilityKey = `capability:photographer:${iteration}`;
           const capability =
@@ -400,6 +424,7 @@ export async function executeJob(kind: string, targetId: string) {
             JSON.stringify({
               directory,
               role: "photographer",
+              views: requiredViews,
               glb: artifacts.glb,
             }),
           );
@@ -417,7 +442,7 @@ export async function executeJob(kind: string, targetId: string) {
             batchId: batch.id,
             modelId: model.id,
             iteration,
-            images: target ? [target] : [],
+            images: [...(target ? [target] : []), ...visualReferences],
             input: await roleInput("photographer", {
               name: model.name,
               request: model.prompt,
@@ -436,6 +461,7 @@ export async function executeJob(kind: string, targetId: string) {
               currentBuilderRunId,
               directory,
               artifacts,
+              requiredViews,
             );
           } catch (error) {
             await db
@@ -470,14 +496,12 @@ export async function executeJob(kind: string, targetId: string) {
             images: [
               ...images,
               ...(target ? [target] : []),
-              ...project.references,
+              ...visualReferences,
             ],
             input: await roleInput("judge", {
               design: batch.design,
               stage: stage || "complete",
-              target: target
-                ? "Image 4 is the visual target. Subsequent images are user references."
-                : "No target supplied (legacy attempt).",
+              target: judgeImageLabels(images, Boolean(target)),
               request: model.prompt,
               metrics: JSON.stringify(metrics),
               feedback: JSON.stringify(feedback),

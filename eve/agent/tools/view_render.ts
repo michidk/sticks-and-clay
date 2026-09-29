@@ -9,7 +9,7 @@ export default defineTool({
     "Visually inspect an exported Blender render. Sends actual image content to the vision model. Use this instead of reading image bytes or base64 as text.",
   inputSchema: z.object({
     capability: z.string().uuid(),
-    view: z.enum(["front", "rear", "detail"]),
+    view: z.enum(["front", "rear", "detail", "left", "right", "top", "bottom"]),
   }),
   async execute({ capability, view }) {
     const dataDir = dataDirectory();

@@ -64,7 +64,7 @@ def get_render(capability:str,view:str='front')->dict:
     return {'view':view,'exists':path.exists(),'instruction':'Use the view_render vision tool with the same capability to inspect the pixels. Never encode image bytes as text.'}
 @mcp.tool()
 async def photograph_asset(capability:str,front_azimuth:float=-55,elevation:float=25,framing:float=1.2,exposure:float=0)->dict:
-    """Render the exact authorized GLB in an isolated studio. No asset editing. Produces front/rear/detail PNGs for view_render. Angles are degrees; framing 1.05–1.8; exposure -1–1."""
+    """Render the exact authorized GLB in an isolated studio. No asset editing. Produces front/rear/detail and, for model review capabilities, left/right/top/bottom PNGs for view_render. Angles are degrees; framing 1.05–1.8; exposure -1–1."""
     import math
     dest=workspace(capability)
     info=json.loads((DATA/'capabilities'/f'{capability}.json').read_text())
@@ -79,11 +79,11 @@ async def photograph_asset(capability:str,front_azimuth:float=-55,elevation:floa
         workspace(capability)
         dest.mkdir(parents=True,exist_ok=True)
         script=dest/f'photograph-{uuid.uuid4()}.py'
-        script.write_text((ROOT/'blender'/'photograph.py').read_text()+'\nphotograph('+','.join(repr(v) for v in [glb,str(dest),front_azimuth,elevation,framing,exposure])+')\n')
+        script.write_text((ROOT/'blender'/'photograph.py').read_text()+'\nphotograph('+','.join(repr(v) for v in [glb,str(dest),front_azimuth,elevation,framing,exposure,info.get("views")])+')\n')
         env={k:v for k,v in os.environ.items() if not any(s in k.upper() for s in ['TOKEN','SECRET','PASSWORD','API_KEY','CREDENTIAL'])}
         proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'-b','--threads','2','--python-exit-code','1','--python',str(script),cwd=dest,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
         monitor=asyncio.create_task(watch_cancellation(capability,proc))
-        try:out,_=await asyncio.wait_for(proc.communicate(),360)
+        try:out,_=await asyncio.wait_for(proc.communicate(),840 if info.get("views") and len(info["views"])>3 else 360)
         except (asyncio.TimeoutError,asyncio.CancelledError):
             if proc.returncode is None:proc.kill()
             await proc.wait()

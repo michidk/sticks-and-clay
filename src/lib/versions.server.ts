@@ -159,6 +159,7 @@ export async function archivePhotography(
   builderRunId: string,
   directory: string,
   artifacts: Record<string, any>,
+  requiredViews: readonly string[] = ["front", "rear", "detail"],
 ) {
   const { createHash } = await import("node:crypto");
   const [run] = await db.select().from(runs).where(eq(runs.id, runId));
@@ -181,7 +182,7 @@ export async function archivePhotography(
     );
     await mkdir(temporary, { recursive: true });
     try {
-      for (const view of ["front", "rear", "detail"]) {
+      for (const view of requiredViews) {
         const png = await readFile(resolve(DATA, directory, `${view}.png`));
         if (
           png.length < 24 ||
@@ -210,9 +211,7 @@ export async function archivePhotography(
       builderRunId,
       glb: artifacts.glb,
       glbSha256: hash,
-      renders: ["front", "rear", "detail"].map(
-        (v) => `${destination}/${v}.png`,
-      ),
+      renders: requiredViews.map((v) => `${destination}/${v}.png`),
       manifest: `${destination}/photography.json`,
     };
     await publishFiles([...photography.renders, photography.manifest]);

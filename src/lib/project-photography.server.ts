@@ -84,6 +84,7 @@ export async function photographProject(projectId: string) {
         name: project.name,
         design: project.design,
         assets: frozen,
+        references: project.references,
       }),
     );
   }
@@ -106,6 +107,7 @@ export async function photographProject(projectId: string) {
   const { runId } = await runRole({
     role: "photographer",
     projectId,
+    images: input.references || [],
     input: await roleInput("photographer", {
       name: input.name,
       request:

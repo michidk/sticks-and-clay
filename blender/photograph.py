@@ -4,7 +4,7 @@ from pathlib import Path
 from mathutils import Vector
 
 
-def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, exposure=0):
+def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, exposure=0, coverage=None):
     destination = Path(destination)
     collection = isinstance(glb, list)
     assets = glb if collection else [{'path': str(glb)}]
@@ -81,7 +81,12 @@ def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, e
     camera=bpy.context.object;scene.camera=camera
     camera.data.type='ORTHO';camera.data.clip_start=max(.0001,span/10000);camera.data.clip_end=span*500
     views = [('front',front_azimuth,elevation),('rear',front_azimuth+180,elevation),('detail',front_azimuth+25,max(10,elevation-10))]
+    if coverage and len(coverage) > 3:
+        views += [('left',front_azimuth+90,0),('right',front_azimuth-90,0),
+                  ('top',front_azimuth,90),('bottom',front_azimuth,-90)]
     for name, azimuth, altitude in views:
+        # Hide only the studio floor for underside inspection; asset stays intact.
+        floor.hide_render = name == 'bottom' 
         azimuth,altitude=math.radians(azimuth),math.radians(altitude)
         direction=Vector((math.cos(azimuth)*math.cos(altitude),math.sin(azimuth)*math.cos(altitude),math.sin(altitude)))
         camera.location=center+direction*span*4
