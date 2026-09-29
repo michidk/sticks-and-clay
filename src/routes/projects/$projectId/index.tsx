@@ -1,3 +1,4 @@
+import { ProjectSetup } from "./-components/project-setup";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -234,6 +235,28 @@ function ProjectPage() {
       setBusy(false);
     }
   }
+  if (!["ready", "review"].includes(p.status)) {
+    return (
+      <ProjectSetup
+        project={p}
+        error={error}
+        retrying={busy}
+        onRetry={async () => {
+          setBusy(true);
+          setError("");
+          try {
+            await request(`projects/${projectId}/retry-design`, json({}));
+            await load();
+          } catch (e) {
+            setError((e as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+    );
+  }
+  const activeTab = !ready && tab === "models" ? "design" : tab;
   return (
     <main className="project-overview">
       <Link to="/" className="back">
@@ -299,68 +322,33 @@ function ProjectPage() {
           </span>
         </button>
       </section>
-      <div className="overview-metrics">
-        <div>
-          <strong>{data.models.length + queuedCount}</strong>
-          <span>in the collection</span>
+      {ready && (
+        <div className="overview-metrics">
+          <div>
+            <strong>{data.models.length + queuedCount}</strong>
+            <span>in the collection</span>
+          </div>
+          <div>
+            <strong>{working}</strong>
+            <span>in progress</span>
+          </div>
+          <div>
+            <strong>{needsReview}</strong>
+            <span>need attention</span>
+          </div>
+          <button onClick={() => setTab("history")}>
+            <strong>{money(total.cost)}</strong>
+            <span>
+              estimated cost
+              {total.unpriced ? ` · ${total.unpriced} pending` : ""} ↗
+            </span>
+          </button>
         </div>
-        <div>
-          <strong>{working}</strong>
-          <span>in progress</span>
-        </div>
-        <div>
-          <strong>{needsReview}</strong>
-          <span>need attention</span>
-        </div>
-        <button onClick={() => setTab("history")}>
-          <strong>{money(total.cost)}</strong>
-          <span>
-            estimated cost{total.unpriced ? ` · ${total.unpriced} pending` : ""}{" "}
-            ↗
-          </span>
-        </button>
-      </div>
+      )}
       {error && (
         <Alert variant="destructive" role="alert" className="error">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
-      )}
-      {!["ready", "review"].includes(p.status) && (
-        <Card className="setup panel">
-          <h2>
-            {p.status === "failed"
-              ? "Setup needs attention"
-              : "Finding your visual language"}
-          </h2>
-          <p className="muted">
-            Your designer is reading the brief and references to create a shared
-            direction.
-          </p>
-          <Progress value={p.progress} label={p.phase} />
-          {p.error && (
-            <>
-              <Alert variant="destructive" className="error">
-                <AlertDescription>{p.error}</AlertDescription>
-              </Alert>
-              <Button
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    await request(
-                      `projects/${projectId}/retry-design`,
-                      json({}),
-                    );
-                    await load();
-                  } catch (e) {
-                    setError(String(e));
-                  }
-                }}
-              >
-                Resume setup
-              </Button>
-            </>
-          )}
-        </Card>
       )}
       {p.status === "review" && (
         <div className="review-banner">
@@ -373,25 +361,27 @@ function ProjectPage() {
           </Button>
         </div>
       )}
-      <Tabs value={tab} onValueChange={setTab} className="workspace-tabs">
+      <Tabs value={activeTab} onValueChange={setTab} className="workspace-tabs">
         <TabsList variant="line" className="tabs" aria-label="Project views">
           {[
             ["models", "Models", Boxes],
             ["design", "Design reference", FileText],
             ["history", "Activity & cost", Activity],
-          ].map(([id, title, Icon]: any) => (
-            <TabsTrigger value={id} key={id}>
-              <Icon size={17} />
-              {title}
-              {id === "history" && (
-                <Badge variant="secondary" className="count">
-                  {rs.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          ))}
+          ]
+            .filter(([id]) => ready || id !== "models")
+            .map(([id, title, Icon]: any) => (
+              <TabsTrigger value={id} key={id}>
+                <Icon size={17} />
+                {title}
+                {id === "history" && (
+                  <Badge variant="secondary" className="count">
+                    {rs.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            ))}
         </TabsList>
-        {tab === "design" && (
+        {activeTab === "design" && (
           <div className="design-layout">
             <Card className="panel">
               <div className="section-title">
@@ -539,8 +529,8 @@ function ProjectPage() {
             </aside>
           </div>
         )}
-        {tab === "history" && <History runs={rs} models={data.models} />}
-        {tab === "models" && (
+        {activeTab === "history" && <History runs={rs} models={data.models} />}
+        {activeTab === "models" && (
           <>
             <div className="collection-heading">
               <div>

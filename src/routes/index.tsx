@@ -294,11 +294,18 @@ function ProjectsPage() {
               onClick={generateBrief}
             >
               {briefing && <LoaderCircle className="spin" size={16} />}
-              {briefing ? "Writing brief…" : "AI generate brief"}
+              {briefing
+                ? description.trim()
+                  ? "Enhancing brief…"
+                  : "Writing brief…"
+                : description.trim()
+                  ? "Enhance with AI"
+                  : "Generate with AI"}
             </Button>
             <p className="note">
-              The generated text fills the field above. Edit and correct it
-              before continuing.
+              {description.trim()
+                ? "AI will refine your notes using the project name and references. Review the result before continuing."
+                : "AI will draft a brief from the project name and references. You can edit it before continuing."}
             </p>
             <PictureUploader
               images={uploader.images}
