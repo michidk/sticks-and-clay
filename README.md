@@ -9,6 +9,7 @@ The interface uses locally owned [shadcn components](https://ui.shadcn.com/) and
 - [Design guide](design.md): the current ivory, forest-green, and sage UI theme, typography, components, and responsive behavior.
 - [Agent instructions](AGENTS.md): code boundaries, workflow invariants, development checks, and local service conventions.
 - [Prompt guide](prompts/README.md): authored agent instructions and input templates.
+- [Quality pipeline](docs/quality-pipeline.md): visual targets, geometry gates and recovery.
 
 The application design guide describes Sticks & Clay itself. Each asset project's design reference is a separate, editable and versioned document in the database.
 
@@ -17,13 +18,13 @@ The application design guide describes Sticks & Clay itself. Each asset project'
 1. Start a project with a name and a brief, plus up to six optional reference images. Use AI generate brief to fill the field, then edit it before continuing. Leaving it empty does not generate implicitly.
 2. A TanStack AI background call inspects the images and writes a Markdown design reference. The database stores the document and revisions. Edit it, then save and approve it. GFM rendering supports tables, task lists and strikethrough. Immutable database revisions are compared using the `diff` library; Restore as draft loads an older version into the editor, and Save creates a new revision without overwriting history.
 3. Request a concrete model or ask the planner to propose a set. Choose 1–20 models and 0–5 maximum judge rounds. A batch snapshots the approved design; later edits cannot change its contract.
-4. A PostgreSQL job queue dispatches independent builders, with two concurrent workers by default. Each attempt and iteration has a unique Blender directory. Complete scripts execute in separate Blender processes, never a shared live scene.
-5. The builder exports an individual GLB, Blender source, metrics, and front/rear/detail renders. It visually inspects renders through Eve's `view_render` vision tool.
-6. When judging is enabled, a fresh agent receives the three rendered images, design, brief, and metrics. It returns a score, pass/fail decision, and prioritized concrete fixes. Failed reviews trigger a fresh builder with prior source and feedback while rounds remain.
+4. A PostgreSQL job queue dispatches model attempts, with two concurrent workers by default. Each first generates an imagegen visual target from the approved design, model brief and references. The target is its thumbnail until a 3D render exists and remains available in the Visual target tab. Each build iteration has an isolated Blender directory and process.
+5. With judging enabled, the builder first develops geometry with temporary matte materials, exports GLB/source/metrics and three views, and inspects them through `view_render`. A fresh geometry judge compares the renders with the target. Geometry must pass before final texture/material work begins.
+6. Each geometry or surface review receives actual renders, the visual target, user references, design, brief and metrics. Concrete prioritized corrections go to a fresh builder with the preceding source while that stage has rounds remaining. Texture requests and image targets have separate history, token usage and cost records.
 7. Passing assets finish early. At the review limit, remaining issues stay visible as **completed with issues**, not an approval. Zero rounds means one build with no judge. Technical failures are separate and can be retried; every attempt remains in history.
-8. Completed batches render a scale lineup and a staged collection demo, with a downloadable scene. The web app provides orbit/zoom previews, product renders, GLB/source downloads, design history, agent transcripts, and usage/cost breakdowns.
+8. Final material exports render in a scale lineup and staged collection demo, with a downloadable scene. Geometry-only previews are excluded. The web app provides orbit/zoom previews, product renders, GLB/source downloads, design history, agent transcripts, and usage/cost breakdowns.
 
-Progress represents workflow milestones, not a predicted wall-clock percentage. A judge round includes a build and its review, so a limit of two allows at most two builds and two reviews per attempt. Resume reuses Eve sessions and completed step checkpoints. Every builder iteration retains an archived export and its judge feedback; collection thumbnails use only the latest version.
+Progress represents workflow milestones, not a predicted wall-clock percentage. New attempts apply the round limit per stage: two permits up to two geometry build/review pairs, then up to two surface pairs. Early passes skip unused rounds; geometry exhaustion withholds surface work. Existing v1 attempts retain their original single-stage limit. Resume reuses Eve sessions and completed step checkpoints. Every builder iteration retains an archived export and its judge feedback; collection thumbnails use only the latest version.
 
 ## Run locally
 
@@ -63,6 +64,8 @@ Copy `.env.example` to `.env` if needed. The service supervisor loads `.env` onc
 - `src/components/model-viewer/`: reusable React Three Fiber GLB lightbox and scene controls.
 
 `ModelViewer` accepts an optional GLB `src` (omit it to show sample cubes), `height`, and `alt`. Scene defaults can be set with `lighting="day" | "night"`, `showGround`, `showGrid`, and `showCubes`; interaction defaults use `mode="orbit" | "object" | "firstPerson"`, `autoRotate`, and `autoRotateSpeed`. `showOrientation` controls the view cube, while `showUi={false}` removes the toolbar and hints for compact previews. `onLoad`, `onError`, `onModeChange`, and `onLightingChange` expose viewer events. The built-in toolbar changes scene options locally, so a parent that needs synchronized state should use the callbacks. First-person mode uses pointer lock when permitted: click the scene, move with WASD or arrow keys, and press Escape to release. In embedded frames that disallow pointer lock, drag on the focused canvas to look around and use the same movement keys. Import the viewer lazily on pages that do not always show a model. The workspace uses it in the model dialog and as an opt-in, UI-free quick preview on model cards; static renders remain the default so a large collection does not create many WebGL contexts.
+
+The full viewer's camera menu captures the current scene as a PNG. **Copy image** puts the PNG on the system clipboard for pasting into another app; **Download PNG** saves the same scene with a model-based filename. Browser clipboard permissions may prevent copying, in which case the viewer reports the error and downloading remains available. UI-free card previews do not show screenshot actions.
 - `src/lib/api.server.ts`: validated project/design/generation endpoints, uploads and downloads.
 - `src/lib/pipeline.server.ts`: designer → planner → builder/judge → collection workflow.
 - `src/modules/ai/internal/eve.server.ts`: fresh Eve sessions, structured output validation, event persistence and token accounting.
@@ -80,7 +83,7 @@ The worker re-adopts interrupted jobs on restart. Per-job database checkpoints r
 
 Eve 0.63 accepts user images as **file parts with an image media type**, despite protocol types also mentioning image parts. The app sends data URLs in file parts. For tool images, use `toolOutput.content` + `toolOutputPart.file` in `view_render`. Raw MCP image blocks were serialized as text by this integration, inflating usage and exhausting context; they are blocked from the model-facing MCP tools. A regression test covers the vision output shape.
 
-The configured gateway also cannot replay non-persisted reasoning item IDs. The Eve model uses the same reasoning-history stripping middleware pattern as CodeTend.
+The configured gateway cannot retrieve non-persisted Responses item IDs. Eve explicitly uses `store: false`, so local assistant messages and paired function calls are serialized in full; reasoning history is omitted. Graceful shutdown requeues interrupted jobs with their checkpoints. The single-process local service uses a 60-second recovery lease instead of the SDK's 860-second default. New sessions do not expire automatically; per-request timeouts remain bounded.
 
 ## Asset contract
 
@@ -100,7 +103,7 @@ Provider `costUsd` is not used. Estimates are calculated as:
 
 Configured default assumptions are $2/M input, $0.20/M cached input and $10/M output for the configured GPT-6 Sol model. Verify/set current rates when selecting a model; these are estimates, not invoiced charges. Stored rates preserve reproducibility when configuration changes later.
 
-If step usage is absent/zero, the adapter estimates text at four characters per token, adds 1,000 tokens per image per step, and approximates tool context. Records distinguish reported, estimated, mixed, pending and not-started usage. Hidden reasoning and image tokenization can differ from these assumptions. A rejected request before model execution has zero model tokens. Local Blender CPU time has no model-token charge; elapsed run time is recorded separately. Image-generation services are not used by this implementation.
+If step usage is absent/zero, the adapter estimates text at four characters per token, adds 1,000 tokens per image per step, and approximates tool context. Records distinguish reported, estimated, mixed, pending and not-started usage. Hidden reasoning and image tokenization can differ from these assumptions. A rejected request before model execution has zero model tokens. Local Blender CPU time has no model-token charge; elapsed run time is recorded separately. Imagegen requests store reported image API tokens; cost remains unavailable unless image-token pricing is configured.
 
 ## Verification
 
@@ -139,7 +142,7 @@ Use `src/modules/ai/index.server.ts` (`runRole`, `roleInput`) for all AI work. R
 
 Astra estimates use [documented standard token rates](https://developers.openai.com/api/docs/models/gpt-6-astra): $10/M input, $1/M cached input, $50/M output, with the long-context multiplier evaluated per model call. These remain estimates rather than invoices. Other model rates use the existing operator configuration.
 
-The builder-only `generate_texture` tool calls `/api/textures/generate` with its workspace capability. The server invokes the installed Codex imagegen skill CLI unchanged through `scripts/imagegen_texture.py`, which captures SDK usage for the audit history. No Codex conversational session is spawned. Generated base colors must be wired into UV-mapped materials; matching normal maps remain part of the asset contract. Poly mode skips image generation.
+The builder-only `generate_texture` tool calls `/api/textures/generate` with its workspace capability. The server invokes the installed Codex imagegen skill CLI unchanged through `scripts/imagegen_texture.py`, which captures SDK usage for the audit history. No Codex conversational session is spawned. Generated base colors must be wired into UV-mapped materials; matching normal maps remain part of the asset contract. Poly mode skips texture generation; it still gets a concept target.
 
 Imagegen prerequisites (outside the app dependency environment):
 
