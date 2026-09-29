@@ -48,7 +48,7 @@ The services script runs Eve (loopback port 33441), Blender MCP (33442), and the
 bun run dev --port 3000
 ```
 
-In VibePod, reuse the `asset-studio` managed preview. The existing PostgreSQL Compose project is named `studio` because it was started before this directory was moved; use `-p studio` to reuse its persistent volume. The background service group runs in tmux as `asset-studio-services`:
+In VibePod, reuse the `asset-studio` managed preview. The PostgreSQL Compose project is named `studio`. Use `docker compose -p studio up -d --wait` to start it. PostgreSQL data lives in the gitignored workspace directory `data/postgres`, mounted into the container, so recreating Docker storage does not discard it. Preserve this directory alongside the asset files; do not delete it when cleaning generated assets. This is persistent storage, not a backup. The background service group runs in tmux as `asset-studio-services`:
 
 ```sh
 tmux attach -t asset-studio-services
