@@ -158,3 +158,15 @@ export async function cancelJob(id: string, queuedOnly = false) {
       await client.sessions.attach(run.sessionId).cancel({ tasks: true });
   return "cancelling";
 }
+
+/** Service shutdown is a recoverable interruption, not a failed asset attempt. */
+export async function deferInterruptedJob(
+  id: string,
+  database: Pick<typeof db, "update"> = db,
+) {
+  return database
+    .update(jobs)
+    .set({ status: "queued", error: null, finishedAt: null })
+    .where(and(eq(jobs.id, id), eq(jobs.status, "running")))
+    .returning({ id: jobs.id });
+}

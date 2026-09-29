@@ -5,6 +5,7 @@ import {
   assertJobActive,
   cancelJob,
   finishCancellation,
+  deferInterruptedJob,
 } from "../src/lib/queue.server";
 import { executeJob, failJob } from "../src/lib/pipeline.server";
 import { adoptLegacyJobs } from "../src/lib/legacy-recovery.server";
@@ -45,6 +46,10 @@ async function lane() {
   while (!stopping) {
     const [job] =
       await sql`update jobs set status='running', "startedAt"=now() where id=(select id from jobs where status='queued' order by created_at for update skip locked limit 1) returning *`;
+    if (job && stopping) {
+      await deferInterruptedJob(job.id);
+      break;
+    }
     if (!job) {
       await Bun.sleep(1000);
       continue;
@@ -73,6 +78,10 @@ async function lane() {
       const [current] = await db.select().from(jobs).where(eq(jobs.id, job.id));
       if (current && ["cancelling", "cancelled"].includes(current.status)) {
         await finishCancellation(current);
+        continue;
+      }
+      if (stopping) {
+        await deferInterruptedJob(job.id);
         continue;
       }
       console.error("Job failed", job.id, String(error));

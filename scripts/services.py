@@ -3,6 +3,8 @@ import os,pathlib,signal,subprocess,time,urllib.request
 from dotenv import load_dotenv
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 os.chdir(ROOT);load_dotenv(ROOT/'.env')
+# One local Eve process: reclaim interrupted inline steps promptly after restart.
+os.environ.setdefault('WORKFLOW_INLINE_OWNERSHIP_LEASE_SECONDS','60')
 logs=ROOT/'data'/'logs';logs.mkdir(parents=True,exist_ok=True)
 children=[];handles=[];stopping=False
 def launch(name,command,cwd=ROOT):

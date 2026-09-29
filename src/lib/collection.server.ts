@@ -14,7 +14,20 @@ export async function renderCollection(batchId: string) {
     (m) =>
       m.status === "done" && m.artifacts && m.artifacts.stage !== "geometry",
   );
-  if (!ready.length) throw new Error("No completed assets to render");
+  if (!ready.length) {
+    // A v1 worker may have queued a demo just before the geometry-gate upgrade.
+    if (assets.some((m) => m.artifacts?.stage === "geometry")) {
+      if (
+        assets.every((m) => ["done", "failed", "cancelled"].includes(m.status))
+      )
+        await db
+          .update(batches)
+          .set({ status: "completed_with_errors" })
+          .where(eq(batches.id, batchId));
+      return;
+    }
+    throw new Error("No completed assets to render");
+  }
   const directory = `collections/${batchId}/${crypto.randomUUID()}`,
     output = resolve(DATA, directory);
   await mkdir(output, { recursive: true });

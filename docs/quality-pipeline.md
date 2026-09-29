@@ -28,3 +28,7 @@ The renderer puts its ground plane at Z=0, matching normalized asset contact. Po
 - Graph: `src/modules/pipelines/index.ts`.
 - Asset handlers: `src/lib/pipeline.server.ts`.
 - Shared image executor: `src/modules/ai/internal/image.server.ts`, accessed through the public AI module.
+
+On graceful worker shutdown, interrupted jobs return to `queued` with their existing checkpoints; cancelling/cancelled jobs are never reactivated. Abrupt process termination leaves running jobs for startup adoption. Legacy queued collection jobs containing only geometry previews settle with issues without publishing them as final scenes.
+
+The local service supervisor sets Eve's inline ownership lease to 60 seconds (SDK default: 860) for this single-process runtime, preventing long apparent stalls after restart. Operators can override it for other deployments. New Eve sessions have no automatic lifetime expiry; individual client request timeouts remain bounded. Existing sessions retain their original lifetime policy.

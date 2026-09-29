@@ -52,5 +52,5 @@ export default defineAgent({
     },
   }),
   defaultTools: false,
-  limits: { maxInputTokensPerSession: false, sessionTimeoutMs: 1800000 },
+  limits: { maxInputTokensPerSession: false, sessionTimeoutMs: false },
 });
