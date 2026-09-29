@@ -2,9 +2,17 @@
 
 A working game-asset pipeline application, built alongside CodeTend with the same core stack: **Bun, React 19, TanStack Start/Router, Vite, Tailwind 4, Drizzle/PostgreSQL, and Eve**. Three.js provides the interactive GLB viewer; Blender runs locally through an isolated MCP adapter.
 
+## Project documentation
+
+- [Design guide](design.md): the current ivory, forest-green, and sage UI theme, typography, components, and responsive behavior.
+- [Agent instructions](AGENTS.md): code boundaries, workflow invariants, development checks, and local service conventions.
+- [Prompt guide](prompts/README.md): authored agent instructions and input templates.
+
+The application design guide describes Asset Studio itself. Each asset project's design reference is a separate, editable and versioned document in the database.
+
 ## Workflow
 
-1. Create a project from a description, up to six reference images, or both.
+1. Start a project with a name, optionally adding a description and up to six reference images. You can generate and edit a brief before creating the project.
 2. A designer agent inspects the images and writes a Markdown design reference. The database stores the document and revisions. Edit it, then save and approve it. GFM rendering supports tables, task lists and strikethrough. Immutable database revisions are compared using the `diff` library; Restore as draft loads an older version into the editor, and Save creates a new revision without overwriting history.
 3. Request a concrete model or ask the planner to propose a set. Choose 1–20 models and 0–5 maximum judge rounds. A batch snapshots the approved design; later edits cannot change its contract.
 4. A PostgreSQL job queue dispatches independent builders, with two concurrent workers by default. Each attempt and iteration has a unique Blender directory. Complete scripts execute in separate Blender processes, never a shared live scene.
@@ -18,6 +26,8 @@ Progress represents workflow milestones, not a predicted wall-clock percentage. 
 ## Run locally
 
 Requirements: Bun, Node 24+, Python 3.11+, Blender on PATH, and Docker for PostgreSQL.
+
+Before starting services, copy `.env.example` to `.env` and configure the database and model provider privately. On machines without Codex provider configuration, set `OPENAI_API_KEY` and `OPENAI_BASE_URL` in the service environment. Review the model and estimated pricing settings for your provider.
 
 ```sh
 bun install
@@ -51,6 +61,7 @@ Copy `.env.example` to `.env` if needed. The service supervisor loads `.env` onc
 - `src/lib/api.server.ts`: validated project/design/generation endpoints, uploads and downloads.
 - `src/lib/pipeline.server.ts`: designer → planner → builder/judge → collection workflow.
 - `src/lib/agent.server.ts`: fresh Eve sessions, structured output validation, event persistence and token accounting.
+- `src/lib/direct-api.server.ts`: structured brief/design calls through TanStack AI, with persisted run results and usage estimates.
 - `scripts/worker.ts`: PostgreSQL job claiming (`SKIP LOCKED`), bounded concurrency, coordinator lock and restart recovery.
 - `src/db/schema.ts`, `drizzle/`: projects, immutable design revisions, batches, models, agent runs, events and jobs.
 - `eve/agent/`: model configuration, authenticated local channel, Blender MCP connection and authored vision tool.
@@ -87,6 +98,8 @@ Configured default assumptions are $2/M input, $0.20/M cached input and $10/M ou
 If step usage is absent/zero, the adapter estimates text at four characters per token, adds 1,000 tokens per image per step, and approximates tool context. Records distinguish reported, estimated, mixed, pending and not-started usage. Hidden reasoning and image tokenization can differ from these assumptions. A rejected request before model execution has zero model tokens. Local Blender CPU time has no model-token charge; elapsed run time is recorded separately. Image-generation services are not used by this implementation.
 
 ## Verification
+
+`bun run verify` runs application type checking, tests, the production build, and Eve type checking. Database integration and Eve build checks can also be run explicitly:
 
 ```sh
 bun run typecheck
