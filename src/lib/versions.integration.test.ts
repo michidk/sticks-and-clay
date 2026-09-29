@@ -19,7 +19,10 @@ integration(
       "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhFcAAAAASUVORK5CYII=",
       "base64",
     );
+    const bin = Buffer.alloc(Math.ceil(png.length / 4) * 4);
+    png.copy(bin);
     let json = JSON.stringify({
+      asset: { version: "2.0", generator: "Khronos glTF Blender I/O" },
       images: [{ name: "Stone normal", mimeType: "image/png", bufferView: 0 }],
       bufferViews: [{ byteOffset: 0, byteLength: png.length }],
     });
@@ -28,10 +31,10 @@ integration(
       binHeader = Buffer.alloc(8);
     header.write("glTF");
     header.writeUInt32LE(2, 4);
-    header.writeUInt32LE(28 + json.length + png.length, 8);
+    header.writeUInt32LE(28 + json.length + bin.length, 8);
     header.writeUInt32LE(json.length, 12);
     header.write("JSON", 16);
-    binHeader.writeUInt32LE(png.length, 0);
+    binHeader.writeUInt32LE(bin.length, 0);
     binHeader.write("BIN", 4);
     await db
       .insert(projects)
@@ -63,7 +66,7 @@ integration(
       await writeFile(resolve(DATA, directory, "textures/stone.png"), png);
       await writeFile(
         resolve(DATA, directory, "asset.glb"),
-        Buffer.concat([header, Buffer.from(json), binHeader, png]),
+        Buffer.concat([header, Buffer.from(json), binHeader, bin]),
       );
       for (const file of [
         "source.blend",
@@ -75,6 +78,16 @@ integration(
       await writeFile(resolve(DATA, directory, "metrics.json"), "{}");
       const first = await archiveVersion(runId, directory, false);
       expect(first.renders).toEqual([]);
+      const delivered = await readFile(resolve(DATA, first.glb));
+      const manifest = JSON.parse(
+        delivered.toString("utf8", 20, 20 + delivered.readUInt32LE(12)),
+      );
+      expect(manifest.asset.generator).toBe("Sticks & Clay");
+      expect(first.handover.outputSha256).toBe(
+        createHash("sha256").update(delivered).digest("hex"),
+      );
+      expect(first.metrics.bytes).toBe(delivered.length);
+      expect(await getStorage().exists(first.handover.manifest)).toBe(true);
       expect(first.textures).toHaveLength(2);
       expect(await getStorage().exists(first.glb)).toBe(true);
       expect(

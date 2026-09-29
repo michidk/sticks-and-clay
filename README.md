@@ -172,3 +172,9 @@ Storage unit tests run with `bun run test`. S3 integration tests require an isol
 ## Project thumbnails
 
 After each generation batch settles, a queued photographer session renders all latest published project models together, across batches. The newest completed photo becomes the project card's thumbnail; the reference image is the fallback. Geometry previews can be included before final materials exist. Photo history, source versions, token usage and estimates remain in Activity & cost. Queue shows project photography progress, cancellation and Resume for failures. Existing projects can refresh with `POST /api/projects/<id>/photograph`.
+
+## GLB handover
+
+Every new builder iteration passes through deterministic local post-processing before its GLB is archived, photographed or published. The ordered passes live in `src/modules/glb/handover.ts`; no AI request or token cost is involved. The first pass replaces `asset.generator` with `Sticks & Clay` and removes known exporter-identification keys from glTF extras (including Blender metadata). Copyright/license attribution, semantic names, custom properties, functional extensions and binary mesh/texture chunks are preserved.
+
+Each version stores a `handover.json` receipt with pass versions, input/output SHA-256 hashes and sizes. The published byte metric reflects the processed file. Malformed GLBs fail before publication and can be repaired through the normal builder resume path. Published historical archives retain their original bytes and photography hashes.

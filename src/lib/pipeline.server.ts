@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { db } from "../db/client";
 import { projects, revisions, batches, models, jobs, runs } from "../db/schema";
 import { assertJobActive } from "./queue.server";
+import { GlbHandoverError } from "../modules/glb/handover";
 import { archiveVersion, archivePhotography } from "./versions.server";
 import { runRole, roleInput, runImageRole } from "../modules/ai/index.server";
 import {
@@ -341,11 +342,27 @@ export async function executeJob(kind: string, targetId: string) {
             throw error;
           }
           await assertJobActive();
-          artifacts = {
-            ...(await archiveVersion(builderRunId, directory, !photography)),
-            visualTarget: target,
-            stage: stage || "complete",
-          };
+          await db
+            .update(models)
+            .set({ phase: "Preparing GLB for handover" })
+            .where(eq(models.id, model.id));
+          try {
+            artifacts = {
+              ...(await archiveVersion(builderRunId, directory, !photography)),
+              visualTarget: target,
+              stage: stage || "complete",
+            };
+          } catch (error) {
+            if (error instanceof GlbHandoverError)
+              await db
+                .update(runs)
+                .set({
+                  status: "failed",
+                  error: "Artifact validation: " + String(error),
+                })
+                .where(eq(runs.id, builderRunId));
+            throw error;
+          }
           const [builtRun] = await db
             .select()
             .from(runs)
@@ -354,6 +371,7 @@ export async function executeJob(kind: string, targetId: string) {
             .update(runs)
             .set({ result: { ...(builtRun.result as object), artifacts } })
             .where(eq(runs.id, builderRunId));
+          metrics = artifacts.metrics;
           images = artifacts.renders as string[];
           previous = resolve(DATA, String(artifacts.blend));
           if (photography) return;

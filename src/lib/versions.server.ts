@@ -11,6 +11,7 @@ import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { runs } from "../db/schema";
+import { handoverGlb } from "../modules/glb/handover";
 import { DATA, publishFiles } from "./storage.server";
 
 export async function archiveVersion(
@@ -35,6 +36,22 @@ export async function archiveVersion(
     ]) {
       await copyFile(resolve(DATA, directory, file), resolve(temporary, file));
     }
+    // Agent -> platform handover: pure local processing before immutable publication.
+    const processed = handoverGlb(
+      await readFile(resolve(temporary, "asset.glb")),
+    );
+    await writeFile(resolve(temporary, "asset.glb"), processed.bytes);
+    await writeFile(
+      resolve(temporary, "handover.json"),
+      JSON.stringify(processed.receipt),
+    );
+    const metrics = JSON.parse(
+      await readFile(resolve(temporary, "metrics.json"), "utf8"),
+    );
+    await writeFile(
+      resolve(temporary, "metrics.json"),
+      JSON.stringify({ ...metrics, bytes: processed.bytes.length }),
+    );
     await mkdir(resolve(temporary, "textures"), { recursive: true });
     // Keep generated source images plus the exact embedded textures used in the GLB.
     const sourceTextures = resolve(DATA, directory, "textures");
@@ -92,7 +109,20 @@ export async function archiveVersion(
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }
+  // Pre-upgrade archives remain immutable if a previously completed step replays.
+  const handover = await readFile(
+    resolve(DATA, destination, "handover.json"),
+    "utf8",
+  )
+    .then((text) => JSON.parse(text))
+    .catch((error) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
   const artifacts = {
+    ...(handover
+      ? { handover: { ...handover, manifest: `${destination}/handover.json` } }
+      : {}),
     textures: JSON.parse(
       await readFile(resolve(DATA, destination, "textures.json"), "utf8").catch(
         () => "[]",
@@ -108,6 +138,7 @@ export async function archiveVersion(
     ),
   };
   await publishFiles([
+    ...(handover ? [`${destination}/handover.json`] : []),
     artifacts.glb,
     artifacts.blend,
     ...artifacts.renders,
