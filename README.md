@@ -79,7 +79,7 @@ The configured gateway also cannot replay non-persisted reasoning item IDs. The 
 
 ## Asset contract
 
-Every build has a ground-centered origin, meters, an individual GLB and `.blend`, named materials, controlled triangles, and three consistent product renders. Textured mode validates embedded base-color and tangent-space normal maps on exported materials. Explicit poly mode rejects image textures. The helper enforces the triangle limit the builder supplies, and the judge checks reported metrics against the design text. Architectural openings, material scale, believable silhouettes, and the earlier bark texture lessons are in the prompts.
+Every build has a ground-centered origin, meters, an individual GLB and `.blend`, named materials, reported triangle counts, and three consistent product renders. Textured mode validates embedded base-color and tangent-space normal maps on exported materials. Explicit poly mode rejects image textures. Triangle limits are optional: project setup has a blank-by-default budget field. Without an explicit limit the designer adds no numeric targets and the exporter imposes no default cap. An explicit design budget is passed to the helper and checked by the judge. Architectural openings, material scale, believable silhouettes, and the earlier bark texture lessons are in the prompts.
 
 This version produces the primary asset and presentation scene. Engine-specific collision generation, LOD chains, animation, and exact modular assembly validation are future extensions. The collection demo is a staged presentation at shared scale, not automatic semantic level assembly.
 
@@ -127,3 +127,24 @@ The header Queue link opens `/admin/queue`. It lists model generation, planning 
 ## AI module boundaries
 
 Use `src/modules/ai/index.server.ts` (`runRole`, `roleInput`) for all AI work. Role definitions live in `src/modules/ai/roles.ts`; callers must not import adapter internals. `src/modules/pipelines/index.ts` defines provider-independent pipeline traversal and the model review sequence. Asset-specific handlers remain in `src/lib/pipeline.server.ts`. See [AI architecture](docs/ai-architecture.md) for extension, recovery and accounting contracts.
+
+## Role settings and generated textures
+
+`/admin/agents` displays code-configured roles, engines, model IDs, effort levels and prompt paths. Edit `src/modules/ai/roles.ts` to change settings for new requests. Builder and judge use `gpt-6-astra`, medium effort; other roles use `gpt-6-sol`, medium effort. Eve reads a saved `data/session-config/<sessionId>.json` model/effort snapshot at turn start. Keep these files with the database and Eve storage. Rebuild/restart Eve when its tool or model adapter changes.
+
+Astra estimates use [documented standard token rates](https://developers.openai.com/api/docs/models/gpt-6-astra): $10/M input, $1/M cached input, $50/M output, with the long-context multiplier evaluated per model call. These remain estimates rather than invoices. Other model rates use the existing operator configuration.
+
+The builder-only `generate_texture` tool calls `/api/textures/generate` with its workspace capability. The server invokes the installed Codex imagegen skill CLI unchanged through `scripts/imagegen_texture.py`, which captures SDK usage for the audit history. No Codex conversational session is spawned. Generated base colors must be wired into UV-mapped materials; matching normal maps remain part of the asset contract. Poly mode skips image generation.
+
+Imagegen prerequisites (outside the app dependency environment):
+
+```sh
+python3 -m venv /tmp/asset-studio-imagegen
+/tmp/asset-studio-imagegen/bin/pip install openai pillow
+```
+
+Set `STUDIO_IMAGEGEN_PYTHON` if using another isolated environment, `STUDIO_IMAGEGEN_SKILL` if the installed skill is elsewhere, and `STUDIO_APP_URL` to the app's loopback URL/port for Eve's tool. The default installation uses port 34193. Recreate the temporary environment if it is cleared. Credentials are resolved by `scripts/provider.py` and never stored with artifacts.
+
+Image generation logs inputs, output paths, status and raw reported token usage separately in Activity & cost. Set both `IMAGE_INPUT_USD_PER_MILLION` and `IMAGE_OUTPUT_USD_PER_MILLION` for an operator-assumed image-token estimate. Without those rates, cost is explicitly unavailable; it is not treated as a free request. Provider cost fields are ignored. An interrupted image request can incur unknown usage; retrying can create another charge. Successful identical texture requests reuse their saved receipt.
+
+The model viewer's **Textures** tab shows generated/source PNGs and the actual embedded GLB textures for the selected iteration. Existing archives without a texture manifest show an explicit empty state. Model thumbnails still use only the latest renders.

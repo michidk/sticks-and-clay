@@ -21,11 +21,13 @@ function ProjectsPage() {
     [files, setFiles] = useState<File[]>([]),
     [name, setName] = useState(""),
     [description, setDescription] = useState(""),
+    [triangleBudget, setTriangleBudget] = useState(""),
     [draftId, setDraftId] = useState<string | null>(null),
     [briefing, setBriefing] = useState(false);
   function newProject() {
     setName("");
     setDescription("");
+    setTriangleBudget("");
     setDraftId(null);
     setFiles([]);
     setCreating(true);
@@ -37,6 +39,7 @@ function ProjectsPage() {
       const form = new FormData();
       form.set("name", name);
       form.set("description", description);
+      form.set("triangleBudget", triangleBudget);
       if (draftId) form.set("draftId", draftId);
       for (const file of files) form.append("images", file);
       const result = await request("projects/brief", {
@@ -145,6 +148,7 @@ function ProjectsPage() {
                       e.preventDefault();
                       setName(p.name);
                       setDescription(p.description);
+                      setTriangleBudget(p.triangleBudget?.toString() || "");
                       setDraftId(p.id);
                       setFiles([]);
                       setCreating(true);
@@ -299,6 +303,9 @@ function ProjectsPage() {
                 <p className="muted">{files.map((f) => f.name).join(" · ")}</p>
               )}
               {error && <p className="error">{error}</p>}
+              <label>Triangle budget per asset (optional)
+                <input type="number" name="triangleBudget" min="1" max="100000000" step="1" value={triangleBudget} onChange={e => setTriangleBudget(e.target.value)} placeholder="No limit specified" />
+              </label>
               <button className="primary wide" disabled={busy || briefing}>
                 {busy ? (
                   <LoaderCircle className="spin" size={18} />

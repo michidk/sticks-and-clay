@@ -13,6 +13,7 @@ export const projects = pgTable("projects", {
   id: text().primaryKey(),
   name: text().notNull(),
   description: text().notNull(),
+  triangleBudget: integer("triangle_budget"),
   references: jsonb().$type<string[]>().default([]).notNull(),
   design: text().default("").notNull(),
   designVersion: integer().default(0).notNull(),
@@ -77,12 +78,16 @@ export const runs = pgTable(
     batchId: text(),
     modelId: text(),
     role: text().notNull(),
-    engine: text().$type<"eve" | "tanstack">().default("eve").notNull(),
+    engine: text()
+      .$type<"eve" | "tanstack" | "imagegen">()
+      .default("eve")
+      .notNull(),
     stepId: text("step_id"),
     iteration: integer().default(0).notNull(),
     status: text().default("running").notNull(),
     sessionId: text(),
     model: text().notNull(),
+    effort: text(),
     promptVersion: text().notNull(),
     systemPrompt: text().notNull(),
     input: text().notNull(),
@@ -101,6 +106,9 @@ export const runs = pgTable(
         output: number;
         cached: number;
         source: string;
+        longContextThreshold?: number;
+        longContextInputMultiplier?: number;
+        longContextOutputMultiplier?: number;
       }>()
       .notNull(),
     createdAt: created(),

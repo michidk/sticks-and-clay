@@ -12,7 +12,7 @@ import {
   jobs,
 } from "../db/schema";
 import { cancelJob } from "./queue.server";
-import { runRole, roleInput } from "../modules/ai/index.server";
+import { runRole, roleInput, agentSettings } from "../modules/ai/index.server";
 // Preserve the field-fill HTTP response shape while sharing the execution boundary.
 async function draftBrief(
   args: import("../modules/ai/index.server").RunInput<
@@ -122,6 +122,19 @@ export async function api(request: Request) {
       if (request.method === "POST" && path[2] === "cancel")
         return reply({ status: await cancelJob(uuid.parse(path[1])) });
     }
+    if (path[0] === "agents" && request.method === "GET")
+      return reply({ agents: agentSettings() });
+    if (
+      path[0] === "textures" &&
+      path[1] === "generate" &&
+      request.method === "POST"
+    ) {
+      const { generateTexture, textureRequest } =
+        await import("../modules/textures/index.server");
+      return reply(
+        await generateTexture(textureRequest.parse(await request.json())),
+      );
+    }
     if (path[0] === "files" && request.method === "GET") {
       const key = path.slice(1).map(decodeURIComponent).join("/");
       const file = await filePath(key);
@@ -177,6 +190,11 @@ export async function api(request: Request) {
       request.method === "POST"
     ) {
       const form = await request.formData();
+      const rawBudget = form.get("triangleBudget");
+      const triangleBudget =
+        rawBudget === null || rawBudget === ""
+          ? null
+          : z.coerce.number().int().positive().max(100000000).parse(rawBudget);
       const name = z.string().trim().min(1).max(100).parse(form.get("name"));
       const description = z
         .string()
@@ -197,6 +215,7 @@ export async function api(request: Request) {
             .set({
               name,
               description,
+              triangleBudget,
               ...(references.length ? { references } : {}),
             })
             .where(and(eq(projects.id, draftId), eq(projects.status, "draft")))
@@ -208,6 +227,7 @@ export async function api(request: Request) {
             id: draftId,
             name,
             description,
+            triangleBudget,
             references,
             status: "draft",
             phase: "Drafting project brief",
@@ -221,7 +241,14 @@ export async function api(request: Request) {
         const result = await draftBrief({
           projectId: draftId,
           role: "project-brief",
-          input: await roleInput("project-brief", { name, description }),
+          input: await roleInput("project-brief", {
+            name,
+            description:
+              description +
+              (triangleBudget === null
+                ? ""
+                : `\nUser-specified triangle budget per asset: ${triangleBudget}`),
+          }),
           images: draft.references,
         });
         await db
@@ -244,6 +271,11 @@ export async function api(request: Request) {
     }
     if (path[0] === "projects" && !path[1] && request.method === "POST") {
       const form = await request.formData();
+      const rawBudget = form.get("triangleBudget");
+      const triangleBudget =
+        rawBudget === null || rawBudget === ""
+          ? null
+          : z.coerce.number().int().positive().max(100000000).parse(rawBudget);
       const name = z.string().trim().min(1).max(100).parse(form.get("name"));
       const description = z
         .string()
@@ -266,6 +298,7 @@ export async function api(request: Request) {
             .set({
               name,
               description,
+              triangleBudget,
               ...(references.length ? { references } : {}),
               status: "queued",
               phase: "Waiting for designer",
@@ -278,7 +311,7 @@ export async function api(request: Request) {
         } else
           await tx
             .insert(projects)
-            .values({ id, name, description, references });
+            .values({ id, name, description, references, triangleBudget });
         await tx
           .insert(jobs)
           .values({ id: crypto.randomUUID(), kind: "design", targetId: id });

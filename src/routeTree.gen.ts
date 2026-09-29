@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
+import { Route as AdminAgentsIndexRouteImport } from './routes/admin/agents/index'
 import { Route as AdminQueueIndexRouteImport } from './routes/admin/queue/index'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const ApiSplatRoute = ApiSplatRouteImport.update({
   id: '/api/$',
   path: '/api/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminAgentsIndexRoute = AdminAgentsIndexRouteImport.update({
+  id: '/admin/agents/',
+  path: '/admin/agents/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminQueueIndexRoute = AdminQueueIndexRouteImport.update({
@@ -38,12 +44,14 @@ const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api/$': typeof ApiSplatRoute
+  '/admin/agents/': typeof AdminAgentsIndexRoute
   '/admin/queue/': typeof AdminQueueIndexRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api/$': typeof ApiSplatRoute
+  '/admin/agents': typeof AdminAgentsIndexRoute
   '/admin/queue': typeof AdminQueueIndexRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
 }
@@ -51,20 +59,33 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/api/$': typeof ApiSplatRoute
+  '/admin/agents/': typeof AdminAgentsIndexRoute
   '/admin/queue/': typeof AdminQueueIndexRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/$' | '/admin/queue/' | '/projects/$projectId/'
+  fullPaths:
+    | '/'
+    | '/api/$'
+    | '/admin/agents/'
+    | '/admin/queue/'
+    | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/$' | '/admin/queue' | '/projects/$projectId'
-  id: '__root__' | '/' | '/api/$' | '/admin/queue/' | '/projects/$projectId/'
+  to: '/' | '/api/$' | '/admin/agents' | '/admin/queue' | '/projects/$projectId'
+  id:
+    | '__root__'
+    | '/'
+    | '/api/$'
+    | '/admin/agents/'
+    | '/admin/queue/'
+    | '/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApiSplatRoute: typeof ApiSplatRoute
+  AdminAgentsIndexRoute: typeof AdminAgentsIndexRoute
   AdminQueueIndexRoute: typeof AdminQueueIndexRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
 }
@@ -83,6 +104,13 @@ declare module '@tanstack/react-router' {
       path: '/api/$'
       fullPath: '/api/$'
       preLoaderRoute: typeof ApiSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/agents/': {
+      id: '/admin/agents/'
+      path: '/admin/agents'
+      fullPath: '/admin/agents/'
+      preLoaderRoute: typeof AdminAgentsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/queue/': {
@@ -105,6 +133,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApiSplatRoute: ApiSplatRoute,
+  AdminAgentsIndexRoute: AdminAgentsIndexRoute,
   AdminQueueIndexRoute: AdminQueueIndexRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
 }

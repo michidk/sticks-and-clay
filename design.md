@@ -78,3 +78,7 @@ Use semantic links for navigation and buttons for actions, associated form label
 ## Maintaining the theme
 
 Start with `src/styles.css`, `src/routes/__root.tsx`, and the relevant route/component. Reuse existing classes before introducing variants. Validate UI changes in both the project list and a populated workspace, including phone width and loading, empty, review, error, and long-content states relevant to the change. Update this guide when intentional changes alter the shared visual language.
+
+## Administration and texture inspection
+
+The header includes Queue and Agents. The read-only Agents page uses responsive panels with model, effort, engine and prompt settings. On narrow phones hide the WORKSHOP badge to keep navigation legible. Model dialogs have a Textures tab beside History, 3D model and Renders; tabs wrap on small screens. Texture cards open the selected version's image for inspection/download. Project setup offers an optional, initially blank triangle-budget field.

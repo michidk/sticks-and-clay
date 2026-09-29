@@ -5,7 +5,7 @@ import {
   validateCheckpoint,
 } from "./accounting.server";
 import { Client } from "eve/client";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "../../../db/client";
@@ -16,7 +16,8 @@ import { prompt } from "../../../lib/prompts.server";
 import { price } from "../../../lib/contracts";
 import { recoveryAction } from "../../../lib/recovery";
 import { checkpoint, jobContext } from "../../../lib/checkpoint.server";
-export const agentModel = process.env.STUDIO_MODEL || "gpt-6-sol";
+import { resolve } from "node:path";
+import { DATA } from "../../../lib/storage.server";
 const client = () =>
   new Client({
     host: process.env.EVE_URL || "http://127.0.0.1:33441",
@@ -34,7 +35,8 @@ export async function agent<T>(
   const key = args.stepId
     ? `step:${args.stepId}`
     : `agent:${args.role}:${args.iteration || 0}`;
-  const rates = pricingSnapshot();
+  const agentModel = roles[args.role].model;
+  const rates = pricingSnapshot(agentModel);
   const savedId = jobContext.getStore()?.checkpoint[key];
   const [saved] = savedId
     ? await db.select().from(runs).where(eq(runs.id, savedId))
@@ -74,17 +76,30 @@ export async function agent<T>(
     stepInputEstimate = 0,
     modelStarted = false,
     stepActive = false;
-  const saveUsage = () =>
-    db
+  let estimatedCost = 0,
+    accountedInput = 0,
+    accountedOutput = 0,
+    accountedCached = 0;
+  const saveUsage = () => {
+    // Accumulate per-step estimates: the long-context tier is per request, not per session total.
+    if (inputTokens !== accountedInput || outputTokens !== accountedOutput) {
+      estimatedCost += price(
+        inputTokens - accountedInput,
+        outputTokens - accountedOutput,
+        cachedTokens - accountedCached,
+        runRates,
+      );
+      accountedInput = inputTokens;
+      accountedOutput = outputTokens;
+      accountedCached = cachedTokens;
+    }
+    return db
       .update(runs)
       .set({
         inputTokens,
         outputTokens,
         cachedTokens,
-        estimatedCost:
-          reportedSteps + estimatedSteps
-            ? price(inputTokens, outputTokens, cachedTokens, runRates)
-            : null,
+        estimatedCost: reportedSteps + estimatedSteps ? estimatedCost : null,
         usageSource: estimatedSteps
           ? reportedSteps
             ? "mixed"
@@ -95,6 +110,7 @@ export async function agent<T>(
         output,
       })
       .where(eq(runs.id, id));
+  };
   try {
     const signal = AbortSignal.timeout(
       Number(process.env.AGENT_TIMEOUT_MS || 1200000),
@@ -108,6 +124,23 @@ export async function agent<T>(
       .update(runs)
       .set({ sessionId, status: "running", error: null, finishedAt: null })
       .where(eq(runs.id, id));
+    // Persist the effective configuration before the first turn. Existing sessions keep their snapshot.
+    await mkdir(resolve(DATA, "session-config"), { recursive: true });
+    const configPath = resolve(DATA, "session-config", sessionId + ".json");
+    try {
+      await writeFile(
+        configPath,
+        JSON.stringify({
+          role: args.role,
+          runId: id,
+          model: saved?.model || agentModel,
+          effort: saved?.effort || roles[args.role].effort,
+        }),
+        { flag: "wx" },
+      );
+    } catch (error: any) {
+      if (error.code !== "EEXIST") throw error;
+    }
     const snapshot = await session.snapshot({ signal });
     const history = snapshot.events;
     const lastBoundary = [...history]
@@ -242,6 +275,7 @@ export async function agent<T>(
           })
           .onConflictDoNothing();
       if (
+        event.type === "step.completed" ||
         !historical ||
         event === history[history.length - 1] ||
         event === lastBoundary

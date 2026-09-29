@@ -2,7 +2,7 @@ import bpy,math,random,json,os
 from mathutils import Vector
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete(use_global=False)
-def finish_asset(material_mode="textured", triangle_budget=20000):
+def finish_asset(material_mode="textured", triangle_budget=None):
     scene=bpy.context.scene
     scene.unit_settings.system='METRIC'
     meshes=[o for o in scene.objects if o.type=='MESH' and not o.get('studio_environment')]
@@ -29,7 +29,7 @@ def finish_asset(material_mode="textured", triangle_budget=20000):
     tris=0
     for obj in meshes:
         evaluated=obj.evaluated_get(bpy.context.evaluated_depsgraph_get());mesh=evaluated.to_mesh();mesh.calc_loop_triangles();tris+=len(mesh.loop_triangles);evaluated.to_mesh_clear()
-    if tris>triangle_budget:raise ValueError(f'Triangle budget exceeded: {tris} > {triangle_budget}. Simplify bevels or repeated detail.')
+    if triangle_budget is not None and tris>triangle_budget:raise ValueError(f'Triangle budget exceeded: {tris} > {triangle_budget}. Simplify bevels or repeated detail.')
     bpy.ops.export_scene.gltf(filepath=os.path.join(OUTPUT_DIR,'asset.glb'),export_format='GLB',use_selection=True,export_yup=True,export_apply=True)
     import struct
     payload=open(os.path.join(OUTPUT_DIR,'asset.glb'),'rb').read()

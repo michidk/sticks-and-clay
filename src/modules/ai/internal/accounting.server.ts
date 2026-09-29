@@ -1,9 +1,20 @@
 import { createHash } from "node:crypto";
 import { db } from "../../../db/client";
 import { runs } from "../../../db/schema";
-import type { RunInput } from "../roles";
+import { roles, type RunInput } from "../roles";
 
-export function pricingSnapshot() {
+export function pricingSnapshot(model?: string) {
+  if (model === "gpt-6-astra")
+    return {
+      input: 10,
+      cached: 1,
+      output: 50,
+      source:
+        "OpenAI gpt-6-astra standard token pricing · 2026-09-29 · https://developers.openai.com/api/docs/models/gpt-6-astra",
+      longContextThreshold: 272000,
+      longContextInputMultiplier: 2,
+      longContextOutputMultiplier: 1.5,
+    };
   const rates = {
     input: Number(process.env.INPUT_USD_PER_MILLION || 2),
     cached: Number(process.env.CACHED_USD_PER_MILLION || 0.2),
@@ -33,6 +44,7 @@ export async function recordRun(
 ) {
   await db.insert(runs).values({
     ...details,
+    effort: roles[args.role].effort,
     projectId: args.projectId,
     batchId: args.batchId,
     modelId: args.modelId,

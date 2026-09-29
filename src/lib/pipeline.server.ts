@@ -38,7 +38,11 @@ export async function executeJob(kind: string, targetId: string) {
       .where(eq(projects.id, p.id));
     const input = await roleInput("designer", {
       name: p.name,
-      description: p.description,
+      description:
+        p.description +
+        (p.triangleBudget === null
+          ? ""
+          : `\nUser-specified triangle budget per asset: ${p.triangleBudget}`),
     });
     const { result } = await runRole({
       role: "designer",

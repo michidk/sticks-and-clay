@@ -64,19 +64,23 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                 </span>
               </strong>
               <small>
-                {r.sessionId
-                  ? "Eve"
-                  : ["designer", "project-brief", "model-brief"].includes(
-                        r.role,
-                      )
+                {r.engine === "imagegen"
+                  ? "Imagegen"
+                  : r.engine === "tanstack"
                     ? "TanStack AI"
                     : "Eve"}{" "}
-                · {r.model} · {new Date(r.createdAt).toLocaleString()}
+                · {r.model}
+                {r.effort ? ` · ${r.effort} effort` : ""} ·{" "}
+                {new Date(r.createdAt).toLocaleString()}
               </small>
             </span>
             <span className={"badge " + r.status}>{r.status}</span>
             <span className="run-cost">
-              {r.estimatedCost === null ? "Pending" : money(r.estimatedCost)}
+              {r.estimatedCost === null
+                ? r.finishedAt
+                  ? "Unavailable"
+                  : "Pending"
+                : money(r.estimatedCost)}
               <small>
                 {["estimated", "mixed"].includes(r.usageSource)
                   ? "Estimated tokens"

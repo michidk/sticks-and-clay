@@ -31,12 +31,24 @@ export function price(
   input: number,
   output: number,
   cached: number,
-  rates: { input: number; output: number; cached: number },
+  rates: {
+    input: number;
+    output: number;
+    cached: number;
+    longContextThreshold?: number;
+    longContextInputMultiplier?: number;
+    longContextOutputMultiplier?: number;
+  },
 ) {
+  const long =
+    rates.longContextThreshold !== undefined &&
+    input > rates.longContextThreshold;
+  const inputMultiplier = long ? rates.longContextInputMultiplier || 1 : 1;
+  const outputMultiplier = long ? rates.longContextOutputMultiplier || 1 : 1;
   return (
-    (Math.max(0, input - cached) * rates.input +
-      Math.min(input, cached) * rates.cached +
-      output * rates.output) /
+    (Math.max(0, input - cached) * rates.input * inputMultiplier +
+      Math.min(input, cached) * rates.cached * inputMultiplier +
+      output * rates.output * outputMultiplier) /
     1e6
   );
 }

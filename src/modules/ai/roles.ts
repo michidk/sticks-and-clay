@@ -11,8 +11,17 @@ function role<S extends z.ZodType>(
   engine: "tanstack" | "eve",
   prompt: string,
   schema: S,
+  model = "gpt-6-sol",
+  effort: "low" | "medium" | "high" = "medium",
 ) {
-  return { engine, prompt, inputTemplate: `${prompt}-input`, schema } as const;
+  return {
+    engine,
+    model,
+    effort,
+    prompt,
+    inputTemplate: `${prompt}-input`,
+    schema,
+  } as const;
 }
 
 /** Authored instructions stay in /prompts; execution policy and contracts live here. */
@@ -21,8 +30,8 @@ export const roles = {
   "model-brief": role("tanstack", "model-brief", briefResult),
   designer: role("tanstack", "designer", designResult),
   planner: role("eve", "planner", planResult),
-  builder: role("eve", "builder", buildResult),
-  judge: role("eve", "judge", judgeResult),
+  builder: role("eve", "builder", buildResult, "gpt-6-astra", "medium"),
+  judge: role("eve", "judge", judgeResult, "gpt-6-astra", "medium"),
 } as const;
 export type Role = keyof typeof roles;
 export type RoleResult<R extends Role> = z.infer<(typeof roles)[R]["schema"]>;

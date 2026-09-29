@@ -156,9 +156,10 @@ function ProjectPage() {
   const total = rs.reduce(
     (a: any, r: any) => ({
       cost: a.cost + (r.estimatedCost || 0),
+      unpriced: a.unpriced + (r.estimatedCost === null ? 1 : 0),
       tokens: a.tokens + r.inputTokens + r.outputTokens,
     }),
-    { cost: 0, tokens: 0 },
+    { cost: 0, tokens: 0, unpriced: 0 },
   );
   const ready = p.status === "ready";
   const modelVersions =
@@ -235,6 +236,7 @@ function ProjectPage() {
         <div>
           <span>ESTIMATED MODEL COST</span>
           <strong>{money(total.cost)}</strong>
+          {total.unpriced > 0 && <small>+ {total.unpriced} requests awaiting cost</small>}
         </div>
       </div>
       {error && (
@@ -779,6 +781,7 @@ function ProjectPage() {
                   <ImageIcon size={16} />
                   Renders
                 </button>
+                <button className={view === "textures" ? "active" : ""} onClick={() => setView("textures")}>Textures</button>
               </div>
             </div>
             <section className="panel">
@@ -857,7 +860,14 @@ function ProjectPage() {
             </section>
             {shownArtifacts && view !== "history" && (
               <>
-                {view === "3d" ? (
+                {view === "textures" ? (
+                  <section>
+                    <h3>Texture images</h3>
+                    <p className="muted">Generated sources and texture maps embedded in this version’s GLB.</p>
+                    {!shownArtifacts.textures?.length && <p>No separate texture images were archived for this version.</p>}
+                    <div className="render-grid">{shownArtifacts.textures?.map((texture: any) => <a key={texture.key} href={fileUrl(texture.key)} target="_blank" rel="noreferrer"><img src={fileUrl(texture.key)} alt={texture.name} /><strong>{texture.name}</strong><p>{texture.kind} · Open / download</p></a>)}</div>
+                  </section>
+                ) : view === "3d" ? (
                   <Suspense
                     fallback={<div className="viewer">Loading viewer…</div>}
                   >

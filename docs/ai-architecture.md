@@ -53,3 +53,7 @@ Eve and TanStack adapters moved from `src/lib` to `src/modules/ai/internal`. Onl
 5. Verify routing, termination, cancellation, graph validation, cross-task checkpoint rejection, completed-result replay, session retention, and unchanged cost totals.
 
 Adding a role requires its registry entry, prompts and schema. Adding a provider requires an internal adapter implementing logged execution and its recovery semantics. Neither change should require consumers to import adapter internals.
+
+## Role model selection
+
+Each role specifies `model` and `effort` in code. New runs snapshot both. Eve's dynamic turn resolver loads a per-session file written before submission, so continuation does not read changed role defaults. The read-only `/admin/agents` page lists the registry. TanStack calls pass the role effort to the Responses adapter. The imagegen tool is a separate capability exposed only in builder sessions, with its own usage records and retained texture outputs.

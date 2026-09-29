@@ -35,3 +35,11 @@ export async function runRole<R extends Role>(
     runId,
   };
 }
+
+export function agentSettings() {
+  return Object.entries(roles).map(([id, { schema, ...settings }]) => ({
+    id,
+    ...settings,
+    resumable: settings.engine === "eve",
+  }));
+}

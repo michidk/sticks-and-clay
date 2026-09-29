@@ -70,8 +70,8 @@ export async function draftBrief(args: RunInput) {
   }
   const id = crypto.randomUUID(),
     system = await readFile(`prompts/${roles[args.role].prompt}.md`, "utf8");
-  const model = process.env.STUDIO_MODEL || "gpt-6-sol";
-  const rates = pricingSnapshot();
+  const model = roles[args.role].model;
+  const rates = pricingSnapshot(model);
   await recordRun(args, {
     id,
     engine: "tanstack",
@@ -126,6 +126,7 @@ export async function draftBrief(args: RunInput) {
         },
       ],
       outputSchema: roles[args.role].schema,
+      modelOptions: { reasoning: { effort: roles[args.role].effort } },
       stream: false,
       abortController: controller,
       middleware: [
