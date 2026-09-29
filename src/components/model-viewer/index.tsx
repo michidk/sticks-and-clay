@@ -15,6 +15,9 @@ import {
   ArrowRight,
   ArrowUp,
   Box,
+  Camera,
+  Copy,
+  Download,
   Grid2X2,
   Maximize2,
   Moon,
@@ -38,6 +41,7 @@ import {
 } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ViewerSkeleton } from "@/components/loading";
 import { cn } from "@/lib/utils";
 
@@ -117,6 +121,10 @@ export function ModelViewer({
   const [grid, setGrid] = useState(requestedGrid);
   const [cubes, setCubes] = useState(requestedCubes ?? !src);
   const [loaded, setLoaded] = useState(!src);
+  const [viewerError, setViewerError] = useState(false);
+  const [captureFeedback, setCaptureFeedback] = useState<{ message: string; error: boolean } | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [locked, setLocked] = useState(false);
   const [pointerLockAvailable, setPointerLockAvailable] = useState(true);
   const [resetToken, setResetToken] = useState(0);
@@ -127,15 +135,48 @@ export function ModelViewer({
   useEffect(() => setGround(requestedGround), [requestedGround]);
   useEffect(() => setGrid(requestedGrid), [requestedGrid]);
   useEffect(() => setCubes(requestedCubes ?? !src), [requestedCubes, src]);
-  useEffect(() => setLoaded(!src), [src]);
+  useEffect(() => { setLoaded(!src); setViewerError(false); setCaptureFeedback(null); }, [src]);
   useEffect(() => setLocked(false), [mode]);
+  useEffect(() => () => { if (feedbackTimer.current) clearTimeout(feedbackTimer.current); }, []);
   useEffect(() => {
     const policy = (document as Document & { featurePolicy?: { allowsFeature(feature: string): boolean } }).featurePolicy;
     setPointerLockAvailable(policy?.allowsFeature("pointer-lock") !== false);
   }, []);
 
   const ready = useCallback(() => { setLoaded(true); onLoad?.(); }, [onLoad]);
-  const fail = useCallback((error: Error) => { setLoaded(true); onError?.(error); }, [onError]);
+  const fail = useCallback((error: Error) => { setLoaded(true); setViewerError(true); onError?.(error); }, [onError]);
+  function reportCapture(message: string, error = false) {
+    setCaptureFeedback({ message, error });
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    feedbackTimer.current = setTimeout(() => setCaptureFeedback(null), 4500);
+  }
+  async function capture(action: "copy" | "download") {
+    const canvas = canvasRef.current;
+    if (!canvas || !loaded || viewerError) return;
+    try {
+      if (action === "copy" && (!navigator.clipboard?.write || typeof ClipboardItem === "undefined")) {
+        throw new Error("Image clipboard access is unavailable in this browser. Use Download PNG instead.");
+      }
+      const image = new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("The viewer could not create a PNG.")), "image/png");
+      });
+      if (action === "copy") {
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": image })]);
+        reportCapture("Screenshot copied. Paste it into another app.");
+      } else {
+        const blob = await image;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${alt.replace(/[^a-z0-9-_]+/gi, "-").replace(/^-|-$/g, "").slice(0, 80) || "model-view"}.png`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        reportCapture("Screenshot downloaded as PNG.");
+      }
+    } catch (error) {
+      reportCapture(error instanceof Error ? error.message : "Could not capture this screenshot.", true);
+    }
+  }
   function changeMode(next: ViewerMode) {
     if (next === mode) return;
     if (document.pointerLockElement) document.exitPointerLock();
@@ -166,7 +207,8 @@ export function ModelViewer({
           shadows
           dpr={[1, 2]}
           camera={{ position: [2.6, 1.9, 2.6], fov: 42, near: 0.01, far: 1000 }}
-          gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+          gl={{ antialias: true, alpha: false, preserveDrawingBuffer: showUi, powerPreference: "high-performance" }}
+          onCreated={({ gl }) => { canvasRef.current = gl.domElement; }}
           style={{ cursor: mode === "object" ? "grab" : mode === "firstPerson" ? "crosshair" : "move" }}
         >
           <color attach="background" args={[lighting === "day" ? "#e9ede8" : "#17232e"]} />
@@ -254,6 +296,17 @@ export function ModelViewer({
               <ViewerButton icon={<Grid2X2 />} label="Show grid" active={grid} onClick={() => setGrid(!grid)} />
               <ViewerButton icon={<Box />} label="Show sample cubes" active={cubes} onClick={() => setCubes(!cubes)} />
               <ViewerButton icon={<Maximize2 />} label="Fit model in view" onClick={() => setResetToken((n) => n + 1)} />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" size="icon-sm" variant="ghost" aria-label="Screenshot options" title="Screenshot options" disabled={!loaded || viewerError}>
+                    <Camera />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => void capture("copy")}><Copy /> Copy image</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void capture("download")}><Download /> Download PNG</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
           {mode !== "firstPerson" && showOrientation && (
@@ -266,12 +319,12 @@ export function ModelViewer({
               <ViewerButton icon={<ArrowDown />} label="Tilt view down" onClick={() => nudge(0, Math.PI / 8)} />
             </div>
           )}
-          <div className="viewer-help" role="status">
-            {mode === "firstPerson"
+          <div className="viewer-help" role={captureFeedback?.error ? "alert" : "status"}>
+            {captureFeedback?.message ?? (mode === "firstPerson"
               ? pointerLockAvailable
                 ? locked ? "WASD / arrows to move · Esc to release" : "Click the scene to look around · WASD to move"
                 : "Drag to look · WASD / arrows to move"
-              : mode === "object" ? "Drag the model to rotate · Scroll to zoom" : "Drag to orbit · Scroll to zoom"}
+              : mode === "object" ? "Drag the model to rotate · Scroll to zoom" : "Drag to orbit · Scroll to zoom")}
           </div>
         </>
       )}
