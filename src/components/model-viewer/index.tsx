@@ -1,4 +1,4 @@
-import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Bounds,
   Clone,
@@ -14,14 +14,15 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
-  Box,
   Camera,
   Copy,
   Download,
   Grid2X2,
+  LayoutGrid,
   Maximize2,
+  Minimize2,
   Moon,
-  MousePointer2,
+  RotateCcw,
   Rotate3D,
   Sun,
   View,
@@ -35,8 +36,8 @@ import {
   useId,
   useRef,
   useState,
-  type ComponentRef,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -44,8 +45,9 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ViewerSkeleton } from "@/components/loading";
 import { cn } from "@/lib/utils";
+import { faceVector, nearestFace, nextFace, type ViewArrow, type ViewFace } from "./view-cube";
 
-export type ViewerMode = "orbit" | "object" | "firstPerson";
+export type ViewerMode = "orbit" | "split" | "firstPerson";
 export type ViewerLighting = "day" | "night";
 
 /** A self-contained GLB lightbox. Set showUi=false for a clean embedded preview. */
@@ -69,7 +71,12 @@ export interface ModelViewerProps {
   onError?: (error: Error) => void;
 }
 
-type Direction = { id: number; yaw: number; pitch: number };
+type Direction = { id: number; arrow: ViewArrow };
+const splitViews = [
+  { label: "Right", position: [3, 0, 0] },
+  { label: "Back", position: [0, 0, -3] },
+  { label: "Left", position: [-3, 0, 0] },
+] as const;
 
 class ViewerErrorBoundary extends Component<
   { children: ReactNode; onError?: (error: Error) => void },
@@ -123,21 +130,60 @@ export function ModelViewer({
   const [loaded, setLoaded] = useState(!src);
   const [viewerError, setViewerError] = useState(false);
   const [captureFeedback, setCaptureFeedback] = useState<{ message: string; error: boolean } | null>(null);
+  const viewerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const splitCanvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
+  const [splitReady, setSplitReady] = useState<Set<number>>(() => new Set());
+  const previousSrc = useRef(src);
+  const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
+  const [compassArrowsVisible, setCompassArrowsVisible] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [locked, setLocked] = useState(false);
   const [pointerLockAvailable, setPointerLockAvailable] = useState(true);
   const [resetToken, setResetToken] = useState(0);
-  const [direction, setDirection] = useState<Direction>({ id: 0, yaw: 0, pitch: 0 });
+  const [direction, setDirection] = useState<Direction>({ id: 0, arrow: "up" });
 
-  useEffect(() => { if (requestedMode) setMode(requestedMode); }, [requestedMode]);
+  useEffect(() => {
+    if (requestedMode && requestedMode !== mode) {
+      if (requestedMode === "split") setSplitReady(new Set());
+      setMode(requestedMode);
+    }
+  }, [requestedMode]);
   useEffect(() => { if (requestedLighting) setLighting(requestedLighting); }, [requestedLighting]);
   useEffect(() => setGround(requestedGround), [requestedGround]);
   useEffect(() => setGrid(requestedGrid), [requestedGrid]);
   useEffect(() => setCubes(requestedCubes ?? !src), [requestedCubes, src]);
-  useEffect(() => { setLoaded(!src); setViewerError(false); setCaptureFeedback(null); }, [src]);
+  useEffect(() => {
+    setLoaded(!src); setViewerError(false); setCaptureFeedback(null);
+    if (previousSrc.current !== src) setSplitReady(new Set());
+    previousSrc.current = src;
+  }, [src]);
   useEffect(() => setLocked(false), [mode]);
   useEffect(() => () => { if (feedbackTimer.current) clearTimeout(feedbackTimer.current); }, []);
+  useEffect(() => {
+    const update = () => {
+      const active = document.fullscreenElement === viewerRef.current;
+      setIsFullscreen(active);
+      if (active) setIsExpanded(false);
+    };
+    document.addEventListener("fullscreenchange", update);
+    return () => document.removeEventListener("fullscreenchange", update);
+  }, []);
+  useEffect(() => {
+    if (!isExpanded) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsExpanded(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isExpanded]);
   useEffect(() => {
     const policy = (document as Document & { featurePolicy?: { allowsFeature(feature: string): boolean } }).featurePolicy;
     setPointerLockAvailable(policy?.allowsFeature("pointer-lock") !== false);
@@ -157,8 +203,26 @@ export function ModelViewer({
       if (action === "copy" && (!navigator.clipboard?.write || typeof ClipboardItem === "undefined")) {
         throw new Error("Image clipboard access is unavailable in this browser. Use Download PNG instead.");
       }
+      let source = canvas;
+      if (mode === "split") {
+        const [right, back, left] = splitCanvasRefs.current;
+        if (!right || !back || !left || splitReady.size !== splitViews.length) throw new Error("The four views are still loading.");
+        const combined = document.createElement("canvas");
+        const leftWidth = Math.max(canvas.width, back.width);
+        const rightWidth = Math.max(right.width, left.width);
+        const topHeight = Math.max(canvas.height, right.height);
+        combined.width = leftWidth + rightWidth;
+        combined.height = topHeight + Math.max(back.height, left.height);
+        const context = combined.getContext("2d");
+        if (!context) throw new Error("The viewer could not combine the four views.");
+        context.drawImage(canvas, 0, 0);
+        context.drawImage(right, leftWidth, 0);
+        context.drawImage(back, 0, topHeight);
+        context.drawImage(left, leftWidth, topHeight);
+        source = combined;
+      }
       const image = new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("The viewer could not create a PNG.")), "image/png");
+        source.toBlob((blob) => blob ? resolve(blob) : reject(new Error("The viewer could not create a PNG.")), "image/png");
       });
       if (action === "copy") {
         await navigator.clipboard.write([new ClipboardItem({ "image/png": image })]);
@@ -180,73 +244,67 @@ export function ModelViewer({
   function changeMode(next: ViewerMode) {
     if (next === mode) return;
     if (document.pointerLockElement) document.exitPointerLock();
+    setLoaded(!src);
+    canvasRef.current = null;
+    if (next === "split") { setSplitReady(new Set()); splitCanvasRefs.current = []; }
+    setDirection({ id: 0, arrow: "up" });
     setMode(next);
     onModeChange?.(next);
-    if (next !== "firstPerson") setResetToken((n) => n + 1);
+    if (mode === "firstPerson" && next !== "firstPerson") setResetToken((n) => n + 1);
   }
   function changeLighting(next: ViewerLighting) {
     setLighting(next);
     onLightingChange?.(next);
   }
-  function nudge(yaw: number, pitch: number) {
-    setDirection((value) => ({ id: value.id + 1, yaw, pitch }));
+  function nudge(arrow: ViewArrow) {
+    setDirection((value) => ({ id: value.id + 1, arrow }));
+  }
+  function updateCompassVisibility(event: ReactPointerEvent<HTMLDivElement>) {
+    if (mode !== "orbit" || !showOrientation || event.pointerType === "touch") return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const near = event.clientX >= rect.right - 140 && event.clientY <= rect.top + 140;
+    setCompassArrowsVisible((visible) => visible === near ? visible : near);
+  }
+  async function toggleFullscreen() {
+    if (isExpanded) { setIsExpanded(false); return; }
+    try {
+      if (document.fullscreenElement === viewerRef.current) { await document.exitFullscreen(); return; }
+      if (!document.fullscreenEnabled || !viewerRef.current) throw new Error("Fullscreen API unavailable");
+      const request = viewerRef.current.requestFullscreen();
+      await Promise.race([request, new Promise<void>((resolve) => setTimeout(resolve, 700))]);
+      if (document.fullscreenElement !== viewerRef.current) setIsExpanded(true);
+    } catch {
+      setIsExpanded(true);
+    }
   }
 
   return (
     <div
-      className={cn("viewer model-lightbox", lighting === "night" && "is-night", className)}
+      ref={viewerRef}
+      className={cn("viewer model-lightbox", showUi && "has-ui", lighting === "night" && "is-night", isExpanded && "is-expanded", className)}
       style={{ height }}
       data-loaded={loaded}
       data-viewer-mode={mode}
       data-viewer-key={viewerKey}
       aria-label={alt}
       role="group"
+      onPointerMove={updateCompassVisibility}
+      onPointerDown={(event) => { if (event.pointerType === "touch" && mode === "orbit") setCompassArrowsVisible(true); }}
+      onPointerLeave={() => setCompassArrowsVisible(false)}
     >
       <ViewerErrorBoundary key={src ?? "cubes"} onError={fail}>
+        <div className="viewer-scenes">
+          <div className="viewer-scene viewer-scene-primary">
         <Canvas
+          key={mode === "split" ? "split-front" : "single-view"}
           shadows
           dpr={[1, 2]}
-          camera={{ position: [2.6, 1.9, 2.6], fov: 42, near: 0.01, far: 1000 }}
+          camera={{ position: mode === "split" ? [0, 0, 3] : [2.6, 1.9, 2.6], fov: 42, near: 0.01, far: 1000 }}
           gl={{ antialias: true, alpha: false, preserveDrawingBuffer: showUi, powerPreference: "high-performance" }}
           onCreated={({ gl }) => { canvasRef.current = gl.domElement; }}
-          style={{ cursor: mode === "object" ? "grab" : mode === "firstPerson" ? "crosshair" : "move" }}
+          style={{ cursor: mode === "firstPerson" ? "crosshair" : "move" }}
         >
-          <color attach="background" args={[lighting === "day" ? "#e9ede8" : "#17232e"]} />
-          <fog attach="fog" args={[lighting === "day" ? "#e9ede8" : "#17232e", 24, 90]} />
-          <ambientLight intensity={lighting === "day" ? 1.8 : 0.9} />
-          <hemisphereLight args={lighting === "day" ? ["#ffffff", "#a3ad97", 2.2] : ["#aac7f5", "#17232e", 1.3]} />
-          <directionalLight
-            position={[5, 9, 6]}
-            intensity={lighting === "day" ? 3.2 : 1.5}
-            color={lighting === "day" ? "#fff7e6" : "#bdd5ff"}
-            castShadow
-            shadow-mapSize={[1024, 1024]}
-            shadow-camera-left={-8}
-            shadow-camera-right={8}
-            shadow-camera-top={8}
-            shadow-camera-bottom={-8}
-          />
-          <directionalLight position={[-4, 4, -6]} intensity={lighting === "day" ? 1.4 : 2.2} color={lighting === "day" ? "#dcebdc" : "#688db3"} />
-          {ground && (
-            <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]}>
-              <planeGeometry args={[200, 200]} />
-              <meshStandardMaterial color={lighting === "day" ? "#e5ebe2" : "#202e37"} roughness={1} />
-            </mesh>
-          )}
-          {grid && <gridHelper args={[20, 20, lighting === "day" ? "#92a98e" : "#5c8095", lighting === "day" ? "#c8d5c5" : "#344c59"]} position={[0, ground ? -0.01 : 0, 0]} />}
-          <Suspense fallback={null}>
-            <Bounds fit clip margin={1.45}>
-              <FitOnRequest token={resetToken} />
-              <SceneObject
-                src={src}
-                cubes={cubes}
-                mode={mode}
-                autoRotate={autoRotate}
-                autoRotateSpeed={autoRotateSpeed}
-                onReady={ready}
-              />
-            </Bounds>
-          </Suspense>
+          <ViewerScene lighting={lighting} ground={ground} grid={grid} src={src} cubes={cubes} resetToken={resetToken} resetFace={mode === "split" ? "front" : undefined} compact={mode === "split"} onReady={ready} />
           {mode === "firstPerson" ? (
             <>
               {pointerLockAvailable ? (
@@ -259,15 +317,13 @@ export function ModelViewer({
               <OrbitControls
                 makeDefault
                 enableDamping
-                enablePan={mode === "orbit"}
-                enableRotate={mode === "orbit"}
-                minDistance={0.15}
-                maxDistance={80}
+                enablePan
+                enableRotate
                 autoRotate={mode === "orbit" && autoRotate}
                 autoRotateSpeed={autoRotateSpeed * 3}
               />
-              <CameraNudge direction={direction} />
-              {showOrientation && (
+              {mode === "orbit" && <CameraNudge direction={direction} resetToken={resetToken} />}
+              {showOrientation && mode !== "split" && (
                 <GizmoHelper alignment="top-right" margin={[62, 62]}>
                   <GizmoViewcube
                     color={lighting === "day" ? "#f7f8f1" : "#263846"}
@@ -280,6 +336,24 @@ export function ModelViewer({
             </>
           )}
         </Canvas>
+            {showUi && mode === "split" && <span className="viewer-pane-label">Front</span>}
+          </div>
+          {mode === "split" && splitViews.map((view, index) => (
+            <div className="viewer-scene viewer-scene-secondary" key={view.label}>
+              <Canvas
+                shadows
+                dpr={[1, 2]}
+                camera={{ position: [...view.position], fov: 42, near: 0.01, far: 1000 }}
+                gl={{ antialias: true, alpha: false, preserveDrawingBuffer: showUi, powerPreference: "high-performance" }}
+                onCreated={({ gl }) => { splitCanvasRefs.current[index] = gl.domElement; }}
+              >
+                <ViewerScene lighting={lighting} ground={ground} grid={grid} src={src} cubes={cubes} resetToken={resetToken} resetFace={view.label.toLowerCase() as ViewFace} compact onReady={() => setSplitReady((ready) => ready.has(index) ? ready : new Set(ready).add(index))} />
+                <OrbitControls makeDefault enableDamping enablePan enableRotate />
+              </Canvas>
+              {showUi && <span className="viewer-pane-label">{view.label}</span>}
+            </div>
+          ))}
+        </div>
       </ViewerErrorBoundary>
       {!loaded && <ViewerSkeleton overlay />}
       {showUi && (
@@ -287,45 +361,47 @@ export function ModelViewer({
           <div className="viewer-toolbar" role="toolbar" aria-label="3D viewer controls">
             <div className="viewer-toolbar-group" aria-label="Interaction mode">
               <ViewerButton icon={<Rotate3D />} label="Orbit camera" active={mode === "orbit"} onClick={() => changeMode("orbit")} />
-              <ViewerButton icon={<MousePointer2 />} label="Rotate object" active={mode === "object"} onClick={() => changeMode("object")} />
-              <ViewerButton icon={<Footprints />} label="First-person movement" active={mode === "firstPerson"} onClick={() => changeMode("firstPerson")} />
+              <ViewerButton icon={<LayoutGrid />} label="Four-view split" active={mode === "split"} onClick={() => changeMode("split")} />
+              <ViewerButton icon={<Footprints />} label="Fly camera" active={mode === "firstPerson"} onClick={() => changeMode("firstPerson")} />
             </div>
             <div className="viewer-toolbar-group" aria-label="Scene options">
               <ViewerButton icon={lighting === "day" ? <Sun /> : <Moon />} label={lighting === "day" ? "Switch to night" : "Switch to day"} active={lighting === "night"} onClick={() => changeLighting(lighting === "day" ? "night" : "day")} />
               <ViewerButton icon={<View />} label="Show ground" active={ground} onClick={() => setGround(!ground)} />
               <ViewerButton icon={<Grid2X2 />} label="Show grid" active={grid} onClick={() => setGrid(!grid)} />
-              <ViewerButton icon={<Box />} label="Show sample cubes" active={cubes} onClick={() => setCubes(!cubes)} />
-              <ViewerButton icon={<Maximize2 />} label="Fit model in view" onClick={() => setResetToken((n) => n + 1)} />
-              <DropdownMenu>
+              {(!showOrientation || mode === "split") && <ViewerButton icon={<RotateCcw />} label="Reset view" onClick={() => setResetToken((n) => n + 1)} />}
+              <DropdownMenu open={captureMenuOpen} onOpenChange={setCaptureMenuOpen}>
                 <DropdownMenuTrigger asChild>
-                  <Button type="button" size="icon-sm" variant="ghost" aria-label="Screenshot options" title="Screenshot options" disabled={!loaded || viewerError}>
+                  <Button type="button" size="icon-sm" variant={captureMenuOpen ? "secondary" : "ghost"} className={cn("viewer-capture-trigger", captureMenuOpen && "is-open")} aria-label="Screenshot options" title="Screenshot options" disabled={!loaded || viewerError || (mode === "split" && splitReady.size !== splitViews.length)}>
                     <Camera />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => void capture("copy")}><Copy /> Copy image</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => void capture("download")}><Download /> Download PNG</DropdownMenuItem>
+                <DropdownMenuContent align="end" sideOffset={8} className="viewer-capture-menu">
+                  <div className="viewer-capture-title">Capture view <span>PNG</span></div>
+                  <DropdownMenuItem onSelect={() => void capture("copy")}><Copy /> Copy to clipboard</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void capture("download")}><Download /> Download image</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
-          {mode !== "firstPerson" && showOrientation && (
-            <div className="viewer-direction" aria-label="View direction">
-              <ViewerButton icon={<ArrowUp />} label="Tilt view up" onClick={() => nudge(0, -Math.PI / 8)} />
-              <div>
-                <ViewerButton icon={<ArrowLeft />} label="Rotate view left" onClick={() => nudge(-Math.PI / 4, 0)} />
-                <ViewerButton icon={<ArrowRight />} label="Rotate view right" onClick={() => nudge(Math.PI / 4, 0)} />
-              </div>
-              <ViewerButton icon={<ArrowDown />} label="Tilt view down" onClick={() => nudge(0, Math.PI / 8)} />
+          {mode === "orbit" && showOrientation && (
+            <div className={cn("viewer-compass", compassArrowsVisible && "is-visible")} aria-label="View cube controls">
+              <CompassButton className="is-up" icon={<ArrowUp />} label="View next face up" onClick={() => nudge("up")} />
+              <CompassButton className="is-left" icon={<ArrowLeft />} label="View next face left" onClick={() => nudge("left")} />
+              <CompassButton className="is-right" icon={<ArrowRight />} label="View next face right" onClick={() => nudge("right")} />
+              <CompassButton className="is-down" icon={<ArrowDown />} label="View next face down" onClick={() => nudge("down")} />
+              <CompassButton className="is-reset" icon={<RotateCcw />} label="Reset view" onClick={() => setResetToken((n) => n + 1)} />
             </div>
           )}
           <div className="viewer-help" role={captureFeedback?.error ? "alert" : "status"}>
             {captureFeedback?.message ?? (mode === "firstPerson"
               ? pointerLockAvailable
-                ? locked ? "WASD / arrows to move · Esc to release" : "Click the scene to look around · WASD to move"
-                : "Drag to look · WASD / arrows to move"
-              : mode === "object" ? "Drag the model to rotate · Scroll to zoom" : "Drag to orbit · Scroll to zoom")}
+                ? locked ? "WASD to fly · Space up · Shift down · Esc to release" : "Click scene to look · WASD to fly · Space / Shift vertically"
+                : "Drag to look · WASD to fly · Space / Shift vertically"
+              : mode === "split" ? "Front · Right · Back · Left — drag any view to orbit" : "Drag to orbit · Scroll to zoom")}
           </div>
+          <Button type="button" size="icon-sm" variant="ghost" className="viewer-fullscreen" aria-label={isFullscreen || isExpanded ? "Exit fullscreen" : "Enter fullscreen"} title={isFullscreen || isExpanded ? "Exit fullscreen" : "Enter fullscreen"} onClick={() => void toggleFullscreen()}>
+            {isFullscreen || isExpanded ? <Minimize2 /> : <Maximize2 />}
+          </Button>
         </>
       )}
     </div>
@@ -336,34 +412,35 @@ function ViewerButton({ icon, label, active, onClick }: { icon: ReactNode; label
   return <Button type="button" size="icon-sm" variant={active ? "secondary" : "ghost"} aria-label={label} title={label} aria-pressed={active} onClick={onClick}>{icon}</Button>;
 }
 
-function SceneObject({ src, cubes, mode, autoRotate, autoRotateSpeed, onReady }: {
-  src?: string; cubes: boolean; mode: ViewerMode; autoRotate: boolean; autoRotateSpeed: number; onReady: () => void;
+function CompassButton({ icon, label, className, onClick }: { icon: ReactNode; label: string; className: string; onClick: () => void }) {
+  return <Button type="button" size="icon-sm" variant="ghost" className={cn("viewer-compass-button", className)} aria-label={label} title={label} onClick={onClick}>{icon}</Button>;
+}
+
+function ViewerScene({ lighting, ground, grid, src, cubes, resetToken, resetFace, compact = false, onReady }: {
+  lighting: ViewerLighting; ground: boolean; grid: boolean; src?: string; cubes: boolean; resetToken: number; resetFace?: ViewFace; compact?: boolean; onReady: () => void;
 }) {
-  const group = useRef<{ rotation: { x: number; y: number } } | null>(null);
-  const dragging = useRef(false);
+  return <>
+    <color attach="background" args={[lighting === "day" ? "#e9ede8" : "#17232e"]} />
+    <fog attach="fog" args={[lighting === "day" ? "#e9ede8" : "#17232e", 24, 90]} />
+    <ambientLight intensity={lighting === "day" ? 0.8 : 0.9} />
+    <hemisphereLight args={lighting === "day" ? ["#ffffff", "#a3ad97", 1.2] : ["#aac7f5", "#17232e", 1.3]} />
+    <directionalLight position={[5, 9, 6]} intensity={lighting === "day" ? 2.1 : 1.5} color={lighting === "day" ? "#fff7e6" : "#bdd5ff"} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={8} shadow-camera-bottom={-8} />
+    <directionalLight position={[-4, 4, -6]} intensity={lighting === "day" ? 0.7 : 2.2} color={lighting === "day" ? "#dcebdc" : "#688db3"} />
+    {ground && <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]}><planeGeometry args={[200, 200]} /><meshStandardMaterial color={lighting === "day" ? "#e5ebe2" : "#202e37"} roughness={1} /></mesh>}
+    {grid && <gridHelper args={[20, 20, lighting === "day" ? "#92a98e" : "#5c8095", lighting === "day" ? "#c8d5c5" : "#344c59"]} position={[0, ground ? -0.01 : 0, 0]} />}
+    <Suspense fallback={null}>
+      <Bounds fit clip margin={compact ? 1.1 : 1.45}>
+        <FitOnRequest token={resetToken} face={resetFace} />
+        <SceneObject src={src} cubes={cubes} onReady={onReady} />
+        <CameraLimits src={src} cubes={cubes} />
+      </Bounds>
+    </Suspense>
+  </>;
+}
+
+function SceneObject({ src, cubes, onReady }: { src?: string; cubes: boolean; onReady: () => void }) {
   useEffect(() => { if (!src) onReady(); }, [src, onReady]);
-  useFrame((_, delta) => {
-    if (mode === "object" && autoRotate && !dragging.current && group.current)
-      group.current.rotation.y += Math.min(delta, 0.05) * autoRotateSpeed;
-  });
-  function startDrag(event: ThreeEvent<PointerEvent>) {
-    if (mode !== "object") return;
-    event.stopPropagation();
-    dragging.current = true;
-    (event.target as Element | null)?.setPointerCapture?.(event.pointerId);
-  }
-  function drag(event: ThreeEvent<PointerEvent>) {
-    if (!dragging.current || !group.current) return;
-    event.stopPropagation();
-    group.current.rotation.y += event.nativeEvent.movementX * 0.008;
-    group.current.rotation.x = Math.max(-1.1, Math.min(1.1, group.current.rotation.x + event.nativeEvent.movementY * 0.008));
-  }
-  function stopDrag(event: ThreeEvent<PointerEvent>) {
-    if (!dragging.current) return;
-    dragging.current = false;
-    (event.target as Element | null)?.releasePointerCapture?.(event.pointerId);
-  }
-  return <group ref={node => { group.current = node; }} onPointerDown={startDrag} onPointerMove={drag} onPointerUp={stopDrag} onPointerCancel={stopDrag}>
+  return <group>
     {src && <LoadedModel src={src} onReady={onReady} />}
     {cubes && <>
       <mesh castShadow receiveShadow position={[-1.4, 0.42, 0]}><boxGeometry args={[0.8, 0.8, 0.8]} /><meshStandardMaterial color="#9bae85" roughness={0.7} /></mesh>
@@ -373,33 +450,87 @@ function SceneObject({ src, cubes, mode, autoRotate, autoRotateSpeed, onReady }:
   </group>;
 }
 
+function CameraLimits({ src, cubes }: { src?: string; cubes: boolean }) {
+  const bounds = useBounds();
+  const { controls, size } = useThree();
+  useEffect(() => {
+    if (!controls || !("minDistance" in controls) || !("maxDistance" in controls)) return;
+    bounds.refresh().fit();
+    const { distance } = bounds.getSize();
+    const orbit = controls as typeof controls & { minDistance: number; maxDistance: number; update: () => void };
+    orbit.minDistance = Math.max(0.1, distance * 0.35);
+    orbit.maxDistance = Math.max(orbit.minDistance * 2, distance * 2.5);
+    orbit.update();
+  }, [bounds, controls, src, cubes, size.width, size.height]);
+  return null;
+}
+
 function LoadedModel({ src, onReady }: { src: string; onReady: () => void }) {
   const gltf = useGLTF(src);
   useEffect(() => onReady(), [gltf, onReady]);
   return <Clone object={gltf.scene} castShadow receiveShadow />;
 }
 
-function FitOnRequest({ token }: { token: number }) {
+function FitOnRequest({ token, face }: { token: number; face?: ViewFace }) {
   const bounds = useBounds();
-  useEffect(() => { if (token > 0) bounds.refresh().fit(); }, [token, bounds]);
+  useEffect(() => {
+    if (!token && !face) return;
+    // Wait until the scene and orbit controls have settled before measuring.
+    const frame = requestAnimationFrame(() => {
+      bounds.refresh();
+      const { center, distance } = bounds.getSize();
+      const vector = face ? faceVector(face, face) : [2.6, 1.9, 2.6];
+      const scale = distance / Math.hypot(...vector);
+      bounds.moveTo([
+        center.x + vector[0] * scale,
+        center.y + vector[1] * scale,
+        center.z + vector[2] * scale,
+      ]).lookAt({ target: [center.x, center.y, center.z] });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [token, bounds, face]);
   return null;
 }
 
-function CameraNudge({ direction }: { direction: Direction }) {
+function CameraNudge({ direction, resetToken }: { direction: Direction; resetToken: number }) {
   const { camera, controls } = useThree();
+  const goal = useRef<{ x: number; y: number; z: number } | null>(null);
+  const lastSide = useRef<ViewFace>("front");
+  const lastFace = useRef<ViewFace | null>(null);
+  useEffect(() => { goal.current = null; lastSide.current = "front"; lastFace.current = null; }, [resetToken]);
   useEffect(() => {
     if (!direction.id || !controls || !("target" in controls)) return;
     const target = controls.target as { x: number; y: number; z: number };
-    const x = camera.position.x - target.x;
-    const y = camera.position.y - target.y;
-    const z = camera.position.z - target.z;
+    const base = goal.current ?? camera.position;
+    const x = base.x - target.x;
+    const y = base.y - target.y;
+    const z = base.z - target.z;
     const radius = Math.max(0.01, Math.hypot(x, y, z));
-    const yaw = Math.atan2(x, z) + direction.yaw;
-    const polar = Math.max(0.05, Math.min(Math.PI - 0.05, Math.acos(y / radius) + direction.pitch));
-    camera.position.set(target.x + radius * Math.sin(polar) * Math.sin(yaw), target.y + radius * Math.cos(polar), target.z + radius * Math.sin(polar) * Math.cos(yaw));
+    const current = nearestFace(x, y, z);
+    if (current !== lastFace.current && current !== "top" && current !== "bottom") lastSide.current = current;
+    const next = nextFace(current, direction.arrow, lastSide.current);
+    lastSide.current = next.lastSide;
+    lastFace.current = next.face;
+    const [nextX, nextY, nextZ] = faceVector(next.face, next.lastSide);
+    goal.current = {
+      x: target.x + radius * nextX,
+      y: target.y + radius * nextY,
+      z: target.z + radius * nextZ,
+    };
+  }, [camera, controls, direction]);
+  useFrame((_, delta) => {
+    if (!goal.current || !controls || !("target" in controls)) return;
+    const step = 1 - Math.exp(-Math.min(delta, 0.05) * 12);
+    const target = controls.target as { x: number; y: number; z: number };
+    camera.position.set(
+      camera.position.x + (goal.current.x - camera.position.x) * step,
+      camera.position.y + (goal.current.y - camera.position.y) * step,
+      camera.position.z + (goal.current.z - camera.position.z) * step,
+    );
     camera.lookAt(target.x, target.y, target.z);
     if ("update" in controls && typeof controls.update === "function") controls.update();
-  }, [camera, controls, direction]);
+    if (Math.hypot(goal.current.x - camera.position.x, goal.current.y - camera.position.y, goal.current.z - camera.position.z) < 0.002) goal.current = null;
+  });
   return null;
 }
 
@@ -442,14 +573,12 @@ function DragLook() {
 function FirstPersonMovement({ requirePointerLock }: { requirePointerLock: boolean }) {
   const { camera, gl } = useThree();
   const pressed = useRef(new Set<string>());
-  const walkingHeight = useRef(camera.position.y);
   useEffect(() => {
-    walkingHeight.current = camera.position.y;
     function down(event: KeyboardEvent) {
       if ((event.target as HTMLElement)?.closest("input, textarea, select, [contenteditable]")) return;
       if (!requirePointerLock && event.target !== gl.domElement) return;
       pressed.current.add(event.code);
-      if ((document.pointerLockElement || !requirePointerLock) && event.code.startsWith("Arrow")) event.preventDefault();
+      if ((document.pointerLockElement || !requirePointerLock) && (event.code.startsWith("Arrow") || event.code === "Space")) event.preventDefault();
     }
     function up(event: KeyboardEvent) { pressed.current.delete(event.code); }
     function blur() { pressed.current.clear(); }
@@ -468,11 +597,12 @@ function FirstPersonMovement({ requirePointerLock }: { requirePointerLock: boole
     const keys = pressed.current;
     const forward = Number(keys.has("KeyW") || keys.has("ArrowUp")) - Number(keys.has("KeyS") || keys.has("ArrowDown"));
     const sideways = Number(keys.has("KeyD") || keys.has("ArrowRight")) - Number(keys.has("KeyA") || keys.has("ArrowLeft"));
-    if (!forward && !sideways) return;
-    const scale = forward && sideways ? Math.SQRT1_2 : 1;
+    const vertical = Number(keys.has("Space") || keys.has("KeyE")) - Number(keys.has("ShiftLeft") || keys.has("ShiftRight") || keys.has("KeyQ"));
+    if (!forward && !sideways && !vertical) return;
+    const scale = 1 / Math.hypot(forward, sideways, vertical);
     camera.translateZ(-forward * speed * scale);
     camera.translateX(sideways * speed * scale);
-    camera.position.y = walkingHeight.current;
+    camera.position.y += vertical * speed * scale;
   });
   return null;
 }
