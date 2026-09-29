@@ -1,3 +1,4 @@
+import { databaseErrorResponse } from "./database-error";
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
@@ -316,6 +317,12 @@ export async function api(request: Request) {
           201,
         );
       } catch (error) {
+        const databaseFailure = databaseErrorResponse(error);
+        if (databaseFailure)
+          return reply(
+            { ...databaseFailure.body, draftId, references: draft.references },
+            databaseFailure.status,
+          );
         return reply(
           {
             error:
@@ -674,6 +681,9 @@ export async function api(request: Request) {
       );
     return reply({ error: "Not found" }, 404);
   } catch (error) {
+    const databaseFailure = databaseErrorResponse(error);
+    if (databaseFailure)
+      return reply(databaseFailure.body, databaseFailure.status);
     return reply(
       { error: error instanceof Error ? error.message : "Request failed" },
       400,
