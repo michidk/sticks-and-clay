@@ -12,7 +12,7 @@ Inspect the working tree before editing and preserve unrelated work. Treat `.cod
 - `src/components/`: UI shared between routes; `src/styles.css`: shared application theme.
 - `src/lib/client.ts`: browser API helpers. Keep database access, credentials, filesystem operations, and agent execution in server modules, not client bundles.
 - `src/lib/api.server.ts`: request validation and API behavior; `src/lib/contracts.ts`: shared validation and domain contracts.
-- `src/lib/pipeline.server.ts`: workflow coordination; `src/lib/agent.server.ts`: Eve integration; `src/lib/direct-api.server.ts`: direct structured model calls.
+- `src/lib/pipeline.server.ts`: workflow coordination; `src/modules/ai/internal/eve.server.ts`: Eve integration; `src/modules/ai/internal/tanstack.server.ts`: direct structured model calls.
 - `src/lib/checkpoint.server.ts` and recovery modules: durable execution and restart behavior. `scripts/worker.ts` claims queued PostgreSQL jobs.
 - `src/db/schema.ts` and `drizzle/`: schema and migrations. Use `bun run db:generate` for schema changes and inspect generated SQL before applying it.
 - `prompts/`: authored instructions and input templates; see `prompts/README.md`. Shared Eve instructions require an Eve rebuild/restart when changed.
@@ -56,3 +56,7 @@ For database/API or recovery changes, also run the relevant integration tests wi
 Use Docker Compose for PostgreSQL. In the existing VibePod environment, `docker compose -p studio up -d --wait` reuses the established database volume. Inspect existing services before launching another supervisor; `scripts/services.sh` runs Eve, Blender MCP, and the worker. Runtime logs are in `data/logs/`.
 
 Keep `.env`, credentials, `data/`, Eve session storage, and generated assets out of commits. Retain PostgreSQL and file storage together for recovery; never delete volumes or real projects as cleanup. This app is a trusted local workshop, and generated Blender Python executes with the service user's permissions. Keep backend services on loopback and do not expose them as a public multi-tenant service without a separate security design.
+
+## AI module boundaries
+
+Use `src/modules/ai/index.server.ts` (`runRole`, `roleInput`) for all AI work. Role definitions live in `src/modules/ai/roles.ts`; callers must not import adapter internals. `src/modules/pipelines/index.ts` defines provider-independent pipeline traversal and the model review sequence. Asset-specific handlers remain in `src/lib/pipeline.server.ts`. See [AI architecture](docs/ai-architecture.md) for extension, recovery and accounting contracts.

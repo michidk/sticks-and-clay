@@ -12,8 +12,16 @@ import {
   jobs,
 } from "../db/schema";
 import { cancelJob } from "./queue.server";
-import { draftBrief } from "./direct-api.server";
-import { prompt } from "./prompts.server";
+import { runRole, roleInput } from "../modules/ai/index.server";
+// Preserve the field-fill HTTP response shape while sharing the execution boundary.
+async function draftBrief(
+  args: import("../modules/ai/index.server").RunInput<
+    "project-brief" | "model-brief"
+  >,
+) {
+  const { result, runId } = await runRole(args);
+  return { ...result, runId };
+}
 import { filePath, upload } from "./storage.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -213,7 +221,7 @@ export async function api(request: Request) {
         const result = await draftBrief({
           projectId: draftId,
           role: "project-brief",
-          input: await prompt("project-brief-input", { name, description }),
+          input: await roleInput("project-brief", { name, description }),
           images: draft.references,
         });
         await db
@@ -367,7 +375,7 @@ export async function api(request: Request) {
           .select({ name: models.name })
           .from(models)
           .where(eq(models.projectId, id));
-        const text = await prompt("model-brief-input", {
+        const text = await roleInput("model-brief", {
           name: project.name,
           version: project.designVersion,
           design: project.design,

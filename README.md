@@ -60,8 +60,8 @@ Copy `.env.example` to `.env` if needed. The service supervisor loads `.env` onc
 - `src/routes/`: project list, project workspace, colocated viewer/history components, and API route.
 - `src/lib/api.server.ts`: validated project/design/generation endpoints, uploads and downloads.
 - `src/lib/pipeline.server.ts`: designer → planner → builder/judge → collection workflow.
-- `src/lib/agent.server.ts`: fresh Eve sessions, structured output validation, event persistence and token accounting.
-- `src/lib/direct-api.server.ts`: structured brief/design calls through TanStack AI, with persisted run results and usage estimates.
+- `src/modules/ai/internal/eve.server.ts`: fresh Eve sessions, structured output validation, event persistence and token accounting.
+- `src/modules/ai/internal/tanstack.server.ts`: structured brief/design calls through TanStack AI, with persisted run results and usage estimates.
 - `scripts/worker.ts`: PostgreSQL job claiming (`SKIP LOCKED`), bounded concurrency, coordinator lock and restart recovery.
 - `src/db/schema.ts`, `drizzle/`: projects, immutable design revisions, batches, models, agent runs, events and jobs.
 - `eve/agent/`: model configuration, authenticated local channel, Blender MCP connection and authored vision tool.
@@ -123,3 +123,7 @@ The retained history reports 822,705 input and 31,032 output tokens, with a **$1
 Project/model brief buttons call TanStack AI directly. They create no Eve session and no queue job. Their inputs, outputs, token usage, cached tokens, pricing snapshot, and cost estimate are saved in project history. Design generation is a durable background job using TanStack AI; interruption retries a direct call, while a completed response checkpoint is reused. An interrupted direct request may have unknown usage until the provider reports it.
 
 The header Queue link opens `/admin/queue`. It lists model generation, planning and collection-render jobs, with per-job cancellation and Abort pending queue. Running cancellations are cooperative: the UI shows Cancelling until the worker stops. Cancelled jobs are not resumed automatically. Model iteration history lives in each model viewer; previous GLBs, Blender files, renders and judge reviews stay accessible.
+
+## AI module boundaries
+
+Use `src/modules/ai/index.server.ts` (`runRole`, `roleInput`) for all AI work. Role definitions live in `src/modules/ai/roles.ts`; callers must not import adapter internals. `src/modules/pipelines/index.ts` defines provider-independent pipeline traversal and the model review sequence. Asset-specific handlers remain in `src/lib/pipeline.server.ts`. See [AI architecture](docs/ai-architecture.md) for extension, recovery and accounting contracts.

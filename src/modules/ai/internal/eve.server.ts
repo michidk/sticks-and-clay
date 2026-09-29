@@ -1,30 +1,22 @@
+import { roles, type RunInput } from "../roles";
+import {
+  recordRun,
+  pricingSnapshot,
+  validateCheckpoint,
+} from "./accounting.server";
 import { Client } from "eve/client";
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { db } from "../db/client";
-import { runs, events } from "../db/schema";
-import { imagePart } from "./storage.server";
-import { assertJobActive } from "./queue.server";
-import { prompt } from "./prompts.server";
-import { price } from "./contracts";
-import { recoveryAction } from "./recovery";
-import { checkpoint, jobContext } from "./checkpoint.server";
+import { db } from "../../../db/client";
+import { runs, events } from "../../../db/schema";
+import { imagePart } from "../../../lib/storage.server";
+import { assertJobActive } from "../../../lib/queue.server";
+import { prompt } from "../../../lib/prompts.server";
+import { price } from "../../../lib/contracts";
+import { recoveryAction } from "../../../lib/recovery";
+import { checkpoint, jobContext } from "../../../lib/checkpoint.server";
 export const agentModel = process.env.STUDIO_MODEL || "gpt-6-sol";
-const rates = {
-  input: Number(process.env.INPUT_USD_PER_MILLION || 2),
-  cached: Number(process.env.CACHED_USD_PER_MILLION || 0.2),
-  output: Number(process.env.OUTPUT_USD_PER_MILLION || 10),
-  source:
-    process.env.PRICE_SOURCE ||
-    "Operator assumption; verify rates for the configured model",
-};
-if (
-  [rates.input, rates.output, rates.cached].some(
-    (n) => !Number.isFinite(n) || n < 0,
-  )
-)
-  throw new Error("Token pricing rates must be finite, nonnegative numbers");
 const client = () =>
   new Client({
     host: process.env.EVE_URL || "http://127.0.0.1:33441",
@@ -35,47 +27,35 @@ const client = () =>
       },
     },
   });
-export async function agent<T>(args: {
-  projectId: string;
-  batchId?: string;
-  modelId?: string;
-  role: string;
-  iteration?: number;
-  input: string;
-  images?: string[];
-  schema: any;
-  onActivity?: (tool: string) => Promise<void>;
-}): Promise<{ result: T; runId: string }> {
+export async function agent<T>(
+  args: RunInput & { schema: any },
+): Promise<{ result: T; runId: string }> {
   await assertJobActive();
-  const key = `agent:${args.role}:${args.iteration || 0}`;
+  const key = args.stepId
+    ? `step:${args.stepId}`
+    : `agent:${args.role}:${args.iteration || 0}`;
+  const rates = pricingSnapshot();
   const savedId = jobContext.getStore()?.checkpoint[key];
   const [saved] = savedId
     ? await db.select().from(runs).where(eq(runs.id, savedId))
     : [];
+  if (savedId && !saved)
+    throw new Error("Saved AI run is missing; cannot resume safely");
+  validateCheckpoint(saved, args, "eve");
   if (saved?.status === "done")
     return { result: args.schema.parse(saved.result) as T, runId: saved.id };
   if (saved) args = { ...args, input: saved.input, images: saved.images };
   const id = saved?.id || crypto.randomUUID(),
     systemPrompt =
       saved?.systemPrompt ||
-      (await readFile(`prompts/${args.role}.md`, "utf8")),
+      (await readFile(`prompts/${roles[args.role].prompt}.md`, "utf8")),
     images = args.images || [];
   if (!saved)
-    await db.insert(runs).values({
+    await recordRun(args, {
       id,
-      projectId: args.projectId,
-      batchId: args.batchId,
-      modelId: args.modelId,
-      role: args.role,
-      iteration: args.iteration || 0,
+      engine: "eve",
       model: agentModel,
-      promptVersion: createHash("sha256")
-        .update(systemPrompt)
-        .digest("hex")
-        .slice(0, 8),
       systemPrompt,
-      input: args.input,
-      images,
       rates,
     });
   await checkpoint(key, id);

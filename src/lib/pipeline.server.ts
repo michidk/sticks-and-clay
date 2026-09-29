@@ -5,17 +5,9 @@ import { db } from "../db/client";
 import { projects, revisions, batches, models, jobs, runs } from "../db/schema";
 import { assertJobActive } from "./queue.server";
 import { archiveVersion } from "./versions.server";
-import { prompt } from "./prompts.server";
-import { draftBrief } from "./direct-api.server";
-import { agent } from "./agent.server";
+import { runRole, roleInput } from "../modules/ai/index.server";
+import { runPipeline, modelReviewPipeline } from "../modules/pipelines";
 import { renderCollection } from "./collection.server";
-import {
-  designResult,
-  planResult,
-  buildResult,
-  judgeResult,
-  nextStage,
-} from "./contracts";
 import { DATA } from "./storage.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
 async function one<T>(rows: T[]) {
@@ -44,29 +36,16 @@ export async function executeJob(kind: string, targetId: string) {
         progress: 20,
       })
       .where(eq(projects.id, p.id));
-    const input = await prompt("designer-input", {
+    const input = await roleInput("designer", {
       name: p.name,
       description: p.description,
     });
-    const result = job.checkpoint["agent:designer:0"]
-      ? (
-          await agent<{ design: string }>({
-            role: "designer",
-            projectId: p.id,
-            input,
-            images: p.references,
-            schema: designResult,
-          })
-        ).result
-      : await draftBrief({
-          role: "designer",
-          projectId: p.id,
-          input: await prompt("designer-input", {
-            name: p.name,
-            description: p.description,
-          }),
-          images: p.references,
-        });
+    const { result } = await runRole({
+      role: "designer",
+      projectId: p.id,
+      input,
+      images: p.references,
+    });
     await assertJobActive();
     await db.transaction(async (tx) => {
       await tx
@@ -99,19 +78,16 @@ export async function executeJob(kind: string, targetId: string) {
       .update(batches)
       .set({ status: "planning" })
       .where(eq(batches.id, batch.id));
-    const { result, runId } = await agent<{
-      models: { name: string; prompt: string }[];
-    }>({
+    const { result, runId } = await runRole({
       projectId: batch.projectId,
       batchId: batch.id,
       role: "planner",
-      input: await prompt("planner-input", {
+      input: await roleInput("planner", {
         version: batch.designVersion,
         design: batch.design,
         request: batch.prompt,
         count: batch.count,
       }),
-      schema: planResult,
     });
     if (result.models.length !== batch.count) {
       const error = `Result validation: Planner returned ${result.models.length} models; expected ${batch.count}`;
@@ -162,163 +138,169 @@ export async function executeJob(kind: string, targetId: string) {
       artifacts: Record<string, unknown> = {};
     const attempt = job.checkpoint.workspace || job.id;
     const rounds = Math.max(1, batch.judgeIterations);
-    for (let iteration = 0; iteration < rounds; iteration++) {
-      const directory = `models/${model.id}/${attempt}/iteration-${iteration}`;
-      await mkdir(resolve(DATA, directory), { recursive: true });
-      const capabilityKey = `capability:${iteration}`;
-      const capability = job.checkpoint[capabilityKey] || crypto.randomUUID();
-      if (!job.checkpoint[capabilityKey])
-        await checkpoint(capabilityKey, capability);
-      await mkdir(resolve(DATA, "capabilities"), { recursive: true });
-      await writeFile(
-        resolve(DATA, "capabilities", capability + ".json"),
-        JSON.stringify({ directory }),
-      );
-      await db
-        .update(models)
-        .set({
-          status: "building",
-          phase: iteration
-            ? "Applying judge feedback"
-            : "Building geometry and materials",
-          iteration,
-          progress: Math.round((iteration / rounds) * 100),
-        })
-        .where(eq(models.id, model.id));
-      let buildProgress = Math.round((iteration / rounds) * 100);
-      const { runId: builderRunId } = await agent({
-        role: "builder",
-        onActivity: async (tool) => {
-          const phase = tool.includes("view_render")
-            ? "Inspecting rendered asset"
-            : tool.includes("execute_blender_code")
-              ? "Building geometry, exporting and rendering"
-              : tool.includes("get_scene_info")
-                ? "Inspecting Blender workspace"
-                : null;
-          if (!phase) return;
-          const fraction = tool.includes("view_render")
-            ? 0.45
-            : tool.includes("execute_blender_code")
-              ? 0.15
-              : 0.05;
+    let metrics: any;
+    let images: string[] = [];
+    const definition = modelReviewPipeline(batch.judgeIterations);
+    const pipelineVersion = `${definition.id}:${definition.version}`;
+    if (job.checkpoint.pipeline && job.checkpoint.pipeline !== pipelineVersion)
+      throw new Error("Unsupported saved pipeline version");
+    if (!job.checkpoint.pipeline) await checkpoint("pipeline", pipelineVersion);
+    await runPipeline(
+      definition,
+      {
+        builder: async ({ iteration }) => {
+          const directory = `models/${model.id}/${attempt}/iteration-${iteration}`;
+          await mkdir(resolve(DATA, directory), { recursive: true });
+          const capabilityKey = `capability:${iteration}`;
+          const capability =
+            job.checkpoint[capabilityKey] || crypto.randomUUID();
+          if (!job.checkpoint[capabilityKey])
+            await checkpoint(capabilityKey, capability);
+          await mkdir(resolve(DATA, "capabilities"), { recursive: true });
+          await writeFile(
+            resolve(DATA, "capabilities", capability + ".json"),
+            JSON.stringify({ directory }),
+          );
           await db
             .update(models)
             .set({
-              phase,
-              progress: (buildProgress = Math.max(
-                buildProgress,
-                Math.round(((iteration + fraction) / rounds) * 100),
-              )),
+              status: "building",
+              phase: iteration
+                ? "Applying judge feedback"
+                : "Building geometry and materials",
+              iteration,
+              progress: Math.round((iteration / rounds) * 100),
+            })
+            .where(eq(models.id, model.id));
+          let buildProgress = Math.round((iteration / rounds) * 100);
+          const { runId: builderRunId } = await runRole({
+            role: "builder",
+            onActivity: async (tool) => {
+              const phase = tool.includes("view_render")
+                ? "Inspecting rendered asset"
+                : tool.includes("execute_blender_code")
+                  ? "Building geometry, exporting and rendering"
+                  : tool.includes("get_scene_info")
+                    ? "Inspecting Blender workspace"
+                    : null;
+              if (!phase) return;
+              const fraction = tool.includes("view_render")
+                ? 0.45
+                : tool.includes("execute_blender_code")
+                  ? 0.15
+                  : 0.05;
+              await db
+                .update(models)
+                .set({
+                  phase,
+                  progress: (buildProgress = Math.max(
+                    buildProgress,
+                    Math.round(((iteration + fraction) / rounds) * 100),
+                  )),
+                })
+                .where(eq(models.id, model.id));
+            },
+            projectId: model.projectId,
+            batchId: batch.id,
+            modelId: model.id,
+            iteration,
+            images: project.references,
+            input: await roleInput("builder", {
+              version: batch.designVersion,
+              design: batch.design,
+              name: model.name,
+              request: model.prompt,
+              capability,
+              directory: resolve(DATA, directory),
+              previous: previous || "None",
+              feedback: JSON.stringify(feedback || null, null, 2),
+            }),
+          });
+          try {
+            metrics = JSON.parse(
+              await readFile(resolve(DATA, directory, "metrics.json"), "utf8"),
+            );
+            const glb = await readFile(resolve(DATA, directory, "asset.glb"));
+            if (
+              glb.toString("ascii", 0, 4) !== "glTF" ||
+              glb.readUInt32LE(4) !== 2 ||
+              glb.readUInt32LE(8) !== glb.length
+            )
+              throw new Error("Invalid GLB export");
+            const manifest = JSON.parse(
+              glb.toString("utf8", 20, 20 + glb.readUInt32LE(12)),
+            );
+            if (!manifest.meshes?.length)
+              throw new Error("GLB contains no meshes");
+            images = ["front", "rear", "detail"].map(
+              (view) => `${directory}/${view}.png`,
+            );
+            for (const image of images) await readFile(resolve(DATA, image));
+            await readFile(resolve(DATA, directory, "source.blend"));
+            artifacts = {
+              glb: `${directory}/asset.glb`,
+              blend: `${directory}/source.blend`,
+              renders: images,
+              metrics,
+            };
+          } catch (error) {
+            const runId = job.checkpoint[`agent:builder:${iteration}`];
+            if (runId)
+              await db
+                .update(runs)
+                .set({
+                  status: "failed",
+                  error: "Artifact validation: " + String(error),
+                })
+                .where(eq(runs.id, runId));
+            throw error;
+          }
+          await assertJobActive();
+          artifacts = await archiveVersion(builderRunId, directory);
+          images = artifacts.renders as string[];
+          previous = resolve(DATA, String(artifacts.blend));
+          await db
+            .update(models)
+            .set({
+              artifacts,
+              phase: batch.judgeIterations
+                ? "Reviewing rendered views"
+                : "Export verified",
+              progress: Math.round(((iteration + 0.6) / rounds) * 100),
+              status: batch.judgeIterations ? "judging" : "building",
             })
             .where(eq(models.id, model.id));
         },
-        projectId: model.projectId,
-        batchId: batch.id,
-        modelId: model.id,
-        iteration,
-        images: project.references,
-        schema: buildResult,
-        input: await prompt("builder-input", {
-          version: batch.designVersion,
-          design: batch.design,
-          name: model.name,
-          request: model.prompt,
-          capability,
-          directory: resolve(DATA, directory),
-          previous: previous || "None",
-          feedback: JSON.stringify(feedback || null, null, 2),
-        }),
-      });
-      let metrics: any;
-      let images: string[];
-      try {
-        metrics = JSON.parse(
-          await readFile(resolve(DATA, directory, "metrics.json"), "utf8"),
-        );
-        const glb = await readFile(resolve(DATA, directory, "asset.glb"));
-        if (
-          glb.toString("ascii", 0, 4) !== "glTF" ||
-          glb.readUInt32LE(4) !== 2 ||
-          glb.readUInt32LE(8) !== glb.length
-        )
-          throw new Error("Invalid GLB export");
-        const manifest = JSON.parse(
-          glb.toString("utf8", 20, 20 + glb.readUInt32LE(12)),
-        );
-        if (!manifest.meshes?.length) throw new Error("GLB contains no meshes");
-        images = ["front", "rear", "detail"].map(
-          (view) => `${directory}/${view}.png`,
-        );
-        for (const image of images) await readFile(resolve(DATA, image));
-        await readFile(resolve(DATA, directory, "source.blend"));
-        artifacts = {
-          glb: `${directory}/asset.glb`,
-          blend: `${directory}/source.blend`,
-          renders: images,
-          metrics,
-        };
-      } catch (error) {
-        const runId = job.checkpoint[`agent:builder:${iteration}`];
-        if (runId)
+        judge: async ({ iteration }) => {
+          const { result } = await runRole({
+            role: "judge",
+            projectId: model.projectId,
+            batchId: batch.id,
+            modelId: model.id,
+            iteration,
+            images,
+            input: await roleInput("judge", {
+              design: batch.design,
+              request: model.prompt,
+              metrics: JSON.stringify(metrics),
+              feedback: JSON.stringify(feedback),
+            }),
+          });
+          await assertJobActive();
+          feedback = result;
+          passed = result.passed;
           await db
-            .update(runs)
+            .update(models)
             .set({
-              status: "failed",
-              error: "Artifact validation: " + String(error),
+              feedback: result,
+              verdict: passed ? "approved" : "changes_requested",
             })
-            .where(eq(runs.id, runId));
-        throw error;
-      }
-      await assertJobActive();
-      artifacts = await archiveVersion(builderRunId, directory);
-      images = artifacts.renders as string[];
-      previous = resolve(DATA, String(artifacts.blend));
-      await db
-        .update(models)
-        .set({
-          artifacts,
-          phase: batch.judgeIterations
-            ? "Reviewing rendered views"
-            : "Export verified",
-          progress: Math.round(((iteration + 0.6) / rounds) * 100),
-          status: batch.judgeIterations ? "judging" : "building",
-        })
-        .where(eq(models.id, model.id));
-      if (batch.judgeIterations) {
-        const { result } = await agent<{
-          passed: boolean;
-          score: number;
-          summary: string;
-          improvements: unknown[];
-        }>({
-          role: "judge",
-          projectId: model.projectId,
-          batchId: batch.id,
-          modelId: model.id,
-          iteration,
-          images,
-          schema: judgeResult,
-          input: await prompt("judge-input", {
-            design: batch.design,
-            request: model.prompt,
-            metrics: JSON.stringify(metrics),
-            feedback: JSON.stringify(feedback),
-          }),
-        });
-        await assertJobActive();
-        feedback = result;
-        passed = result.passed;
-        await db
-          .update(models)
-          .set({
-            feedback: result,
-            verdict: passed ? "approved" : "changes_requested",
-          })
-          .where(eq(models.id, model.id));
-        if (nextStage(passed, iteration + 1, rounds) !== "revise") break;
-      }
-    }
+            .where(eq(models.id, model.id));
+          return { passed };
+        },
+      },
+      assertJobActive,
+    );
     await assertJobActive();
     const verdict = !batch.judgeIterations
       ? "unreviewed"

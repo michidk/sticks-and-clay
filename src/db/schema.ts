@@ -77,6 +77,8 @@ export const runs = pgTable(
     batchId: text(),
     modelId: text(),
     role: text().notNull(),
+    engine: text().$type<"eve" | "tanstack">().default("eve").notNull(),
+    stepId: text("step_id"),
     iteration: integer().default(0).notNull(),
     status: text().default("running").notNull(),
     sessionId: text(),

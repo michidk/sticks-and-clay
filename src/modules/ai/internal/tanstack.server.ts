@@ -1,16 +1,21 @@
+import { roles, type RunInput } from "../roles";
+import {
+  recordRun,
+  pricingSnapshot,
+  validateCheckpoint,
+} from "./accounting.server";
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { parse } from "smol-toml";
-import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { db } from "../db/client";
-import { runs } from "../db/schema";
+import { db } from "../../../db/client";
+import { runs } from "../../../db/schema";
 import { chat, type TokenUsage } from "@tanstack/ai";
 import { createOpenaiChat } from "@tanstack/ai-openai";
-import { checkpoint, jobContext } from "./checkpoint.server";
-import { briefResult, designResult, price } from "./contracts";
-import { imagePart } from "./storage.server";
+import { checkpoint, jobContext } from "../../../lib/checkpoint.server";
+import { price } from "../../../lib/contracts";
+import { imagePart } from "../../../lib/storage.server";
 async function provider() {
   let auth: any = {},
     config: any = {};
@@ -41,15 +46,16 @@ async function provider() {
   if (!key) throw new Error("No configured API credential available");
   return { key, url };
 }
-export async function draftBrief(args: {
-  projectId: string;
-  role: "project-brief" | "model-brief" | "designer";
-  input: string;
-  images?: string[];
-}) {
-  const priorId = jobContext.getStore()?.checkpoint["direct:" + args.role];
+export async function draftBrief(args: RunInput) {
+  const checkpointKey = args.stepId
+    ? `step:${args.stepId}`
+    : "direct:" + args.role;
+  const priorId = jobContext.getStore()?.checkpoint[checkpointKey];
   if (priorId) {
     const [prior] = await db.select().from(runs).where(eq(runs.id, priorId));
+    if (!prior)
+      throw new Error("Saved AI run is missing; cannot recover safely");
+    validateCheckpoint(prior, args, "tanstack");
     if (prior?.status === "done")
       return { ...(prior.result as any), runId: prior.id };
     if (prior?.status === "running")
@@ -63,37 +69,17 @@ export async function draftBrief(args: {
         .where(eq(runs.id, priorId));
   }
   const id = crypto.randomUUID(),
-    system = await readFile(`prompts/${args.role}.md`, "utf8");
+    system = await readFile(`prompts/${roles[args.role].prompt}.md`, "utf8");
   const model = process.env.STUDIO_MODEL || "gpt-6-sol";
-  const rates = {
-    input: Number(process.env.INPUT_USD_PER_MILLION || 2),
-    cached: Number(process.env.CACHED_USD_PER_MILLION || 0.2),
-    output: Number(process.env.OUTPUT_USD_PER_MILLION || 10),
-    source:
-      process.env.PRICE_SOURCE ||
-      "Operator assumption; verify configured model rates",
-  };
-  if (
-    [rates.input, rates.output, rates.cached].some(
-      (n) => !Number.isFinite(n) || n < 0,
-    )
-  )
-    throw new Error("Invalid token pricing rates");
-  await db.insert(runs).values({
+  const rates = pricingSnapshot();
+  await recordRun(args, {
     id,
-    projectId: args.projectId,
-    role: args.role,
+    engine: "tanstack",
     model,
     systemPrompt: system,
-    promptVersion: createHash("sha256")
-      .update(system)
-      .digest("hex")
-      .slice(0, 8),
-    input: args.input,
-    images: args.images || [],
     rates,
   });
-  if (jobContext.getStore()) await checkpoint("direct:" + args.role, id);
+  if (jobContext.getStore()) await checkpoint(checkpointKey, id);
   let output = "",
     usage: TokenUsage | undefined;
   const controller = new AbortController();
@@ -139,7 +125,7 @@ export async function draftBrief(args: {
           ],
         },
       ],
-      outputSchema: args.role === "designer" ? designResult : briefResult,
+      outputSchema: roles[args.role].schema,
       stream: false,
       abortController: controller,
       middleware: [
