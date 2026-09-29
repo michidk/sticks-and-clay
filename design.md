@@ -51,7 +51,7 @@ Status badges pair text with color:
 - **Project list:** eyebrow, two-line headline, supporting copy, and a prominent New project action; a three-column card grid; a dashed creation card; a short three-step workflow explanation.
 - **Project cards:** 205px cover, status at the top left, name and arrow, two-line description, then a divided metadata row for date and estimated usage. When no reference exists, use the existing soft sage gradient, thin Layers icon, and STYLE STARTS HERE caption.
 - **Project workspace:** back link, project identity and generation action, four statistics, then underlined tabs for Models, Design reference, and Activity & cost.
-- **Models:** 240px cover images, readable status, asset name, brief, triangle/cost metadata, and separate GLB/source downloads. Collection renders sit in a two-column panel above model cards when available.
+- **Models:** 240px cover images with an opt-in inline 3D quick preview, readable status, asset name, brief, triangle/cost metadata, and separate GLB/source downloads. Only one card preview is active at a time; collection renders sit in a two-column panel above model cards when available.
 - **Design reference:** readable Markdown with GFM tables and revision comparisons; a main document column with a 280px reference sidebar. The editable source is monospace. Keep save, approval, and revision restoration distinct.
 - **Activity:** expandable run rows with role icons, status, usage, and cost; details reveal transcripts and technical information. Preserve progressive disclosure.
 - **Forms:** shadcn Label, Input, Textarea, and Button with stacked labels, ivory surfaces, generous padding, and dashed upload areas. Use Alert for errors.

@@ -798,8 +798,26 @@ pre {
   padding: 0;
   height: 240px;
 }
-.model-cover:disabled {
+.model-cover-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border-radius: 0;
+}
+.model-cover-image:disabled {
   opacity: 1;
+}
+.model-cover > .badge {
+  z-index: 2;
+  pointer-events: none;
+}
+.model-cover .model-card-viewer {
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 .orbit-label {
   position: absolute;

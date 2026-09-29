@@ -69,6 +69,7 @@ function ProjectPage() {
     [generate, setGenerate] = useState(false),
     [busy, setBusy] = useState(false),
     [selected, setSelected] = useState<any>(),
+    [previewModelId, setPreviewModelId] = useState<string | null>(null),
     [view, setView] = useState("3d"),
     [selectedVersion, setSelectedVersion] = useState<string | null>(null),
     [modelBrief, setModelBrief] = useState(""),
@@ -105,6 +106,7 @@ function ProjectPage() {
     setDesign("");
     setEditing(false);
     setSelected(undefined);
+    setPreviewModelId(null);
     setModelBrief("");
     setModelCount(1);
     let active = true;
@@ -630,30 +632,49 @@ function ProjectPage() {
                     );
                   return (
                     <Card key={m.id} className="model-card">
-                      <Button
-                        variant="ghost"
-                        size="bare"
-                        className="model-cover"
-                        disabled={!m.artifacts}
-                        onClick={() => {
-                          setSelected(m);
-                          setView("3d");
-                        }}
-                      >
-                        {m.artifacts ? (
-                          <AssetImage
-                            src={fileUrl(m.artifacts.renders[0])}
-                            alt={m.name}
-                          />
+                      <div className="model-cover">
+                        {previewModelId === m.id && m.artifacts ? (
+                          <Suspense fallback={<ViewerSkeleton />}>
+                            <Viewer
+                              src={fileUrl(m.artifacts.glb)}
+                              alt={`${m.name} quick preview`}
+                              className="model-card-viewer"
+                              height="100%"
+                              showUi={false}
+                              autoRotate
+                            />
+                          </Suspense>
                         ) : (
-                          <div className="abstract">
-                            <Boxes size={56} strokeWidth={1} />
-                            {!["failed", "done", "cancelled"].includes(
-                              m.status,
-                            ) && (
-                              <Skeleton className="absolute inset-0 rounded-none" />
+                          <Button
+                            variant="ghost"
+                            size="bare"
+                            className="model-cover-image"
+                            disabled={!m.artifacts}
+                            onClick={() => {
+                              setSelected(m);
+                              setSelectedVersion(null);
+                              setView("3d");
+                            }}
+                          >
+                            {m.artifacts ? (
+                              <AssetImage
+                                src={fileUrl(m.artifacts.renders[0])}
+                                alt={m.name}
+                              />
+                            ) : (
+                              <div className="abstract">
+                                <Boxes size={56} strokeWidth={1} />
+                                {!["failed", "done", "cancelled"].includes(
+                                  m.status,
+                                ) && (
+                                  <Skeleton className="absolute inset-0 rounded-none" />
+                                )}
+                              </div>
                             )}
-                          </div>
+                            {m.artifacts && (
+                              <span className="orbit-label">Explore in 3D ↗</span>
+                            )}
+                          </Button>
                         )}
                         <Badge
                           variant="secondary"
@@ -670,13 +691,19 @@ function ProjectPage() {
                               ? "Approved"
                               : m.status}
                         </Badge>
-                        {m.artifacts && (
-                          <span className="orbit-label">Explore in 3D ↗</span>
-                        )}
-                      </Button>
+                      </div>
                       <div className="project-body">
                         <h3>{m.name}</h3>
                         <p>{m.prompt}</p>
+                        {m.artifacts && (
+                          <Button
+                            variant="outline"
+                            onClick={() => setPreviewModelId(previewModelId === m.id ? null : m.id)}
+                            aria-pressed={previewModelId === m.id}
+                          >
+                            {previewModelId === m.id ? "Show render" : "Quick 3D preview"}
+                          </Button>
+                        )}
                         {!["done", "failed", "cancelled"].includes(
                           m.status,
                         ) && <Progress value={m.progress} label={m.phase} />}
