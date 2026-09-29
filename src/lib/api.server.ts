@@ -10,6 +10,7 @@ import {
   events,
   jobs,
 } from "../db/schema";
+import { projectPhotographs } from "./project-photography.server";
 import { cancelJob } from "./queue.server";
 import { runRole, roleInput, agentSettings } from "../modules/ai/index.server";
 // Preserve the field-fill HTTP response shape while sharing the execution boundary.
@@ -70,7 +71,9 @@ export async function api(request: Request) {
           db
             .select()
             .from(jobs)
-            .where(inArray(jobs.kind, ["model", "plan", "demo"]))
+            .where(
+              inArray(jobs.kind, ["model", "plan", "demo", "project-photo"]),
+            )
             .orderBy(desc(jobs.createdAt)),
           db.select().from(models),
           db.select().from(batches),
@@ -82,7 +85,11 @@ export async function api(request: Request) {
               batch = collections.find(
                 (b) => b.id === (model?.batchId || j.targetId),
               );
-            const project = workspaces.find((p) => p.id === batch?.projectId);
+            const project = workspaces.find(
+              (p) =>
+                p.id ===
+                (j.kind === "project-photo" ? j.targetId : batch?.projectId),
+            );
             return {
               id: j.id,
               kind: j.kind,
@@ -93,11 +100,27 @@ export async function api(request: Request) {
               error: j.error,
               name:
                 model?.name ||
-                (j.kind === "plan" ? "Plan collection" : "Render collection"),
+                (j.kind === "project-photo"
+                  ? "Photograph project"
+                  : j.kind === "plan"
+                    ? "Plan collection"
+                    : "Render collection"),
               projectId: project?.id,
               projectName: project?.name,
-              phase: model?.phase,
-              progress: model?.progress,
+              phase:
+                model?.phase ||
+                (j.kind === "project-photo"
+                  ? "Photographing project collection"
+                  : undefined),
+              progress:
+                model?.progress ??
+                (j.kind === "project-photo"
+                  ? j.status === "done"
+                    ? 100
+                    : j.checkpoint["agent:photographer:0"]
+                      ? 60
+                      : 5
+                  : undefined),
             };
           }),
         });
@@ -109,7 +132,7 @@ export async function api(request: Request) {
           .where(
             and(
               eq(jobs.status, "queued"),
-              inArray(jobs.kind, ["model", "plan", "demo"]),
+              inArray(jobs.kind, ["model", "plan", "demo", "project-photo"]),
             ),
           );
         for (const j of pending) {
@@ -119,6 +142,25 @@ export async function api(request: Request) {
             .where(and(eq(jobs.id, j.id), eq(jobs.status, "queued")));
           if (stillQueued) await cancelJob(j.id, true);
         }
+        return reply({ ok: true });
+      }
+      if (request.method === "POST" && path[2] === "resume") {
+        const [saved] = await db
+          .select()
+          .from(jobs)
+          .where(eq(jobs.id, uuid.parse(path[1])));
+        if (
+          !saved ||
+          saved.kind !== "project-photo" ||
+          saved.status !== "failed"
+        )
+          throw new Error(
+            "Only failed project photography can be resumed here",
+          );
+        await db
+          .update(jobs)
+          .set({ status: "queued", error: null, finishedAt: null })
+          .where(and(eq(jobs.id, saved.id), eq(jobs.status, "failed")));
         return reply({ ok: true });
       }
       if (request.method === "POST" && path[2] === "cancel")
@@ -170,9 +212,12 @@ export async function api(request: Request) {
           cost: runs.estimatedCost,
         })
         .from(runs);
+      const photos = await projectPhotographs();
       return reply({
         projects: list.map((p) => ({
           ...p,
+          thumbnail: photos.find((photo) => photo.projectId === p.id)
+            ?.thumbnail,
           usage: usage
             .filter((r) => r.projectId === p.id)
             .reduce(
@@ -370,6 +415,28 @@ export async function api(request: Request) {
         .from(projects)
         .where(eq(projects.id, id));
       if (!project) return reply({ error: "Project not found" }, 404);
+      if (request.method === "POST" && path[2] === "photograph") {
+        const existing = await db
+          .select()
+          .from(jobs)
+          .where(
+            and(
+              eq(jobs.kind, "project-photo"),
+              eq(jobs.targetId, id),
+              inArray(jobs.status, ["queued", "running"]),
+            ),
+          );
+        if (existing.length) return reply({ id: existing[0].id });
+        const resumed = await db.transaction((tx) =>
+          resumeJob(tx, ["project-photo"], id),
+        );
+        if (resumed) return reply({ id: resumed.id });
+        const jobId = crypto.randomUUID();
+        await db
+          .insert(jobs)
+          .values({ id: jobId, kind: "project-photo", targetId: id });
+        return reply({ id: jobId }, 201);
+      }
       if (request.method === "GET") {
         const [assets, history, versions, requests] = await Promise.all([
           db
@@ -395,6 +462,7 @@ export async function api(request: Request) {
         ]);
         return reply({
           project,
+          photographs: await projectPhotographs(id),
           models: assets,
           versions: history
             .filter((r) => r.role === "builder" && r.modelId)

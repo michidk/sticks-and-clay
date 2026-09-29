@@ -155,6 +155,23 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                     {r.error}
                   </Alert>
                 )}
+                {(
+                  r.result?.projectPhotography?.renders ||
+                  r.result?.photography?.renders
+                )?.map((key: string) => (
+                  <a
+                    key={key}
+                    href={fileUrl(key)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <AssetImage
+                      src={fileUrl(key)}
+                      alt="Photographer render"
+                      style={{ maxHeight: 280, objectFit: "contain" }}
+                    />
+                  </a>
+                ))}
                 <Accordion type="single" collapsible>
                   <AccordionItem value="content">
                     <AccordionTrigger>

@@ -8,7 +8,7 @@ test("role registry selects one-shot or resumable execution, including legacy de
       engine: "tanstack",
       resumable: false,
     });
-  for (const role of ["builder", "judge", "planner"] as const)
+  for (const role of ["builder", "photographer", "judge", "planner"] as const)
     expect(executionPolicy(role)).toEqual({ engine: "eve", resumable: true });
   expect(executionPolicy("designer", true).engine).toBe("eve");
   expect(roles.judge.schema.safeParse({ passed: true }).success).toBe(false);
@@ -84,4 +84,50 @@ test("quality pipeline gates surface work, permits early geometry pass, and reta
     });
     expect(seen).toEqual([...expected]);
   }
+});
+
+test("photography precedes every judge and completes unreviewed builds; failures stop downstream work", async () => {
+  const { photographyPipeline } = await import("./index");
+  for (const rounds of [0, 2]) {
+    const seen: string[] = [];
+    await runPipeline(photographyPipeline(rounds), {
+      builder: async (n) => {
+        seen.push(n.id);
+      },
+      photographer: async (n) => {
+        seen.push(n.id);
+      },
+      judge: async (n) => {
+        seen.push(n.id);
+        return { passed: true };
+      },
+    });
+    expect(seen).toEqual(
+      rounds === 0
+        ? ["builder:0", "photographer:0"]
+        : [
+            "builder:0",
+            "photographer:0",
+            "judge:0",
+            "builder:2",
+            "photographer:2",
+            "judge:2",
+          ],
+    );
+  }
+  const seen: string[] = [];
+  await expect(
+    runPipeline(photographyPipeline(2), {
+      builder: async (n) => {
+        seen.push(n.id);
+      },
+      photographer: async () => {
+        throw new Error("render failed");
+      },
+      judge: async (n) => {
+        seen.push(n.id);
+      },
+    }),
+  ).rejects.toThrow("render failed");
+  expect(seen).toEqual(["builder:0"]);
 });

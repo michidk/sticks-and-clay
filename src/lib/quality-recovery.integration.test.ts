@@ -11,7 +11,12 @@ integration(
   async () => {
     const id = crypto.randomUUID(),
       run = crypto.randomUUID();
-    const checkpoint = { pipeline: "model-quality:2", "agent:builder:0": run };
+    const checkpoint = {
+      pipeline: "model-quality:3",
+      "agent:builder:0": run,
+      "agent:photographer:0": crypto.randomUUID(),
+      "capability:photographer:0": crypto.randomUUID(),
+    };
     // Keep the queue fixture invisible to a concurrently running worker.
     await db.transaction(async (tx) => {
       await tx.insert(jobs).values({

@@ -50,7 +50,8 @@ function QueuePage() {
         <div>
           <h1>Generation queue</h1>
           <p className="lede">
-            Model builders, reviews, planning, and collection renders.
+            Model builders, photography, reviews, planning, and collection
+            renders.
           </p>
         </div>
         <Button
@@ -109,13 +110,22 @@ function QueuePage() {
                     {j.kind} · {new Date(j.createdAt).toLocaleString()}
                   </p>
                   {["running", "queued"].includes(j.status) &&
-                    j.kind === "model" && (
+                    ["model", "project-photo"].includes(j.kind) && (
                       <Progress
                         value={j.progress || 0}
                         label={j.phase || j.status}
                       />
                     )}
                   {j.error && <p className="muted">{j.error}</p>}
+                  {j.kind === "project-photo" && j.status === "failed" && (
+                    <Button
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => cancel("queue/" + j.id + "/resume")}
+                    >
+                      Resume photography
+                    </Button>
+                  )}
                   {["queued", "running", "cancelling"].includes(j.status) && (
                     <Button
                       variant="outline"

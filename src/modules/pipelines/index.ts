@@ -119,3 +119,29 @@ export function qualityPipeline(rounds: number): Pipeline<"builder" | "judge"> {
   }
   return { id: "model-quality", version: 2, nodes };
 }
+
+/** v3 photographs each exact export before review, including unreviewed builds. */
+export function photographyPipeline(
+  rounds: number,
+): Pipeline<"builder" | "photographer" | "judge"> {
+  const base = qualityPipeline(rounds);
+  return {
+    id: "model-quality",
+    version: 3,
+    nodes: base.nodes.flatMap(
+      (node): PipelineNode<"builder" | "photographer" | "judge">[] =>
+        node.task !== "builder"
+          ? [node]
+          : [
+              { ...node, next: `photographer:${node.iteration}` },
+              {
+                id: `photographer:${node.iteration}`,
+                task: "photographer",
+                iteration: node.iteration,
+                stage: node.stage,
+                next: node.next,
+              },
+            ],
+    ),
+  };
+}

@@ -178,10 +178,11 @@ function ProjectsPage() {
                 }
               >
                 <div className="project-cover">
-                  {p.references[0] ? (
+                  {p.thumbnail || p.references[0] ? (
                     <AssetImage
-                      src={fileUrl(p.references[0])}
-                      alt={`${p.name} reference`}
+                      src={fileUrl(p.thumbnail || p.references[0])}
+                      alt={`${p.name} ${p.thumbnail ? "asset collection" : "reference"}`}
+                      style={p.thumbnail ? { objectFit: "contain" } : undefined}
                     />
                   ) : (
                     <div className="abstract">

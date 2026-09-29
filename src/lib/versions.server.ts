@@ -13,7 +13,11 @@ import { db } from "../db/client";
 import { runs } from "../db/schema";
 import { DATA, publishFiles } from "./storage.server";
 
-export async function archiveVersion(runId: string, directory: string) {
+export async function archiveVersion(
+  runId: string,
+  directory: string,
+  includeRenders = true,
+) {
   const [run] = await db.select().from(runs).where(eq(runs.id, runId));
   if (!run) throw new Error("Builder run not found");
   const result = run.result as Record<string, any>;
@@ -26,9 +30,7 @@ export async function archiveVersion(runId: string, directory: string) {
     for (const file of [
       "asset.glb",
       "source.blend",
-      "front.png",
-      "rear.png",
-      "detail.png",
+      ...(includeRenders ? ["front.png", "rear.png", "detail.png"] : []),
       "metrics.json",
     ]) {
       await copyFile(resolve(DATA, directory, file), resolve(temporary, file));
@@ -98,7 +100,9 @@ export async function archiveVersion(runId: string, directory: string) {
     ),
     glb: `${destination}/asset.glb`,
     blend: `${destination}/source.blend`,
-    renders: ["front", "rear", "detail"].map((v) => `${destination}/${v}.png`),
+    renders: includeRenders
+      ? ["front", "rear", "detail"].map((v) => `${destination}/${v}.png`)
+      : [],
     metrics: JSON.parse(
       await readFile(resolve(DATA, destination, "metrics.json"), "utf8"),
     ),
@@ -116,4 +120,89 @@ export async function archiveVersion(runId: string, directory: string) {
     .set({ result: { ...result, artifacts } })
     .where(eq(runs.id, runId));
   return artifacts;
+}
+
+/** Publish immutable photographs and attach them to the exact builder version. */
+export async function archivePhotography(
+  runId: string,
+  builderRunId: string,
+  directory: string,
+  artifacts: Record<string, any>,
+) {
+  const { createHash } = await import("node:crypto");
+  const [run] = await db.select().from(runs).where(eq(runs.id, runId));
+  if (!run) throw new Error("Photographer run not found");
+  const saved = (run.result as any)?.photography;
+  let photography = saved;
+  if (!photography) {
+    const receipt = JSON.parse(
+      await readFile(resolve(DATA, directory, "photography.json"), "utf8"),
+    );
+    const hash = createHash("sha256")
+      .update(await readFile(resolve(DATA, artifacts.glb)))
+      .digest("hex");
+    if (receipt.glbSha256 !== hash)
+      throw new Error("Photographs do not match the exported GLB");
+    const destination = `photographs/${runId}`;
+    const temporary = resolve(
+      DATA,
+      `photographs/.${runId}-${crypto.randomUUID()}`,
+    );
+    await mkdir(temporary, { recursive: true });
+    try {
+      for (const view of ["front", "rear", "detail"]) {
+        const png = await readFile(resolve(DATA, directory, `${view}.png`));
+        if (
+          png.length < 24 ||
+          png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||
+          png.readUInt32BE(16) < 512 ||
+          png.readUInt32BE(20) < 512
+        )
+          throw new Error(`Missing or invalid photograph: ${view}`);
+        const digest = createHash("sha256").update(png).digest("hex");
+        if (receipt.images?.[view] !== digest)
+          throw new Error(`Stale photograph: ${view}`);
+        await writeFile(resolve(temporary, `${view}.png`), png);
+      }
+      await writeFile(
+        resolve(temporary, "photography.json"),
+        JSON.stringify(receipt),
+      );
+      await rename(temporary, resolve(DATA, destination)).catch((error) => {
+        if (!["EEXIST", "ENOTEMPTY"].includes(error.code)) throw error;
+      });
+    } finally {
+      await rm(temporary, { recursive: true, force: true });
+    }
+    photography = {
+      runId,
+      builderRunId,
+      glb: artifacts.glb,
+      glbSha256: hash,
+      renders: ["front", "rear", "detail"].map(
+        (v) => `${destination}/${v}.png`,
+      ),
+      manifest: `${destination}/photography.json`,
+    };
+    await publishFiles([...photography.renders, photography.manifest]);
+    await db
+      .update(runs)
+      .set({ result: { ...(run.result as object), photography } })
+      .where(eq(runs.id, runId));
+  }
+  if (
+    photography.builderRunId !== builderRunId ||
+    photography.glb !== artifacts.glb
+  )
+    throw new Error("Photography belongs to a different build");
+  const result = { ...artifacts, renders: photography.renders, photography };
+  const [builder] = await db
+    .select()
+    .from(runs)
+    .where(eq(runs.id, builderRunId));
+  await db
+    .update(runs)
+    .set({ result: { ...(builder.result as object), artifacts: result } })
+    .where(eq(runs.id, builderRunId));
+  return result;
 }

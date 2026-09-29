@@ -4,13 +4,15 @@ import { resolve } from "node:path";
 import { db } from "../db/client";
 import { projects, revisions, batches, models, jobs, runs } from "../db/schema";
 import { assertJobActive } from "./queue.server";
-import { archiveVersion } from "./versions.server";
+import { archiveVersion, archivePhotography } from "./versions.server";
 import { runRole, roleInput, runImageRole } from "../modules/ai/index.server";
 import {
   runPipeline,
   modelReviewPipeline,
   qualityPipeline,
+  photographyPipeline,
 } from "../modules/pipelines";
+import { photographProject } from "./project-photography.server";
 import { renderCollection } from "./collection.server";
 import { prompt } from "./prompts.server";
 import { DATA } from "./storage.server";
@@ -24,6 +26,11 @@ export async function executeJob(kind: string, targetId: string) {
   const job = jobContext.getStore();
   if (!job) throw new Error("Missing durable job context");
   if (job.checkpoint.applied === "yes") return;
+  if (kind === "project-photo") {
+    await photographProject(targetId);
+    await checkpoint("applied", "yes");
+    return;
+  }
   if (kind === "demo") {
     await renderCollection(targetId);
     await checkpoint("applied", "yes");
@@ -159,7 +166,11 @@ export async function executeJob(kind: string, targetId: string) {
     let images: string[] = [];
     const definition = legacy
       ? modelReviewPipeline(batch.judgeIterations)
-      : qualityPipeline(batch.judgeIterations);
+      : job.checkpoint.pipeline === "model-quality:2"
+        ? qualityPipeline(batch.judgeIterations)
+        : photographyPipeline(batch.judgeIterations);
+    const photography = definition.version === 3;
+    let currentBuilderRunId = "";
     const pipelineVersion = `${definition.id}:${definition.version}`;
     if (job.checkpoint.pipeline && job.checkpoint.pipeline !== pipelineVersion)
       throw new Error("Unsupported saved pipeline version");
@@ -293,6 +304,7 @@ export async function executeJob(kind: string, targetId: string) {
                 : "No visual target (legacy attempt)",
             }),
           });
+          currentBuilderRunId = builderRunId;
           try {
             metrics = JSON.parse(
               await readFile(resolve(DATA, directory, "metrics.json"), "utf8"),
@@ -334,7 +346,7 @@ export async function executeJob(kind: string, targetId: string) {
           }
           await assertJobActive();
           artifacts = {
-            ...(await archiveVersion(builderRunId, directory)),
+            ...(await archiveVersion(builderRunId, directory, !photography)),
             visualTarget: target,
             stage: stage || "complete",
           };
@@ -348,6 +360,7 @@ export async function executeJob(kind: string, targetId: string) {
             .where(eq(runs.id, builderRunId));
           images = artifacts.renders as string[];
           previous = resolve(DATA, String(artifacts.blend));
+          if (photography) return;
           await db
             .update(models)
             .set({
@@ -356,6 +369,79 @@ export async function executeJob(kind: string, targetId: string) {
                 ? "Reviewing rendered views"
                 : "Export verified",
               progress: modelProgress(iteration, 0.6),
+              status: batch.judgeIterations ? "judging" : "building",
+            })
+            .where(eq(models.id, model.id));
+        },
+        photographer: async ({ iteration, stage }) => {
+          const directory = `models/${model.id}/${attempt}/photography-${iteration}`;
+          const capabilityKey = `capability:photographer:${iteration}`;
+          const capability =
+            job.checkpoint[capabilityKey] || crypto.randomUUID();
+          if (!job.checkpoint[capabilityKey])
+            await checkpoint(capabilityKey, capability);
+          await mkdir(resolve(DATA, directory), { recursive: true });
+          await writeFile(
+            resolve(DATA, "capabilities", capability + ".json"),
+            JSON.stringify({
+              directory,
+              role: "photographer",
+              glb: artifacts.glb,
+            }),
+          );
+          await db
+            .update(models)
+            .set({
+              status: "building",
+              phase: "Photographing exported model",
+              progress: modelProgress(iteration, 0.55),
+            })
+            .where(eq(models.id, model.id));
+          const { runId } = await runRole({
+            role: "photographer",
+            projectId: model.projectId,
+            batchId: batch.id,
+            modelId: model.id,
+            iteration,
+            images: target ? [target] : [],
+            input: await roleInput("photographer", {
+              name: model.name,
+              request: model.prompt,
+              design: batch.design,
+              stage: stage || "complete",
+              capability,
+              glb: resolve(DATA, String(artifacts.glb)),
+              directory: resolve(DATA, directory),
+              metrics: JSON.stringify(metrics),
+            }),
+          });
+          await assertJobActive();
+          try {
+            artifacts = await archivePhotography(
+              runId,
+              currentBuilderRunId,
+              directory,
+              artifacts,
+            );
+          } catch (error) {
+            await db
+              .update(runs)
+              .set({
+                status: "failed",
+                error: "Artifact validation: Photography: " + String(error),
+              })
+              .where(eq(runs.id, runId));
+            throw error;
+          }
+          images = artifacts.renders as string[];
+          await db
+            .update(models)
+            .set({
+              artifacts,
+              phase: batch.judgeIterations
+                ? "Reviewing photographed views"
+                : "Photography complete",
+              progress: modelProgress(iteration, 0.75),
               status: batch.judgeIterations ? "judging" : "building",
             })
             .where(eq(models.id, model.id));
@@ -470,6 +556,20 @@ async function settleBatch(id: string) {
       })
       .where(and(eq(batches.id, id), eq(batches.status, "building")))
       .returning();
+    if (claimed) {
+      const available = await tx
+        .select()
+        .from(models)
+        .where(eq(models.projectId, claimed.projectId));
+      if (available.some((m) => m.artifacts?.glb))
+        await tx
+          .insert(jobs)
+          .values({
+            id: crypto.randomUUID(),
+            kind: "project-photo",
+            targetId: claimed.projectId,
+          });
+    }
     if (claimed && hasFinalAsset)
       await tx
         .insert(jobs)

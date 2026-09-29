@@ -7,7 +7,7 @@ All authored agent instructions and input templates live here.
 - `designer.md`: uses TanStack AI to write the project's design reference.
 - `model-brief.md`: uses TanStack AI to draft the editable Model brief from the approved design and requested count.
 - `planner.md`: turns a submitted model brief into individual builder tasks.
-- `builder.md`, `judge.md`: build and visually review assets.
+- `builder.md`, `photographer.md`, `judge.md`: build, photograph the exported GLB, and visually review assets.
 - `*-input.md`: task-specific input templates, with `{{placeholders}}` populated by the app.
 - `resume.md`: continues a failed Eve turn in the same session.
 - `pipeline.md`: the reusable asset-pack pipeline reference.

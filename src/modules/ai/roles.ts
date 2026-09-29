@@ -31,6 +31,13 @@ export const roles = {
   designer: role("tanstack", "designer", designResult),
   planner: role("eve", "planner", planResult),
   builder: role("eve", "builder", buildResult, "gpt-6-astra", "medium"),
+  photographer: role(
+    "eve",
+    "photographer",
+    buildResult,
+    "gpt-6-astra",
+    "medium",
+  ),
   judge: role("eve", "judge", judgeResult, "gpt-6-astra", "medium"),
 } as const;
 export type Role = keyof typeof roles;
