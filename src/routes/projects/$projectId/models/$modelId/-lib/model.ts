@@ -1,3 +1,4 @@
+import type { PipelineRun } from "./pipeline";
 export type Review = {
   score: number;
   passed: boolean;
@@ -46,14 +47,14 @@ export type Workspace = {
   project: { id: string; name: string };
   models: Model[];
   versions: Version[];
-  runs: {
+  runs: (PipelineRun & {
     id: string;
     modelId?: string;
     estimatedCost: number | null;
     inputTokens: number;
     outputTokens: number;
     [key: string]: unknown;
-  }[];
+  })[];
 };
 export function versionLabel(version: Version) {
   const stage = version.artifacts?.stage;

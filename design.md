@@ -88,3 +88,11 @@ The header groups Projects, Queue and Agents as icon-and-text links, with a fore
 ## Reference image intake
 
 The project setup dialog uses a shared picture uploader inspired by Roastbook. A sage drop area offers file selection, drag-and-drop and scoped clipboard paste, with a separate **From URL** disclosure below it. Show the six-image count, supported formats and 8 MB limit before selection. Selected and saved images share a thumbnail grid with individually labelled remove buttons; use three columns on desktop and two on phones. Keep URL import errors inside the uploader, retain selections after errors, and disable competing intake/submission actions while importing. Do not intercept text paste in form fields. Use existing shadcn Button, Input, Collapsible and Alert components and the workshop's semantic colors.
+
+## Model pipeline graph
+
+The model page shows recorded generation stages as a left-to-right graph above the viewer. Visual target, build, photography and judge nodes come from actual model runs; revisions extend the path, and judge nodes show their score and outcome. Do not invent photography or judge stages for older or unreviewed builds. Running, failed, interrupted, changes requested and passed states include text and icons. The model's milestone progress and final outcome remain separate from judge approval. Selecting a node expands its result and feedback, with links to the exact archived build and activity history. On phones, scroll the graph horizontally inside its panel; the page itself must not overflow.
+
+## Project overview
+
+The project overview pairs its brief and primary generation action with a compact reference-image panel. A slim metrics row summarizes collection size, active work, items needing attention and estimated cost. Collection search and status filters operate on models and pending requests. Queued or planning batches occupy ordinary model cards, one per outstanding model; replace those placeholders as model rows are created. Keep failed-batch recovery available even if its model rows already exist. Placeholder cards show honest queue/planning states and must not link to nonexistent models. The collection grid, reference panel and filters adapt to phone widths.

@@ -31,9 +31,9 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingRegion } from "@/components/loading";
-import { Progress } from "@/components/progress";
 import { request, json, fileUrl, money } from "@/lib/client";
 import { History } from "../../-components/history";
+import { ModelPipeline } from "./-components/pipeline";
 import { ModelMedia } from "./-components/media";
 import { ReviewNotes } from "./-components/review";
 import {
@@ -135,7 +135,6 @@ function ModelPage() {
   const cost = runs.reduce((sum, run) => sum + (run.estimatedCost || 0), 0);
   const unpriced = runs.filter((run) => run.estimatedCost === null).length;
   const position = data.models.findIndex((item) => item.id === modelId);
-  const active = !["done", "failed", "cancelled"].includes(model.status);
   const statusClass =
     model.verdict === "limit_reached" ? "warning" : model.status;
   async function resume() {
@@ -259,7 +258,21 @@ function ModelPage() {
           </AlertDescription>
         </Alert>
       )}
-      <div className="model-detail-layout">
+      <ModelPipeline
+        key={model.id}
+        model={model}
+        runs={runs}
+        versions={versions}
+        onInspect={(version, view, section) => {
+          void updateSearch({ version, view, section });
+          document
+            .getElementById(
+              section === "activity" ? "model-detail-notes" : "model-preview",
+            )
+            ?.scrollIntoView({ block: "start" });
+        }}
+      />
+      <div id="model-preview" className="model-detail-layout">
         <section className="model-detail-stage" aria-label="Model preview">
           <Tabs
             value={search.view}
@@ -421,7 +434,6 @@ function ModelPage() {
               {unpriced ? ` · ${unpriced} request(s) awaiting cost` : ""}
             </small>
           </div>
-          {active && <Progress value={model.progress} label={model.phase} />}
           {model.error && (
             <Alert variant="destructive">
               <AlertDescription>{model.error}</AlertDescription>

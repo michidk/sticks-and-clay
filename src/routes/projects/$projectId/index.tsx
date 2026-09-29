@@ -20,7 +20,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   WorkspaceSkeleton,
   ViewerSkeleton,
@@ -45,6 +44,8 @@ import {
 } from "lucide-react";
 import { request, json, money, fileUrl } from "../../../lib/client";
 import { Progress } from "../../../components/progress";
+import { PendingModel } from "./-components/pending-model";
+import { pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
 const Viewer = lazy(() =>
   import("@/components/model-viewer").then((module) => ({
@@ -58,6 +59,8 @@ function ProjectPage() {
   const { projectId } = Route.useParams();
   const [data, setData] = useState<any>(),
     [tab, setTab] = useState("models"),
+    [filter, setFilter] = useState("all"),
+    [query, setQuery] = useState(""),
     [error, setError] = useState(""),
     [design, setDesign] = useState(""),
     [version, setVersion] = useState(-1),
@@ -99,6 +102,8 @@ function ProjectPage() {
     setDesign("");
     setEditing(false);
     setPreviewModelId(null);
+    setFilter("all");
+    setQuery("");
     setModelBrief("");
     setModelCount(1);
     let active = true;
@@ -188,78 +193,133 @@ function ProjectPage() {
   );
   const ready = p.status === "ready";
   const completed = data.models.filter((m: any) => m.status === "done").length;
+  const pending = pendingCollectionItems(data.batches, data.models);
+  const queuedCount = pending.filter((item) => item.placeholder).length;
+  const working =
+    data.models.filter(
+      (m: any) => !["done", "failed", "cancelled"].includes(m.status),
+    ).length + pending.filter((item) => item.batch.status !== "failed").length;
+  const needsReview =
+    data.models.filter(
+      (m: any) => m.verdict === "limit_reached" || m.status === "failed",
+    ).length + pending.filter((item) => item.batch.status === "failed").length;
+  const matches = (text: string) =>
+    text.toLowerCase().includes(query.toLowerCase().trim());
+  const visibleModels = data.models.filter(
+    (m: any) =>
+      matches(m.name + " " + m.prompt) &&
+      (filter === "all" ||
+        (filter === "working"
+          ? !["done", "failed", "cancelled"].includes(m.status)
+          : filter === "attention"
+            ? m.verdict === "limit_reached" || m.status === "failed"
+            : m.status === "done")),
+  );
+  const visiblePending = pending.filter(
+    (item) =>
+      matches(item.batch.prompt) &&
+      (filter === "all" ||
+        (filter === "working" && item.batch.status !== "failed") ||
+        (filter === "attention" && item.batch.status === "failed")),
+  );
+  async function resumeBatch(id: string) {
+    setBusy(true);
+    setError("");
+    try {
+      await request("batches/" + id + "/resume", json({}));
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <main>
+    <main className="project-overview">
       <Link to="/" className="back">
         <ArrowLeft size={15} />
         All projects
       </Link>
-      <section className="project-heading">
-        <div>
+      <section className="overview-hero">
+        <div className="overview-intro">
           <div className="eyebrow">
-            PROJECT WORKSPACE{" "}
+            YOUR CREATIVE WORKSHOP{" "}
             <Badge variant="secondary" className={"badge " + p.status}>
               {p.status}
             </Badge>
           </div>
           <h1>{p.name}</h1>
-          <p className="lede">
+          <p className="overview-description">
             {p.description ||
-              "A visual direction, ready to become a collection."}
+              "One visual direction. A collection of possibilities."}
           </p>
-        </div>
-        <Button
-          variant="default"
-          className=""
-          disabled={!ready}
-          onClick={() => setGenerate(true)}
-        >
-          <Plus size={18} />
-          Generate models
-        </Button>
-      </section>
-      <Card className="stats">
-        <div>
-          <span>COLLECTION</span>
-          <strong>
-            {completed}
-            <small> / {data.models.length} models</small>
-          </strong>
-        </div>
-        <div>
-          <span>DESIGN REFERENCE</span>
-          <strong>
-            {p.designVersion ? (
-              <>
-                <small>Version </small>
-                {p.designVersion}
-              </>
-            ) : (
-              "In progress"
-            )}
-          </strong>
-        </div>
-        <div>
-          <span>TOKEN USAGE</span>
-          <strong>
-            {total.tokens.toLocaleString()}
-            <small>
-              {rs.some((r: any) =>
-                ["estimated", "mixed"].includes(r.usageSource),
-              )
-                ? " · includes estimates"
-                : ""}
-            </small>
-          </strong>
-        </div>
-        <div>
-          <span>ESTIMATED MODEL COST</span>
-          <strong>{money(total.cost)}</strong>
-          {total.unpriced > 0 && (
-            <small>+ {total.unpriced} requests awaiting cost</small>
+          <div className="overview-actions">
+            <Button disabled={!ready} onClick={() => setGenerate(true)}>
+              <Plus size={17} /> Generate models
+            </Button>
+            <Button variant="outline" onClick={() => setTab("design")}>
+              <FileText size={16} />{" "}
+              {p.designVersion
+                ? `Design reference · v${p.designVersion}`
+                : "Design reference"}
+            </Button>
+          </div>
+          {!ready && (
+            <p className="overview-hint">
+              Approve the design reference to start generating models.
+            </p>
           )}
         </div>
-      </Card>
+        <button
+          className="overview-moodboard"
+          onClick={() => setTab("design")}
+          aria-label="Open project references"
+        >
+          {p.references.length ? (
+            <div className="overview-reference-images">
+              {p.references.slice(0, 3).map((f: string) => (
+                <AssetImage
+                  key={f}
+                  src={fileUrl(f)}
+                  alt="Project inspiration"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="overview-reference-empty">
+              <Boxes size={42} strokeWidth={1} />
+            </div>
+          )}
+          <span>
+            <span>THE VISUAL DIRECTION</span>
+            <strong>
+              {p.references.length} reference
+              {p.references.length === 1 ? "" : "s"} <span>↗</span>
+            </strong>
+          </span>
+        </button>
+      </section>
+      <div className="overview-metrics">
+        <div>
+          <strong>{data.models.length + queuedCount}</strong>
+          <span>in the collection</span>
+        </div>
+        <div>
+          <strong>{working}</strong>
+          <span>in progress</span>
+        </div>
+        <div>
+          <strong>{needsReview}</strong>
+          <span>need attention</span>
+        </div>
+        <button onClick={() => setTab("history")}>
+          <strong>{money(total.cost)}</strong>
+          <span>
+            estimated cost{total.unpriced ? ` · ${total.unpriced} pending` : ""}{" "}
+            ↗
+          </span>
+        </button>
+      </div>
       {error && (
         <Alert variant="destructive" role="alert" className="error">
           <AlertDescription>{error}</AlertDescription>
@@ -482,61 +542,43 @@ function ProjectPage() {
         {tab === "history" && <History runs={rs} models={data.models} />}
         {tab === "models" && (
           <>
-            <div className="section-title">
-              <h2>
-                Your collection{" "}
-                <Badge variant="secondary" className="count">
-                  {data.models.length}
-                </Badge>
-              </h2>
+            <div className="collection-heading">
+              <div>
+                <div className="eyebrow">MADE FOR THIS WORLD</div>
+                <h2>
+                  Your collection{" "}
+                  <span>{data.models.length + queuedCount}</span>
+                </h2>
+              </div>
+              <Input
+                aria-label="Search collection"
+                placeholder="Find a model…"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
             </div>
-            {data.batches
-              .filter((b: any) =>
-                ["queued", "planning", "failed"].includes(b.status),
-              )
-              .map((b: any) => (
-                <Card key={b.id} className="panel">
-                  <strong>
-                    {b.status === "failed"
-                      ? "Batch failed"
-                      : "Planning your collection"}
-                  </strong>
-                  <p>{b.prompt}</p>
-                  {b.status === "failed" && (
-                    <Button
-                      variant="outline"
-                      disabled={busy}
-                      onClick={async () => {
-                        setBusy(true);
-                        setError("");
-                        try {
-                          await request(
-                            "batches/" + b.id + "/resume",
-                            json({}),
-                          );
-                          await load();
-                        } catch (e) {
-                          setError((e as Error).message);
-                        } finally {
-                          setBusy(false);
-                        }
-                      }}
-                    >
-                      Resume batch
-                    </Button>
-                  )}
-                  {b.error ? (
-                    <Alert variant="destructive" className="error">
-                      <AlertDescription>{b.error}</AlertDescription>
-                    </Alert>
-                  ) : (
-                    <Progress
-                      value={b.status === "queued" ? 0 : 20}
-                      label={`${b.count} models · ${b.status}`}
-                    />
-                  )}
-                </Card>
+            <div
+              className="collection-filters"
+              role="group"
+              aria-label="Filter collection"
+            >
+              {[
+                ["all", "All models", data.models.length + queuedCount],
+                ["working", "In progress", working],
+                ["attention", "Needs attention", needsReview],
+                ["finished", "Completed", completed],
+              ].map(([id, label, count]) => (
+                <Button
+                  key={id}
+                  variant="ghost"
+                  aria-pressed={filter === id}
+                  onClick={() => setFilter(String(id))}
+                >
+                  {label}
+                  <span>{count}</span>
+                </Button>
               ))}
+            </div>
             {data.batches
               .filter((b: any) => b.preview)
               .map((b: any) => (
@@ -598,7 +640,17 @@ function ProjectPage() {
               </Empty>
             ) : (
               <div className="model-grid">
-                {data.models.map((m: any) => {
+                {visiblePending.map((item) => (
+                  <PendingModel
+                    key={item.key}
+                    batch={item.batch}
+                    index={item.index}
+                    placeholder={item.placeholder}
+                    busy={busy}
+                    onResume={() => resumeBatch(item.batch.id)}
+                  />
+                ))}
+                {visibleModels.map((m: any) => {
                   const cost = rs
                     .filter((r: any) => r.modelId === m.id)
                     .reduce(
@@ -641,9 +693,7 @@ function ProjectPage() {
                                 <Boxes size={56} strokeWidth={1} />
                                 {!["failed", "done", "cancelled"].includes(
                                   m.status,
-                                ) && (
-                                  <Skeleton className="absolute inset-0 rounded-none" />
-                                )}
+                                ) && <span>Taking shape</span>}
                               </div>
                             )}
                             {(m.artifacts || m.visualTarget) && (
@@ -678,7 +728,7 @@ function ProjectPage() {
                             params={{ projectId, modelId: m.id }}
                             search={{ view: "3d", section: "review" }}
                           >
-                            {m.name}
+                            {m.name.replaceAll("_", " ")}
                           </Link>
                         </h3>
                         <p>{m.prompt}</p>
@@ -702,10 +752,7 @@ function ProjectPage() {
                         ) && <Progress value={m.progress} label={m.phase} />}
                         {m.artifacts?.stage === "geometry" && (
                           <p className="note">
-                            Geometry preview · final materials pending.
-                            {m.status === "done"
-                              ? " Review limit reached; see judge feedback."
-                              : ""}
+                            Geometry preview · materials pending
                           </p>
                         )}
                         <div className="card-meta">
@@ -723,7 +770,7 @@ function ProjectPage() {
                             params={{ projectId, modelId: m.id }}
                             search={{ view: "3d", section: "versions" }}
                           >
-                            Iteration history
+                            View model & history ↗
                           </Link>
                         </Button>
                         {m.error && (
@@ -764,6 +811,21 @@ function ProjectPage() {
                     </Card>
                   );
                 })}
+                {!visibleModels.length && !visiblePending.length && (
+                  <Empty className="collection-no-results">
+                    <h3>No matching models</h3>
+                    <p>Try another search or filter.</p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setQuery("");
+                        setFilter("all");
+                      }}
+                    >
+                      Show all models
+                    </Button>
+                  </Empty>
+                )}
               </div>
             )}
           </>
