@@ -1,0 +1,7 @@
+Use case: logo-brand
+Asset type: primary logo for Asset Studio, a creative tool that turns references and ideas into consistent 3D game assets.
+Primary request: Design a beautiful, distinctive, professionally crafted logo. A compact geometric capital A emblem assembled from three interlocking dimensional blocks, suggesting modular world building and a subtle isometric form. Strong simple silhouette, clever negative space, balanced optical proportions, memorable at small sizes. Beside the emblem, a precise contemporary sans-serif wordmark reading exactly "Asset Studio", with thoughtful kerning and a quietly confident creative-tool personality.
+Style: flat vector-like graphic design, crisp edges, restrained two-tone facets, premium independent design studio identity.
+Color palette: forest green #284e3c with muted sage #9eae78 accent on a perfectly uniform warm ivory #f5f5ee background. Wordmark in deep forest green.
+Composition: one horizontal logo centered on a 1536x1024 canvas, generous clear space. Emblem at left, wordmark at right. Logo group occupies approximately 78 percent of canvas width.
+Constraints: only the single logo and exact wordmark. No tagline, no extra lettering, no presentation board, no mockup, no texture, no shadows, no glow, no gradients, no stock sparkle, no enclosing app tile. Render the finished identity itself.
