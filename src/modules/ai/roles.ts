@@ -53,3 +53,21 @@ export function executionPolicy(role: Role, legacyDesigner = false) {
     role === "designer" && legacyDesigner ? "eve" : roles[role].engine;
   return { engine, resumable: engine === "eve" } as const;
 }
+
+/** Image roles are one-shot requests, not resumable Eve sessions. */
+export const imageRoles = {
+  "visual-target": {
+    engine: "imagegen",
+    model: "gpt-image-2",
+    quality: "medium",
+    prompt: "visual-target",
+    inputTemplate: "visual-target",
+  },
+  texture: {
+    engine: "imagegen",
+    model: "gpt-image-2",
+    quality: "medium",
+    prompt: "builder",
+    inputTemplate: "builder-input",
+  },
+} as const;

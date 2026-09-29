@@ -9,11 +9,14 @@ create_client=cli._create_client
 usage_path=pathlib.Path(sys.argv[1]);sys.argv=[str(skill/'scripts/image_gen.py'),*sys.argv[2:]]
 def tracked_client():
     client=create_client().with_options(max_retries=0)
-    def generate(**kwargs):
-        result=client.images.generate(**kwargs)
-        usage=getattr(result,'usage',None)
-        usage_path.write_text(json.dumps(usage.model_dump() if usage else None))
-        return result
-    return types.SimpleNamespace(images=types.SimpleNamespace(generate=generate))
+    def tracked(method):
+        def request(**kwargs):
+            result=method(**kwargs)
+            usage=getattr(result,'usage',None)
+            usage_path.write_text(json.dumps(usage.model_dump() if usage else None))
+            return result
+        return request
+    return types.SimpleNamespace(images=types.SimpleNamespace(generate=tracked(client.images.generate),edit=tracked(client.images.edit)))
+
 cli._create_client=tracked_client
 cli.main()

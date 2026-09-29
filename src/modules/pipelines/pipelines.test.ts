@@ -64,3 +64,24 @@ test("invalid graphs and cancellation cannot start downstream work", async () =>
   expect(calls).toBe(0);
   expect(() => modelReviewPipeline(-1)).toThrow();
 });
+
+test("quality pipeline gates surface work, permits early geometry pass, and retains zero-review semantics", async () => {
+  const { qualityPipeline } = await import("./index");
+  for (const [rounds, geometryPass, expected] of [
+    [0, false, ["builder:0"]],
+    [2, false, ["builder:0", "judge:0", "builder:1", "judge:1"]],
+    [2, true, ["builder:0", "judge:0", "builder:2", "judge:2"]],
+  ] as const) {
+    const seen: string[] = [];
+    await runPipeline(qualityPipeline(rounds), {
+      builder: async (node) => {
+        seen.push(node.id);
+      },
+      judge: async (node) => {
+        seen.push(node.id);
+        return { passed: node.stage === "surface" || geometryPass };
+      },
+    });
+    expect(seen).toEqual([...expected]);
+  }
+});

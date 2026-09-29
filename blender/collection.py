@@ -20,7 +20,7 @@ for item in config['assets']:
 scene=bpy.context.scene;scene.render.engine='CYCLES';scene.cycles.samples=24
 scene.render.resolution_x=1280;scene.render.resolution_y=720;scene.render.resolution_percentage=100;scene.render.image_settings.file_format='PNG'
 span=max(cursor,maxheight*2);center=Vector((cursor/2,0,maxheight*.42))
-bpy.ops.mesh.primitive_plane_add(size=span*200,location=(0,0,-.01))
+bpy.ops.mesh.primitive_plane_add(size=span*200,location=(0,0,0))
 mat=bpy.data.materials.new('Neutral studio floor');mat.use_nodes=True
 shader=next(n for n in mat.node_tree.nodes if n.type=='BSDF_PRINCIPLED');shader.inputs['Base Color'].default_value=(.18,.21,.17,1);shader.inputs['Roughness'].default_value=.92;bpy.context.object.data.materials.append(mat)
 scene.world.color=(.3,.3,.3)

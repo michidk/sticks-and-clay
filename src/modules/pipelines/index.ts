@@ -5,6 +5,9 @@ export type PipelineNode<K extends string> = {
   next: string | null;
   /** A passing result ends the pipeline at this node. */
   stopOnPass?: boolean;
+  stage?: "geometry" | "surface";
+  passNext?: string;
+  stopOnFail?: boolean;
 };
 export type Pipeline<K extends string> = {
   id: string;
@@ -29,19 +32,25 @@ export async function runPipeline<K extends string>(
   for (const node of nodes.values()) {
     if (node.next !== null && !nodes.has(node.next))
       throw new Error(`Missing pipeline step: ${node.next}`);
+    if (node.passNext && !nodes.has(node.passNext))
+      throw new Error(`Missing pipeline step: ${node.passNext}`);
     if (!handlers[node.task])
       throw new Error(`Missing task handler: ${node.task}`);
   }
-  // Validate before running any side effects. Bounded repetitions use distinct nodes.
-  for (const start of nodes.keys()) {
-    const seen = new Set<string>();
-    let id: string | null = start;
-    while (id !== null) {
-      if (seen.has(id)) throw new Error("Unbounded pipeline cycle");
-      seen.add(id);
-      id = nodes.get(id)!.next;
-    }
+  // Validate all conditional branches before side effects.
+  const visiting = new Set<string>(),
+    visited = new Set<string>();
+  function visit(id: string) {
+    if (visiting.has(id)) throw new Error("Unbounded pipeline cycle");
+    if (visited.has(id)) return;
+    visiting.add(id);
+    const node = nodes.get(id)!;
+    if (node.next) visit(node.next);
+    if (node.passNext) visit(node.passNext);
+    visiting.delete(id);
+    visited.add(id);
   }
+  for (const id of nodes.keys()) visit(id);
   let id: string | null = pipeline.nodes[0]?.id ?? null;
   while (id !== null) {
     const node: PipelineNode<K> = nodes.get(id)!;
@@ -49,7 +58,8 @@ export async function runPipeline<K extends string>(
     const result = await handlers[node.task](node);
     await beforeStep();
     if (node.stopOnPass && result?.passed) return;
-    id = node.next;
+    if (node.stopOnFail && !result?.passed) return;
+    id = result?.passed && node.passNext ? node.passNext : node.next;
   }
 }
 
@@ -77,4 +87,35 @@ export function modelReviewPipeline(
       });
   }
   return { id: "model-review", version: 1, nodes };
+}
+
+/** Geometry is a hard gate before surface work. Zero rounds retains a single build. */
+export function qualityPipeline(rounds: number): Pipeline<"builder" | "judge"> {
+  modelReviewPipeline(rounds); // shared bounds
+  if (!rounds)
+    return { ...modelReviewPipeline(0), id: "model-quality", version: 2 };
+  const nodes: PipelineNode<"builder" | "judge">[] = [];
+  for (const stage of ["geometry", "surface"] as const) {
+    for (let i = 0; i < rounds; i++) {
+      const iteration = (stage === "geometry" ? 0 : rounds) + i;
+      nodes.push({
+        id: `builder:${iteration}`,
+        task: "builder",
+        iteration,
+        stage,
+        next: `judge:${iteration}`,
+      });
+      nodes.push({
+        id: `judge:${iteration}`,
+        task: "judge",
+        iteration,
+        stage,
+        next: i + 1 < rounds ? `builder:${iteration + 1}` : null,
+        ...(stage === "geometry"
+          ? { passNext: `builder:${rounds}`, stopOnFail: i + 1 === rounds }
+          : { stopOnPass: true }),
+      });
+    }
+  }
+  return { id: "model-quality", version: 2, nodes };
 }

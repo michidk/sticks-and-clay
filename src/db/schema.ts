@@ -64,6 +64,7 @@ export const models = pgTable("models", {
   iteration: integer().default(0).notNull(),
   verdict: text(),
   feedback: jsonb().$type<unknown>(),
+  visualTarget: text("visual_target"),
   artifacts: jsonb().$type<Record<string, unknown>>(),
   error: text(),
   createdAt: created(),

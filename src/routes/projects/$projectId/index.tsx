@@ -54,7 +54,11 @@ import {
 import { request, json, money, fileUrl } from "../../../lib/client";
 import { Progress } from "../../../components/progress";
 import { History } from "./-components/history";
-const Viewer = lazy(() => import("@/components/model-viewer").then((module) => ({ default: module.ModelViewer })));
+const Viewer = lazy(() =>
+  import("@/components/model-viewer").then((module) => ({
+    default: module.ModelViewer,
+  })),
+);
 export const Route = createFileRoute("/projects/$projectId/")({
   component: ProjectPage,
 });
@@ -649,16 +653,20 @@ function ProjectPage() {
                             variant="ghost"
                             size="bare"
                             className="model-cover-image"
-                            disabled={!m.artifacts}
+                            disabled={!m.artifacts && !m.visualTarget}
                             onClick={() => {
                               setSelected(m);
                               setSelectedVersion(null);
-                              setView("3d");
+                              setView(
+                                m.artifacts?.renders?.[0] ? "3d" : "target",
+                              );
                             }}
                           >
-                            {m.artifacts ? (
+                            {m.artifacts?.renders?.[0] || m.visualTarget ? (
                               <AssetImage
-                                src={fileUrl(m.artifacts.renders[0])}
+                                src={fileUrl(
+                                  m.artifacts?.renders?.[0] || m.visualTarget,
+                                )}
                                 alt={m.name}
                               />
                             ) : (
@@ -671,8 +679,12 @@ function ProjectPage() {
                                 )}
                               </div>
                             )}
-                            {m.artifacts && (
-                              <span className="orbit-label">Explore in 3D ↗</span>
+                            {(m.artifacts || m.visualTarget) && (
+                              <span className="orbit-label">
+                                {m.artifacts
+                                  ? "Explore in 3D ↗"
+                                  : "Visual target · concept image"}
+                              </span>
                             )}
                           </Button>
                         )}
@@ -698,15 +710,29 @@ function ProjectPage() {
                         {m.artifacts && (
                           <Button
                             variant="outline"
-                            onClick={() => setPreviewModelId(previewModelId === m.id ? null : m.id)}
+                            onClick={() =>
+                              setPreviewModelId(
+                                previewModelId === m.id ? null : m.id,
+                              )
+                            }
                             aria-pressed={previewModelId === m.id}
                           >
-                            {previewModelId === m.id ? "Show render" : "Quick 3D preview"}
+                            {previewModelId === m.id
+                              ? "Show render"
+                              : "Quick 3D preview"}
                           </Button>
                         )}
                         {!["done", "failed", "cancelled"].includes(
                           m.status,
                         ) && <Progress value={m.progress} label={m.phase} />}
+                        {m.artifacts?.stage === "geometry" && (
+                          <p className="note">
+                            Geometry preview · final materials pending.
+                            {m.status === "done"
+                              ? " Review limit reached; see judge feedback."
+                              : ""}
+                          </p>
+                        )}
                         <div className="card-meta">
                           <span>
                             {m.artifacts
@@ -855,9 +881,10 @@ function ProjectPage() {
               </p>
             )}
             <p className="note">
-              Each round builds and visually reviews the model. Failed reviews
-              lead to another build while rounds remain. Passing models finish
-              early. Zero skips judging.
+              A visual target comes first. Each stage allows this many
+              build/review rounds: geometry must pass before surface work
+              begins. Passing stages finish early. Zero makes one build with
+              self-review only.
             </p>
             {error && (
               <Alert variant="destructive" className="error">
@@ -902,15 +929,18 @@ function ProjectPage() {
                   aria-label="Asset views"
                 >
                   <TabsTrigger value="history">History</TabsTrigger>
-                  <TabsTrigger value="3d">
+                  <TabsTrigger value="3d" disabled={!shownArtifacts}>
                     <Boxes size={16} />
                     3D model
                   </TabsTrigger>
-                  <TabsTrigger value="renders">
+                  <TabsTrigger value="renders" disabled={!shownArtifacts}>
                     <ImageIcon size={16} />
                     Renders
                   </TabsTrigger>
-                  <TabsTrigger value="textures">Textures</TabsTrigger>
+                  <TabsTrigger value="textures" disabled={!shownArtifacts}>
+                    Textures
+                  </TabsTrigger>
+                  <TabsTrigger value="target">Visual target</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -934,6 +964,11 @@ function ProjectPage() {
                       .map((v: any) => (
                         <SelectItem key={v.id} value={v.id}>
                           Iteration {v.iteration + 1} ·{" "}
+                          {v.artifacts?.stage === "geometry"
+                            ? "Geometry · "
+                            : v.artifacts?.stage === "surface"
+                              ? "Materials · "
+                              : ""}{" "}
                           {new Date(v.createdAt).toLocaleString()}
                         </SelectItem>
                       ))}
@@ -944,8 +979,13 @@ function ProjectPage() {
                 <Accordion type="single" collapsible key={v.id}>
                   <AccordionItem value="content">
                     <AccordionTrigger>
-                      Iteration {v.iteration + 1} · {v.status} ·{" "}
-                      {new Date(v.createdAt).toLocaleString()}
+                      Iteration {v.iteration + 1} ·{" "}
+                      {v.artifacts?.stage === "geometry"
+                        ? "Geometry · "
+                        : v.artifacts?.stage === "surface"
+                          ? "Materials · "
+                          : ""}
+                      {v.status} · {new Date(v.createdAt).toLocaleString()}
                     </AccordionTrigger>
                     <AccordionContent>
                       <p>{v.summary || v.error}</p>
@@ -1004,7 +1044,36 @@ function ProjectPage() {
                 </Accordion>
               ))}
             </Card>
-            {shownArtifacts && view !== "history" && (
+            {view === "target" && (
+              <section>
+                <h3>Visual target</h3>
+                <p className="muted">
+                  Generated design reference, not a 3D render. Used as the
+                  thumbnail until a model render is available.
+                </p>
+                {shownArtifacts?.visualTarget ||
+                (!selectedVersion && selected.visualTarget) ? (
+                  <a
+                    className="mx-auto block aspect-square w-full max-w-[560px]"
+                    href={fileUrl(
+                      shownArtifacts?.visualTarget || selected.visualTarget,
+                    )}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <AssetImage
+                      src={fileUrl(
+                        shownArtifacts?.visualTarget || selected.visualTarget,
+                      )}
+                      alt={`${selected.name} visual target`}
+                    />
+                  </a>
+                ) : (
+                  <p>No visual target was recorded for this version.</p>
+                )}
+              </section>
+            )}
+            {shownArtifacts && view !== "history" && view !== "target" && (
               <>
                 {view === "textures" ? (
                   <section>
@@ -1039,7 +1108,10 @@ function ProjectPage() {
                   </section>
                 ) : view === "3d" ? (
                   <Suspense fallback={<ViewerSkeleton />}>
-                    <Viewer src={fileUrl(shownArtifacts.glb)} alt={selected.name} />
+                    <Viewer
+                      src={fileUrl(shownArtifacts.glb)}
+                      alt={selected.name}
+                    />
                   </Suspense>
                 ) : (
                   <div className="render-grid">

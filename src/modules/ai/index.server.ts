@@ -5,6 +5,7 @@ import { prompt } from "../../lib/prompts.server";
 import {
   executionPolicy,
   roles,
+  imageRoles,
   type Role,
   type RoleResult,
   type RunInput,
@@ -37,9 +38,20 @@ export async function runRole<R extends Role>(
 }
 
 export function agentSettings() {
-  return Object.entries(roles).map(([id, { schema, ...settings }]) => ({
-    id,
-    ...settings,
-    resumable: settings.engine === "eve",
-  }));
+  return [
+    ...Object.entries(roles).map(([id, { schema, ...settings }]) => ({
+      id,
+      ...settings,
+      resumable: settings.engine === "eve",
+    })),
+    ...Object.entries(imageRoles).map(([id, settings]) => ({
+      id,
+      ...settings,
+      effort: settings.quality,
+      resumable: false,
+    })),
+  ];
 }
+
+/** Logged one-shot image requests share the imagegen adapter and usage accounting. */
+export { imageRequest as runImageRole } from "./internal/image.server";

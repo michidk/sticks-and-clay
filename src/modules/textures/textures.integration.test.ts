@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../../db/client";
 import { projects, jobs, runs, events } from "../../db/schema";
 import { DATA } from "../../lib/storage.server";
+import { runImageRole } from "../ai/index.server";
 import { generateTexture } from "./index.server";
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 integration(
@@ -33,28 +34,24 @@ integration(
     await db
       .insert(projects)
       .values({ id: projectId, name: "Texture fixture", description: "test" });
-    await db
-      .insert(runs)
-      .values({
-        id: runId,
-        projectId,
-        modelId,
-        role: "builder",
-        model: "fixture",
-        input: "test",
-        systemPrompt: "test",
-        promptVersion: "test",
-        rates: { input: 0, cached: 0, output: 0, source: "test" },
-      });
-    await db
-      .insert(jobs)
-      .values({
-        id: jobId,
-        kind: "model",
-        targetId: modelId,
-        status: "running",
-        checkpoint: { "agent:builder:0": runId },
-      });
+    await db.insert(runs).values({
+      id: runId,
+      projectId,
+      modelId,
+      role: "builder",
+      model: "fixture",
+      input: "test",
+      systemPrompt: "test",
+      promptVersion: "test",
+      rates: { input: 0, cached: 0, output: 0, source: "test" },
+    });
+    await db.insert(jobs).values({
+      id: jobId,
+      kind: "model",
+      targetId: modelId,
+      status: "running",
+      checkpoint: { "agent:builder:0": runId },
+    });
     try {
       const args = {
         capability,
@@ -71,6 +68,34 @@ integration(
       expect(record.inputTokens).toBe(12);
       expect(record.outputTokens).toBe(34);
       expect(record.modelId).toBe(modelId);
+      const targetArgs = {
+        role: "visual-target" as const,
+        name: "visual-target",
+        prompt: "A coherent sculpted bird visual target",
+        directory: `models/${modelId}/${jobId}/concept`,
+        projectId,
+        modelId,
+        images: [first.key],
+        assertActive: async () => {},
+      };
+      const target = await runImageRole(targetArgs);
+      expect(await runImageRole(targetArgs)).toEqual(target);
+      const [targetRun] = await db
+        .select()
+        .from(runs)
+        .where(eq(runs.id, target.runId));
+      expect(targetRun.role).toBe("visual-target");
+      expect(targetRun.images).toEqual([first.key]);
+      expect(targetRun.inputTokens).toBe(12);
+      expect(targetRun.sessionId).toBeNull();
+      await expect(
+        runImageRole({
+          ...targetArgs,
+          assertActive: async () => {
+            throw new Error("cancelled");
+          },
+        }),
+      ).rejects.toThrow("cancelled");
       await writeFile(marker, JSON.stringify({ directory, cancelled: true }));
       await expect(generateTexture(args)).rejects.toThrow("cancelled");
     } finally {

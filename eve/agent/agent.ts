@@ -1,6 +1,7 @@
 import { defineAgent, defineDynamic } from "eve";
 import { createOpenAI } from "@ai-sdk/openai";
 import { wrapLanguageModel } from "ai";
+import { statelessResponses } from "./stateless";
 const provider = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   baseURL: process.env.OPENAI_BASE_URL,
@@ -10,21 +11,7 @@ import { resolve } from "node:path";
 function selectedModel(model: string) {
   return wrapLanguageModel({
     model: provider.responses(model),
-    middleware: {
-      transformParams: async ({ params }) => ({
-        ...params,
-        prompt: params.prompt.map((message) =>
-          message.role === "assistant"
-            ? {
-                ...message,
-                content: message.content.filter(
-                  (part) => part.type !== "reasoning",
-                ),
-              }
-            : message,
-        ),
-      }),
-    },
+    middleware: statelessResponses,
   });
 }
 export default defineAgent({
@@ -50,6 +37,8 @@ export default defineAgent({
             effort: "medium",
           };
         }
+        // Usage events can qualify the model name; the provider expects its raw ID.
+        config.model = config.model.replace(/^openai\//, "");
         return {
           model: selectedModel(config.model),
           // Bound application context without requiring gateway catalog metadata.

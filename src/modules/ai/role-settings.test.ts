@@ -33,6 +33,13 @@ test("Eve chooses the persisted model and effort, not a new registry default", a
     expect(retained.modelOptions.providerOptions.openai.reasoningEffort).toBe(
       "low",
     );
+    await writeFile(
+      resolve(dir, "session-config/test.json"),
+      JSON.stringify({ model: "openai/gpt-6-astra", effort: "medium" }),
+    );
+    const recovered = await resolver({}, { session: { id: "test" } });
+    expect(recovered.model.modelId).toBe("gpt-6-astra");
+    expect(recovered.modelContextWindowTokens).toBe(1050000);
   } finally {
     if (previous === undefined) delete process.env.STUDIO_DATA_DIR;
     else process.env.STUDIO_DATA_DIR = previous;

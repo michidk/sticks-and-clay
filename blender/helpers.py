@@ -58,7 +58,7 @@ def finish_asset(material_mode="textured", triangle_budget=None):
     background=next(n for n in scene.world.node_tree.nodes if n.type=='BACKGROUND')
     background.inputs['Color'].default_value=(0.25,0.25,0.25,1)
     background.inputs['Strength'].default_value=0.35
-    bpy.ops.mesh.primitive_plane_add(size=span*200,location=(0,0,-0.015))
+    bpy.ops.mesh.primitive_plane_add(size=span*200,location=(0,0,0))
     floor=bpy.context.object;floor['studio_environment']=True
     mat=bpy.data.materials.new('Studio floor');mat.use_nodes=True
     bsdf=next(n for n in mat.node_tree.nodes if n.type=='BSDF_PRINCIPLED');bsdf.inputs['Base Color'].default_value=(0.13,0.15,0.18,1);bsdf.inputs['Roughness'].default_value=0.85;floor.data.materials.append(mat)

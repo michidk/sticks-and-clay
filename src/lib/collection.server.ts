@@ -10,7 +10,10 @@ export async function renderCollection(batchId: string) {
     .select()
     .from(models)
     .where(eq(models.batchId, batchId));
-  const ready = assets.filter((m) => m.status === "done" && m.artifacts);
+  const ready = assets.filter(
+    (m) =>
+      m.status === "done" && m.artifacts && m.artifacts.stage !== "geometry",
+  );
   if (!ready.length) throw new Error("No completed assets to render");
   const directory = `collections/${batchId}/${crypto.randomUUID()}`,
     output = resolve(DATA, directory);
@@ -63,7 +66,9 @@ export async function renderCollection(batchId: string) {
     await db
       .update(batches)
       .set({
-        status: assets.some((m) => m.status === "failed")
+        status: assets.some(
+          (m) => m.status !== "done" || m.verdict === "limit_reached",
+        )
           ? "completed_with_errors"
           : "done",
         preview: {

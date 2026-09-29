@@ -25,6 +25,7 @@ returns `{ result, runId }`. The result type and runtime validation come from th
 |---|---|---|
 | project-brief, model-brief, designer | TanStack AI | Completed result reuse; interrupted request is a new attempt |
 | planner, builder, judge | Eve | Attach/replay/continue the saved session |
+| visual-target, texture | Codex imagegen skill | Completed receipt/run reuse; interrupted request retries separately |
 
 Legacy designer jobs with Eve checkpoints retain Eve execution. New Eve work requires a durable job context. The execution module never enqueues work. Brief buttons call it immediately; design generation uses a background job for UI responsiveness and result application. Saving request history does not make an API conversation resumable.
 
@@ -34,7 +35,9 @@ The internal accounting module owns run creation and pricing snapshots. Adapters
 
 `runPipeline(definition, handlers, beforeStep)` traverses named nodes. Each node has a task, iteration, next node, and optional `stopOnPass`. Handlers receive the stable node identity; `beforeStep` enforces cancellation before and after each execution. Missing links, duplicate IDs, missing handlers, and cycles fail before work starts. Repeat nodes must be expanded with unique IDs, making limits explicit.
 
-`modelReviewPipeline(rounds)` defines the current builder → judge → builder workflow, with at most N build/review pairs, early approval, and a single unreviewed build for zero rounds. The job checkpoints its definition version. Future versions must retain a dispatch path for saved versions or explicitly reject them.
+`modelReviewPipeline(rounds)` retains the legacy builder → judge → builder workflow, with at most N build/review pairs, early approval, and a single unreviewed build for zero rounds. The job checkpoints its definition version. Future versions must retain a dispatch path for saved versions or explicitly reject them.
+
+`qualityPipeline(rounds)` adds a geometry gate before surface builds. Geometry passes use a conditional `passNext`; exhaustion stops without surface work. See [quality pipeline](quality-pipeline.md) for limits, target thumbnails and recovery. The public `runImageRole` entrypoint logs image requests without creating Eve sessions.
 
 To add another workflow, define its nodes and handlers. In handlers call `runRole` with `stepId: node.id` (use a pipeline/version prefix if multiple pipelines share a job). Repeated uses of a role must have distinct step IDs. Pass results into later inputs explicitly; archive artifacts in the handler before advancing. The existing model pipeline retains legacy `agent:role:iteration` checkpoint keys so old jobs still resume.
 

@@ -48,12 +48,18 @@ function AgentsPage() {
             <Badge variant="secondary" className="badge">
               {agent.engine === "eve"
                 ? "Eve · resumable session"
-                : "TanStack AI · one-shot"}
+                : agent.engine === "imagegen"
+                  ? "Imagegen · one-shot"
+                  : "TanStack AI · one-shot"}
             </Badge>
             <dl className="role-settings">
               <dt>Model</dt>
               <dd>{agent.model}</dd>
-              <dt>Reasoning effort</dt>
+              <dt>
+                {agent.engine === "imagegen"
+                  ? "Image quality"
+                  : "Reasoning effort"}
+              </dt>
               <dd>{agent.effort}</dd>
               <dt>Instructions</dt>
               <dd>prompts/{agent.prompt}.md</dd>
