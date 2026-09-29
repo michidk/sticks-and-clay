@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Boxes, FolderOpen, ListTodo, Bot } from "lucide-react";
+import { FolderOpen, ListTodo, Bot } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 const sections = [
@@ -14,9 +14,9 @@ export function StudioNav() {
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <Link to="/" className="brand" aria-label="Asset Studio home">
-          <span className="brand-icon"><Boxes size={22} aria-hidden="true" /></span>
-          <span>Asset Studio</span>
+        <Link to="/" className="brand" aria-label="Sticks & Clay home">
+          <img className="brand-icon" src="/brand/sticks-and-clay.png" alt="" width={40} height={40} />
+          <span>Sticks & Clay</span>
         </Link>
         <Badge variant="outline" className="workshop-badge">Workshop</Badge>
         <nav className="studio-nav" aria-label="Main navigation">

@@ -1,4 +1,4 @@
-# Asset Studio prompts
+# Sticks & Clay prompts
 
 All authored agent instructions and input templates live here.
 

@@ -9,10 +9,11 @@ import {
 import "../styles.css";
 export const Route = createRootRoute({
   head: () => ({
+    links: [{ rel: "icon", type: "image/png", href: "/brand/sticks-and-clay-favicon.png" }],
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Asset Studio · From reference to ready" },
+      { title: "Sticks & Clay · From reference to ready" },
     ],
   }),
   component: () => (

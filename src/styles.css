@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* shadcn semantic tokens, tuned to Asset Studio's existing workshop palette. */
+/* shadcn semantic tokens, tuned to Sticks & Clay's existing workshop palette. */
 :root {
   --background: #f5f5ee;
   --foreground: #273b33;
@@ -127,14 +127,10 @@ a {
   letter-spacing: -0.5px;
 }
 .brand-icon {
-  background: var(--secondary);
-  color: var(--primary);
   width: 40px;
   height: 40px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  display: grid;
-  place-items: center;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 .workshop-badge {
   color: var(--muted-foreground);

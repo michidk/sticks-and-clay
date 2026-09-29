@@ -1,12 +1,12 @@
-# Asset Studio design guide
+# Sticks & Clay design guide
 
 This is the application's UI design reference, based on the existing theme in `src/styles.css` and the running project list and project workspace inspected on 2026-09-29. Project-specific asset design references are separate, versioned documents stored in the database.
 
 ## Character
 
-Asset Studio feels like a calm creative workshop: warm ivory surfaces, forest-green typography, sage accents, generous space, and restrained outlines. The assets and reference images provide the visual variety. Keep the interface quiet enough to compare models and read detailed design feedback.
+Sticks & Clay feels like a calm creative workshop: warm ivory surfaces, forest-green typography, sage accents, generous space, and restrained outlines. The assets and reference images provide the visual variety. Keep the interface quiet enough to compare models and read detailed design feedback.
 
-The home headline pairs a plain sans-serif statement (“Build a world.”) with a softer italic serif line (“Keep it consistent.”). Use that editorial contrast sparingly. The brand combines the Lucide Boxes icon, Asset Studio wordmark, and small outlined WORKSHOP label.
+The home headline pairs a plain sans-serif statement (“Build a world.”) with a softer italic serif line (“Keep it consistent.”). Use that editorial contrast sparingly. The brand combines a forest-green stick and terracotta clay-arch emblem, the Sticks & Clay text wordmark, and a small outlined WORKSHOP label. The emblem lives at `public/brand/sticks-and-clay.png`, with a matching PNG favicon. Keep the wordmark as accessible text; reserve terracotta for the brand so forest green remains the action color.
 
 ## Palette
 
@@ -25,7 +25,7 @@ These colors now back semantic shadcn tokens in `src/styles.css` (`--background`
 | Supporting text | `#7a8273` | Introductory copy |
 | Serif accent | `#76846a` | Emphasized home headline |
 | Card border | `#dce1d5` | Fine structural outlines |
-| Brand tile | `#e7ebdf` | Background behind the brand icon |
+| Brand clay | `#bd795c` | Terracotta accent in the brand emblem |
 | Progress fill | `#829e5e` | On a `#e4ead9` track |
 | Viewer background | `#e9ede8` | Daytime React Three Fiber lightbox stage |
 

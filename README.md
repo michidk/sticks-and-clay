@@ -1,4 +1,4 @@
-# Asset Studio
+# Sticks & Clay
 
 A working game-asset pipeline application, built alongside CodeTend with the same core stack: **Bun, React 19, TanStack Start/Router, Vite, Tailwind 4, Drizzle/PostgreSQL, and Eve**. React Three Fiber provides the interactive GLB viewer; Blender runs locally through an isolated MCP adapter.
 
@@ -10,7 +10,7 @@ The interface uses locally owned [shadcn components](https://ui.shadcn.com/) and
 - [Agent instructions](AGENTS.md): code boundaries, workflow invariants, development checks, and local service conventions.
 - [Prompt guide](prompts/README.md): authored agent instructions and input templates.
 
-The application design guide describes Asset Studio itself. Each asset project's design reference is a separate, editable and versioned document in the database.
+The application design guide describes Sticks & Clay itself. Each asset project's design reference is a separate, editable and versioned document in the database.
 
 ## Workflow
 
