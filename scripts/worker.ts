@@ -1,52 +1,19 @@
 import { db, sql } from "../src/db/client";
-import { jobs, runs } from "../src/db/schema";
+import { jobs } from "../src/db/schema";
 import { eq } from "drizzle-orm";
 import { executeJob, failJob } from "../src/lib/pipeline.server";
-import { Client } from "eve/client";
+import { adoptLegacyJobs } from "../src/lib/legacy-recovery.server";
+import { jobContext } from "../src/lib/checkpoint.server";
 // One coordinator with bounded parallel model workers. Advisory lock survives connection pooling via reserved connection.
 const lock = await sql.reserve();
 const [acquired] = await lock`select pg_try_advisory_lock(91340851) as ok`;
 if (!acquired.ok) throw new Error("An Asset Studio worker is already running");
-for (const run of await db
-  .select()
-  .from(runs)
-  .where(eq(runs.status, "running"))) {
-  if (run.sessionId)
-    await new Client({
-      host: process.env.EVE_URL || "http://127.0.0.1:33441",
-      auth: {
-        basic: {
-          username: "studio",
-          password: process.env.EVE_PASSWORD || "studio-local-agent",
-        },
-      },
-    }).sessions
-      .attach(run.sessionId)
-      .cancel({ tasks: true })
-      .catch(() => {});
-  await db
-    .update(runs)
-    .set({
-      status: "failed",
-      error: "Worker restarted; previous turn cancelled",
-      finishedAt: new Date(),
-    })
-    .where(eq(runs.id, run.id));
-}
-for (const job of await db
-  .select()
-  .from(jobs)
-  .where(eq(jobs.status, "running"))) {
-  await failJob(job.kind, job.targetId, "Worker restarted. Run interrupted.");
-  await db
-    .update(jobs)
-    .set({
-      status: "failed",
-      error: "Worker restarted",
-      finishedAt: new Date(),
-    })
-    .where(eq(jobs.id, job.id));
-}
+await adoptLegacyJobs();
+// Re-adopt interrupted jobs; Eve retains their sessions and tool checkpoints.
+await db
+  .update(jobs)
+  .set({ status: "queued", error: null, finishedAt: null })
+  .where(eq(jobs.status, "running"));
 let stopping = false;
 process.on("SIGTERM", () => {
   stopping = true;
@@ -63,7 +30,10 @@ async function lane() {
       continue;
     }
     try {
-      await executeJob(job.kind, job.targetId);
+      await jobContext.run(
+        { id: job.id, checkpoint: job.checkpoint || {} },
+        () => executeJob(job.kind, job.targetId),
+      );
       await db
         .update(jobs)
         .set({ status: "done", finishedAt: new Date() })

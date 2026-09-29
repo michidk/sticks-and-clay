@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
-import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { db } from "../db/client";
-import { projects, revisions, batches, models, jobs } from "../db/schema";
+import { projects, revisions, batches, models, jobs, runs } from "../db/schema";
 import { agent } from "./agent.server";
 import { renderCollection } from "./collection.server";
 import {
@@ -13,13 +13,18 @@ import {
   nextStage,
 } from "./contracts";
 import { DATA } from "./storage.server";
+import { checkpoint, jobContext } from "./checkpoint.server";
 async function one<T>(rows: T[]) {
   if (!rows[0]) throw new Error("Record not found");
   return rows[0];
 }
 export async function executeJob(kind: string, targetId: string) {
+  const job = jobContext.getStore();
+  if (!job) throw new Error("Missing durable job context");
+  if (job.checkpoint.applied === "yes") return;
   if (kind === "demo") {
     await renderCollection(targetId);
+    await checkpoint("applied", "yes");
     return;
   }
   if (kind === "design") {
@@ -52,6 +57,10 @@ export async function executeJob(kind: string, targetId: string) {
           progress: 100,
         })
         .where(eq(projects.id, p.id));
+      await tx
+        .update(jobs)
+        .set({ checkpoint: { ...job.checkpoint, applied: "yes" } })
+        .where(eq(jobs.id, job.id));
       await tx.insert(revisions).values({
         id: crypto.randomUUID(),
         projectId: p.id,
@@ -68,7 +77,7 @@ export async function executeJob(kind: string, targetId: string) {
       .update(batches)
       .set({ status: "planning" })
       .where(eq(batches.id, batch.id));
-    const { result } = await agent<{
+    const { result, runId } = await agent<{
       models: { name: string; prompt: string }[];
     }>({
       projectId: batch.projectId,
@@ -77,11 +86,19 @@ export async function executeJob(kind: string, targetId: string) {
       input: `DESIGN REFERENCE (version ${batch.designVersion})\n${batch.design}\nREQUEST\n${batch.prompt}\nReturn exactly ${batch.count} models.`,
       schema: planResult,
     });
-    if (result.models.length !== batch.count)
-      throw new Error(
-        `Planner returned ${result.models.length} models; expected ${batch.count}`,
-      );
+    if (result.models.length !== batch.count) {
+      const error = `Result validation: Planner returned ${result.models.length} models; expected ${batch.count}`;
+      await db
+        .update(runs)
+        .set({ status: "failed", error })
+        .where(eq(runs.id, runId));
+      throw new Error(error);
+    }
     await db.transaction(async (tx) => {
+      await tx
+        .update(jobs)
+        .set({ checkpoint: { ...job.checkpoint, applied: "yes" } })
+        .where(eq(jobs.id, job.id));
       for (const model of result.models) {
         const id = crypto.randomUUID();
         await tx.insert(models).values({
@@ -115,12 +132,15 @@ export async function executeJob(kind: string, targetId: string) {
         : "",
       passed = false,
       artifacts: Record<string, unknown> = {};
-    const attempt = crypto.randomUUID();
+    const attempt = job.checkpoint.workspace || job.id;
     const rounds = Math.max(1, batch.judgeIterations);
     for (let iteration = 0; iteration < rounds; iteration++) {
       const directory = `models/${model.id}/${attempt}/iteration-${iteration}`;
       await mkdir(resolve(DATA, directory), { recursive: true });
-      const capability = crypto.randomUUID();
+      const capabilityKey = `capability:${iteration}`;
+      const capability = job.checkpoint[capabilityKey] || crypto.randomUUID();
+      if (!job.checkpoint[capabilityKey])
+        await checkpoint(capabilityKey, capability);
       await mkdir(resolve(DATA, "capabilities"), { recursive: true });
       await writeFile(
         resolve(DATA, "capabilities", capability + ".json"),
@@ -138,72 +158,81 @@ export async function executeJob(kind: string, targetId: string) {
         })
         .where(eq(models.id, model.id));
       let buildProgress = Math.round((iteration / rounds) * 100);
+      await agent({
+        role: "builder",
+        onActivity: async (tool) => {
+          const phase = tool.includes("view_render")
+            ? "Inspecting rendered asset"
+            : tool.includes("execute_blender_code")
+              ? "Building geometry, exporting and rendering"
+              : tool.includes("get_scene_info")
+                ? "Inspecting Blender workspace"
+                : null;
+          if (!phase) return;
+          const fraction = tool.includes("view_render")
+            ? 0.45
+            : tool.includes("execute_blender_code")
+              ? 0.15
+              : 0.05;
+          await db
+            .update(models)
+            .set({
+              phase,
+              progress: (buildProgress = Math.max(
+                buildProgress,
+                Math.round(((iteration + fraction) / rounds) * 100),
+              )),
+            })
+            .where(eq(models.id, model.id));
+        },
+        projectId: model.projectId,
+        batchId: batch.id,
+        modelId: model.id,
+        iteration,
+        images: project.references,
+        schema: buildResult,
+        input: `DESIGN REFERENCE (version ${batch.designVersion})\n${batch.design}\nASSET: ${model.name}\n${model.prompt}\nBlender capability: ${capability}\nOutput directory: ${resolve(DATA, directory)}\n${previous ? `Previous source: ${previous}\n` : ""}${feedback ? `JUDGE FEEDBACK:\n${JSON.stringify(feedback, null, 2)}` : ""}`,
+      });
+      let metrics: any;
+      let images: string[];
       try {
-        await agent({
-          role: "builder",
-          onActivity: async (tool) => {
-            const phase = tool.includes("view_render")
-              ? "Inspecting rendered asset"
-              : tool.includes("execute_blender_code")
-                ? "Building geometry, exporting and rendering"
-                : tool.includes("get_scene_info")
-                  ? "Inspecting Blender workspace"
-                  : null;
-            if (!phase) return;
-            const fraction = tool.includes("view_render")
-              ? 0.45
-              : tool.includes("execute_blender_code")
-                ? 0.15
-                : 0.05;
-            await db
-              .update(models)
-              .set({
-                phase,
-                progress: (buildProgress = Math.max(
-                  buildProgress,
-                  Math.round(((iteration + fraction) / rounds) * 100),
-                )),
-              })
-              .where(eq(models.id, model.id));
-          },
-          projectId: model.projectId,
-          batchId: batch.id,
-          modelId: model.id,
-          iteration,
-          images: project.references,
-          schema: buildResult,
-          input: `DESIGN REFERENCE (version ${batch.designVersion})\n${batch.design}\nASSET: ${model.name}\n${model.prompt}\nBlender capability: ${capability}\nOutput directory: ${resolve(DATA, directory)}\n${previous ? `Previous source: ${previous}\n` : ""}${feedback ? `JUDGE FEEDBACK:\n${JSON.stringify(feedback, null, 2)}` : ""}`,
-        });
-      } finally {
-        await unlink(resolve(DATA, "capabilities", capability + ".json")).catch(
-          () => {},
+        metrics = JSON.parse(
+          await readFile(resolve(DATA, directory, "metrics.json"), "utf8"),
         );
+        const glb = await readFile(resolve(DATA, directory, "asset.glb"));
+        if (
+          glb.toString("ascii", 0, 4) !== "glTF" ||
+          glb.readUInt32LE(4) !== 2 ||
+          glb.readUInt32LE(8) !== glb.length
+        )
+          throw new Error("Invalid GLB export");
+        const manifest = JSON.parse(
+          glb.toString("utf8", 20, 20 + glb.readUInt32LE(12)),
+        );
+        if (!manifest.meshes?.length) throw new Error("GLB contains no meshes");
+        images = ["front", "rear", "detail"].map(
+          (view) => `${directory}/${view}.png`,
+        );
+        for (const image of images) await readFile(resolve(DATA, image));
+        await readFile(resolve(DATA, directory, "source.blend"));
+        artifacts = {
+          glb: `${directory}/asset.glb`,
+          blend: `${directory}/source.blend`,
+          renders: images,
+          metrics,
+        };
+      } catch (error) {
+        const runId = job.checkpoint[`agent:builder:${iteration}`];
+        if (runId)
+          await db
+            .update(runs)
+            .set({
+              status: "failed",
+              error: "Artifact validation: " + String(error),
+            })
+            .where(eq(runs.id, runId));
+        throw error;
       }
-      const metrics = JSON.parse(
-        await readFile(resolve(DATA, directory, "metrics.json"), "utf8"),
-      );
-      const glb = await readFile(resolve(DATA, directory, "asset.glb"));
-      if (
-        glb.toString("ascii", 0, 4) !== "glTF" ||
-        glb.readUInt32LE(4) !== 2 ||
-        glb.readUInt32LE(8) !== glb.length
-      )
-        throw new Error("Invalid GLB export");
-      const manifest = JSON.parse(
-        glb.toString("utf8", 20, 20 + glb.readUInt32LE(12)),
-      );
-      if (!manifest.meshes?.length) throw new Error("GLB contains no meshes");
-      const images = ["front", "rear", "detail"].map(
-        (view) => `${directory}/${view}.png`,
-      );
-      for (const image of images) await readFile(resolve(DATA, image));
-      await readFile(resolve(DATA, directory, "source.blend"));
-      artifacts = {
-        glb: `${directory}/asset.glb`,
-        blend: `${directory}/source.blend`,
-        renders: images,
-        metrics,
-      };
       previous = resolve(DATA, directory, "source.blend");
       await db
         .update(models)
@@ -265,6 +294,7 @@ export async function executeJob(kind: string, targetId: string) {
       })
       .where(eq(models.id, model.id));
     await settleBatch(batch.id);
+    await checkpoint("applied", "yes");
   }
 }
 export async function failJob(kind: string, id: string, error: string) {

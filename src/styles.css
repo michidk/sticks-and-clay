@@ -1130,3 +1130,57 @@ pre {
     grid-template-columns: 1fr;
   }
 }
+
+/* GFM design documents and immutable revision comparisons. */
+.markdown {
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+.markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border, #d9d5ca);
+  padding: 0.65rem 0.8rem;
+  text-align: left;
+  vertical-align: top;
+}
+.markdown th {
+  background: #eeeae0;
+  font-weight: 600;
+}
+.markdown pre {
+  overflow-x: auto;
+  padding: 1rem;
+  background: #f2eee5;
+}
+.markdown code {
+  font-size: 0.9em;
+}
+.markdown blockquote {
+  border-left: 3px solid #a99b83;
+  margin-left: 0;
+  padding-left: 1rem;
+  color: #6a655c;
+}
+.markdown img {
+  max-width: 100%;
+}
+.revision-diff {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+.diff-added {
+  background: #d9efda;
+  color: #20532a;
+}
+.diff-removed {
+  background: #f8dbd7;
+  color: #812d27;
+  text-decoration: line-through;
+}

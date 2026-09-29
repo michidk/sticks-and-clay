@@ -5,7 +5,7 @@ A working game-asset pipeline application, built alongside CodeTend with the sam
 ## Workflow
 
 1. Create a project from a description, up to six reference images, or both.
-2. A designer agent inspects the images and writes a Markdown design reference. The database stores the document and revisions. Edit it, then save and approve it.
+2. A designer agent inspects the images and writes a Markdown design reference. The database stores the document and revisions. Edit it, then save and approve it. GFM rendering supports tables, task lists and strikethrough. Immutable database revisions are compared using the `diff` library; Restore as draft loads an older version into the editor, and Save creates a new revision without overwriting history.
 3. Request a concrete model or ask the planner to propose a set. Choose 1–20 models and 0–5 maximum judge rounds. A batch snapshots the approved design; later edits cannot change its contract.
 4. A PostgreSQL job queue dispatches independent builders, with two concurrent workers by default. Each attempt and iteration has a unique Blender directory. Complete scripts execute in separate Blender processes, never a shared live scene.
 5. The builder exports an individual GLB, Blender source, metrics, and front/rear/detail renders. It visually inspects renders through Eve's `view_render` vision tool.
@@ -58,7 +58,7 @@ Copy `.env.example` to `.env` if needed. The service supervisor loads `.env` onc
 - `prompts/`: designer, planner, builder, judge, and the reusable asset pipeline developed in the earlier tree/castle work.
 - `data/`: immutable upload keys, per-attempt/per-iteration assets, collection renders, runtime logs and temporary build capabilities. Back up this directory together with PostgreSQL.
 
-The worker is durable at job boundaries. Queued work survives restart. Interrupted running work is marked failed and its Eve turn is cancelled; retry is explicit to avoid silently duplicating paid work. It is a trusted local workshop, not a multi-tenant service: there is no end-user account system, and generated Blender Python runs with the service user's filesystem permissions. MCP and Eve bind to loopback. Put authentication and stronger execution isolation in front of an external deployment.
+The worker re-adopts interrupted jobs on restart. Per-job database checkpoints retain Eve run/session IDs and completed step results. Recovery replays the durable Eve stream and reattaches to active work; explicit Resume continues failed turns in the same conversation. Builder workspaces and scoped capabilities survive recovery. Completed design/planner transactions are checkpointed atomically to prevent duplicate revisions or model batches. Token totals are reconstructed from session events with idempotent event storage, rather than added again on replay. Eve session storage and the data directory must be retained; missing/retired sessions and operator approval requests report errors rather than silently starting over. External Blender execution may be retried following an interruption, so scripts should be idempotent. It is a trusted local workshop, not a multi-tenant service: there is no end-user account system, and generated Blender Python runs with the service user's filesystem permissions. MCP and Eve bind to loopback. Put authentication and stronger execution isolation in front of an external deployment.
 
 ## Image transport lessons
 

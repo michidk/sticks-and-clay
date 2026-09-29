@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { diffLines } from "diff";
 import {
   ArrowLeft,
   Plus,
@@ -231,7 +233,7 @@ function ProjectPage() {
                   }
                 }}
               >
-                Retry setup
+                Resume setup
               </button>
             </>
           )}
@@ -289,7 +291,7 @@ function ProjectPage() {
               />
             ) : (
               <div className="markdown">
-                <ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {design ||
                     p.design ||
                     "Your designer is preparing this document."}
@@ -339,7 +341,44 @@ function ProjectPage() {
                   <summary>
                     Version {r.version} · {r.author}
                   </summary>
-                  <pre>{r.content}</pre>
+                  <div className="markdown">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {r.content}
+                    </ReactMarkdown>
+                  </div>
+                  <details>
+                    <summary>Compare with current version</summary>
+                    <pre className="revision-diff">
+                      {diffLines(r.content, p.design).map((part, i) => (
+                        <span
+                          key={i}
+                          className={
+                            part.added
+                              ? "diff-added"
+                              : part.removed
+                                ? "diff-removed"
+                                : ""
+                          }
+                        >
+                          {part.value}
+                        </span>
+                      ))}
+                    </pre>
+                    <small>
+                      Green: added in current version. Red: removed from this
+                      version.
+                    </small>
+                  </details>
+                  <button
+                    disabled={busy || !["ready", "review"].includes(p.status)}
+                    onClick={() => {
+                      setDesign(r.content);
+                      setVersion(p.designVersion);
+                      setEditing(true);
+                    }}
+                  >
+                    Restore as draft
+                  </button>
                 </details>
               ))}
             </section>
@@ -368,6 +407,25 @@ function ProjectPage() {
                     : "Planning your collection"}
                 </strong>
                 <p>{b.prompt}</p>
+                {b.status === "failed" && (
+                  <button
+                    disabled={busy}
+                    onClick={async () => {
+                      setBusy(true);
+                      setError("");
+                      try {
+                        await request("batches/" + b.id + "/resume", json({}));
+                        await load();
+                      } catch (e) {
+                        setError((e as Error).message);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Resume batch
+                  </button>
+                )}
                 {b.error ? (
                   <p className="error">{b.error}</p>
                 ) : (
@@ -508,7 +566,7 @@ function ProjectPage() {
                             }
                           }}
                         >
-                          Retry model
+                          Resume model
                         </button>
                       )}
                       {m.artifacts && (

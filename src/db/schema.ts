@@ -120,6 +120,7 @@ export const events = pgTable(
   (t) => [index("events_run_idx").on(t.runId)],
 );
 export const jobs = pgTable("jobs", {
+  checkpoint: jsonb().$type<Record<string, string>>().default({}).notNull(),
   id: text().primaryKey(),
   kind: text().notNull(),
   targetId: text().notNull(),

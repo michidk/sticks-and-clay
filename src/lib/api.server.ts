@@ -12,6 +12,25 @@ import {
   jobs,
 } from "../db/schema";
 import { filePath, upload } from "./storage.server";
+async function resumeJob(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  kinds: string[],
+  targetId: string,
+) {
+  const [latest] = await tx
+    .select()
+    .from(jobs)
+    .where(and(inArray(jobs.kind, kinds), eq(jobs.targetId, targetId)))
+    .orderBy(desc(jobs.createdAt))
+    .limit(1);
+  if (!latest || latest.status !== "failed") return null;
+  const [resumed] = await tx
+    .update(jobs)
+    .set({ status: "queued", error: null, finishedAt: null })
+    .where(and(eq(jobs.id, latest.id), eq(jobs.status, "failed")))
+    .returning();
+  return resumed || null;
+}
 const uuid = z.string().uuid();
 const reply = (v: unknown, status = 200) => Response.json(v, { status });
 export async function api(request: Request) {
@@ -224,9 +243,15 @@ export async function api(request: Request) {
             .returning();
           if (!updated.length)
             throw new Error("Setup is already being retried");
-          await tx
-            .insert(jobs)
-            .values({ id: crypto.randomUUID(), kind: "design", targetId: id });
+          const resumed = await resumeJob(tx, ["design"], id);
+          if (!resumed)
+            await tx
+              .insert(jobs)
+              .values({
+                id: crypto.randomUUID(),
+                kind: "design",
+                targetId: id,
+              });
         });
         return reply({ ok: true });
       }
@@ -254,9 +279,30 @@ export async function api(request: Request) {
           .update(batches)
           .set({ status: "building", error: null })
           .where(eq(batches.id, model.batchId));
+        const resumed = await resumeJob(tx, ["model"], id);
+        if (!resumed)
+          await tx
+            .insert(jobs)
+            .values({ id: crypto.randomUUID(), kind: "model", targetId: id });
+      });
+      return reply({ ok: true });
+    }
+    if (
+      path[0] === "batches" &&
+      path[2] === "resume" &&
+      request.method === "POST"
+    ) {
+      const id = uuid.parse(path[1]);
+      await db.transaction(async (tx) => {
+        const resumed = await resumeJob(tx, ["plan", "demo"], id);
+        if (!resumed) throw new Error("No failed batch work to resume");
         await tx
-          .insert(jobs)
-          .values({ id: crypto.randomUUID(), kind: "model", targetId: id });
+          .update(batches)
+          .set({
+            status: resumed.kind === "demo" ? "rendering" : "queued",
+            error: null,
+          })
+          .where(eq(batches.id, id));
       });
       return reply({ ok: true });
     }

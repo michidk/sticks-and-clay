@@ -1,0 +1,1 @@
+ALTER TABLE "jobs" ADD COLUMN "checkpoint" jsonb DEFAULT '{}'::jsonb NOT NULL;
