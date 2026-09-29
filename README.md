@@ -87,7 +87,7 @@ The configured gateway cannot retrieve non-persisted Responses item IDs. Eve exp
 
 ## Asset contract
 
-Every build has a ground-centered origin, meters, an individual GLB and `.blend`, named materials, reported triangle counts, and three consistent product renders. Textured mode validates embedded base-color and tangent-space normal maps on exported materials. Explicit poly mode rejects image textures. Triangle limits are optional: project setup has a blank-by-default budget field. Without an explicit limit the designer adds no numeric targets and the exporter imposes no default cap. An explicit design budget is passed to the helper and checked by the judge. Architectural openings, material scale, believable silhouettes, and the earlier bark texture lessons are in the prompts.
+Every build has a ground-centered origin, meters, an individual GLB and `.blend`, named materials, reported triangle counts, and three consistent product renders. Textured mode validates embedded base-color and tangent-space normal maps on exported materials. Explicit poly mode rejects image textures. Triangle counts are reported for information; there is no triangle-budget setting or enforcement. Architectural openings, material scale, believable silhouettes, and the earlier bark texture lessons are in the prompts.
 
 This version produces the primary asset and presentation scene. Engine-specific collision generation, LOD chains, animation, and exact modular assembly validation are future extensions. The collection demo is a staged presentation at shared scale, not automatic semantic level assembly.
 

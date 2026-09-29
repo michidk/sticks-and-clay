@@ -83,7 +83,7 @@ Start with `src/styles.css`, `src/components/ui/`, `src/routes/__root.tsx`, and 
 
 ## Administration and texture inspection
 
-The header groups Projects, Queue and Agents as icon-and-text links, with a forest-green active section (Projects remains active inside a project). At phone widths, the brand sits above a full-width navigation row with 44px touch targets. The read-only Agents page uses responsive panels with model, effort, engine and prompt settings. Model detail pages put a large 3D viewer and media tabs beside version, metrics and quality panels. Review notes, version history, build brief and activity sit below. On phones the panels stack and detail tabs form two columns. Selected media, section and version persist in the URL. Texture cards open the selected version's image for inspection/download. Project setup offers an optional, initially blank triangle-budget field.
+The header groups Projects, Queue and Agents as icon-and-text links, with a forest-green active section (Projects remains active inside a project). At phone widths, the brand sits above a full-width navigation row with 44px touch targets. The read-only Agents page uses responsive panels with model, effort, engine and prompt settings. Model detail pages put a large 3D viewer and media tabs beside version, metrics and quality panels. Review notes, version history, build brief and activity sit below. On phones the panels stack and detail tabs form two columns. Selected media, section and version persist in the URL. Texture cards open the selected version's image for inspection/download.
 
 ## Reference image intake
 

@@ -33,14 +33,12 @@ function ProjectsPage() {
     [error, setError] = useState(""),
     [name, setName] = useState(""),
     [description, setDescription] = useState(""),
-    [triangleBudget, setTriangleBudget] = useState(""),
     [draftId, setDraftId] = useState<string | null>(null),
     [briefing, setBriefing] = useState(false);
   function newProject(event: React.MouseEvent<HTMLElement>) {
     dialogOpener.current = event.currentTarget;
     setName("");
     setDescription("");
-    setTriangleBudget("");
     setDraftId(null);
     uploader.reset();
     setCreating(true);
@@ -52,7 +50,6 @@ function ProjectsPage() {
       const form = new FormData();
       form.set("name", name);
       form.set("description", description);
-      form.set("triangleBudget", triangleBudget);
       if (draftId) form.set("draftId", draftId);
       appendReferenceImages(form, uploader.images);
       const result = await request("projects/brief", {
@@ -169,7 +166,6 @@ function ProjectsPage() {
                         e.preventDefault();
                         setName(p.name);
                         setDescription(p.description);
-                        setTriangleBudget(p.triangleBudget?.toString() || "");
                         setDraftId(p.id);
                         uploader.reset(p.references);
                         setCreating(true);
@@ -177,7 +173,10 @@ function ProjectsPage() {
                     : undefined
                 }
               >
-                <div className="project-cover">
+                <div
+                  className="project-cover"
+                  style={{ aspectRatio: "16 / 9", height: "auto" }}
+                >
                   {p.thumbnail || p.references[0] ? (
                     <AssetImage
                       src={fileUrl(p.thumbnail || p.references[0])}
@@ -315,19 +314,6 @@ function ProjectsPage() {
                 {error}
               </Alert>
             )}
-            <Label>
-              Triangle budget per asset (optional)
-              <Input
-                type="number"
-                name="triangleBudget"
-                min="1"
-                max="100000000"
-                step="1"
-                value={triangleBudget}
-                onChange={(e) => setTriangleBudget(e.target.value)}
-                placeholder="No limit specified"
-              />
-            </Label>
             <Button
               variant="default"
               className="wide"

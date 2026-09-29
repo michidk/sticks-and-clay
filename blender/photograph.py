@@ -6,7 +6,8 @@ from mathutils import Vector
 
 def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, exposure=0):
     destination = Path(destination)
-    assets = glb if isinstance(glb, list) else [{'path': str(glb)}]
+    collection = isinstance(glb, list)
+    assets = glb if collection else [{'path': str(glb)}]
     hashes = {item['path']: hashlib.sha256(Path(item['path']).read_bytes()).hexdigest() for item in assets}
     digest = next(iter(hashes.values()))
     receipt = destination / 'photography.json'
@@ -24,13 +25,17 @@ def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, e
         high = Vector([max(p[i] for p in corners) for i in range(3)])
         groups.append((roots, low, high))
     if len(groups) > 1:
-        columns = math.ceil(math.sqrt(len(groups)))
+        columns = min(len(groups), math.ceil(math.sqrt(len(groups) * 16 / 9)))
         width = max((hi-lo).x for _,lo,hi in groups) * 1.4
         depth = max((hi-lo).y for _,lo,hi in groups) * 1.5
         spacing = max(width, depth, .1)
+        azimuth = math.radians(front_azimuth)
+        right = Vector((-math.sin(azimuth), math.cos(azimuth), 0))
+        back = Vector((-math.cos(azimuth), -math.sin(azimuth), 0))
         for index, (roots, low, high) in enumerate(groups):
-            offset = Vector(((index % columns)*spacing - (low.x+high.x)/2,
-                             (index // columns)*spacing - (low.y+high.y)/2, -low.z))
+            # Compose rows across the hero camera, not diagonally into its depth.
+            position = right * (index % columns) * spacing + back * (index // columns) * spacing
+            offset = position - Vector(((low.x+high.x)/2, (low.y+high.y)/2, low.z))
             for obj in roots: obj.location += offset
         bpy.context.view_layer.update()
     scene = bpy.context.scene
@@ -47,7 +52,8 @@ def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, e
     scene.render.engine = 'CYCLES'
     scene.cycles.samples = 32
     scene.cycles.use_denoising = True
-    scene.render.resolution_x = scene.render.resolution_y = 1024
+    scene.render.resolution_x = 1280 if collection else 1024
+    scene.render.resolution_y = 720 if collection else 1024
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = 'PNG'
     scene.view_settings.view_transform = 'AgX'
@@ -62,7 +68,7 @@ def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, e
     mat = bpy.data.materials.new('Neutral studio floor')
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get('Principled BSDF')
-    bsdf.inputs['Base Color'].default_value = (.19, .19, .19, 1)
+    bsdf.inputs['Base Color'].default_value = (.32, .35, .30, 1) if collection else (.19, .19, .19, 1)
     bsdf.inputs['Roughness'].default_value = .85
     floor.data.materials.append(mat)
     for position, energy, size in [((2,-3,4),1100,2),((-3,-1,2),850,3),((0,3,3),1000,2)]:
@@ -82,7 +88,9 @@ def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, e
         camera.rotation_euler=(center-camera.location).to_track_quat('-Z','Y').to_euler()
         bpy.context.view_layer.update()
         projected=[camera.matrix_world.inverted()@p for p in points]
-        extent=max(max(p[i] for p in projected)-min(p[i] for p in projected) for i in (0,1))
+        aspect = scene.render.resolution_x / scene.render.resolution_y
+        extent=max(max(p.x for p in projected)-min(p.x for p in projected),
+                   (max(p.y for p in projected)-min(p.y for p in projected))*aspect)
         shift=Vector(((min(p.x for p in projected)+max(p.x for p in projected))/2,
                       (min(p.y for p in projected)+max(p.y for p in projected))/2,0))
         camera.location += camera.rotation_euler.to_matrix() @ shift

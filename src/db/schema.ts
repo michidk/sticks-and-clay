@@ -13,7 +13,6 @@ export const projects = pgTable("projects", {
   id: text().primaryKey(),
   name: text().notNull(),
   description: text().notNull(),
-  triangleBudget: integer("triangle_budget"),
   references: jsonb().$type<string[]>().default([]).notNull(),
   design: text().default("").notNull(),
   designVersion: integer().default(0).notNull(),

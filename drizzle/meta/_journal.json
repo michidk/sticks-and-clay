@@ -43,6 +43,13 @@
       "when": 1790695179494,
       "tag": "0005_minor_cassandra_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790700344565,
+      "tag": "0006_elite_romulus",
+      "breakpoints": true
     }
   ]
 }

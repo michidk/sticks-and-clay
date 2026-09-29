@@ -14,7 +14,6 @@ Create a production-ready 3D game asset pack in Blender.
 - Number of distinct assets: [count]
 - Intended game style and setting: [description or reference images]
 - Working scale: [target height or dimensions in meters]
-- Triangle budget per asset: [optional user-specified maximum; omit this line when absent]
 - Material mode: [textured, the default, or poly mode]
 - Export format: one binary glTF (.glb) per asset, plus a master .blend file
 - Preview environment: [local or managed preview name, if applicable]
@@ -35,7 +34,7 @@ shared style.
    footprint, with the lowest geometry at local ground level. Export without
    scene lineup offsets baked into the GLB.
 3. Use enough facets to read well at game camera distance while staying under
-   any explicitly requested triangle budget. Prefer clean silhouettes and readable major forms over
+   the intended visual quality. Prefer clean silhouettes and readable major forms over
    tiny geometry.
 4. UV-map every textured mesh and use named, reusable materials. In textured
    mode, include base-color and tangent-space normal maps. Embed the maps in
@@ -102,7 +101,7 @@ Create at least one scale lineup and one in-context demo scene, then render
 both and a product view of every asset. Build a small web preview that shows
 the renders, offers an orbit/zoom 3D viewer for the delivered GLBs, compares
 assets at scale, and provides downloads. Verify that every GLB opens, has
-ground-level origin and correct dimensions, stays under any explicitly requested budget, and contains
+ground-level origin and correct dimensions, reports its triangle count, and contains
 the expected material maps for its mode. Visually inspect the prototype, the
 whole lineup, and the browser preview at desktop and phone width. Correct
 visible issues before presenting the pack.
@@ -124,7 +123,7 @@ reproduced. For trees, vary trunk lean, crown width and height, branch
 direction, clump placement, and foliage density. For buildings, vary structure
 and silhouette as described above. Change shape
 before color; simple recolors are not distinct assets. Keep ground-level
-origins, scale, texture treatment, and any explicitly requested triangle limits locked across the
+origins, scale, and texture treatment locked across the
 variant set. Export each variant separately, then render a contact sheet to
 check repetition, clipping, and style drift before adding them to the preview.
 If Blender Geometry Nodes is requested, build a real editable node group

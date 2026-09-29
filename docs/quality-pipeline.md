@@ -11,7 +11,7 @@ New model attempts use `model-quality:2`:
 
 The configured round count is a maximum **per stage**, so two rounds allow up to four build/review pairs (two geometry and two surface). Early passes skip unused rounds. Existing `model-review:1` jobs retain their original build/review-pair behavior and saved inputs. New attempts keep prior attempts, images, sessions, feedback and usage history.
 
-The text design wins if the generated image contradicts it. Numeric triangle limits apply only when explicitly present in the approved design or brief; historical approved snapshots are never silently rewritten.
+The text design wins if the generated image contradicts it. Triangle counts are informational only. Historical approved snapshots remain in history; the pipeline no longer configures or enforces polygon limits.
 
 ## Recovery and accounting
 

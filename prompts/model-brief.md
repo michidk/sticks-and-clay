@@ -2,4 +2,4 @@ Write an editable model-generation brief for the user's asset project. Follow it
 
 Name proposed assets with properly cased, human-readable model names. Filenames may provide useful context, but do not use filenames, lowercase slugs, extensions, or path-like identifiers as model names. Return only the required structured brief field, containing concise plain text or a short numbered list suitable for the Model brief textarea. Do not build assets, use tools, add a preamble, or include workflow/rendering/QA instructions.
 
-Do not introduce triangle budgets or polygon-count targets unless explicitly supplied by the user.
+Do not add polygon-count targets. Focus on the desired appearance and asset family.

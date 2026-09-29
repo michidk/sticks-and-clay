@@ -236,11 +236,6 @@ export async function api(request: Request) {
       request.method === "POST"
     ) {
       const form = await request.formData();
-      const rawBudget = form.get("triangleBudget");
-      const triangleBudget =
-        rawBudget === null || rawBudget === ""
-          ? null
-          : z.coerce.number().int().positive().max(100000000).parse(rawBudget);
       const name = z.string().trim().min(1).max(100).parse(form.get("name"));
       const description = z
         .string()
@@ -276,7 +271,6 @@ export async function api(request: Request) {
               .set({
                 name,
                 description,
-                triangleBudget,
                 references,
               })
               .where(
@@ -290,7 +284,6 @@ export async function api(request: Request) {
               id: draftId,
               name,
               description,
-              triangleBudget,
               references,
               status: "draft",
               phase: "Drafting project brief",
@@ -310,11 +303,7 @@ export async function api(request: Request) {
           role: "project-brief",
           input: await roleInput("project-brief", {
             name,
-            description:
-              description +
-              (triangleBudget === null
-                ? ""
-                : `\nUser-specified triangle budget per asset: ${triangleBudget}`),
+            description,
           }),
           images: draft.references,
         });
@@ -342,11 +331,6 @@ export async function api(request: Request) {
     }
     if (path[0] === "projects" && !path[1] && request.method === "POST") {
       const form = await request.formData();
-      const rawBudget = form.get("triangleBudget");
-      const triangleBudget =
-        rawBudget === null || rawBudget === ""
-          ? null
-          : z.coerce.number().int().positive().max(100000000).parse(rawBudget);
       const name = z.string().trim().min(1).max(100).parse(form.get("name"));
       const description = z
         .string()
@@ -384,7 +368,6 @@ export async function api(request: Request) {
               .set({
                 name,
                 description,
-                triangleBudget,
                 references,
                 status: "queued",
                 phase: "Waiting for designer",
@@ -397,7 +380,7 @@ export async function api(request: Request) {
           } else
             await tx
               .insert(projects)
-              .values({ id, name, description, references, triangleBudget });
+              .values({ id, name, description, references });
           await tx
             .insert(jobs)
             .values({ id: crypto.randomUUID(), kind: "design", targetId: id });

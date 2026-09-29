@@ -50,11 +50,7 @@ export async function executeJob(kind: string, targetId: string) {
       .where(eq(projects.id, p.id));
     const input = await roleInput("designer", {
       name: p.name,
-      description:
-        p.description +
-        (p.triangleBudget === null
-          ? ""
-          : `\nUser-specified triangle budget per asset: ${p.triangleBudget}`),
+      description: p.description,
     });
     const { result } = await runRole({
       role: "designer",
@@ -562,13 +558,11 @@ async function settleBatch(id: string) {
         .from(models)
         .where(eq(models.projectId, claimed.projectId));
       if (available.some((m) => m.artifacts?.glb))
-        await tx
-          .insert(jobs)
-          .values({
-            id: crypto.randomUUID(),
-            kind: "project-photo",
-            targetId: claimed.projectId,
-          });
+        await tx.insert(jobs).values({
+          id: crypto.randomUUID(),
+          kind: "project-photo",
+          targetId: claimed.projectId,
+        });
     }
     if (claimed && hasFinalAsset)
       await tx
