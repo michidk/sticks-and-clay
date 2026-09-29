@@ -2,6 +2,8 @@
 
 A working game-asset pipeline application, built alongside CodeTend with the same core stack: **Bun, React 19, TanStack Start/Router, Vite, Tailwind 4, Drizzle/PostgreSQL, and Eve**. Three.js provides the interactive GLB viewer; Blender runs locally through an isolated MCP adapter.
 
+The interface uses locally owned [shadcn components](https://ui.shadcn.com/) and a custom ivory, forest-green, and sage theme in `src/styles.css`. Configure/add primitives through `components.json` and keep app-specific layout in the routes. Skeletons cover initial page, image, and viewer loading; polling retains already loaded content.
+
 ## Project documentation
 
 - [Design guide](design.md): the current ivory, forest-green, and sage UI theme, typography, components, and responsive behavior.

@@ -1,6 +1,10 @@
+import { Alert } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { request } from "../../../lib/client";
+import { CardsSkeleton } from "../../../components/loading";
 export const Route = createFileRoute("/admin/agents/")({
   component: AgentsPage,
 });
@@ -30,20 +34,22 @@ function AgentsPage() {
         Settings are read-only here.
       </p>
       {error && (
-        <p role="alert" className="error">
+        <Alert variant="destructive" role="alert" className="error">
           {error}
-        </p>
+        </Alert>
       )}
-      {!agents && !error && <p role="status">Loading settings…</p>}
+      {!agents && !error && (
+        <CardsSkeleton label="Loading agent settings" covers={false} />
+      )}
       <div className="project-grid">
         {agents?.map((agent) => (
-          <article className="panel" key={agent.id}>
+          <Card className="panel" key={agent.id}>
             <h2>{agent.id}</h2>
-            <p className="badge">
+            <Badge variant="secondary" className="badge">
               {agent.engine === "eve"
                 ? "Eve · resumable session"
                 : "TanStack AI · one-shot"}
-            </p>
+            </Badge>
             <dl className="role-settings">
               <dt>Model</dt>
               <dd>{agent.model}</dd>
@@ -54,17 +60,17 @@ function AgentsPage() {
               <dt>Input template</dt>
               <dd>prompts/{agent.inputTemplate}.md</dd>
             </dl>
-          </article>
+          </Card>
         ))}
       </div>
-      <section className="panel">
+      <Card className="panel">
         <h2>Texture generation</h2>
         <p>
           Builders can call the Codex imagegen skill through generate_texture.
           Generated and derived texture images are retained with each model
           version. Image requests have separate history and usage records.
         </p>
-      </section>
+      </Card>
     </main>
   );
 }

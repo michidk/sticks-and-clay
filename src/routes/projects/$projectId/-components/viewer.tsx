@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ViewerSkeleton } from "../../../../components/loading";
 export default function Viewer({ url }: { url: string }) {
   const host = useRef<HTMLDivElement>(null),
     [error, setError] = useState(""),
@@ -104,14 +105,16 @@ export default function Viewer({ url }: { url: string }) {
   }, [url]);
   return (
     <>
-      <div ref={host} className="viewer" data-loaded={!loading} />
+      <div ref={host} className="viewer" data-loaded={!loading}>
+        {loading && !error && <ViewerSkeleton overlay />}
+      </div>
       {error ? (
         <p role="alert" className="error">
           {error}
         </p>
       ) : (
         <p className="viewer-hint">
-          {loading ? "Loading 3D model…" : "Drag to orbit · Scroll to zoom"}
+          {loading ? "" : "Drag to orbit · Scroll to zoom"}
         </p>
       )}
     </>

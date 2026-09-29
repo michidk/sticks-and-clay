@@ -10,7 +10,7 @@ The home headline pairs a plain sans-serif statement (“Build a world.”) with
 
 ## Palette
 
-These are existing CSS values, not a CSS-variable API. Reuse the corresponding classes in `src/styles.css`; keep this guide synchronized when changing the theme.
+These colors now back semantic shadcn tokens in `src/styles.css` (`--background`, `--primary`, `--card`, and related roles). Use those tokens through shadcn components and Tailwind utilities; keep this guide synchronized when changing the theme.
 
 | Role | Color | Use |
 | --- | --- | --- |
@@ -54,8 +54,8 @@ Status badges pair text with color:
 - **Models:** 240px cover images, readable status, asset name, brief, triangle/cost metadata, and separate GLB/source downloads. Collection renders sit in a two-column panel above model cards when available.
 - **Design reference:** readable Markdown with GFM tables and revision comparisons; a main document column with a 280px reference sidebar. The editable source is monospace. Keep save, approval, and revision restoration distinct.
 - **Activity:** expandable run rows with role icons, status, usage, and cost; details reveal transcripts and technical information. Preserve progressive disclosure.
-- **Forms:** stacked labels, ivory inputs, 7px corners, generous padding, and dashed upload areas. Use the existing `.primary`, `.error`, `.note`, and `.actions` treatments.
-- **Dialogs:** centered on a translucent green overlay (`#152b245c`) with 5px backdrop blur. Standard dialogs are 570px wide; asset dialogs are 1000px, constrained by the viewport and a 92vh maximum height.
+- **Forms:** shadcn Label, Input, Textarea, and Button with stacked labels, ivory surfaces, generous padding, and dashed upload areas. Use Alert for errors.
+- **Dialogs:** shadcn Dialog with focus management and Escape behavior; centered on a translucent green overlay with blur. Standard dialogs are 570px wide; asset dialogs are 1000px, constrained by the viewport and a 92vh maximum height.
 - **3D preview:** neutral lighting and background, orbit/zoom controls, loading/error text, and a short interaction hint. Let the asset's material colors remain the focus.
 - **Icons and motion:** use `lucide-react` line icons. Existing hover transitions last 0.15–0.2s; activity spinners rotate over 1.4s. Avoid decorative motion that competes with work in progress.
 
@@ -77,7 +77,7 @@ Use semantic links for navigation and buttons for actions, associated form label
 
 ## Maintaining the theme
 
-Start with `src/styles.css`, `src/routes/__root.tsx`, and the relevant route/component. Reuse existing classes before introducing variants. Validate UI changes in both the project list and a populated workspace, including phone width and loading, empty, review, error, and long-content states relevant to the change. Update this guide when intentional changes alter the shared visual language.
+Start with `src/styles.css`, `src/components/ui/`, `src/routes/__root.tsx`, and the relevant route/component. Use the installed shadcn primitive for controls that have one; preserve app-specific layouts and use semantic theme tokens for new colors. Skeletons mirror project cards, workspace statistics, queue entries, agent cards, text, images, and the 3D viewer while loading. Keep loaded content visible during background polling. Validate UI changes in both the project list and a populated workspace, including phone width and loading, empty, review, error, and long-content states relevant to the change. Update this guide when intentional changes alter the shared visual language.
 
 ## Administration and texture inspection
 

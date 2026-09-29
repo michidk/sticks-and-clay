@@ -1,7 +1,12 @@
+import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { request, json } from "../../../lib/client";
 import { Progress } from "../../../components/progress";
+import { QueueSkeleton } from "../../../components/loading";
 export const Route = createFileRoute("/admin/queue/")({ component: QueuePage });
 function QueuePage() {
   const [jobs, setJobs] = useState<any[]>([]),
@@ -13,7 +18,10 @@ function QueuePage() {
     setLoading(false);
   };
   useEffect(() => {
-    void load().catch((e) => setError(e.message));
+    void load().catch((e) => {
+      setError(e.message);
+      setLoading(false);
+    });
     const t = setInterval(
       () => void load().catch((e) => setError(e.message)),
       2500,
@@ -45,20 +53,21 @@ function QueuePage() {
             Model builders, reviews, planning, and collection renders.
           </p>
         </div>
-        <button
+        <Button
+          variant="outline"
           disabled={busy || !jobs.some((j) => j.status === "queued")}
           onClick={() => cancel("queue/cancel-pending")}
         >
           Abort pending queue
-        </button>
+        </Button>
       </section>
       {error && (
-        <p role="alert" className="error">
+        <Alert variant="destructive" role="alert" className="error">
           {error}
-        </p>
+        </Alert>
       )}
       {loading ? (
-        <p role="status">Loading queue…</p>
+        <QueueSkeleton />
       ) : (
         <p>
           {active.length} active jobs ·{" "}
@@ -70,56 +79,60 @@ function QueuePage() {
         Stopping a running job requests cancellation; it may take time for an
         active Blender operation to stop.
       </p>
-      {["Active", "History"].map((section) => (
-        <section key={section}>
-          <h2>{section}</h2>
-          {jobs
-            .filter((j) =>
-              section === "Active" ? active.includes(j) : !active.includes(j),
-            )
-            .map((j) => (
-              <article className="panel" key={j.id}>
-                <div className="section-title">
-                  <div>
-                    <h3>{j.name}</h3>
-                    {j.projectId && (
-                      <Link
-                        to="/projects/$projectId"
-                        params={{ projectId: j.projectId }}
-                      >
-                        {j.projectName}
-                      </Link>
-                    )}
+      {!loading &&
+        ["Active", "History"].map((section) => (
+          <section key={section}>
+            <h2>{section}</h2>
+            {jobs
+              .filter((j) =>
+                section === "Active" ? active.includes(j) : !active.includes(j),
+              )
+              .map((j) => (
+                <Card className="panel" key={j.id}>
+                  <div className="section-title">
+                    <div>
+                      <h3>{j.name}</h3>
+                      {j.projectId && (
+                        <Link
+                          to="/projects/$projectId"
+                          params={{ projectId: j.projectId }}
+                        >
+                          {j.projectName}
+                        </Link>
+                      )}
+                    </div>
+                    <Badge variant="secondary" className={"badge " + j.status}>
+                      {j.status}
+                    </Badge>
                   </div>
-                  <div className={"badge " + j.status}>{j.status}</div>
-                </div>
-                <p>
-                  {j.kind} · {new Date(j.createdAt).toLocaleString()}
-                </p>
-                {["running", "queued"].includes(j.status) &&
-                  j.kind === "model" && (
-                    <Progress
-                      value={j.progress || 0}
-                      label={j.phase || j.status}
-                    />
+                  <p>
+                    {j.kind} · {new Date(j.createdAt).toLocaleString()}
+                  </p>
+                  {["running", "queued"].includes(j.status) &&
+                    j.kind === "model" && (
+                      <Progress
+                        value={j.progress || 0}
+                        label={j.phase || j.status}
+                      />
+                    )}
+                  {j.error && <p className="muted">{j.error}</p>}
+                  {["queued", "running", "cancelling"].includes(j.status) && (
+                    <Button
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => cancel("queue/" + j.id + "/cancel")}
+                    >
+                      {j.status === "queued"
+                        ? "Remove from queue"
+                        : j.status === "cancelling"
+                          ? "Retry stop request"
+                          : "Stop job"}
+                    </Button>
                   )}
-                {j.error && <p className="muted">{j.error}</p>}
-                {["queued", "running", "cancelling"].includes(j.status) && (
-                  <button
-                    disabled={busy}
-                    onClick={() => cancel("queue/" + j.id + "/cancel")}
-                  >
-                    {j.status === "queued"
-                      ? "Remove from queue"
-                      : j.status === "cancelling"
-                        ? "Retry stop request"
-                        : "Stop job"}
-                  </button>
-                )}
-              </article>
-            ))}
-        </section>
-      ))}
+                </Card>
+              ))}
+          </section>
+        ))}
     </main>
   );
 }

@@ -32,7 +32,7 @@ Do not hand-edit `src/routeTree.gen.ts` or generated build output. Keep changes 
 
 ## UI work
 
-Follow `design.md`: warm ivory surfaces, forest-green actions, sage supporting colors, thin borders, restrained shadows, and existing responsive grids. Prefer shared CSS classes and Lucide icons. Retain explicit loading, empty, error, review, and disabled states. Keep keyboard focus and semantic controls usable.
+Follow `design.md`: warm ivory surfaces, forest-green actions, sage supporting colors, thin borders, restrained shadows, and existing responsive grids. Use the installed shadcn primitives in `src/components/ui/` for their matching controls and semantic color tokens from `src/styles.css`; keep app-specific layouts in the routes. Use skeletons in `src/components/loading.tsx` for initial loading and preserve loaded content during polling. Retain explicit empty, error, review, and disabled states. Keep keyboard focus and semantic controls usable.
 
 For visual changes, inspect the running application in the collaborative browser at desktop and phone widths. In VibePod, check `vibepod-preview list` and reuse `asset-studio`; use `vibepod-preview restart asset-studio` if stopped. Create a missing preview through `vibepod-preview run`, using `asset-studio` as its stable name and matching Vite's port to the managed preview port. Run `vibepod-preview doctor asset-studio` before reporting it healthy.
 

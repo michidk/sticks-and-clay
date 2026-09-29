@@ -1,3 +1,19 @@
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CardsSkeleton } from "@/components/loading";
+import { AssetImage } from "@/components/asset-image";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
@@ -5,11 +21,9 @@ import {
   ArrowUpRight,
   Layers,
   ImagePlus,
-  X,
   LoaderCircle,
 } from "lucide-react";
 import { request, money, fileUrl } from "../lib/client";
-import { useDialog } from "../components/use-dialog";
 import { Progress } from "../components/progress";
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 function ProjectsPage() {
@@ -55,7 +69,6 @@ function ProjectsPage() {
       setBriefing(false);
     }
   }
-  useDialog(creating, () => setCreating(false), busy || briefing);
   const navigate = Route.useNavigate();
   useEffect(() => {
     let active = true;
@@ -116,210 +129,212 @@ function ProjectsPage() {
             Let your agents build, review, and refine the details.
           </p>
         </div>
-        <button className="primary" onClick={newProject}>
+        <Button variant="default" className="" onClick={newProject}>
           <Plus size={18} />
           New project
-        </button>
+        </Button>
       </section>
       <div className="section-title">
         <h2>
-          Projects <span className="count">{projects.length}</span>
+          Projects{" "}
+          <Badge variant="secondary" className="count">
+            {projects.length}
+          </Badge>
         </h2>
         <span>Every collection starts with a direction.</span>
       </div>
       {error && (
-        <div role="alert" className="error">
+        <Alert variant="destructive" role="alert" className="error">
           {error}
-        </div>
+        </Alert>
       )}
       {loading ? (
-        <p className="muted">Loading your workspace…</p>
+        <CardsSkeleton />
       ) : (
         <div className="project-grid">
           {projects.map((p) => (
-            <Link
-              key={p.id}
-              to="/projects/$projectId"
-              params={{ projectId: p.id }}
-              className="project-card"
-              onClick={
-                p.status === "draft"
-                  ? (e) => {
-                      e.preventDefault();
-                      setName(p.name);
-                      setDescription(p.description);
-                      setTriangleBudget(p.triangleBudget?.toString() || "");
-                      setDraftId(p.id);
-                      setFiles([]);
-                      setCreating(true);
-                    }
-                  : undefined
-              }
-            >
-              <div className="project-cover">
-                {p.references[0] ? (
-                  <img
-                    src={fileUrl(p.references[0])}
-                    alt={`${p.name} reference`}
-                  />
-                ) : (
-                  <div className="abstract">
-                    <Layers size={68} strokeWidth={0.8} />
-                    <span>STYLE STARTS HERE</span>
-                  </div>
-                )}
-                <span className={"badge " + p.status}>
-                  {p.status.replace("_", " ")}
-                </span>
-              </div>
-              <div className="project-body">
-                <h3>
-                  {p.name}
-                  <ArrowUpRight size={19} />
-                </h3>
-                <p>
-                  {p.description ||
-                    "A collection inspired by its name and references."}
-                </p>
-                {["queued", "designing"].includes(p.status) && (
-                  <Progress value={p.progress} label={p.phase} />
-                )}
-                <div className="card-meta">
-                  <span>
-                    {new Date(p.createdAt).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </span>
-                  <span>
-                    {p.usage.tokens.toLocaleString()} tokens ·{" "}
-                    {money(p.usage.cost)}
-                  </span>
+            <Card key={p.id} asChild className="project-card">
+              <Link
+                to="/projects/$projectId"
+                params={{ projectId: p.id }}
+                onClick={
+                  p.status === "draft"
+                    ? (e) => {
+                        e.preventDefault();
+                        setName(p.name);
+                        setDescription(p.description);
+                        setTriangleBudget(p.triangleBudget?.toString() || "");
+                        setDraftId(p.id);
+                        setFiles([]);
+                        setCreating(true);
+                      }
+                    : undefined
+                }
+              >
+                <div className="project-cover">
+                  {p.references[0] ? (
+                    <AssetImage
+                      src={fileUrl(p.references[0])}
+                      alt={`${p.name} reference`}
+                    />
+                  ) : (
+                    <div className="abstract">
+                      <Layers size={68} strokeWidth={0.8} />
+                      <span>STYLE STARTS HERE</span>
+                    </div>
+                  )}
+                  <Badge variant="secondary" className={"badge " + p.status}>
+                    {p.status.replace("_", " ")}
+                  </Badge>
                 </div>
-              </div>
-            </Link>
+                <div className="project-body">
+                  <h3>
+                    {p.name}
+                    <ArrowUpRight size={19} />
+                  </h3>
+                  <p>
+                    {p.description ||
+                      "A collection inspired by its name and references."}
+                  </p>
+                  {["queued", "designing"].includes(p.status) && (
+                    <Progress value={p.progress} label={p.phase} />
+                  )}
+                  <div className="card-meta">
+                    <span>
+                      {new Date(p.createdAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                    <span>
+                      {p.usage.tokens.toLocaleString()} tokens ·{" "}
+                      {money(p.usage.cost)}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            </Card>
           ))}
-          <button className="new-card" onClick={newProject}>
+          <Button
+            variant="ghost"
+            size="bare"
+            className="new-card"
+            onClick={newProject}
+          >
             <span className="circle">
               <Plus size={24} />
             </span>
             <strong>A new world starts here</strong>
             <span>Name your project, then write or generate its brief.</span>
-          </button>
+          </Button>
         </div>
       )}
-      <div className="how">
-        <div>
-          <b>01</b>
-          <h3>Set the direction</h3>
-          <p>A design reference you can shape and approve.</p>
-        </div>
-        <div>
-          <b>02</b>
-          <h3>Build together</h3>
-          <p>Parallel artists, one consistent visual language.</p>
-        </div>
-        <div>
-          <b>03</b>
-          <h3>Review every detail</h3>
-          <p>Visual judging, concrete fixes, full history.</p>
-        </div>
-      </div>
-      {creating && (
-        <div className="overlay">
-          <section
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="new-project-title"
-          >
-            <button
-              className="icon close"
-              aria-label="Close"
-              disabled={busy || briefing}
-              onClick={() => setCreating(false)}
-            >
-              <X />
-            </button>
+      <Dialog
+        open={creating}
+        onOpenChange={(open) => {
+          if (!open && !busy && !briefing) setCreating(false);
+        }}
+      >
+        <DialogContent showCloseButton={!busy && !briefing}>
+          <DialogHeader>
             <div className="eyebrow">START A COLLECTION</div>
-            <h2 id="new-project-title">Give your world a direction.</h2>
-            <p className="muted">
+            <DialogTitle className="text-[27px]">
+              Give your world a direction.
+            </DialogTitle>
+            <DialogDescription className="muted">
               Write a brief or let AI draft one from the name and references.
               Review it before creating your design.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={create}>
+            <Label>
+              Project name
+              <Input
+                name="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={briefing}
+                required
+                maxLength={100}
+                placeholder="e.g. Stonehaven village"
+              />
+            </Label>
+            <Label>
+              The brief
+              <Textarea
+                name="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={briefing}
+                required
+                minLength={10}
+                rows={4}
+                placeholder="Describe the setting, style, and what you want to build, or use AI generate brief."
+              />
+            </Label>
+            <Button
+              variant="outline"
+              type="button"
+              disabled={busy || briefing || !name.trim()}
+              onClick={generateBrief}
+            >
+              {briefing && <LoaderCircle className="spin" size={16} />}
+              {briefing ? "Writing brief…" : "AI generate brief"}
+            </Button>
+            <p className="note">
+              The generated text fills the field above. Edit and correct it
+              before continuing.
             </p>
-            <form onSubmit={create}>
-              <label>
-                Project name
-                <input
-                  name="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={briefing}
-                  required
-                  maxLength={100}
-                  placeholder="e.g. Stonehaven village"
-                />
-              </label>
-              <label>
-                The brief
-                <textarea
-                  name="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  disabled={briefing}
-                  required
-                  minLength={10}
-                  rows={4}
-                  placeholder="Describe the setting, style, and what you want to build, or use AI generate brief."
-                />
-              </label>
-              <button
-                type="button"
-                disabled={busy || briefing || !name.trim()}
-                onClick={generateBrief}
-              >
-                {briefing && <LoaderCircle className="spin" size={16} />}
-                {briefing ? "Writing brief…" : "AI generate brief"}
-              </button>
-              <p className="note">
-                The generated text fills the field above. Edit and correct it
-                before continuing.
-              </p>
-              <label className="upload">
-                <ImagePlus size={24} />
-                <strong>Reference images (optional)</strong>
-                <span>Choose up to 6 PNG, JPG or WebP images · 8 MB each</span>
-                <input
-                  name="images"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  multiple
-                  onChange={(e) =>
-                    setFiles(Array.from(e.target.files || []).slice(0, 6))
-                  }
-                />
-              </label>
-              {files.length > 0 && (
-                <p className="muted">{files.map((f) => f.name).join(" · ")}</p>
-              )}
-              {error && <p className="error">{error}</p>}
-              <label>Triangle budget per asset (optional)
-                <input type="number" name="triangleBudget" min="1" max="100000000" step="1" value={triangleBudget} onChange={e => setTriangleBudget(e.target.value)} placeholder="No limit specified" />
-              </label>
-              <button className="primary wide" disabled={busy || briefing}>
-                {busy ? (
-                  <LoaderCircle className="spin" size={18} />
-                ) : (
-                  <Plus size={18} />
-                )}{" "}
-                {busy
-                  ? "Creating project…"
-                  : "Create project & generate design"}
-              </button>
-            </form>
-          </section>
-        </div>
-      )}
+            <Label className="upload">
+              <ImagePlus size={24} />
+              <strong>Reference images (optional)</strong>
+              <span>Choose up to 6 PNG, JPG or WebP images · 8 MB each</span>
+              <Input
+                name="images"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                onChange={(e) =>
+                  setFiles(Array.from(e.target.files || []).slice(0, 6))
+                }
+              />
+            </Label>
+            {files.length > 0 && (
+              <p className="muted">{files.map((f) => f.name).join(" · ")}</p>
+            )}
+            {error && (
+              <Alert variant="destructive" className="error">
+                {error}
+              </Alert>
+            )}
+            <Label>
+              Triangle budget per asset (optional)
+              <Input
+                type="number"
+                name="triangleBudget"
+                min="1"
+                max="100000000"
+                step="1"
+                value={triangleBudget}
+                onChange={(e) => setTriangleBudget(e.target.value)}
+                placeholder="No limit specified"
+              />
+            </Label>
+            <Button
+              variant="default"
+              className="wide"
+              disabled={busy || briefing}
+            >
+              {busy ? (
+                <LoaderCircle className="spin" size={18} />
+              ) : (
+                <Plus size={18} />
+              )}{" "}
+              {busy ? "Creating project…" : "Create project & generate design"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

@@ -5,7 +5,12 @@ export function Progress({ value, label }: { value: number; label: string }) {
         <span>{label}</span>
         <span>{value}%</span>
       </div>
-      <progress aria-label={label} max={100} value={value} />
+      <ProgressBar
+        aria-label={label}
+        value={Math.min(100, Math.max(0, value))}
+        className="h-1.5"
+      />
     </div>
   );
 }
+import { Progress as ProgressBar } from "./ui/progress";

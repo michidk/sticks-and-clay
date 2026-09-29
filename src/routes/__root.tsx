@@ -1,3 +1,5 @@
+import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
 import {
   createRootRoute,
   HeadContent,
@@ -22,7 +24,10 @@ export const Route = createRootRoute({
           <span className="brand-icon">
             <Boxes size={21} />
           </span>{" "}
-          Asset Studio <span className="beta">WORKSHOP</span>
+          Asset Studio{" "}
+          <Badge variant="secondary" className="beta">
+            WORKSHOP
+          </Badge>
         </Link>
         <Link to="/admin/queue">Queue</Link>
         <Link to="/admin/agents">Agents</Link>
@@ -32,10 +37,6 @@ export const Route = createRootRoute({
         </span>
       </header>
       <Outlet />
-      <footer>
-        ASSET STUDIO{" "}
-        <span>Built with Blender + Eve · Made for worlds worth exploring.</span>
-      </footer>
     </>
   ),
   shellComponent: ({ children }) => (
@@ -52,9 +53,9 @@ export const Route = createRootRoute({
   errorComponent: ({ error }) => (
     <main>
       <h1>Something needs attention</h1>
-      <p className="error">
+      <Alert variant="destructive" className="error">
         {error instanceof Error ? error.message : String(error)}
-      </p>
+      </Alert>
       <a href="/">Return to projects</a>
     </main>
   ),
