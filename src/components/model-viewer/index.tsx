@@ -118,6 +118,7 @@ export function ModelViewer({
   const [cubes, setCubes] = useState(requestedCubes ?? !src);
   const [loaded, setLoaded] = useState(!src);
   const [locked, setLocked] = useState(false);
+  const [pointerLockAvailable, setPointerLockAvailable] = useState(true);
   const [resetToken, setResetToken] = useState(0);
   const [direction, setDirection] = useState<Direction>({ id: 0, yaw: 0, pitch: 0 });
 
@@ -128,6 +129,10 @@ export function ModelViewer({
   useEffect(() => setCubes(requestedCubes ?? !src), [requestedCubes, src]);
   useEffect(() => setLoaded(!src), [src]);
   useEffect(() => setLocked(false), [mode]);
+  useEffect(() => {
+    const policy = (document as Document & { featurePolicy?: { allowsFeature(feature: string): boolean } }).featurePolicy;
+    setPointerLockAvailable(policy?.allowsFeature("pointer-lock") !== false);
+  }, []);
 
   const ready = useCallback(() => { setLoaded(true); onLoad?.(); }, [onLoad]);
   const fail = useCallback((error: Error) => { setLoaded(true); onError?.(error); }, [onError]);
@@ -202,8 +207,10 @@ export function ModelViewer({
           </Suspense>
           {mode === "firstPerson" ? (
             <>
-              <PointerLockControls makeDefault selector={`[data-viewer-key="${viewerKey}"] canvas`} onLock={() => setLocked(true)} onUnlock={() => setLocked(false)} />
-              <FirstPersonMovement />
+              {pointerLockAvailable ? (
+                <PointerLockControls makeDefault selector={`[data-viewer-key="${viewerKey}"] canvas`} onLock={() => setLocked(true)} onUnlock={() => setLocked(false)} />
+              ) : <DragLook />}
+              <FirstPersonMovement requirePointerLock={pointerLockAvailable} />
             </>
           ) : (
             <>
@@ -261,7 +268,9 @@ export function ModelViewer({
           )}
           <div className="viewer-help" role="status">
             {mode === "firstPerson"
-              ? locked ? "WASD / arrows to move · Esc to release" : "Click the scene to look around · WASD to move"
+              ? pointerLockAvailable
+                ? locked ? "WASD / arrows to move · Esc to release" : "Click the scene to look around · WASD to move"
+                : "Drag to look · WASD / arrows to move"
               : mode === "object" ? "Drag the model to rotate · Scroll to zoom" : "Drag to orbit · Scroll to zoom"}
           </div>
         </>
@@ -341,16 +350,53 @@ function CameraNudge({ direction }: { direction: Direction }) {
   return null;
 }
 
-function FirstPersonMovement() {
-  const { camera } = useThree();
+function DragLook() {
+  const { camera, gl } = useThree();
+  useEffect(() => {
+    const canvas = gl.domElement;
+    let dragging = false;
+    camera.rotation.reorder("YXZ");
+    canvas.tabIndex = 0;
+    function down(event: PointerEvent) {
+      if (event.button !== 0) return;
+      dragging = true;
+      canvas.focus();
+      canvas.setPointerCapture(event.pointerId);
+    }
+    function move(event: PointerEvent) {
+      if (!dragging) return;
+      camera.rotation.y -= event.movementX * 0.002;
+      camera.rotation.x = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, camera.rotation.x - event.movementY * 0.002));
+    }
+    function up(event: PointerEvent) {
+      dragging = false;
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+    }
+    canvas.addEventListener("pointerdown", down);
+    canvas.addEventListener("pointermove", move);
+    canvas.addEventListener("pointerup", up);
+    canvas.addEventListener("pointercancel", up);
+    return () => {
+      canvas.removeEventListener("pointerdown", down);
+      canvas.removeEventListener("pointermove", move);
+      canvas.removeEventListener("pointerup", up);
+      canvas.removeEventListener("pointercancel", up);
+    };
+  }, [camera, gl]);
+  return null;
+}
+
+function FirstPersonMovement({ requirePointerLock }: { requirePointerLock: boolean }) {
+  const { camera, gl } = useThree();
   const pressed = useRef(new Set<string>());
   const walkingHeight = useRef(camera.position.y);
   useEffect(() => {
     walkingHeight.current = camera.position.y;
     function down(event: KeyboardEvent) {
       if ((event.target as HTMLElement)?.closest("input, textarea, select, [contenteditable]")) return;
+      if (!requirePointerLock && event.target !== gl.domElement) return;
       pressed.current.add(event.code);
-      if (document.pointerLockElement && event.code.startsWith("Arrow")) event.preventDefault();
+      if ((document.pointerLockElement || !requirePointerLock) && event.code.startsWith("Arrow")) event.preventDefault();
     }
     function up(event: KeyboardEvent) { pressed.current.delete(event.code); }
     function blur() { pressed.current.clear(); }
@@ -362,9 +408,9 @@ function FirstPersonMovement() {
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
     };
-  }, [camera]);
+  }, [camera, gl, requirePointerLock]);
   useFrame((_, delta) => {
-    if (!document.pointerLockElement) return;
+    if (requirePointerLock ? !document.pointerLockElement : document.activeElement !== gl.domElement) return;
     const speed = Math.min(delta, 0.05) * 2.2;
     const keys = pressed.current;
     const forward = Number(keys.has("KeyW") || keys.has("ArrowUp")) - Number(keys.has("KeyS") || keys.has("ArrowDown"));
