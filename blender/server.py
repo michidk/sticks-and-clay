@@ -1,0 +1,44 @@
+"""Loopback MCP adapter. Each capability owns an independent Blender process/workdir."""
+import asyncio,json,os,pathlib,re,uuid
+from mcp.server.fastmcp import FastMCP
+ROOT=pathlib.Path(__file__).resolve().parent.parent
+DATA=pathlib.Path(os.environ.get('STUDIO_DATA_DIR',ROOT/'data')).resolve()
+mcp=FastMCP('Asset Studio Blender',host='127.0.0.1',port=int(os.environ.get('BLENDER_MCP_PORT','33442')),stateless_http=True)
+locks={}
+def workspace(capability):
+    if not re.fullmatch(r'[0-9a-f-]{36}',capability):raise ValueError('Invalid capability')
+    marker=DATA/'capabilities'/f'{capability}.json'
+    info=json.loads(marker.read_text())
+    dest=(DATA/info['directory']).resolve()
+    if not dest.is_relative_to(DATA):raise ValueError('Invalid workspace')
+    return dest
+@mcp.tool()
+async def get_scene_info(capability:str)->dict:
+    """Read Blender version and existing export metrics for this authorized builder workspace."""
+    dest=workspace(capability)
+    proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'--version',stdout=asyncio.subprocess.PIPE)
+    out,_=await proc.communicate()
+    return {'version':out.decode().splitlines()[0],'directory':str(dest),'metrics':json.loads((dest/'metrics.json').read_text()) if (dest/'metrics.json').exists() else None,'clean_execution':True}
+@mcp.tool()
+async def execute_blender_code(capability:str,code:str)->dict:
+    """Execute a complete asset build in an independent Blender process. Call finish_asset() last. bpy, math, random, Vector and OUTPUT_DIR are provided. Outputs: asset.glb, source.blend, metrics.json, front.png, rear.png, detail.png. No shared scene state."""
+    dest=workspace(capability)
+    async with locks.setdefault(capability,asyncio.Lock()):
+        dest.mkdir(parents=True,exist_ok=True)
+        helper=(ROOT/'blender'/'helpers.py').read_text()
+        script=dest/f'build-{uuid.uuid4()}.py'
+        script.write_text('OUTPUT_DIR = '+repr(str(dest))+'\n'+helper+'\n'+code)
+        env={k:v for k,v in os.environ.items() if not any(s in k.upper() for s in ['TOKEN','SECRET','PASSWORD','API_KEY','CREDENTIAL'])}
+        proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'-b','--threads','2','--python-exit-code','1','--python',str(script),cwd=dest,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
+        try:out,_=await asyncio.wait_for(proc.communicate(),240)
+        except asyncio.TimeoutError:
+            proc.kill();await proc.wait();return {'ok':False,'error':'Blender exceeded 240 seconds'}
+        (dest/'build.log').write_bytes(out)
+        return {'ok':proc.returncode==0,'log':out.decode(errors='replace')[-(1200 if proc.returncode==0 else 6000):],'metrics':json.loads((dest/'metrics.json').read_text()) if proc.returncode==0 and (dest/'metrics.json').exists() else None}
+@mcp.tool()
+def get_render(capability:str,view:str='front')->dict:
+    """Inspect a rendered image from this builder's workspace. view: front, rear, detail."""
+    if view not in ['front','rear','detail']:raise ValueError('Unknown view')
+    path=workspace(capability)/f'{view}.png'
+    return {'view':view,'exists':path.exists(),'instruction':'Use the view_render vision tool with the same capability to inspect the pixels. Never encode image bytes as text.'}
+if __name__=='__main__':mcp.run(transport='streamable-http')

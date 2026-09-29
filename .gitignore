@@ -1,0 +1,10 @@
+node_modules/
+data/
+.env*
+!.env.example
+.output/
+.tanstack/
+eve/.eve/
+.venv/
+__pycache__/
+*.pyc
