@@ -17,7 +17,8 @@ test("Eve chooses the persisted model and effort, not a new registry default", a
       resolve(dir, "session-config/test.json"),
       JSON.stringify({ model: "gpt-6-astra", effort: "medium" }),
     );
-    const resolver = (eveAgent.model as any).events["turn.started"];
+    expect((eveAgent.model as any).events["turn.started"]).toBeUndefined();
+    const resolver = (eveAgent.model as any).events["step.started"];
     const selected = await resolver({}, { session: { id: "test" } });
     expect(selected.model.modelId).toBe("gpt-6-astra");
     expect(selected.modelOptions.providerOptions.openai.reasoningEffort).toBe(

@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Accordion,
@@ -182,7 +182,9 @@ function ProjectPage() {
     return (
       <main>
         {error ? (
-          <Alert variant="destructive">{error}</Alert>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         ) : (
           <WorkspaceSkeleton />
         )}
@@ -283,7 +285,7 @@ function ProjectPage() {
       </Card>
       {error && (
         <Alert variant="destructive" role="alert" className="error">
-          {error}
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
       {!["ready", "review"].includes(p.status) && (
@@ -301,7 +303,7 @@ function ProjectPage() {
           {p.error && (
             <>
               <Alert variant="destructive" className="error">
-                {p.error}
+                <AlertDescription>{p.error}</AlertDescription>
               </Alert>
               <Button
                 variant="outline"
@@ -548,7 +550,7 @@ function ProjectPage() {
                   )}
                   {b.error ? (
                     <Alert variant="destructive" className="error">
-                      {b.error}
+                      <AlertDescription>{b.error}</AlertDescription>
                     </Alert>
                   ) : (
                     <Progress
@@ -699,7 +701,7 @@ function ProjectPage() {
                         </Button>
                         {m.error && (
                           <Alert variant="destructive" className="error">
-                            {m.error}
+                            <AlertDescription>{m.error}</AlertDescription>
                           </Alert>
                         )}
                         {m.status === "failed" && (
@@ -832,7 +834,7 @@ function ProjectPage() {
             </p>
             {error && (
               <Alert variant="destructive" className="error">
-                {error}
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
             <Button

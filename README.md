@@ -132,7 +132,7 @@ Use `src/modules/ai/index.server.ts` (`runRole`, `roleInput`) for all AI work. R
 
 ## Role settings and generated textures
 
-`/admin/agents` displays code-configured roles, engines, model IDs, effort levels and prompt paths. Edit `src/modules/ai/roles.ts` to change settings for new requests. Builder and judge use `gpt-6-astra`, medium effort; other roles use `gpt-6-sol`, medium effort. Eve reads a saved `data/session-config/<sessionId>.json` model/effort snapshot at turn start. Keep these files with the database and Eve storage. Rebuild/restart Eve when its tool or model adapter changes.
+`/admin/agents` displays code-configured roles, engines, model IDs, effort levels and prompt paths. Edit `src/modules/ai/roles.ts` to change settings for new requests. Builder and judge use `gpt-6-astra`, medium effort; other roles use `gpt-6-sol`, medium effort. Eve reads a saved `data/session-config/<sessionId>.json` model/effort snapshot before each model step. Keep these files with the database and Eve storage. Rebuild/restart Eve when its tool or model adapter changes.
 
 Astra estimates use [documented standard token rates](https://developers.openai.com/api/docs/models/gpt-6-astra): $10/M input, $1/M cached input, $50/M output, with the long-context multiplier evaluated per model call. These remain estimates rather than invoices. Other model rates use the existing operator configuration.
 

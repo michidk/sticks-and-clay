@@ -30,7 +30,7 @@ function selectedModel(model: string) {
 export default defineAgent({
   model: defineDynamic({
     events: {
-      "turn.started": async (_event, ctx) => {
+      "step.started": async (_event, ctx) => {
         let config: { model: string; effort: "low" | "medium" | "high" };
         try {
           config = JSON.parse(
@@ -52,6 +52,9 @@ export default defineAgent({
         }
         return {
           model: selectedModel(config.model),
+          // Bound application context without requiring gateway catalog metadata.
+          modelContextWindowTokens:
+            config.model === "gpt-6-astra" ? 1050000 : 200000,
           modelOptions: {
             providerOptions: { openai: { reasoningEffort: config.effort } },
           },

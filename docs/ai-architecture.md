@@ -56,4 +56,4 @@ Adding a role requires its registry entry, prompts and schema. Adding a provider
 
 ## Role model selection
 
-Each role specifies `model` and `effort` in code. New runs snapshot both. Eve's dynamic turn resolver loads a per-session file written before submission, so continuation does not read changed role defaults. The read-only `/admin/agents` page lists the registry. TanStack calls pass the role effort to the Responses adapter. The imagegen tool is a separate capability exposed only in builder sessions, with its own usage records and retained texture outputs.
+Each role specifies `model` and `effort` in code. New runs snapshot both. Eve's dynamic step resolver loads a per-session file written before submission, so continuation does not read changed role defaults. The read-only `/admin/agents` page lists the registry. TanStack calls pass the role effort to the Responses adapter. The imagegen tool is a separate capability exposed only in builder sessions, with its own usage records and retained texture outputs.
