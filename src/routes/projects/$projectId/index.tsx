@@ -907,10 +907,10 @@ function ProjectPage() {
               </p>
             )}
             <p className="note">
-              A visual target comes first. Each stage allows this many
-              build/review rounds: geometry must pass before surface work
-              begins. Passing stages finish early. Zero makes one build with
-              self-review only.
+              A visual target comes first, followed by blockout, shape refinement,
+              materials and polish, each with photographs. This sets the maximum
+              judge rounds per stage; geometry must pass before materials.
+              Zero keeps all four passes without judging.
             </p>
             {error && (
               <Alert variant="destructive" className="error">

@@ -9,6 +9,7 @@ All authored agent instructions and input templates live here.
 - `planner.md`: turns a submitted model brief into individual builder tasks.
 - `builder.md`, `photographer.md`, `judge.md`: build, photograph the exported GLB, and visually review assets.
 - `*-input.md`: task-specific input templates, with `{{placeholders}}` populated by the app.
+- `modeling-pass.md`, `modeling-review.md`: required v4 modeling passes and review of their recorded changes.
 - `resume.md`: continues a failed Eve turn in the same session.
 - `pipeline.md`: the reusable asset-pack pipeline reference.
 

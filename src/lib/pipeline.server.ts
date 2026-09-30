@@ -14,6 +14,7 @@ import {
   modelReviewPipeline,
   qualityPipeline,
   photographyPipeline,
+  refinementPipeline,
 } from "../modules/pipelines";
 import { photographProject } from "./project-photography.server";
 import { renderCollection } from "./collection.server";
@@ -165,21 +166,22 @@ export async function executeJob(kind: string, targetId: string) {
     const legacy =
       job.checkpoint.pipeline === "model-review:1" ||
       (!job.checkpoint.pipeline && Boolean(job.checkpoint["agent:builder:0"]));
-    const rounds = Math.max(1, batch.judgeIterations * (legacy ? 1 : 2));
-    const modelProgress = (iteration: number, fraction = 0) =>
-      Math.round(
-        (legacy ? 0 : 5) +
-          ((iteration + fraction) / rounds) * (legacy ? 100 : 95),
-      );
-    let metrics: any;
-    let images: string[] = [];
     const definition = legacy
       ? modelReviewPipeline(batch.judgeIterations)
       : job.checkpoint.pipeline === "model-quality:2"
         ? qualityPipeline(batch.judgeIterations)
-        : photographyPipeline(batch.judgeIterations);
-    const photography = definition.version === 3;
+        : job.checkpoint.pipeline === "model-quality:3"
+          ? photographyPipeline(batch.judgeIterations)
+          : refinementPipeline(batch.judgeIterations);
+    const rounds = definition.nodes.filter((node) => node.task === "builder").length;
+    const modelProgress = (iteration: number, fraction = 0) =>
+      Math.round((legacy ? 0 : 5) +
+        ((iteration + fraction) / rounds) * (legacy ? 100 : 95));
+    let metrics: any;
+    let images: string[] = [];
+    const photography = definition.version >= 3;
     let currentBuilderRunId = "";
+    let buildSummary = "";
     const pipelineVersion = `${definition.id}:${definition.version}`;
     if (job.checkpoint.pipeline && job.checkpoint.pipeline !== pipelineVersion)
       throw new Error("Unsupported saved pipeline version");
@@ -238,7 +240,7 @@ export async function executeJob(kind: string, targetId: string) {
     await runPipeline(
       definition,
       {
-        builder: async ({ iteration, stage }) => {
+        builder: async ({ iteration, stage, workPass }) => {
           const directory = `models/${model.id}/${attempt}/iteration-${iteration}`;
           await mkdir(resolve(DATA, directory), { recursive: true });
           const capabilityKey = `capability:${iteration}`;
@@ -255,8 +257,9 @@ export async function executeJob(kind: string, targetId: string) {
             .update(models)
             .set({
               status: "building",
-              phase:
-                stage === "geometry"
+              phase: workPass
+                ? `Modeling pass: ${workPass}`
+                : stage === "geometry"
                   ? "Shaping and reviewing geometry"
                   : iteration
                     ? "Applying judge feedback"
@@ -297,8 +300,9 @@ export async function executeJob(kind: string, targetId: string) {
             batchId: batch.id,
             modelId: model.id,
             iteration,
-            images: [...(target ? [target] : []), ...visualReferences],
-            input: await roleInput("builder", {
+            images: [...(target ? [target] : []), ...visualReferences,
+              ...(workPass ? images : [])],
+            input: (await roleInput("builder", {
               version: batch.designVersion,
               design: batch.design,
               name: model.name,
@@ -311,7 +315,10 @@ export async function executeJob(kind: string, targetId: string) {
               target: target
                 ? resolve(DATA, target)
                 : "No visual target (legacy attempt)",
-            }),
+            })) + (workPass ? "\n\n" + await prompt("modeling-pass", {
+              pass: workPass,
+              photographs: images.length,
+            }) : ""),
           });
           currentBuilderRunId = builderRunId;
           try {
@@ -363,6 +370,7 @@ export async function executeJob(kind: string, targetId: string) {
               ...(await archiveVersion(builderRunId, directory, !photography)),
               visualTarget: target,
               stage: stage || "complete",
+              ...(workPass ? { workPass } : {}),
             };
           } catch (error) {
             if (error instanceof GlbHandoverError)
@@ -379,6 +387,7 @@ export async function executeJob(kind: string, targetId: string) {
             .select()
             .from(runs)
             .where(eq(runs.id, builderRunId));
+          buildSummary = String((builtRun.result as any)?.summary || "Not recorded");
           await db
             .update(runs)
             .set({ result: { ...(builtRun.result as object), artifacts } })
@@ -487,7 +496,7 @@ export async function executeJob(kind: string, targetId: string) {
             })
             .where(eq(models.id, model.id));
         },
-        judge: async ({ iteration, stage, stopOnFail }) => {
+        judge: async ({ iteration, stage, stopOnFail, workPass }) => {
           const analysis = await analyzeModel(
             resolve(DATA, String(artifacts.glb)),
           );
@@ -503,7 +512,7 @@ export async function executeJob(kind: string, targetId: string) {
               ...(target ? [target] : []),
               ...visualReferences,
             ],
-            input: await roleInput("judge", {
+            input: (await roleInput("judge", {
               design: batch.design,
               stage: stage || "complete",
               target: judgeImageLabels(images, Boolean(target)),
@@ -511,7 +520,9 @@ export async function executeJob(kind: string, targetId: string) {
               request: model.prompt,
               metrics: JSON.stringify(metrics),
               feedback: JSON.stringify(feedback),
-            }),
+            })) + (workPass ? "\n\n" + await prompt("modeling-review", {
+              pass: workPass, summary: buildSummary,
+            }) : ""),
           });
           await assertJobActive();
           feedback = result;

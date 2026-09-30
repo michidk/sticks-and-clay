@@ -6,13 +6,13 @@ import { renderCollection } from "./collection.server";
 import { deferInterruptedJob } from "./queue.server";
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 
-integration(
-  "shutdown retains checkpoint identity and cannot resurrect cancelled jobs",
-  async () => {
+integration.each(["model-quality:3", "model-quality:4"])(
+  "shutdown retains %s checkpoint identity and cannot resurrect cancelled jobs",
+  async (pipeline) => {
     const id = crypto.randomUUID(),
       run = crypto.randomUUID();
     const checkpoint = {
-      pipeline: "model-quality:3",
+      pipeline,
       "agent:builder:0": run,
       "agent:photographer:0": crypto.randomUUID(),
       "capability:photographer:0": crypto.randomUUID(),

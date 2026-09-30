@@ -24,7 +24,7 @@ Do not hand-edit `src/routeTree.gen.ts` or generated build output. Keep changes 
 
 - Generation uses an approved design snapshot. Later edits must not change an existing batch's contract.
 - Design revisions, model attempts, and iteration artifacts retain their history. Restoring a design creates a draft; saving creates a new revision.
-- Zero judge rounds means one build without judging. A passing review ends early; exhausted review rounds can finish with issues, which is different from approval or a technical failure.
+- For new v4 jobs, zero judge rounds retains the four modeling passes without judging; saved v1–v3 jobs retain their original build counts. A passing review ends early; exhausted review rounds can finish with issues, which is different from approval or a technical failure.
 - Retry and resume have different semantics. Preserve checkpoints, Eve session identity, idempotent event accounting, and recovery behavior when changing durable jobs.
 - Keep GLB/source files, metrics, and product renders associated with the correct attempt and iteration. Builds run in isolated Blender processes and directories.
 - Costs remain estimates with snapshotted rates and usage provenance. Failed attempts remain part of history and accounting.

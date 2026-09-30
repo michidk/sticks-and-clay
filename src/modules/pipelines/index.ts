@@ -6,6 +6,7 @@ export type PipelineNode<K extends string> = {
   /** A passing result ends the pipeline at this node. */
   stopOnPass?: boolean;
   stage?: "geometry" | "surface";
+  workPass?: "blockout" | "refinement" | "materials" | "polish";
   passNext?: string;
   stopOnFail?: boolean;
 };
@@ -144,4 +145,38 @@ export function photographyPipeline(
             ],
     ),
   };
+}
+
+/** v4 requires photographed development and refinement before either stage can pass.
+ * Review rounds still bound judge calls per stage; zero disables only judging.
+ */
+export function refinementPipeline(
+  rounds: number,
+): Pipeline<"builder" | "photographer" | "judge"> {
+  modelReviewPipeline(rounds);
+  const nodes: PipelineNode<"builder" | "photographer" | "judge">[] = [];
+  const stageBuilds = 1 + Math.max(1, rounds);
+  for (const stage of ["geometry", "surface"] as const) {
+    for (let i = 0; i < stageBuilds; i++) {
+      const iteration = (stage === "geometry" ? 0 : stageBuilds) + i;
+      const workPass = stage === "geometry"
+        ? i === 0 ? "blockout" : "refinement"
+        : i === 0 ? "materials" : "polish";
+      const following = i + 1 < stageBuilds
+        ? `builder:${iteration + 1}`
+        : stage === "geometry" && !rounds ? `builder:${stageBuilds}` : null;
+      nodes.push({ id: `builder:${iteration}`, task: "builder", iteration,
+        stage, workPass, next: `photographer:${iteration}` });
+      nodes.push({ id: `photographer:${iteration}`, task: "photographer", iteration,
+        stage, workPass, next: rounds && i > 0 ? `judge:${iteration}` : following });
+      if (rounds && i > 0) nodes.push({
+        id: `judge:${iteration}`, task: "judge", iteration, stage, workPass,
+        next: following,
+        ...(stage === "geometry"
+          ? { passNext: `builder:${stageBuilds}`, stopOnFail: i + 1 === stageBuilds }
+          : { stopOnPass: true }),
+      });
+    }
+  }
+  return { id: "model-quality", version: 4, nodes };
 }

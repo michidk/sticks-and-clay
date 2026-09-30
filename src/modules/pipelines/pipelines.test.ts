@@ -131,3 +131,67 @@ test("photography precedes every judge and completes unreviewed builds; failures
   ).rejects.toThrow("render failed");
   expect(seen).toEqual(["builder:0"]);
 });
+
+test("v4 cannot approve before separate refinement and polish; zero rounds still develops the asset", async () => {
+  const { refinementPipeline } = await import("./index");
+  for (const rounds of [0, 1, 3]) {
+    const seen: string[] = [];
+    const builds: string[] = [];
+    await runPipeline(refinementPipeline(rounds), {
+      builder: async (n) => { seen.push(n.id); builds.push(n.workPass!); },
+      photographer: async (n) => { seen.push(n.id); },
+      judge: async (n) => {
+        expect(seen.at(-1)).toBe(`photographer:${n.iteration}`);
+        expect(["refinement", "polish"]).toContain(n.workPass!);
+        seen.push(n.id);
+        return { passed: true };
+      },
+    });
+    expect(builds).toEqual(["blockout", "refinement", "materials", "polish"]);
+    expect(seen.filter((id) => id.startsWith("judge:"))).toHaveLength(rounds ? 2 : 0);
+    expect(seen.filter((id) => id.startsWith("photographer:"))).toHaveLength(4);
+  }
+});
+
+test("v4 bounds revisions and blocks materials when geometry reviews are exhausted", async () => {
+  const { refinementPipeline } = await import("./index");
+  for (const geometryPass of [false, true]) {
+    const builds: string[] = [], judges: string[] = [];
+    await runPipeline(refinementPipeline(2), {
+      builder: async (n) => { builds.push(n.workPass!); },
+      photographer: async () => {},
+      judge: async (n) => {
+        judges.push(n.stage!);
+        return { passed: n.stage === "geometry" && geometryPass };
+      },
+    });
+    expect(builds).toEqual(geometryPass
+      ? ["blockout", "refinement", "materials", "polish", "polish"]
+      : ["blockout", "refinement", "refinement"]);
+    expect(judges).toEqual(geometryPass ? ["geometry", "surface", "surface"] : ["geometry", "geometry"]);
+  }
+});
+
+test("v4 replay uses stable step identities and failed photography prevents refinement", async () => {
+  const { refinementPipeline } = await import("./index");
+  const completed = new Set<string>();
+  let fail = true;
+  const executed: string[] = [];
+  const build = async (n: { id: string }) => {
+    if (!completed.has(n.id)) { executed.push(n.id); completed.add(n.id); }
+  };
+  const handlers = {
+    builder: build,
+    photographer: async (n: { id: string }) => {
+      if (fail) throw new Error("photo interrupted");
+      await build(n);
+    },
+    judge: async () => ({ passed: true }),
+  };
+  await expect(runPipeline(refinementPipeline(1), handlers)).rejects.toThrow("photo interrupted");
+  expect(executed).toEqual(["builder:0"]);
+  fail = false;
+  await runPipeline(refinementPipeline(1), handlers);
+  expect(executed).toEqual(["builder:0", "photographer:0", "builder:1", "photographer:1",
+    "builder:2", "photographer:2", "builder:3", "photographer:3"]);
+});
