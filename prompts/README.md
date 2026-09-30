@@ -18,3 +18,9 @@ Each run stores the rendered inputs and role instructions in the database. Resum
 Model and effort settings are configured in `src/modules/ai/roles.ts` and shown at `/admin/agents`. Builder/judge instructions require developed geometry rather than unmodified primitive assemblies. Builders can use `generate_texture`, the TypeScript image-generation API integration, and must connect the generated images to UV-mapped materials. Triangle counts are informational metrics, with no budget configuration or enforcement.
 
 `visual-target.md` drives the imagegen concept step. See [quality pipeline](../docs/quality-pipeline.md) for geometry gates, target thumbnails, image accounting and legacy recovery semantics.
+
+## Focused construction references
+
+The builder's `references` list in `src/modules/ai/roles.ts` adds `references/modeling-method.md`, `hard-surface.md`, `organic-and-trees.md`, and `uv-and-materials.md` to its role instructions. Each is short and conditional on the asset and current pass. The judge receives `references/review-method.md`. The Eve adapter snapshots the entire assembled bundle on new runs and reuses stored instructions on resume. Agents do not need filesystem access to discover these documents. Main role prompts and the existing pipeline remain authoritative.
+
+See [sources and adaptation notes](references/SOURCES.md) and `licenses/` for pinned upstream references and MIT notices. These are excluded from model input.

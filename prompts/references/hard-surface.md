@@ -1,0 +1,8 @@
+## Architecture and hard-surface construction
+Use for buildings, walls, ships, machinery and rigid props when relevant to the design.
+
+- Start with cross-sections and profiles that establish the silhouette. Extrude or loft tapered hulls, shaped wall caps and buttresses; cut real openings with reveals and structural thickness. Design arches as supported volumes with an intrados, outer contour and depth. Shape battlement profiles and spacing from the reference instead of accepting repeated cubes as final merlons.
+- Establish how parts fit: supports carry loads, collars frame connectors, panels meet at deliberate seams, and trim follows the underlying surface. Test openings and joins from both sides. Preserve modular dimensions and pivots from the design.
+- Use scale appropriate bevels on selected edge classes. Major structural edges and small inset panels need different treatment; do not round every edge equally. Apply operand scale before scale-sensitive booleans or bevels, then inspect the evaluated result. Select modifier order and normal treatment for the mesh and Blender version; no modifier is a universal repair.
+- Place panel breaks at construction boundaries, access points and material changes. Use recesses and thickness for features that affect silhouette or openings; shallow graphic detail can live in textures. Preserve large quiet surfaces. Extra bolts, grooves or random greebles do not compensate for weak proportions.
+- Keep an editable source. Check shading after cuts and bevels before proceeding to UVs. Do not fix a visible surface defect by changing studio lighting.

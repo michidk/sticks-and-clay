@@ -1,3 +1,4 @@
+import { roleInstructions } from "./role-instructions.server";
 import { roles, type RunInput } from "../roles";
 import {
   recordRun,
@@ -5,7 +6,7 @@ import {
   validateCheckpoint,
 } from "./accounting.server";
 import { Client } from "eve/client";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "../../../db/client";
@@ -49,8 +50,7 @@ export async function agent<T>(
   if (saved) args = { ...args, input: saved.input, images: saved.images };
   const id = saved?.id || crypto.randomUUID(),
     systemPrompt =
-      saved?.systemPrompt ||
-      (await readFile(`prompts/${roles[args.role].prompt}.md`, "utf8")),
+      await roleInstructions(args.role, saved?.systemPrompt),
     images = args.images || [];
   if (!saved)
     await recordRun(args, {
