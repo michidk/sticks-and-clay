@@ -1,3 +1,4 @@
+import type { AnalysisReport } from "@/modules/model-analysis/report";
 import type { PipelineRun } from "./pipeline";
 export type Review = {
   score: number;
@@ -11,6 +12,13 @@ export type Review = {
   }[];
 };
 export type Artifacts = {
+  handover?: {
+    inputBytes: number;
+    outputBytes: number;
+    outputSha256: string;
+    manifest?: string;
+    cleanup?: { status: string; reason?: string; steps?: string[] };
+  };
   glb: string;
   blend: string;
   renders: string[];
@@ -41,7 +49,13 @@ export type Version = {
   artifacts?: Artifacts;
   summary?: string;
   error?: string;
-  judges: { id: string; status: string; result?: Review; error?: string }[];
+  judges: {
+    id: string;
+    status: string;
+    result?: Review;
+    analysis?: AnalysisReport;
+    error?: string;
+  }[];
 };
 export type Workspace = {
   project: { id: string; name: string };

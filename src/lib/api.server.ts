@@ -1,3 +1,4 @@
+import { recordedAnalysis } from "../modules/model-analysis/report";
 import { databaseErrorResponse } from "./database-error";
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -488,6 +489,7 @@ export async function api(request: Request) {
                   id: j.id,
                   status: j.status,
                   result: j.result,
+                  analysis: recordedAnalysis(j.input),
                   error: j.error,
                   createdAt: j.createdAt,
                 })),

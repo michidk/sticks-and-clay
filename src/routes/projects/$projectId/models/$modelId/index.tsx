@@ -1,3 +1,4 @@
+import { ModelChecks } from "./-components/checks";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
@@ -45,7 +46,9 @@ import {
 
 const searchSchema = z.object({
   view: z.enum(["3d", "renders", "textures", "target"]).catch("3d"),
-  section: z.enum(["review", "versions", "brief", "activity"]).catch("review"),
+  section: z
+    .enum(["review", "checks", "versions", "brief", "activity"])
+    .catch("review"),
   version: z.string().uuid().optional().catch(undefined),
 });
 export const Route = createFileRoute("/projects/$projectId/models/$modelId/")({
@@ -131,6 +134,11 @@ function ModelPage() {
   const versions = data.versions.filter((item) => item.modelId === modelId);
   const selected = resolveVersion(model, versions, search.version);
   const artifacts = selected.artifacts;
+  const checkedVersion =
+    selected.version ||
+    versions.find(
+      (v) => v.artifacts?.glb && v.artifacts.glb === artifacts?.glb,
+    );
   const runs = data.runs.filter((run) => run.modelId === modelId);
   const cost = runs.reduce((sum, run) => sum + (run.estimatedCost || 0), 0);
   const unpriced = runs.filter((run) => run.estimatedCost === null).length;
@@ -463,6 +471,7 @@ function ModelPage() {
               <CircleCheck size={16} />
               Review notes
             </TabsTrigger>
+            <TabsTrigger value="checks">Analysis & cleanup</TabsTrigger>
             <TabsTrigger value="versions">
               <HistoryIcon size={16} />
               Version history <span>{versions.length}</span>
@@ -482,6 +491,12 @@ function ModelPage() {
           >
             {search.section === "review" && (
               <ReviewNotes review={selected.feedback} />
+            )}
+            {search.section === "checks" && (
+              <ModelChecks
+                artifacts={artifacts}
+                judges={checkedVersion?.judges}
+              />
             )}
             {search.section === "brief" && (
               <article className="model-detail-brief">
@@ -524,6 +539,15 @@ function ModelPage() {
                             No verified export saved for this attempt.
                           </p>
                         )}
+                        <details className="my-4">
+                          <summary className="cursor-pointer">
+                            Analysis & cleanup
+                          </summary>
+                          <ModelChecks
+                            artifacts={version.artifacts}
+                            judges={version.judges}
+                          />
+                        </details>
                         {version.judges.length ? (
                           version.judges.map((judge) => (
                             <p key={judge.id} className="model-version-judge">
