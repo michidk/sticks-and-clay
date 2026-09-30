@@ -30,7 +30,7 @@ export const roles = {
   "model-brief": role("tanstack", "model-brief", briefResult),
   designer: role("tanstack", "designer", designResult),
   planner: role("eve", "planner", planResult),
-  builder: role("eve", "builder", buildResult, "gpt-6-astra", "medium"),
+  builder: role("eve", "builder", buildResult, "gpt-6-astra", "high"),
   photographer: role(
     "eve",
     "photographer",
@@ -38,7 +38,7 @@ export const roles = {
     "gpt-6-astra",
     "medium",
   ),
-  judge: role("eve", "judge", judgeResult, "gpt-6-astra", "medium"),
+  judge: role("eve", "judge", judgeResult, "gpt-6-astra", "high"),
 } as const;
 export type Role = keyof typeof roles;
 export type RoleResult<R extends Role> = z.infer<(typeof roles)[R]["schema"]>;

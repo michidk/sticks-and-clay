@@ -8,7 +8,8 @@ import eveAgent from "../../../eve/agent/agent";
 test("Eve chooses the persisted model and effort, not a new registry default", async () => {
   expect(eveAgent.limits?.sessionTimeoutMs).toBe(false);
   expect(roles.builder.model).toBe("gpt-6-astra");
-  expect(roles.judge.effort).toBe("medium");
+  expect(roles.builder.effort).toBe("high");
+  expect(roles.judge.effort).toBe("high");
   const dir = resolve("/tmp", "studio-model-test-" + crypto.randomUUID());
   const previous = process.env.STUDIO_DATA_DIR;
   process.env.STUDIO_DATA_DIR = dir;
