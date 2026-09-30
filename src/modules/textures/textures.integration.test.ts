@@ -1,5 +1,5 @@
-import { test, expect } from "bun:test";
-import { mkdir, writeFile, chmod, rm } from "node:fs/promises";
+import { test, expect, spyOn } from "bun:test";
+import { mkdir, writeFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { eq } from "drizzle-orm";
 import { db } from "../../db/client";
@@ -17,20 +17,35 @@ integration(
       runId = crypto.randomUUID(),
       capability = crypto.randomUUID();
     const directory = `models/${modelId}/${jobId}/iteration-0`;
-    const executable = resolve("/tmp", `imagegen-fixture-${projectId}`);
     const marker = resolve(DATA, "capabilities", capability + ".json");
-    const oldPython = process.env.STUDIO_IMAGEGEN_PYTHON,
-      oldKey = process.env.OPENAI_API_KEY;
     await mkdir(resolve(DATA, directory), { recursive: true });
     await mkdir(resolve(DATA, "capabilities"), { recursive: true });
     await writeFile(marker, JSON.stringify({ directory }));
-    await writeFile(
-      executable,
-      `#!/usr/bin/env python3\nimport sys,pathlib,base64,json\npathlib.Path(sys.argv[2]).write_text(json.dumps({'input_tokens':12,'output_tokens':34}))\npathlib.Path(sys.argv[sys.argv.index('--out')+1]).write_bytes(base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhFcAAAAASUVORK5CYII='))\n`,
+    const calls: string[] = [];
+    const fetchMock = spyOn(globalThis, "fetch").mockImplementation(
+      Object.assign(
+        async (
+          url: Parameters<typeof fetch>[0],
+          init?: Parameters<typeof fetch>[1],
+        ) => {
+          calls.push(String(url));
+          if (String(url).endsWith("/edits")) {
+            expect(init?.body).toBeInstanceOf(FormData);
+            expect((init!.body as FormData).getAll("image[]")).toHaveLength(1);
+          }
+          return Response.json({
+            data: [
+              {
+                b64_json:
+                  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhFcAAAAASUVORK5CYII=",
+              },
+            ],
+            usage: { input_tokens: 12, output_tokens: 34 },
+          });
+        },
+        { preconnect: fetch.preconnect },
+      ),
     );
-    await chmod(executable, 0o700);
-    process.env.STUDIO_IMAGEGEN_PYTHON = executable;
-    process.env.OPENAI_API_KEY = "test-only-no-network";
     await db
       .insert(projects)
       .values({ id: projectId, name: "Texture fixture", description: "test" });
@@ -88,6 +103,9 @@ integration(
       expect(targetRun.images).toEqual([first.key]);
       expect(targetRun.inputTokens).toBe(12);
       expect(targetRun.sessionId).toBeNull();
+      expect(calls).toHaveLength(2);
+      expect(calls[0]).toEndWith("/images/generations");
+      expect(calls[1]).toEndWith("/images/edits");
       await expect(
         runImageRole({
           ...targetArgs,
@@ -99,10 +117,7 @@ integration(
       await writeFile(marker, JSON.stringify({ directory, cancelled: true }));
       await expect(generateTexture(args)).rejects.toThrow("cancelled");
     } finally {
-      if (oldPython === undefined) delete process.env.STUDIO_IMAGEGEN_PYTHON;
-      else process.env.STUDIO_IMAGEGEN_PYTHON = oldPython;
-      if (oldKey === undefined) delete process.env.OPENAI_API_KEY;
-      else process.env.OPENAI_API_KEY = oldKey;
+      fetchMock.mockRestore();
       for (const row of await db
         .select()
         .from(runs)
@@ -116,7 +131,6 @@ integration(
         force: true,
       });
       await rm(marker, { force: true });
-      await rm(executable, { force: true });
     }
   },
 );

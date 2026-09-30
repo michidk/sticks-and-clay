@@ -1,7 +1,7 @@
-import { constants } from "node:fs";
-import { access, readFile, mkdir, writeFile } from "node:fs/promises";
+import { provider } from "./provider.server";
+import { requestImage, type ImageUsage } from "./image-api";
+import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../../db/client";
@@ -39,15 +39,14 @@ export async function imageRequest(
     throw new Error("Invalid image workspace");
   await mkdir(resolve(DATA, args.directory), { recursive: true });
   const textureDir = await filePath(args.directory);
-  const referencePaths = await Promise.all(
+  const references = await Promise.all(
     (args.images || []).map(async (key, index) => {
       const image = await readStoredFile(key);
-      const path = resolve(
-        textureDir,
+      return new File(
+        [await image.arrayBuffer()],
         `reference-${index}.${image.type === "image/jpeg" ? "jpg" : image.type === "image/webp" ? "webp" : "png"}`,
+        { type: image.type },
       );
-      await writeFile(path, Buffer.from(await image.arrayBuffer()));
-      return path;
     }),
   );
   // Prompt identity makes tool retries reusable without overwriting a different image.
@@ -97,7 +96,6 @@ export async function imageRequest(
   const id = crypto.randomUUID();
   // Interrupted requests can still finish at the provider; never share their output file.
   const filename = `${args.name}-${digest}-${id}.png`;
-  const usageFile = resolve(textureDir, `${id}-usage.json`);
   const rates = {
     input: Number(process.env.IMAGE_INPUT_USD_PER_MILLION || 0),
     cached: 0,
@@ -118,83 +116,38 @@ export async function imageRequest(
     images: args.images || [],
     engine: "imagegen",
     model: imageRoles[args.role].model,
-    systemPrompt: `Codex imagegen skill CLI · 1024x1024 · ${imageRoles[args.role].quality} quality`,
-    promptVersion: "imagegen-v1",
+    systemPrompt: `Image API · 1024x1024 · ${imageRoles[args.role].quality} quality`,
+    promptVersion: "image-api-v2",
     input: args.prompt,
     rates,
   });
-  let cancelled = false;
+  const controller = new AbortController();
+  let usage: ImageUsage | undefined;
+  const timer = setTimeout(() => controller.abort(), 240000);
+  const monitor = setInterval(() => {
+    void args.assertActive().catch(() => controller.abort());
+  }, 500);
   try {
-    const python =
-      process.env.STUDIO_IMAGEGEN_PYTHON ||
-      resolve(".venv-imagegen/bin/python");
-    await access(python, constants.X_OK).catch(() => {
-      throw new Error(
-        "Image generation Python environment is missing. Install the imagegen prerequisites in README.md and restart the worker.",
-      );
+    const response = await requestImage({
+      provider: await provider(),
+      model: imageRoles[args.role].model,
+      quality: imageRoles[args.role].quality,
+      prompt: args.prompt,
+      references,
+      signal: controller.signal,
     });
-    await new Promise<void>((done, reject) => {
-      const child = spawn(
-        "python3",
-        [
-          "scripts/provider.py",
-          python,
-          "scripts/imagegen_texture.py",
-          usageFile,
-          ...(args.images?.length
-            ? ["edit", ...referencePaths.flatMap((path) => ["--image", path])]
-            : ["generate"]),
-          "--model",
-          imageRoles[args.role].model,
-          "--prompt",
-          args.prompt,
-          "--size",
-          "1024x1024",
-          "--quality",
-          imageRoles[args.role].quality,
-          "--out",
-          resolve(textureDir, filename),
-          "--force",
-        ],
-        { cwd: process.cwd(), stdio: "ignore" },
-      );
-      const timer = setTimeout(() => {
-        cancelled = true;
-        child.kill("SIGKILL");
-      }, 240000);
-      const monitor = setInterval(() => {
-        void args.assertActive().catch(() => {
-          cancelled = true;
-          child.kill("SIGKILL");
-        });
-      }, 500);
-      const cleanup = () => {
-        clearTimeout(timer);
-        clearInterval(monitor);
-      };
-      child.once("error", (error) => {
-        cleanup();
-        reject(error);
-      });
-      child.once("close", (code) => {
-        cleanup();
-        code === 0 && !cancelled
-          ? done()
-          : reject(
-              new Error(
-                cancelled
-                  ? "Image generation cancelled or timed out"
-                  : "Codex imagegen CLI failed; check skill and provider configuration",
-              ),
-            );
-      });
-    });
+    usage = response.usage;
     await args.assertActive();
-    const png = await readFile(resolve(textureDir, filename));
+    if (controller.signal.aborted)
+      throw new Error("Image generation cancelled or timed out");
+    const encoded = response.data?.[0]?.b64_json;
+    if (!encoded) throw new Error("Image API returned no image data");
+    const png = Buffer.from(encoded, "base64");
     if (
       !png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
     )
-      throw new Error("Imagegen did not produce a PNG");
+      throw new Error("Image API did not produce a PNG");
+    await writeFile(resolve(textureDir, filename), png);
     const result = {
       path: resolve(textureDir, filename),
       key: `${args.directory}/${filename}`,
@@ -213,17 +166,18 @@ export async function imageRequest(
     await publishFiles([result.key]);
     await writeFile(receipt, JSON.stringify(result));
     return result;
-  } catch (error) {
+  } catch (caught) {
+    const error = controller.signal.aborted
+      ? new Error("Image generation cancelled or timed out")
+      : caught;
     await db
       .update(runs)
       .set({ status: "failed", error: String(error), finishedAt: new Date() })
       .where(eq(runs.id, id));
     throw error;
   } finally {
-    let usage: any = null;
-    try {
-      usage = JSON.parse(await readFile(usageFile, "utf8"));
-    } catch {}
+    clearTimeout(timer);
+    clearInterval(monitor);
     if (usage) {
       await db.insert(events).values({
         id: crypto.randomUUID(),

@@ -142,16 +142,12 @@ Use `src/modules/ai/index.server.ts` (`runRole`, `roleInput`) for all AI work. R
 
 Astra estimates use [documented standard token rates](https://developers.openai.com/api/docs/models/gpt-6-astra): $10/M input, $1/M cached input, $50/M output, with the long-context multiplier evaluated per model call. These remain estimates rather than invoices. Other model rates use the existing operator configuration.
 
-The builder-only `generate_texture` tool calls `/api/textures/generate` with its workspace capability. The server invokes the installed Codex imagegen skill CLI unchanged through `scripts/imagegen_texture.py`, which captures SDK usage for the audit history. No Codex conversational session is spawned. Generated base colors must be wired into UV-mapped materials; matching normal maps remain part of the asset contract. Poly mode skips texture generation; it still gets a concept target.
+The builder-only `generate_texture` tool calls `/api/textures/generate` with its workspace capability. The server uses the TypeScript Image API adapter in `src/modules/ai/internal/image-api.ts` for both textures and visual targets. It shares provider resolution with the direct text adapter, sends reference images as multipart edits, and records returned image-token usage and configured cost estimates. No Python environment or installed imagegen skill is required. Python remains for Blender/BMesh and Trimesh/libigl analysis.
 
-Imagegen prerequisites (outside the app dependency environment):
+Requests retain their existing history, receipts and cancellation checks. There are no automatic API retries; resume creates a separately tracked request after a failure. Old completed image receipts remain reusable. Keep `STUDIO_APP_URL` pointed at the app's loopback URL/port for Eve's tool (default port 34193). Credentials are resolved server-side and never stored with artifacts. `STUDIO_IMAGEGEN_PYTHON` and `STUDIO_IMAGEGEN_SKILL` are obsolete and ignored.
 
-```sh
-python3 -m venv .venv-imagegen
-.venv-imagegen/bin/pip install 'openai>=2,<3' 'pillow>=12,<13'
-```
+Generated base colors must be connected to UV-mapped materials; matching normal maps remain part of the asset contract. Poly mode skips texture generation but still receives a visual target.
 
-Set `STUDIO_IMAGEGEN_PYTHON` if using another isolated environment, `STUDIO_IMAGEGEN_SKILL` if the installed skill is elsewhere, and `STUDIO_APP_URL` to the app's loopback URL/port for Eve's tool. The default installation uses port 34193. Keep this isolated environment in the persistent workspace; do not use a temporary directory. Credentials are resolved by `scripts/provider.py` and never stored with artifacts.
 
 Image generation logs inputs, output paths, status and raw reported token usage separately in Activity & cost. Set both `IMAGE_INPUT_USD_PER_MILLION` and `IMAGE_OUTPUT_USD_PER_MILLION` for an operator-assumed image-token estimate. Without those rates, cost is explicitly unavailable; it is not treated as a free request. Provider cost fields are ignored. An interrupted image request can incur unknown usage; retrying can create another charge. Successful identical texture requests reuse their saved receipt.
 

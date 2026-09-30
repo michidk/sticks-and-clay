@@ -14,6 +14,6 @@ All authored agent instructions and input templates live here.
 
 Each run stores the rendered inputs and role instructions in the database. Resumed runs retain their original instructions; edits apply to new runs. The shared Eve system prompt requires an Eve rebuild/restart after edits.
 
-Model and effort settings are configured in `src/modules/ai/roles.ts` and shown at `/admin/agents`. Builder/judge instructions require developed geometry rather than unmodified primitive assemblies. Builders can use `generate_texture`, the installed Codex imagegen skill CLI integration, and must connect the generated images to UV-mapped materials. Triangle counts are informational metrics, with no budget configuration or enforcement.
+Model and effort settings are configured in `src/modules/ai/roles.ts` and shown at `/admin/agents`. Builder/judge instructions require developed geometry rather than unmodified primitive assemblies. Builders can use `generate_texture`, the TypeScript image-generation API integration, and must connect the generated images to UV-mapped materials. Triangle counts are informational metrics, with no budget configuration or enforcement.
 
 `visual-target.md` drives the imagegen concept step. See [quality pipeline](../docs/quality-pipeline.md) for geometry gates, target thumbnails, image accounting and legacy recovery semantics.

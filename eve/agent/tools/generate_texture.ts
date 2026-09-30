@@ -2,7 +2,7 @@ import { defineTool, defineDynamic } from "eve/tools";
 import { z } from "zod";
 const tool = defineTool({
   description:
-    "Builder-only: generate a base-color texture using the Codex imagegen skill. Returns a PNG path to load into Blender materials. Describe a flat, seamless, evenly lit material and match the design palette. Never call in poly mode.",
+    "Builder-only: generate a base-color texture using the image-generation API. Returns a PNG path to load into Blender materials. Describe a flat, seamless, evenly lit material and match the design palette. Never call in poly mode.",
   inputSchema: z.object({
     capability: z.string().uuid(),
     name: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
