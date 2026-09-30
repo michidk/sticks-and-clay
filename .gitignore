@@ -8,3 +8,5 @@ eve/.eve/
 .venv/
 __pycache__/
 *.pyc
+
+.venv-imagegen/

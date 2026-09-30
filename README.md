@@ -147,11 +147,11 @@ The builder-only `generate_texture` tool calls `/api/textures/generate` with its
 Imagegen prerequisites (outside the app dependency environment):
 
 ```sh
-python3 -m venv /tmp/asset-studio-imagegen
-/tmp/asset-studio-imagegen/bin/pip install openai pillow
+python3 -m venv .venv-imagegen
+.venv-imagegen/bin/pip install 'openai>=2,<3' 'pillow>=12,<13'
 ```
 
-Set `STUDIO_IMAGEGEN_PYTHON` if using another isolated environment, `STUDIO_IMAGEGEN_SKILL` if the installed skill is elsewhere, and `STUDIO_APP_URL` to the app's loopback URL/port for Eve's tool. The default installation uses port 34193. Recreate the temporary environment if it is cleared. Credentials are resolved by `scripts/provider.py` and never stored with artifacts.
+Set `STUDIO_IMAGEGEN_PYTHON` if using another isolated environment, `STUDIO_IMAGEGEN_SKILL` if the installed skill is elsewhere, and `STUDIO_APP_URL` to the app's loopback URL/port for Eve's tool. The default installation uses port 34193. Keep this isolated environment in the persistent workspace; do not use a temporary directory. Credentials are resolved by `scripts/provider.py` and never stored with artifacts.
 
 Image generation logs inputs, output paths, status and raw reported token usage separately in Activity & cost. Set both `IMAGE_INPUT_USD_PER_MILLION` and `IMAGE_OUTPUT_USD_PER_MILLION` for an operator-assumed image-token estimate. Without those rates, cost is explicitly unavailable; it is not treated as a free request. Provider cost fields are ignored. An interrupted image request can incur unknown usage; retrying can create another charge. Successful identical texture requests reuse their saved receipt.
 

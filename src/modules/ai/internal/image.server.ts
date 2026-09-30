@@ -1,4 +1,5 @@
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -124,10 +125,15 @@ export async function imageRequest(
   });
   let cancelled = false;
   try {
+    const python =
+      process.env.STUDIO_IMAGEGEN_PYTHON ||
+      resolve(".venv-imagegen/bin/python");
+    await access(python, constants.X_OK).catch(() => {
+      throw new Error(
+        "Image generation Python environment is missing. Install the imagegen prerequisites in README.md and restart the worker.",
+      );
+    });
     await new Promise<void>((done, reject) => {
-      const python =
-        process.env.STUDIO_IMAGEGEN_PYTHON ||
-        "/tmp/asset-studio-imagegen/bin/python";
       const child = spawn(
         "python3",
         [
