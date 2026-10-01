@@ -1,4 +1,8 @@
-import { collectionSummary, projectState } from "@/lib/project-summary";
+import {
+  collectionAssetGroups,
+  collectionSummary,
+  projectState,
+} from "@/lib/project-summary";
 import { ProjectSetup } from "./-components/project-setup";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -233,26 +237,33 @@ function ProjectPage() {
   );
   const ready = p.status === "ready";
   const collection = collectionSummary(data.models, data.batches);
+  const modelGroups = collectionAssetGroups(data.models);
+  const collectionModels = modelGroups.map((group) => group.representative);
+  const modelGroupByRepresentative = new Map(
+    modelGroups.map((group) => [group.representative.id, group]),
+  );
   const state = projectState(p.status, collection);
   const designChanged = design !== p.design;
   const designHeadings = [
     ...(design || p.design || "").matchAll(/^## (.+)$/gm),
   ].map((match, index) => ({ title: match[1], id: `design-section-${index}` }));
   let headingIndex = 0;
-  const completed = data.models.filter((m: any) => m.status === "done").length;
+  const completed = collectionModels.filter(
+    (m: any) => m.status === "done",
+  ).length;
   const pending = pendingCollectionItems(data.batches, data.models);
   const queuedCount = pending.filter((item) => item.placeholder).length;
   const working =
-    data.models.filter(
+    collectionModels.filter(
       (m: any) => !["done", "failed", "cancelled"].includes(m.status),
     ).length + pending.filter((item) => item.batch.status !== "failed").length;
   const needsReview =
-    data.models.filter(
+    collectionModels.filter(
       (m: any) => m.verdict === "limit_reached" || m.status === "failed",
     ).length + pending.filter((item) => item.batch.status === "failed").length;
   const matches = (text: string) =>
     text.toLowerCase().includes(query.toLowerCase().trim());
-  const visibleModels = data.models.filter(
+  const visibleModels = collectionModels.filter(
     (m: any) =>
       matches(m.name + " " + m.prompt) &&
       (filter === "all" ||
@@ -378,7 +389,7 @@ function ProjectPage() {
       {ready && (
         <div className="overview-metrics">
           <div>
-            <strong>{data.models.length + queuedCount}</strong>
+            <strong>{collectionModels.length + queuedCount}</strong>
             <span>in the collection</span>
           </div>
           <div>
@@ -647,7 +658,8 @@ function ProjectPage() {
             <div className="collection-heading">
               <div>
                 <h2>
-                  Collection <span>{data.models.length + queuedCount}</span>
+                  Collection{" "}
+                  <span>{collectionModels.length + queuedCount}</span>
                 </h2>
               </div>
               <Input
@@ -663,7 +675,11 @@ function ProjectPage() {
               aria-label="Filter collection"
             >
               {[
-                ["all", `All ${assetPlural}`, data.models.length + queuedCount],
+                [
+                  "all",
+                  `All ${assetPlural}`,
+                  collectionModels.length + queuedCount,
+                ],
                 ["working", "In progress", working],
                 ["attention", "Needs attention", needsReview],
                 ["finished", "Completed", completed],
@@ -718,8 +734,13 @@ function ProjectPage() {
                   />
                 ))}
                 {visibleModels.map((m: any) => {
+                  const modelIds = new Set(
+                    modelGroupByRepresentative
+                      .get(m.id)
+                      ?.assets.map((model) => model.id) || [m.id],
+                  );
                   const cost = rs
-                    .filter((r: any) => r.modelId === m.id)
+                    .filter((r: any) => modelIds.has(r.modelId))
                     .reduce(
                       (a: number, r: any) => a + (r.estimatedCost || 0),
                       0,
