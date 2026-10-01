@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { roleInstructions } from "./internal/role-instructions.server";
+import { agentSettings } from "./index.server";
 
 test("builder and judge receive their focused references without cross-role instructions", async () => {
   const builder = await roleInstructions("builder");
@@ -17,4 +18,23 @@ test("builder and judge receive their focused references without cross-role inst
 test("saved instructions survive new reference bundles, including empty historical snapshots", async () => {
   expect(await roleInstructions("builder", "original session instructions")).toBe("original session instructions");
   expect(await roleInstructions("judge", "")).toBe("");
+});
+
+test("agent settings include authored prompts and shared references", async () => {
+  const settings = await agentSettings();
+  const builder = settings.find((agent) => agent.id === "builder");
+  expect(builder?.promptFiles.map((file) => file.path)).toEqual([
+    "prompts/builder.md",
+    "prompts/references/modeling-method.md",
+    "prompts/references/hard-surface.md",
+    "prompts/references/organic-and-trees.md",
+    "prompts/references/uv-and-materials.md",
+    "prompts/builder-input.md",
+  ]);
+  expect(builder?.promptFiles[0]?.content).toContain(
+    "You are a Blender artist",
+  );
+  expect(
+    settings.find((agent) => agent.id === "visual-target")?.promptFiles,
+  ).toHaveLength(1);
 });

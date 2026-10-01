@@ -1233,9 +1233,25 @@ pre {
 }
 
 /* Agent settings and texture galleries */
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 23px;
+  align-items: start;
+}
 .role-settings dt { margin-top: 12px; font-size: 12px; color: #7a8273; }
 .role-settings dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+.agent-prompts { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 18px; }
+.agent-prompts h3 { margin: 0 0 4px; font-size: 13px; }
+.agent-prompts [data-slot="accordion-trigger"] > span { min-width: 0; }
+.prompt-kind { display: block; color: var(--foreground); }
+.prompt-path { display: block; margin-top: 2px; color: var(--muted-foreground); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10px; font-weight: 400; overflow-wrap: anywhere; }
+.prompt-content { max-height: 420px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: 7px; background: var(--background); padding: 14px; color: var(--foreground); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; line-height: 1.55; }
 .asset-title .tabs { flex-wrap: wrap; }
+
+@media (max-width: 800px) {
+  .agents-grid { grid-template-columns: 1fr; }
+}
 
 /* shadcn primitives inherit the workshop palette through the tokens above. */
 [data-slot="button"][data-variant="default"]:hover { background: #39634c; }

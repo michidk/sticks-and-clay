@@ -1,15 +1,38 @@
 import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { request } from "../../../lib/client";
 import { CardsSkeleton } from "../../../components/loading";
+
+type PromptFile = {
+  kind: string;
+  path: string;
+  content: string;
+};
+
+type AgentSettings = {
+  id: string;
+  engine: "eve" | "imagegen" | "tanstack";
+  model: string;
+  effort: string;
+  prompt: string;
+  inputTemplate: string;
+  promptFiles: PromptFile[];
+};
+
 export const Route = createFileRoute("/admin/agents/")({
   component: AgentsPage,
 });
 function AgentsPage() {
-  const [agents, setAgents] = useState<any[] | null>(null);
+  const [agents, setAgents] = useState<AgentSettings[] | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
     request("agents")
@@ -41,7 +64,7 @@ function AgentsPage() {
       {!agents && !error && (
         <CardsSkeleton label="Loading agent settings" covers={false} />
       )}
-      <div className="project-grid">
+      <div className="agents-grid">
         {agents?.map((agent) => (
           <Card className="panel" key={agent.id}>
             <h2>{agent.id}</h2>
@@ -66,6 +89,24 @@ function AgentsPage() {
               <dt>Input template</dt>
               <dd>prompts/{agent.inputTemplate}.md</dd>
             </dl>
+            <div className="agent-prompts">
+              <h3>Prompt files</h3>
+              <Accordion type="multiple">
+                {agent.promptFiles.map((file) => (
+                  <AccordionItem value={file.path} key={file.path}>
+                    <AccordionTrigger>
+                      <span>
+                        <span className="prompt-kind">{file.kind}</span>
+                        <span className="prompt-path">{file.path}</span>
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <pre className="prompt-content">{file.content}</pre>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
           </Card>
         ))}
       </div>

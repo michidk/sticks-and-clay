@@ -169,7 +169,7 @@ export async function api(request: Request) {
         return reply({ status: await cancelJob(uuid.parse(path[1])) });
     }
     if (path[0] === "agents" && request.method === "GET")
-      return reply({ agents: agentSettings() });
+      return reply({ agents: await agentSettings() });
     if (
       path[0] === "textures" &&
       path[1] === "generate" &&
