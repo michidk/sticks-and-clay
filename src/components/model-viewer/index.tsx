@@ -2,6 +2,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Bounds,
   Clone,
+  ContactShadows,
   GizmoHelper,
   OrbitControls,
   PointerLockControls,
@@ -289,7 +290,6 @@ export function ModelViewer({
           <div className="viewer-scene viewer-scene-primary">
         <Canvas
           key={mode === "split" ? "split-front" : "single-view"}
-          shadows
           dpr={[1, 2]}
           camera={{ position: mode === "split" ? [0, 0, 3] : [2.6, 1.9, 2.6], fov: 42, near: 0.01, far: 1000 }}
           gl={{ antialias: true, alpha: false, preserveDrawingBuffer: showUi, powerPreference: "high-performance" }}
@@ -327,7 +327,6 @@ export function ModelViewer({
           {mode === "split" && splitViews.map((view, index) => (
             <div className="viewer-scene viewer-scene-secondary" key={view.label}>
               <Canvas
-                shadows
                 dpr={[1, 2]}
                 camera={{ position: [...view.position], fov: 42, near: 0.01, far: 1000 }}
                 gl={{ antialias: true, alpha: false, preserveDrawingBuffer: showUi, powerPreference: "high-performance" }}
@@ -412,9 +411,9 @@ function ViewerScene({ lighting, shading, ground, grid, src, cubes, resetToken, 
     <fog attach="fog" args={[lighting === "day" ? "#e9ede8" : "#17232e", 24, 90]} />
     <ambientLight intensity={lighting === "day" ? 0.8 : 0.9} />
     <hemisphereLight args={lighting === "day" ? ["#ffffff", "#a3ad97", 1.2] : ["#aac7f5", "#17232e", 1.3]} />
-    <directionalLight position={[5, 9, 6]} intensity={lighting === "day" ? 2.1 : 1.5} color={lighting === "day" ? "#fff7e6" : "#bdd5ff"} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={8} shadow-camera-bottom={-8} />
+    <directionalLight position={[5, 9, 6]} intensity={lighting === "day" ? 2.1 : 1.5} color={lighting === "day" ? "#fff7e6" : "#bdd5ff"} />
     <directionalLight position={[-4, 4, -6]} intensity={lighting === "day" ? 0.7 : 2.2} color={lighting === "day" ? "#dcebdc" : "#688db3"} />
-    {ground && <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]}><planeGeometry args={[200, 200]} /><meshStandardMaterial color={lighting === "day" ? "#e5ebe2" : "#202e37"} roughness={1} /></mesh>}
+    {ground && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]}><planeGeometry args={[200, 200]} /><meshStandardMaterial color={lighting === "day" ? "#e5ebe2" : "#202e37"} roughness={1} /></mesh>}
     {grid && <gridHelper args={[20, 20, lighting === "day" ? "#92a98e" : "#5c8095", lighting === "day" ? "#c8d5c5" : "#344c59"]} position={[0, ground ? -0.01 : 0, 0]} />}
     <Suspense fallback={null}>
       <Bounds fit clip margin={compact ? 1.1 : 1.45}>
@@ -422,6 +421,17 @@ function ViewerScene({ lighting, shading, ground, grid, src, cubes, resetToken, 
         <SceneObject src={src} cubes={cubes} shading={shading} onReady={onReady} />
         <CameraLimits src={src} cubes={cubes} />
       </Bounds>
+      {ground && <ContactShadows
+        key={src ?? "sample-cubes"}
+        position={[0, -0.01, 0]}
+        scale={20}
+        far={10}
+        resolution={512}
+        frames={1}
+        opacity={lighting === "day" ? 0.34 : 0.48}
+        blur={2.5}
+        color={lighting === "day" ? "#30453a" : "#091016"}
+      />}
     </Suspense>
   </>;
 }
@@ -431,9 +441,9 @@ function SceneObject({ src, cubes, shading, onReady }: { src?: string; cubes: bo
   return <group>
     {src && <LoadedModel src={src} shading={shading} onReady={onReady} />}
     {cubes && <>
-      <mesh castShadow receiveShadow position={[-1.4, 0.42, 0]}><boxGeometry args={[0.8, 0.8, 0.8]} /><ViewerMaterial shading={shading} color="#9bae85" /></mesh>
-      <mesh castShadow receiveShadow position={[1.3, 0.3, -0.5]} rotation={[0, 0.3, 0]}><boxGeometry args={[0.6, 0.6, 0.6]} /><ViewerMaterial shading={shading} color="#c3a383" /></mesh>
-      <mesh castShadow receiveShadow position={[0, 0.22, 1.1]} rotation={[0, -0.3, 0]}><boxGeometry args={[0.44, 0.44, 0.44]} /><ViewerMaterial shading={shading} color="#7f9f9d" /></mesh>
+      <mesh position={[-1.4, 0.42, 0]}><boxGeometry args={[0.8, 0.8, 0.8]} /><ViewerMaterial shading={shading} color="#9bae85" /></mesh>
+      <mesh position={[1.3, 0.3, -0.5]} rotation={[0, 0.3, 0]}><boxGeometry args={[0.6, 0.6, 0.6]} /><ViewerMaterial shading={shading} color="#c3a383" /></mesh>
+      <mesh position={[0, 0.22, 1.1]} rotation={[0, -0.3, 0]}><boxGeometry args={[0.44, 0.44, 0.44]} /><ViewerMaterial shading={shading} color="#7f9f9d" /></mesh>
     </>}
   </group>;
 }
@@ -456,7 +466,7 @@ function CameraLimits({ src, cubes }: { src?: string; cubes: boolean }) {
 function LoadedModel({ src, shading, onReady }: { src: string; shading: ViewerShading; onReady: () => void }) {
   const gltf = useGLTF(src);
   useEffect(() => onReady(), [gltf, onReady]);
-  return <Clone object={gltf.scene} castShadow receiveShadow inject={shading === "realistic" ? undefined : (object) => "material" in object ? <ViewerMaterial shading={shading} /> : null} />;
+  return <Clone object={gltf.scene} inject={shading === "realistic" ? undefined : (object) => "material" in object ? <ViewerMaterial shading={shading} /> : null} />;
 }
 
 function ViewerMaterial({ shading, color = "#a7aaa5" }: { shading: ViewerShading; color?: string }) {
