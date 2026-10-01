@@ -2,7 +2,6 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   Bounds,
   Clone,
-  ContactShadows,
   GizmoHelper,
   OrbitControls,
   PointerLockControls,
@@ -23,7 +22,6 @@ import {
   RotateCcw,
   Rotate3D,
   Sun,
-  View,
   Footprints,
 } from "lucide-react";
 import {
@@ -61,7 +59,6 @@ export interface ModelViewerProps {
   onLightingChange?: (lighting: ViewerLighting) => void;
   shading?: ViewerShading;
   onShadingChange?: (shading: ViewerShading) => void;
-  showGround?: boolean;
   showGrid?: boolean;
   showCubes?: boolean;
   showUi?: boolean;
@@ -113,7 +110,6 @@ export function ModelViewer({
   onLightingChange,
   shading: requestedShading,
   onShadingChange,
-  showGround: requestedGround = true,
   showGrid: requestedGrid = false,
   showCubes: requestedCubes,
   showUi = true,
@@ -127,7 +123,6 @@ export function ModelViewer({
   const viewerKey = useId();
   const [lighting, setLighting] = useState<ViewerLighting>(requestedLighting ?? "day");
   const [shading, setShading] = useState<ViewerShading>(requestedShading ?? "realistic");
-  const [ground, setGround] = useState(requestedGround);
   const [grid, setGrid] = useState(requestedGrid);
   const [cubes, setCubes] = useState(requestedCubes ?? !src);
   const [loaded, setLoaded] = useState(!src);
@@ -154,7 +149,6 @@ export function ModelViewer({
   }, [requestedMode]);
   useEffect(() => { if (requestedLighting) setLighting(requestedLighting); }, [requestedLighting]);
   useEffect(() => { if (requestedShading) setShading(requestedShading); }, [requestedShading]);
-  useEffect(() => setGround(requestedGround), [requestedGround]);
   useEffect(() => setGrid(requestedGrid), [requestedGrid]);
   useEffect(() => setCubes(requestedCubes ?? !src), [requestedCubes, src]);
   useEffect(() => {
@@ -296,7 +290,7 @@ export function ModelViewer({
           onCreated={({ gl }) => { canvasRef.current = gl.domElement; }}
           style={{ cursor: mode === "firstPerson" ? "crosshair" : "move" }}
         >
-          <ViewerScene lighting={lighting} shading={shading} ground={ground} grid={grid} src={src} cubes={cubes} resetToken={resetToken} resetFace={mode === "split" ? "front" : undefined} compact={mode === "split"} onReady={ready} />
+          <ViewerScene lighting={lighting} shading={shading} grid={grid} src={src} cubes={cubes} resetToken={resetToken} resetFace={mode === "split" ? "front" : undefined} compact={mode === "split"} onReady={ready} />
           {mode === "firstPerson" ? (
             <>
               {pointerLockAvailable ? (
@@ -332,7 +326,7 @@ export function ModelViewer({
                 gl={{ antialias: true, alpha: false, preserveDrawingBuffer: showUi, powerPreference: "high-performance" }}
                 onCreated={({ gl }) => { splitCanvasRefs.current[index] = gl.domElement; }}
               >
-                <ViewerScene lighting={lighting} shading={shading} ground={ground} grid={grid} src={src} cubes={cubes} resetToken={resetToken} resetFace={view.label.toLowerCase() as ViewFace} compact onReady={() => setSplitReady((ready) => ready.has(index) ? ready : new Set(ready).add(index))} />
+                <ViewerScene lighting={lighting} shading={shading} grid={grid} src={src} cubes={cubes} resetToken={resetToken} resetFace={view.label.toLowerCase() as ViewFace} compact onReady={() => setSplitReady((ready) => ready.has(index) ? ready : new Set(ready).add(index))} />
                 <OrbitControls makeDefault enableDamping enablePan enableRotate />
               </Canvas>
               {showUi && <span className="viewer-pane-label">{view.label}</span>}
@@ -366,7 +360,6 @@ export function ModelViewer({
             </div>
             <div className="viewer-toolbar-group" aria-label="Scene options">
               <ViewerButton icon={lighting === "day" ? <Sun /> : <Moon />} label={lighting === "day" ? "Switch to night" : "Switch to day"} active={lighting === "night"} onClick={() => changeLighting(lighting === "day" ? "night" : "day")} />
-              <ViewerButton icon={<View />} label="Show ground" active={ground} onClick={() => setGround(!ground)} />
               <ViewerButton icon={<Grid2X2 />} label="Show grid" active={grid} onClick={() => setGrid(!grid)} />
               <ViewerButton icon={<RotateCcw />} label="Reset view" onClick={() => setResetToken((n) => n + 1)} />
               <DropdownMenu open={captureMenuOpen} onOpenChange={setCaptureMenuOpen}>
@@ -403,8 +396,8 @@ function ViewerButton({ icon, label, active, onClick }: { icon: ReactNode; label
   return <Button type="button" size="icon-sm" variant={active ? "secondary" : "ghost"} aria-label={label} title={label} aria-pressed={active} onClick={onClick}>{icon}</Button>;
 }
 
-function ViewerScene({ lighting, shading, ground, grid, src, cubes, resetToken, resetFace, compact = false, onReady }: {
-  lighting: ViewerLighting; shading: ViewerShading; ground: boolean; grid: boolean; src?: string; cubes: boolean; resetToken: number; resetFace?: ViewFace; compact?: boolean; onReady: () => void;
+function ViewerScene({ lighting, shading, grid, src, cubes, resetToken, resetFace, compact = false, onReady }: {
+  lighting: ViewerLighting; shading: ViewerShading; grid: boolean; src?: string; cubes: boolean; resetToken: number; resetFace?: ViewFace; compact?: boolean; onReady: () => void;
 }) {
   return <>
     <color attach="background" args={[lighting === "day" ? "#e9ede8" : "#17232e"]} />
@@ -413,25 +406,13 @@ function ViewerScene({ lighting, shading, ground, grid, src, cubes, resetToken, 
     <hemisphereLight args={lighting === "day" ? ["#ffffff", "#a3ad97", 1.2] : ["#aac7f5", "#17232e", 1.3]} />
     <directionalLight position={[5, 9, 6]} intensity={lighting === "day" ? 2.1 : 1.5} color={lighting === "day" ? "#fff7e6" : "#bdd5ff"} />
     <directionalLight position={[-4, 4, -6]} intensity={lighting === "day" ? 0.7 : 2.2} color={lighting === "day" ? "#dcebdc" : "#688db3"} />
-    {ground && <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.015, 0]}><planeGeometry args={[200, 200]} /><meshStandardMaterial color={lighting === "day" ? "#e5ebe2" : "#202e37"} roughness={1} /></mesh>}
-    {grid && <gridHelper args={[20, 20, lighting === "day" ? "#92a98e" : "#5c8095", lighting === "day" ? "#c8d5c5" : "#344c59"]} position={[0, ground ? -0.01 : 0, 0]} />}
+    {grid && <gridHelper args={[20, 20, lighting === "day" ? "#92a98e" : "#5c8095", lighting === "day" ? "#c8d5c5" : "#344c59"]} position={[0, 0, 0]} />}
     <Suspense fallback={null}>
       <Bounds fit clip margin={compact ? 1.1 : 1.45}>
         <FitOnRequest token={resetToken} face={resetFace} />
         <SceneObject src={src} cubes={cubes} shading={shading} onReady={onReady} />
         <CameraLimits src={src} cubes={cubes} />
       </Bounds>
-      {ground && <ContactShadows
-        key={src ?? "sample-cubes"}
-        position={[0, -0.01, 0]}
-        scale={20}
-        far={10}
-        resolution={512}
-        frames={1}
-        opacity={lighting === "day" ? 0.34 : 0.48}
-        blur={2.5}
-        color={lighting === "day" ? "#30453a" : "#091016"}
-      />}
     </Suspense>
   </>;
 }
