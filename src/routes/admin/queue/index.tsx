@@ -44,8 +44,7 @@ function QueuePage() {
     ["queued", "running", "cancelling"].includes(j.status),
   );
   return (
-    <main>
-      <div className="eyebrow">ADMINISTRATION</div>
+    <div className="admin-page">
       <section className="page-heading">
         <div>
           <h1>Generation queue</h1>
@@ -143,6 +142,6 @@ function QueuePage() {
               ))}
           </section>
         ))}
-    </main>
+    </div>
   );
 }

@@ -8,7 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Bot, Check, Copy, FileText, ImageIcon, Workflow } from "lucide-react";
 import { request } from "../../../lib/client";
@@ -65,8 +65,7 @@ function AgentsPage() {
   }
 
   return (
-    <main className="agents-page">
-      <div className="eyebrow">ADMINISTRATION</div>
+    <div className="admin-page agents-page">
       <section className="page-heading">
         <div>
           <h1>Agents & AI roles</h1>
@@ -75,7 +74,6 @@ function AgentsPage() {
             saved settings.
           </p>
         </div>
-        <Link to="/admin/queue">Generation queue</Link>
       </section>
       <Card className="agent-overview">
         <div>
@@ -201,6 +199,6 @@ function AgentsPage() {
           </p>
         </div>
       </Card>
-    </main>
+    </div>
   );
 }

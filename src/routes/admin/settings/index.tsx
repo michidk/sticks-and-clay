@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { SettingsForm } from "./-components/settings-form";
 
 export const Route = createFileRoute("/admin/settings/")({
@@ -7,8 +7,7 @@ export const Route = createFileRoute("/admin/settings/")({
 
 function SettingsPage() {
   return (
-    <main>
-      <div className="eyebrow">ADMINISTRATION</div>
+    <div className="admin-page">
       <section className="page-heading">
         <div>
           <h1>Pipeline settings</h1>
@@ -16,9 +15,8 @@ function SettingsPage() {
             Runtime limits for AI turns and isolated Blender builds.
           </p>
         </div>
-        <Link to="/admin/agents">View agent roles</Link>
       </section>
       <SettingsForm />
-    </main>
+    </div>
   );
 }

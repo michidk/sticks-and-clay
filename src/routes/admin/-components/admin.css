@@ -1,0 +1,144 @@
+.admin-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
+  gap: 48px;
+}
+
+.admin-sidebar {
+  position: sticky;
+  top: 32px;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fbfcf6;
+}
+
+.admin-sidebar-heading {
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-sidebar-heading p {
+  margin: 9px 0 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.admin-subnav {
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+}
+
+.admin-subnav-link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 56px;
+  padding: 9px 11px;
+  border-radius: 7px;
+  color: var(--muted-foreground);
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-subnav-link:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.admin-subnav-link[data-current="true"] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.admin-subnav-link > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.admin-subnav-link > span {
+  min-width: 0;
+}
+
+.admin-subnav-link strong,
+.admin-subnav-link small {
+  display: block;
+}
+
+.admin-subnav-link strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.admin-subnav-link small {
+  margin-top: 2px;
+  color: inherit;
+  font-size: 10px;
+  line-height: 1.35;
+  opacity: 0.78;
+}
+
+.admin-subnav-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.admin-content,
+.admin-page {
+  min-width: 0;
+}
+
+.admin-page > .page-heading {
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .admin-layout {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+
+  .admin-sidebar {
+    position: static;
+  }
+
+  .admin-sidebar-heading {
+    padding-block: 18px 14px;
+  }
+
+  .admin-subnav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-layout {
+    gap: 24px;
+  }
+
+  .admin-sidebar-heading {
+    padding: 16px;
+  }
+
+  .admin-sidebar-heading p,
+  .admin-subnav-link small {
+    display: none;
+  }
+
+  .admin-subnav-link {
+    justify-content: center;
+    gap: 7px;
+    min-height: 44px;
+    padding: 8px 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-subnav-link {
+    transition: none;
+  }
+}

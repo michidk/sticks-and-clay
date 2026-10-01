@@ -1,11 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FolderOpen, ListTodo, Bot, Settings } from "lucide-react";
+import { FolderOpen, Settings } from "lucide-react";
 
 const sections = [
   { to: "/", label: "Projects", icon: FolderOpen },
-  { to: "/admin/queue", label: "Queue", icon: ListTodo },
-  { to: "/admin/agents", label: "Agents", icon: Bot },
-  { to: "/admin/settings", label: "Settings", icon: Settings },
+  { to: "/admin", label: "Admin", icon: Settings },
 ] as const;
 
 export function StudioNav() {
@@ -25,9 +23,10 @@ export function StudioNav() {
         </Link>
         <nav className="studio-nav" aria-label="Main navigation">
           {sections.map(({ to, label, icon: Icon }) => {
-            const active = to === "/"
-              ? pathname === "/" || pathname.startsWith("/projects/")
-              : pathname === to || pathname.startsWith(to + "/");
+            const active =
+              to === "/"
+                ? pathname === "/" || pathname.startsWith("/projects/")
+                : pathname === to || pathname.startsWith(to + "/");
             return (
               <Link
                 key={to}
