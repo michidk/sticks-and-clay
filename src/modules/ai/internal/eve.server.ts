@@ -19,6 +19,7 @@ import { recoveryAction } from "../../../lib/recovery";
 import { checkpoint, jobContext } from "../../../lib/checkpoint.server";
 import { resolve } from "node:path";
 import { DATA } from "../../../lib/storage.server";
+import { agentTimeoutMs } from "./timeouts";
 const client = () =>
   new Client({
     host: process.env.EVE_URL || "http://127.0.0.1:33441",
@@ -80,6 +81,7 @@ export async function agent<T>(
     accountedInput = 0,
     accountedOutput = 0,
     accountedCached = 0;
+  let signal: AbortSignal | undefined;
   const saveUsage = () => {
     // Accumulate per-step estimates: the long-context tier is per request, not per session total.
     if (inputTokens !== accountedInput || outputTokens !== accountedOutput) {
@@ -112,9 +114,7 @@ export async function agent<T>(
       .where(eq(runs.id, id));
   };
   try {
-    const signal = AbortSignal.timeout(
-      Number(process.env.AGENT_TIMEOUT_MS || 1200000),
-    );
+    signal = AbortSignal.timeout(agentTimeoutMs(args.role));
     // Persist an idle session before submitting work, so recovery has an identity.
     const session = saved?.sessionId
       ? client().sessions.attach(saved.sessionId)
@@ -318,6 +318,13 @@ export async function agent<T>(
       .where(eq(runs.id, id));
     return { result: parsed, runId: id };
   } catch (error) {
+    if (signal?.aborted && sessionId) {
+      try {
+        await client().sessions.attach(sessionId).cancel({ tasks: true });
+      } catch (cancelError) {
+        console.error("Failed to cancel timed-out Eve session", cancelError);
+      }
+    }
     await db
       .update(runs)
       .set({
