@@ -17,11 +17,13 @@ import { projectPhotographs } from "./project-photography.server";
 import { cancelJob } from "./queue.server";
 import { runRole, roleInput, agentSettings } from "../modules/ai/index.server";
 // Preserve the field-fill HTTP response shape while sharing the execution boundary.
-async function draftBrief(
-  args: import("../modules/ai/index.server").RunInput<
-    "project-brief" | "model-brief" | "graphic-brief"
-  >,
-) {
+async function draftBrief<
+  R extends
+    | "project-name"
+    | "project-brief"
+    | "model-brief"
+    | "graphic-brief",
+>(args: import("../modules/ai/index.server").RunInput<R>) {
   const { result, runId } = await runRole(args);
   return { ...result, runId };
 }
@@ -315,6 +317,85 @@ export async function api(request: Request) {
             ),
         })),
       });
+    }
+    if (
+      path[0] === "projects" &&
+      path[1] === "name" &&
+      request.method === "POST"
+    ) {
+      const form = await request.formData();
+      const description = z
+        .string()
+        .trim()
+        .min(1, "Add a brief before generating a project name")
+        .max(12000)
+        .parse(form.get("description") || "");
+      const type = assetType.parse(form.get("assetType") || "model");
+      const draftId = form.get("draftId")
+        ? uuid.parse(form.get("draftId"))
+        : crypto.randomUUID();
+      const saved = form.get("draftId")
+        ? (
+            await db
+              .select()
+              .from(projects)
+              .where(
+                and(
+                  eq(projects.id, uuid.parse(form.get("draftId"))),
+                  eq(projects.status, "draft"),
+                ),
+              )
+          )[0]
+        : undefined;
+      if (form.get("draftId") && !saved)
+        throw new Error("Project setup has already started");
+      if (saved) {
+        const updated = await db
+          .update(projects)
+          .set({ assetType: type, description, phase: "Naming project" })
+          .where(and(eq(projects.id, draftId), eq(projects.status, "draft")))
+          .returning();
+        if (!updated.length)
+          throw new Error("Project setup has already started");
+      } else {
+        await db.insert(projects).values({
+          id: draftId,
+          name: "Untitled project",
+          assetType: type,
+          description,
+          status: "draft",
+          phase: "Naming project",
+        });
+      }
+      try {
+        const result = await draftBrief({
+          projectId: draftId,
+          role: "project-name",
+          input: await roleInput("project-name", { description }),
+        });
+        await db
+          .update(projects)
+          .set({ name: result.name, phase: "Review project setup" })
+          .where(and(eq(projects.id, draftId), eq(projects.status, "draft")));
+        return reply({ id: draftId, ...result }, 201);
+      } catch (error) {
+        const databaseFailure = databaseErrorResponse(error);
+        if (databaseFailure)
+          return reply(
+            { ...databaseFailure.body, draftId },
+            databaseFailure.status,
+          );
+        return reply(
+          {
+            error:
+              error instanceof Error
+                ? error.message
+                : "Project name generation failed",
+            draftId,
+          },
+          400,
+        );
+      }
     }
     if (
       path[0] === "projects" &&

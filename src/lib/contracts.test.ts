@@ -1,5 +1,11 @@
 import { test, expect } from "bun:test";
-import { price, nextStage, judgeResult, planResult } from "./contracts";
+import {
+  price,
+  nextStage,
+  judgeResult,
+  planResult,
+  projectNameResult,
+} from "./contracts";
 test("token pricing includes cache discount and ignores provider charges", () => {
   expect(
     price(1000000, 100000, 400000, { input: 2, cached: 0.2, output: 10 }),
@@ -23,4 +29,13 @@ test("judge response requires actionable structured feedback", () => {
     }).success,
   ).toBe(false);
   expect(planResult.safeParse({ models: [] }).success).toBe(false);
+});
+test("generated project names are trimmed and bounded", () => {
+  expect(projectNameResult.parse({ name: "  Mosslight Hollow  " })).toEqual({
+    name: "Mosslight Hollow",
+  });
+  expect(projectNameResult.safeParse({ name: "" }).success).toBe(false);
+  expect(projectNameResult.safeParse({ name: "x".repeat(101) }).success).toBe(
+    false,
+  );
 });

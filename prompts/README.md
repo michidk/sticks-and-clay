@@ -3,6 +3,7 @@
 All authored agent instructions and input templates live here.
 
 - `system.md`: shared Eve agent rules. `eve/agent/instructions.ts` loads this file at build time.
+- `project-name.md`: creates a concise initial project name from the user's brief.
 - `project-brief.md`: fills the initial project brief using TanStack AI.
 - `designer.md`: uses TanStack AI to write the project's design reference.
 - `model-brief.md`: uses TanStack AI to draft the editable Model brief from the approved design and requested count.

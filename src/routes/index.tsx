@@ -34,6 +34,7 @@ import {
   Layers,
   LoaderCircle,
   Image as ImageIcon,
+  Sparkles,
 } from "lucide-react";
 import { projectState } from "@/lib/project-summary";
 import { request, costSummary, fileUrl } from "../lib/client";
@@ -54,6 +55,7 @@ function ProjectsPage() {
     [description, setDescription] = useState(""),
     [assetType, setAssetType] = useState<"model" | "graphic">("model"),
     [draftId, setDraftId] = useState<string | null>(null),
+    [naming, setNaming] = useState(false),
     [briefing, setBriefing] = useState(false);
   function newProject(event: React.MouseEvent<HTMLElement>) {
     dialogOpener.current = event.currentTarget;
@@ -64,6 +66,27 @@ function ProjectsPage() {
     setDraftId(null);
     uploader.reset();
     setCreating(true);
+  }
+  async function generateName() {
+    setNaming(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.set("description", description);
+      form.set("assetType", assetType);
+      if (draftId) form.set("draftId", draftId);
+      const result = await request("projects/name", {
+        method: "POST",
+        body: form,
+      });
+      setDraftId(result.id);
+      setName(result.name);
+    } catch (e) {
+      if ((e as any).data?.draftId) setDraftId((e as any).data.draftId);
+      setError((e as Error).message);
+    } finally {
+      setNaming(false);
+    }
   }
   async function generateBrief() {
     setBriefing(true);
@@ -119,7 +142,7 @@ function ProjectsPage() {
   }, []);
   async function create(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (busy || briefing || uploader.isBusy) return;
+    if (busy || naming || briefing || uploader.isBusy) return;
     setBusy(true);
     setError("");
     try {
@@ -399,7 +422,7 @@ function ProjectsPage() {
       <Dialog
         open={creating}
         onOpenChange={(open) => {
-          if (!open && !busy && !briefing && !uploader.isBusy) {
+          if (!open && !busy && !naming && !briefing && !uploader.isBusy) {
             setCreating(false);
             uploader.reset();
           }
@@ -407,7 +430,7 @@ function ProjectsPage() {
       >
         <DialogContent
           className="setup-dialog"
-          showCloseButton={!busy && !briefing && !uploader.isBusy}
+          showCloseButton={!busy && !naming && !briefing && !uploader.isBusy}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             dialogOpener.current?.focus();
@@ -428,7 +451,7 @@ function ProjectsPage() {
               <input type="hidden" name="assetType" value={assetType} />
               <fieldset
                 className="asset-type-choice"
-                disabled={busy || briefing || Boolean(draftId)}
+                disabled={busy || naming || briefing || Boolean(draftId)}
               >
                 <legend>What are you creating?</legend>
                 <div>
@@ -460,18 +483,44 @@ function ProjectsPage() {
                   ))}
                 </div>
               </fieldset>
-              <Label>
-                Project name
-                <Input
-                  name="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  disabled={briefing}
-                  required
-                  maxLength={100}
-                  placeholder="e.g. Stonehaven village"
-                />
-              </Label>
+              <div className="grid gap-2">
+                <Label htmlFor="project-name">Project name</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="project-name"
+                    className="min-w-0 flex-1"
+                    name="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    disabled={naming || briefing}
+                    required
+                    maxLength={100}
+                    placeholder="e.g. Stonehaven village"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    type="button"
+                    className="shrink-0 max-sm:!size-11"
+                    disabled={
+                      busy ||
+                      naming ||
+                      briefing ||
+                      uploader.isBusy ||
+                      !description.trim()
+                    }
+                    onClick={generateName}
+                    aria-label="Generate project name from brief"
+                    title="Generate project name from brief"
+                  >
+                    {naming ? (
+                      <LoaderCircle className="spin" size={16} />
+                    ) : (
+                      <Sparkles size={16} />
+                    )}
+                  </Button>
+                </div>
+              </div>
               <div className="brief-field">
                 <Label htmlFor="project-brief">The brief (optional)</Label>
                 <MarkdownTextarea
@@ -479,7 +528,7 @@ function ProjectsPage() {
                   name="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  disabled={briefing}
+                  disabled={naming || briefing}
                   maxLength={12000}
                   rows={4}
                   placeholder="Add any direction you have, or leave this empty to use the project name and references."
@@ -490,14 +539,16 @@ function ProjectsPage() {
                 onFilesAdded={uploader.addFiles}
                 onImportFromUrl={uploader.importFromUrl}
                 onRemove={uploader.remove}
-                disabled={busy || briefing}
+                disabled={busy || naming || briefing}
                 isBusy={uploader.isBusy}
               />
               <Button
                 variant="outline"
                 type="button"
                 className="w-full whitespace-normal h-auto min-h-9"
-                disabled={busy || briefing || uploader.isBusy || !name.trim()}
+                disabled={
+                  busy || naming || briefing || uploader.isBusy || !name.trim()
+                }
                 onClick={generateBrief}
               >
                 {briefing && (
@@ -524,7 +575,7 @@ function ProjectsPage() {
               <Button
                 variant="default"
                 className="wide"
-                disabled={busy || briefing || uploader.isBusy}
+                disabled={busy || naming || briefing || uploader.isBusy}
               >
                 {busy ? (
                   <LoaderCircle className="spin" size={18} />

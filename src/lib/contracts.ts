@@ -81,6 +81,9 @@ export const runtimeSettingsPatchSchema = z.object({
 export type RuntimeSettings = z.infer<typeof runtimeSettingsSchema>;
 export type RuntimeSettingsPatch = z.infer<typeof runtimeSettingsPatchSchema>;
 
+export const projectNameResult = z.object({
+  name: z.string().trim().min(1).max(100),
+});
 export const briefResult = z.object({ brief: z.string().min(10).max(12000) });
 export const designResult = z.object({ design: z.string().min(100) });
 export const planResult = z.object({

@@ -3,7 +3,12 @@ import { modelReviewPipeline, runPipeline } from "./index";
 import { executionPolicy, roles } from "../ai/roles";
 
 test("role registry selects one-shot or resumable execution, including legacy designer", () => {
-  for (const role of ["project-brief", "model-brief", "designer"] as const)
+  for (const role of [
+    "project-name",
+    "project-brief",
+    "model-brief",
+    "designer",
+  ] as const)
     expect(executionPolicy(role)).toEqual({
       engine: "tanstack",
       resumable: false,
