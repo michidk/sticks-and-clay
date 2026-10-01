@@ -3,18 +3,15 @@ import {
   Bounds,
   Clone,
   GizmoHelper,
-  GizmoViewcube,
   OrbitControls,
   PointerLockControls,
   useBounds,
   useGLTF,
 } from "@react-three/drei";
 import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
   Camera,
+  Check,
+  ChevronDown,
   Copy,
   Download,
   Grid2X2,
@@ -37,7 +34,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -45,10 +41,12 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ViewerSkeleton } from "@/components/loading";
 import { cn } from "@/lib/utils";
-import { faceVector, nearestFace, nextFace, type ViewArrow, type ViewFace } from "./view-cube";
+import { EditorViewHelper } from "./editor-view-helper";
+import { faceVector, type ViewFace } from "./view-cube";
 
 export type ViewerMode = "orbit" | "split" | "firstPerson";
 export type ViewerLighting = "day" | "night";
+export type ViewerShading = "realistic" | "solid" | "normals" | "wireframe";
 
 /** A self-contained GLB lightbox. Set showUi=false for a clean embedded preview. */
 export interface ModelViewerProps {
@@ -60,6 +58,8 @@ export interface ModelViewerProps {
   onModeChange?: (mode: ViewerMode) => void;
   lighting?: ViewerLighting;
   onLightingChange?: (lighting: ViewerLighting) => void;
+  shading?: ViewerShading;
+  onShadingChange?: (shading: ViewerShading) => void;
   showGround?: boolean;
   showGrid?: boolean;
   showCubes?: boolean;
@@ -71,7 +71,6 @@ export interface ModelViewerProps {
   onError?: (error: Error) => void;
 }
 
-type Direction = { id: number; arrow: ViewArrow };
 const splitViews = [
   { label: "Right", position: [3, 0, 0] },
   { label: "Back", position: [0, 0, -3] },
@@ -111,6 +110,8 @@ export function ModelViewer({
   onModeChange,
   lighting: requestedLighting,
   onLightingChange,
+  shading: requestedShading,
+  onShadingChange,
   showGround: requestedGround = true,
   showGrid: requestedGrid = false,
   showCubes: requestedCubes,
@@ -124,6 +125,7 @@ export function ModelViewer({
   const [mode, setMode] = useState<ViewerMode>(requestedMode ?? "orbit");
   const viewerKey = useId();
   const [lighting, setLighting] = useState<ViewerLighting>(requestedLighting ?? "day");
+  const [shading, setShading] = useState<ViewerShading>(requestedShading ?? "realistic");
   const [ground, setGround] = useState(requestedGround);
   const [grid, setGrid] = useState(requestedGrid);
   const [cubes, setCubes] = useState(requestedCubes ?? !src);
@@ -136,14 +138,12 @@ export function ModelViewer({
   const [splitReady, setSplitReady] = useState<Set<number>>(() => new Set());
   const previousSrc = useRef(src);
   const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
-  const [compassArrowsVisible, setCompassArrowsVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [locked, setLocked] = useState(false);
   const [pointerLockAvailable, setPointerLockAvailable] = useState(true);
   const [resetToken, setResetToken] = useState(0);
-  const [direction, setDirection] = useState<Direction>({ id: 0, arrow: "up" });
 
   useEffect(() => {
     if (requestedMode && requestedMode !== mode) {
@@ -152,6 +152,7 @@ export function ModelViewer({
     }
   }, [requestedMode]);
   useEffect(() => { if (requestedLighting) setLighting(requestedLighting); }, [requestedLighting]);
+  useEffect(() => { if (requestedShading) setShading(requestedShading); }, [requestedShading]);
   useEffect(() => setGround(requestedGround), [requestedGround]);
   useEffect(() => setGrid(requestedGrid), [requestedGrid]);
   useEffect(() => setCubes(requestedCubes ?? !src), [requestedCubes, src]);
@@ -247,7 +248,6 @@ export function ModelViewer({
     setLoaded(!src);
     canvasRef.current = null;
     if (next === "split") { setSplitReady(new Set()); splitCanvasRefs.current = []; }
-    setDirection({ id: 0, arrow: "up" });
     setMode(next);
     onModeChange?.(next);
     if (mode === "firstPerson" && next !== "firstPerson") setResetToken((n) => n + 1);
@@ -256,14 +256,9 @@ export function ModelViewer({
     setLighting(next);
     onLightingChange?.(next);
   }
-  function nudge(arrow: ViewArrow) {
-    setDirection((value) => ({ id: value.id + 1, arrow }));
-  }
-  function updateCompassVisibility(event: ReactPointerEvent<HTMLDivElement>) {
-    if (mode !== "orbit" || !showOrientation || event.pointerType === "touch") return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const near = event.clientX >= rect.right - 140 && event.clientY <= rect.top + 140;
-    setCompassArrowsVisible((visible) => visible === near ? visible : near);
+  function changeShading(next: ViewerShading) {
+    setShading(next);
+    onShadingChange?.(next);
   }
   async function toggleFullscreen() {
     if (isExpanded) { setIsExpanded(false); return; }
@@ -288,9 +283,6 @@ export function ModelViewer({
       data-viewer-key={viewerKey}
       aria-label={alt}
       role="group"
-      onPointerMove={updateCompassVisibility}
-      onPointerDown={(event) => { if (event.pointerType === "touch" && mode === "orbit") setCompassArrowsVisible(true); }}
-      onPointerLeave={() => setCompassArrowsVisible(false)}
     >
       <ViewerErrorBoundary key={src ?? "cubes"} onError={fail}>
         <div className="viewer-scenes">
@@ -304,7 +296,7 @@ export function ModelViewer({
           onCreated={({ gl }) => { canvasRef.current = gl.domElement; }}
           style={{ cursor: mode === "firstPerson" ? "crosshair" : "move" }}
         >
-          <ViewerScene lighting={lighting} ground={ground} grid={grid} src={src} cubes={cubes} resetToken={resetToken} resetFace={mode === "split" ? "front" : undefined} compact={mode === "split"} onReady={ready} />
+          <ViewerScene lighting={lighting} shading={shading} ground={ground} grid={grid} src={src} cubes={cubes} resetToken={resetToken} resetFace={mode === "split" ? "front" : undefined} compact={mode === "split"} onReady={ready} />
           {mode === "firstPerson" ? (
             <>
               {pointerLockAvailable ? (
@@ -322,15 +314,9 @@ export function ModelViewer({
                 autoRotate={mode === "orbit" && autoRotate}
                 autoRotateSpeed={autoRotateSpeed * 3}
               />
-              {mode === "orbit" && <CameraNudge direction={direction} resetToken={resetToken} />}
               {showOrientation && mode !== "split" && (
                 <GizmoHelper alignment="top-right" margin={[62, 62]}>
-                  <GizmoViewcube
-                    color={lighting === "day" ? "#f7f8f1" : "#263846"}
-                    textColor={lighting === "day" ? "#284e3c" : "#dce9e3"}
-                    strokeColor={lighting === "day" ? "#92a98e" : "#7099ae"}
-                    hoverColor={lighting === "day" ? "#dce7b7" : "#405f72"}
-                  />
+                  <EditorViewHelper />
                 </GizmoHelper>
               )}
             </>
@@ -347,7 +333,7 @@ export function ModelViewer({
                 gl={{ antialias: true, alpha: false, preserveDrawingBuffer: showUi, powerPreference: "high-performance" }}
                 onCreated={({ gl }) => { splitCanvasRefs.current[index] = gl.domElement; }}
               >
-                <ViewerScene lighting={lighting} ground={ground} grid={grid} src={src} cubes={cubes} resetToken={resetToken} resetFace={view.label.toLowerCase() as ViewFace} compact onReady={() => setSplitReady((ready) => ready.has(index) ? ready : new Set(ready).add(index))} />
+                <ViewerScene lighting={lighting} shading={shading} ground={ground} grid={grid} src={src} cubes={cubes} resetToken={resetToken} resetFace={view.label.toLowerCase() as ViewFace} compact onReady={() => setSplitReady((ready) => ready.has(index) ? ready : new Set(ready).add(index))} />
                 <OrbitControls makeDefault enableDamping enablePan enableRotate />
               </Canvas>
               {showUi && <span className="viewer-pane-label">{view.label}</span>}
@@ -359,6 +345,21 @@ export function ModelViewer({
       {showUi && (
         <>
           <div className="viewer-toolbar" role="toolbar" aria-label="3D viewer controls">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="outline" className="viewer-shading-trigger" aria-label={`Shading: ${shading}`}>
+                  {shading}<ChevronDown />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" sideOffset={6} className="viewer-shading-menu">
+                {(["realistic", "solid", "normals", "wireframe"] as const).map((option) => (
+                  <DropdownMenuItem key={option} onSelect={() => changeShading(option)}>
+                    <Check className={option === shading ? "is-visible" : "is-hidden"} />
+                    <span>{option}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <div className="viewer-toolbar-group" aria-label="Interaction mode">
               <ViewerButton icon={<Rotate3D />} label="Orbit camera" active={mode === "orbit"} onClick={() => changeMode("orbit")} />
               <ViewerButton icon={<LayoutGrid />} label="Four-view split" active={mode === "split"} onClick={() => changeMode("split")} />
@@ -368,7 +369,7 @@ export function ModelViewer({
               <ViewerButton icon={lighting === "day" ? <Sun /> : <Moon />} label={lighting === "day" ? "Switch to night" : "Switch to day"} active={lighting === "night"} onClick={() => changeLighting(lighting === "day" ? "night" : "day")} />
               <ViewerButton icon={<View />} label="Show ground" active={ground} onClick={() => setGround(!ground)} />
               <ViewerButton icon={<Grid2X2 />} label="Show grid" active={grid} onClick={() => setGrid(!grid)} />
-              {(!showOrientation || mode === "split") && <ViewerButton icon={<RotateCcw />} label="Reset view" onClick={() => setResetToken((n) => n + 1)} />}
+              <ViewerButton icon={<RotateCcw />} label="Reset view" onClick={() => setResetToken((n) => n + 1)} />
               <DropdownMenu open={captureMenuOpen} onOpenChange={setCaptureMenuOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button type="button" size="icon-sm" variant={captureMenuOpen ? "secondary" : "ghost"} className={cn("viewer-capture-trigger", captureMenuOpen && "is-open")} aria-label="Screenshot options" title="Screenshot options" disabled={!loaded || viewerError || (mode === "split" && splitReady.size !== splitViews.length)}>
@@ -383,15 +384,6 @@ export function ModelViewer({
               </DropdownMenu>
             </div>
           </div>
-          {mode === "orbit" && showOrientation && (
-            <div className={cn("viewer-compass", compassArrowsVisible && "is-visible")} aria-label="View cube controls">
-              <CompassButton className="is-up" icon={<ArrowUp />} label="View next face up" onClick={() => nudge("up")} />
-              <CompassButton className="is-left" icon={<ArrowLeft />} label="View next face left" onClick={() => nudge("left")} />
-              <CompassButton className="is-right" icon={<ArrowRight />} label="View next face right" onClick={() => nudge("right")} />
-              <CompassButton className="is-down" icon={<ArrowDown />} label="View next face down" onClick={() => nudge("down")} />
-              <CompassButton className="is-reset" icon={<RotateCcw />} label="Reset view" onClick={() => setResetToken((n) => n + 1)} />
-            </div>
-          )}
           <div className="viewer-help" role={captureFeedback?.error ? "alert" : "status"}>
             {captureFeedback?.message ?? (mode === "firstPerson"
               ? pointerLockAvailable
@@ -412,12 +404,8 @@ function ViewerButton({ icon, label, active, onClick }: { icon: ReactNode; label
   return <Button type="button" size="icon-sm" variant={active ? "secondary" : "ghost"} aria-label={label} title={label} aria-pressed={active} onClick={onClick}>{icon}</Button>;
 }
 
-function CompassButton({ icon, label, className, onClick }: { icon: ReactNode; label: string; className: string; onClick: () => void }) {
-  return <Button type="button" size="icon-sm" variant="ghost" className={cn("viewer-compass-button", className)} aria-label={label} title={label} onClick={onClick}>{icon}</Button>;
-}
-
-function ViewerScene({ lighting, ground, grid, src, cubes, resetToken, resetFace, compact = false, onReady }: {
-  lighting: ViewerLighting; ground: boolean; grid: boolean; src?: string; cubes: boolean; resetToken: number; resetFace?: ViewFace; compact?: boolean; onReady: () => void;
+function ViewerScene({ lighting, shading, ground, grid, src, cubes, resetToken, resetFace, compact = false, onReady }: {
+  lighting: ViewerLighting; shading: ViewerShading; ground: boolean; grid: boolean; src?: string; cubes: boolean; resetToken: number; resetFace?: ViewFace; compact?: boolean; onReady: () => void;
 }) {
   return <>
     <color attach="background" args={[lighting === "day" ? "#e9ede8" : "#17232e"]} />
@@ -431,21 +419,21 @@ function ViewerScene({ lighting, ground, grid, src, cubes, resetToken, resetFace
     <Suspense fallback={null}>
       <Bounds fit clip margin={compact ? 1.1 : 1.45}>
         <FitOnRequest token={resetToken} face={resetFace} />
-        <SceneObject src={src} cubes={cubes} onReady={onReady} />
+        <SceneObject src={src} cubes={cubes} shading={shading} onReady={onReady} />
         <CameraLimits src={src} cubes={cubes} />
       </Bounds>
     </Suspense>
   </>;
 }
 
-function SceneObject({ src, cubes, onReady }: { src?: string; cubes: boolean; onReady: () => void }) {
+function SceneObject({ src, cubes, shading, onReady }: { src?: string; cubes: boolean; shading: ViewerShading; onReady: () => void }) {
   useEffect(() => { if (!src) onReady(); }, [src, onReady]);
   return <group>
-    {src && <LoadedModel src={src} onReady={onReady} />}
+    {src && <LoadedModel src={src} shading={shading} onReady={onReady} />}
     {cubes && <>
-      <mesh castShadow receiveShadow position={[-1.4, 0.42, 0]}><boxGeometry args={[0.8, 0.8, 0.8]} /><meshStandardMaterial color="#9bae85" roughness={0.7} /></mesh>
-      <mesh castShadow receiveShadow position={[1.3, 0.3, -0.5]} rotation={[0, 0.3, 0]}><boxGeometry args={[0.6, 0.6, 0.6]} /><meshStandardMaterial color="#c3a383" roughness={0.7} /></mesh>
-      <mesh castShadow receiveShadow position={[0, 0.22, 1.1]} rotation={[0, -0.3, 0]}><boxGeometry args={[0.44, 0.44, 0.44]} /><meshStandardMaterial color="#7f9f9d" roughness={0.7} /></mesh>
+      <mesh castShadow receiveShadow position={[-1.4, 0.42, 0]}><boxGeometry args={[0.8, 0.8, 0.8]} /><ViewerMaterial shading={shading} color="#9bae85" /></mesh>
+      <mesh castShadow receiveShadow position={[1.3, 0.3, -0.5]} rotation={[0, 0.3, 0]}><boxGeometry args={[0.6, 0.6, 0.6]} /><ViewerMaterial shading={shading} color="#c3a383" /></mesh>
+      <mesh castShadow receiveShadow position={[0, 0.22, 1.1]} rotation={[0, -0.3, 0]}><boxGeometry args={[0.44, 0.44, 0.44]} /><ViewerMaterial shading={shading} color="#7f9f9d" /></mesh>
     </>}
   </group>;
 }
@@ -465,10 +453,16 @@ function CameraLimits({ src, cubes }: { src?: string; cubes: boolean }) {
   return null;
 }
 
-function LoadedModel({ src, onReady }: { src: string; onReady: () => void }) {
+function LoadedModel({ src, shading, onReady }: { src: string; shading: ViewerShading; onReady: () => void }) {
   const gltf = useGLTF(src);
   useEffect(() => onReady(), [gltf, onReady]);
-  return <Clone object={gltf.scene} castShadow receiveShadow />;
+  return <Clone object={gltf.scene} castShadow receiveShadow inject={shading === "realistic" ? undefined : (object) => "material" in object ? <ViewerMaterial shading={shading} /> : null} />;
+}
+
+function ViewerMaterial({ shading, color = "#a7aaa5" }: { shading: ViewerShading; color?: string }) {
+  if (shading === "normals") return <meshNormalMaterial />;
+  if (shading === "wireframe") return <meshBasicMaterial color="#34483f" wireframe />;
+  return <meshStandardMaterial color={color} roughness={shading === "solid" ? 0.82 : 0.7} metalness={0} />;
 }
 
 function FitOnRequest({ token, face }: { token: number; face?: ViewFace }) {
@@ -489,48 +483,6 @@ function FitOnRequest({ token, face }: { token: number; face?: ViewFace }) {
     });
     return () => cancelAnimationFrame(frame);
   }, [token, bounds, face]);
-  return null;
-}
-
-function CameraNudge({ direction, resetToken }: { direction: Direction; resetToken: number }) {
-  const { camera, controls } = useThree();
-  const goal = useRef<{ x: number; y: number; z: number } | null>(null);
-  const lastSide = useRef<ViewFace>("front");
-  const lastFace = useRef<ViewFace | null>(null);
-  useEffect(() => { goal.current = null; lastSide.current = "front"; lastFace.current = null; }, [resetToken]);
-  useEffect(() => {
-    if (!direction.id || !controls || !("target" in controls)) return;
-    const target = controls.target as { x: number; y: number; z: number };
-    const base = goal.current ?? camera.position;
-    const x = base.x - target.x;
-    const y = base.y - target.y;
-    const z = base.z - target.z;
-    const radius = Math.max(0.01, Math.hypot(x, y, z));
-    const current = nearestFace(x, y, z);
-    if (current !== lastFace.current && current !== "top" && current !== "bottom") lastSide.current = current;
-    const next = nextFace(current, direction.arrow, lastSide.current);
-    lastSide.current = next.lastSide;
-    lastFace.current = next.face;
-    const [nextX, nextY, nextZ] = faceVector(next.face, next.lastSide);
-    goal.current = {
-      x: target.x + radius * nextX,
-      y: target.y + radius * nextY,
-      z: target.z + radius * nextZ,
-    };
-  }, [camera, controls, direction]);
-  useFrame((_, delta) => {
-    if (!goal.current || !controls || !("target" in controls)) return;
-    const step = 1 - Math.exp(-Math.min(delta, 0.05) * 12);
-    const target = controls.target as { x: number; y: number; z: number };
-    camera.position.set(
-      camera.position.x + (goal.current.x - camera.position.x) * step,
-      camera.position.y + (goal.current.y - camera.position.y) * step,
-      camera.position.z + (goal.current.z - camera.position.z) * step,
-    );
-    camera.lookAt(target.x, target.y, target.z);
-    if ("update" in controls && typeof controls.update === "function") controls.update();
-    if (Math.hypot(goal.current.x - camera.position.x, goal.current.y - camera.position.y, goal.current.z - camera.position.z) < 0.002) goal.current = null;
-  });
   return null;
 }
 
