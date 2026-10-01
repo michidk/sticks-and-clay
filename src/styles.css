@@ -1236,24 +1236,74 @@ pre {
 }
 
 /* Agent settings and texture galleries */
+.agents-page .page-heading { margin-bottom: 24px; }
+.agent-overview { display: grid; grid-template-columns: 150px 170px minmax(0, 1fr); align-items: stretch; margin-bottom: 24px; overflow: hidden; border-color: #d8dfd1; background: #f7f9f1; }
+.agent-overview > div { display: flex; flex-direction: column; justify-content: center; gap: 3px; min-height: 82px; padding: 16px 22px; border-right: 1px solid var(--border); }
+.agent-overview > div:last-child { border-right: 0; }
+.agent-overview strong { color: var(--primary); font-size: 24px; font-weight: 560; line-height: 1; }
+.agent-overview span { color: var(--muted-foreground); font-size: 11px; }
+.agent-overview .agent-overview-note { flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; }
+.agent-overview-note svg { width: 20px; height: 20px; flex: none; color: var(--primary); }
+.agent-overview-note span { max-width: 480px; font-size: 12px; line-height: 1.55; }
+.agent-overview-note code { color: var(--foreground); font-size: 11px; }
 .agents-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 23px;
   align-items: start;
 }
-.role-settings dt { margin-top: 12px; font-size: 12px; color: #7a8273; }
-.role-settings dd { margin: 3px 0 0; overflow-wrap: anywhere; }
-.agent-prompts { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 18px; }
-.agent-prompts h3 { margin: 0 0 4px; font-size: 13px; }
+.agent-card { position: relative; overflow: hidden; border-color: #d9e0d3; background: var(--card); padding: 24px; }
+.agent-card::before { position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, var(--primary), #8da678); content: ""; opacity: .9; }
+.agent-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.agent-identity { display: flex; align-items: center; min-width: 0; gap: 12px; }
+.agent-identity h2 { margin: 0; font-size: 17px; }
+.agent-identity code { display: block; margin-top: 3px; color: var(--muted-foreground); font-size: 10px; }
+.agent-icon { display: grid; width: 40px; height: 40px; flex: none; place-items: center; border: 1px solid #d2ddc8; border-radius: 10px; background: #eaf0df; color: var(--primary); }
+.agent-icon[data-engine="eve"] { background: #e8edf8; color: #5b6e98; border-color: #d8e0f3; }
+.agent-icon[data-engine="imagegen"] { background: #f8efd6; color: #967126; border-color: #eadcb9; }
+.agent-icon svg { width: 19px; height: 19px; }
+.agent-card-header .badge { flex: none; margin-top: 3px; }
+.agent-description { min-height: 42px; margin: 18px 0; color: var(--muted-foreground); font-size: 12px; line-height: 1.6; }
+.role-settings { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(70px, .8fr) minmax(70px, .7fr); margin: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--muted); }
+.role-settings > div { min-width: 0; padding: 11px 13px; border-right: 1px solid var(--border); }
+.role-settings > div:last-child { border-right: 0; }
+.role-settings dt { color: var(--muted-foreground); font-size: 10px; }
+.role-settings dd { margin: 4px 0 0; overflow-wrap: anywhere; color: var(--foreground); font-size: 12px; font-weight: 520; }
+.agent-prompts { margin-top: 22px; }
+.agent-prompts-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.agent-prompts h3 { margin: 0; font-size: 13px; }
+.agent-prompts-heading > span { color: var(--muted-foreground); font-size: 10px; }
 .agent-prompts [data-slot="accordion-trigger"] > span { min-width: 0; }
+.prompt-label { display: flex; align-items: center; gap: 10px; }
+.prompt-label > svg { width: 16px; height: 16px; flex: none; color: #87977c; }
 .prompt-kind { display: block; color: var(--foreground); }
 .prompt-path { display: block; margin-top: 2px; color: var(--muted-foreground); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10px; font-weight: 400; overflow-wrap: anywhere; }
-.prompt-content { max-height: 420px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: 7px; background: var(--background); padding: 14px; color: var(--foreground); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; line-height: 1.55; }
+.prompt-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.prompt-toolbar > span { color: var(--muted-foreground); font-size: 10px; }
+.prompt-toolbar [data-slot="button"] { min-height: 32px; padding-inline: 10px; font-size: 10px; }
+.prompt-toolbar svg { width: 13px; height: 13px; }
+.prompt-content { max-height: 420px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--border); border-radius: 7px; background: var(--background); padding: 14px; color: var(--foreground); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11px; line-height: 1.6; }
+.agent-capability-note { display: flex; align-items: flex-start; gap: 14px; margin-top: 24px; border-color: #d8dfd1; background: #f7f9f1; padding: 20px 22px; }
+.agent-capability-note > svg { width: 20px; height: 20px; flex: none; margin-top: 2px; color: #967126; }
+.agent-capability-note h2 { margin: 0; font-size: 14px; }
+.agent-capability-note p { margin: 5px 0 0; color: var(--muted-foreground); font-size: 12px; line-height: 1.55; }
 .asset-title .tabs { flex-wrap: wrap; }
 
 @media (max-width: 800px) {
   .agents-grid { grid-template-columns: 1fr; }
+  .agent-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .agent-overview .agent-overview-note { grid-column: 1 / -1; border-top: 1px solid var(--border); }
+}
+
+@media (max-width: 600px) {
+  .agent-overview > div { min-height: 72px; padding: 14px 16px; }
+  .agent-card { padding: 20px; }
+  .agent-card-header { align-items: flex-start; }
+  .agent-card-header .badge { white-space: normal; text-align: center; }
+  .agent-description { min-height: 0; }
+  .role-settings { grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(64px, .7fr)); }
+  .role-settings > div { padding: 10px; }
+  .agent-prompts-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
 }
 
 /* shadcn primitives inherit the workshop palette through the tokens above. */
