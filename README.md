@@ -209,15 +209,18 @@ timeouts are reported as unavailable evidence, not a clean model.
   triangles are reported. Findings are capped at 80 with 20 face samples each.
 
 At the existing per-export archive handoff, `src/modules/glb/cleanup.ts` uses
-glTF-Transform to weld bitwise-equivalent vertices, deduplicate accessors and prune
-unused resources after index optimization, including its replaced accessors.
-Meshoptimizer reorders opaque triangle indices without changing
-vertex values. Texture image bytes, UV/normal seams, materials and scene nodes are
-preserved. Transparent exports skip reordering. Extensions, skins, animations,
-morph targets, non-triangle primitives, URI resources and unknown chunks bypass
-cleanup; exceptions also fall back to the input. No repair, simplification,
-quantization or lossy compression is performed. The handover receipt records
-cleanup steps or the skip reason before applying the tool's generator marker.
+glTF-Transform to weld bitwise-equivalent vertices, simplify large opaque triangle
+meshes toward 50% of their original triangles within a 0.1% geometric-error limit,
+deduplicate accessors and prune unused resources after index optimization, including
+its replaced accessors. Meshoptimizer keeps mesh borders locked during simplification
+and reorders opaque triangle indices. Small and transparent meshes are not simplified;
+transparent exports also skip reordering. Texture image bytes, UV/normal seams,
+materials and scene nodes are preserved. Extensions, skins, animations, morph targets,
+non-triangle primitives, URI resources and unknown chunks bypass cleanup; exceptions
+fall back to the input. No repair, quantization or lossy texture compression is
+performed. The handover receipt records cleanup steps, pre/post triangle counts or the
+skip reason before applying the tool's generator marker; published metrics use the
+post-cleanup triangle count.
 Cleanup precedes immutable photography, so the judge and download see the same
 model. Old archived versions are never rewritten.
 

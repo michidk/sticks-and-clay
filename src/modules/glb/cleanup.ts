@@ -3,9 +3,25 @@ import {
   dedup,
   prune,
   reorder,
+  simplifyPrimitive,
   weldPrimitive,
 } from "@gltf-transform/functions";
-import { MeshoptEncoder } from "meshoptimizer";
+import { MeshoptEncoder, MeshoptSimplifier } from "meshoptimizer";
+
+const MIN_SIMPLIFY_TRIANGLES = 1_000;
+const SIMPLIFY_RATIO = 0.5;
+const SIMPLIFY_ERROR = 0.001;
+
+function triangleCount(document: Awaited<ReturnType<NodeIO["readBinary"]>>) {
+  return document
+    .getRoot()
+    .listMeshes()
+    .flatMap((mesh) => mesh.listPrimitives())
+    .reduce((total, primitive) => {
+      const indices = primitive.getIndices();
+      return total + (indices ? indices.getCount() / 3 : 0);
+    }, 0);
+}
 
 /** Best effort only. Unsupported semantics retain the original bytes. */
 export async function cleanupGlb(input: Uint8Array) {
@@ -45,9 +61,26 @@ export async function cleanupGlb(input: Uint8Array) {
       return skipped("External or URI resources");
     const io = new NodeIO();
     const document = await io.readBinary(input);
+    const trianglesBefore = triangleCount(document);
+    let simplified = false;
     for (const mesh of document.getRoot().listMeshes())
-      for (const primitive of mesh.listPrimitives())
+      for (const primitive of mesh.listPrimitives()) {
         weldPrimitive(primitive, { overwrite: true });
+        const triangles = (primitive.getIndices()?.getCount() || 0) / 3;
+        if (
+          triangles >= MIN_SIMPLIFY_TRIANGLES &&
+          primitive.getMaterial()?.getAlphaMode() !== "BLEND"
+        ) {
+          await MeshoptSimplifier.ready;
+          simplifyPrimitive(primitive, {
+            simplifier: MeshoptSimplifier,
+            ratio: SIMPLIFY_RATIO,
+            error: SIMPLIFY_ERROR,
+            lockBorder: true,
+          });
+          simplified = true;
+        }
+      }
     await document.transform(
       dedup({ propertyTypes: [PropertyType.ACCESSOR], keepUniqueNames: true }),
     );
@@ -84,10 +117,15 @@ export async function cleanupGlb(input: Uint8Array) {
         status: "applied",
         steps: [
           "weld-exact-vertices",
+          ...(simplified ? ["simplify-large-opaque-meshes"] : []),
           "dedup-accessors",
           ...(!blended ? ["reorder-indices"] : []),
           "prune-unused-resources",
         ],
+        triangles: {
+          before: trianglesBefore,
+          after: triangleCount(document),
+        },
       },
     };
   } catch (error) {

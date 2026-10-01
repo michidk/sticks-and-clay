@@ -38,6 +38,41 @@ async function fixture(blend = false) {
   d.createMaterial("unused");
   return new NodeIO().writeBinary(d);
 }
+async function gridFixture(size = 40) {
+  const d = new Document(),
+    b = d.createBuffer(),
+    positions = new Float32Array((size + 1) * (size + 1) * 3),
+    indices = new Uint32Array(size * size * 6);
+  for (let y = 0; y <= size; y++)
+    for (let x = 0; x <= size; x++) {
+      const i = (y * (size + 1) + x) * 3;
+      positions[i] = x / size;
+      positions[i + 1] = y / size;
+    }
+  let offset = 0;
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const a = y * (size + 1) + x,
+        b = a + 1,
+        c = a + size + 1,
+        d = c + 1;
+      indices.set([a, b, d, a, d, c], offset);
+      offset += 6;
+    }
+  const primitive = d
+    .createPrimitive()
+    .setAttribute(
+      "POSITION",
+      d.createAccessor().setType("VEC3").setArray(positions).setBuffer(b),
+    )
+    .setIndices(
+      d.createAccessor().setType("SCALAR").setArray(indices).setBuffer(b),
+    );
+  d.createScene().addChild(
+    d.createNode("grid").setMesh(d.createMesh("dense-grid").addPrimitive(primitive)),
+  );
+  return new NodeIO().writeBinary(d);
+}
 function triangles(d: Document) {
   const p = d.getRoot().listMeshes()[0].listPrimitives()[0];
   const pos = p.getAttribute("POSITION")!,
@@ -85,6 +120,27 @@ test("cleanup welds identical indexed vertices but preserves UV seams, geometry 
   expect(after.getRoot().listMaterials()[0].getBaseColorFactor()).toEqual(
     before.getRoot().listMaterials()[0].getBaseColorFactor(),
   );
+});
+test("cleanup simplifies large meshes and reports the published triangle count", async () => {
+  const io = new NodeIO(),
+    input = await gridFixture(),
+    before = await io.readBinary(input),
+    result = await cleanupGlb(input),
+    after = await io.readBinary(result.bytes);
+  const beforeCount =
+    before.getRoot().listMeshes()[0].listPrimitives()[0].getIndices()!.getCount() /
+    3;
+  const afterCount =
+    after.getRoot().listMeshes()[0].listPrimitives()[0].getIndices()!.getCount() /
+    3;
+  expect(result.cleanup.status).toBe("applied");
+  expect("steps" in result.cleanup ? result.cleanup.steps : []).toContain(
+    "simplify-large-opaque-meshes",
+  );
+  expect(afterCount).toBeLessThanOrEqual(beforeCount * 0.5);
+  expect(
+    "triangles" in result.cleanup ? result.cleanup.triangles : undefined,
+  ).toEqual({ before: beforeCount, after: afterCount });
 });
 test("transparent triangles retain order and skip meshoptimizer", async () => {
   const input = await fixture(true);

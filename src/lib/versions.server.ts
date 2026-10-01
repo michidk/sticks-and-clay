@@ -59,7 +59,14 @@ export async function archiveVersion(
     );
     await writeFile(
       resolve(temporary, "metrics.json"),
-      JSON.stringify({ ...metrics, bytes: processed.bytes.length }),
+      JSON.stringify({
+        ...metrics,
+        triangles:
+          "triangles" in cleaned.cleanup
+            ? cleaned.cleanup.triangles.after
+            : metrics.triangles,
+        bytes: processed.bytes.length,
+      }),
     );
     await mkdir(resolve(temporary, "textures"), { recursive: true });
     // Keep generated source images plus the exact embedded textures used in the GLB.
