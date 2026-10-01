@@ -96,3 +96,5 @@ The model page shows recorded generation stages as a left-to-right graph above t
 ## Project overview
 
 The project overview pairs its brief and primary generation action with a compact reference-image panel. A slim metrics row summarizes collection size, active work, items needing attention and estimated cost. Collection search and status filters operate on models and pending requests. Queued or planning batches occupy ordinary model cards, one per outstanding model; replace those placeholders as model rows are created. Keep failed-batch recovery available even if its model rows already exist. Placeholder cards show honest queue/planning states and must not link to nonexistent models. The collection grid, reference panel and filters adapt to phone widths.
+
+The project setup brief is optional. Keep name-based Generate/Enhance with AI beside the brief and a separate Generate brief from reference images button below the uploader. The latter requires a project name and at least one reference; it includes existing notes and fills the editable brief. Blank briefs proceed to design generation from the name and references.

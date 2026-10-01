@@ -231,7 +231,9 @@ function ProjectsPage() {
               <Plus size={24} />
             </span>
             <strong>A new world starts here</strong>
-            <span>Name your project, then write or generate its brief.</span>
+            <span>
+              Name your project, then optionally add a brief or references.
+            </span>
           </Button>
         </div>
       )}
@@ -257,8 +259,8 @@ function ProjectsPage() {
               Give your world a direction.
             </DialogTitle>
             <DialogDescription className="muted">
-              Write a brief or let AI draft one from the name and references.
-              Review it before creating your design.
+              Start with a name. Add an optional brief or reference images
+              to guide your design.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={create}>
@@ -275,16 +277,15 @@ function ProjectsPage() {
               />
             </Label>
             <Label>
-              The brief
+              The brief (optional)
               <Textarea
                 name="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={briefing}
-                required
-                minLength={10}
+                maxLength={12000}
                 rows={4}
-                placeholder="Describe the setting, style, and what you want to build, or use AI generate brief."
+                placeholder="Add any direction you have, or leave this empty to use the project name and references."
               />
             </Label>
             <Button
@@ -316,6 +317,23 @@ function ProjectsPage() {
               disabled={busy || briefing}
               isBusy={uploader.isBusy}
             />
+            <Button
+              variant="outline"
+              type="button"
+              className="w-full whitespace-normal h-auto min-h-9"
+              disabled={
+                busy || briefing || uploader.isBusy || !name.trim() ||
+                !uploader.images.length
+              }
+              onClick={generateBrief}
+            >
+              {briefing && <LoaderCircle className="spin shrink-0" size={16} />}
+              {briefing ? "Writing brief…" : "Generate brief from reference images"}
+            </Button>
+            <p className="note">
+              Add reference images and a project name to draft an editable brief.
+              Any notes above will be included.
+            </p>
             {error && (
               <Alert variant="destructive" className="error">
                 {error}

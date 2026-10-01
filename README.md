@@ -15,7 +15,7 @@ The application design guide describes Sticks & Clay itself. Each asset project'
 
 ## Workflow
 
-1. Start a project with a name and a brief, plus up to six optional reference images. Use AI generate brief to fill the field, then edit it before continuing. Leaving it empty does not generate implicitly.
+1. Start a project with a name, an optional brief, and up to six optional reference images. Generate or enhance the brief using AI, including the button below the references, then edit it before continuing. A blank brief proceeds directly to design generation using the name and any references; it does not implicitly generate a separate brief.
 2. A TanStack AI background call inspects the images and writes a Markdown design reference. The database stores the document and revisions. Edit it, then save and approve it. GFM rendering supports tables, task lists and strikethrough. Immutable database revisions are compared using the `diff` library; Restore as draft loads an older version into the editor, and Save creates a new revision without overwriting history.
 3. Request a concrete model or ask the planner to propose a set. Choose 1–20 models and 0–5 maximum judge rounds. A batch snapshots the approved design; later edits cannot change its contract.
 4. A PostgreSQL job queue dispatches model attempts, with two concurrent workers by default. Each first generates an imagegen visual target from the approved design, model brief and references. The target is its thumbnail until a 3D render exists and remains available in the Visual target tab. Each build iteration has an isolated Blender directory and process.

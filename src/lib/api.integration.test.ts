@@ -3,7 +3,7 @@ import { api } from "./api.server";
 import { db } from "../db/client";
 import { projects, revisions } from "../db/schema";
 import { eq } from "drizzle-orm";
-// Opt in against a migrated local database; fixtures never enqueue agents.
+// Opt in against an isolated migrated database with no worker; fixtures clean up queued jobs.
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 integration(
   "design approval, immutable revisions and optimistic edit conflict",
@@ -100,3 +100,28 @@ integration(
     expect(allowed.status).toBe(404);
   },
 );
+
+integration("project creation accepts omitted, blank and short optional briefs", async () => {
+  const { jobs } = await import("../db/schema");
+  // Run only on an isolated test database without a worker: creation queues design.
+  for (const description of [undefined, "   ", "Oak"]) {
+    const form = new FormData();
+    form.set("name", "Optional brief fixture");
+    if (description !== undefined) form.set("description", description);
+    const response = await api(new Request("http://localhost/api/projects", {
+      method: "POST", body: form,
+    }));
+    expect(response.status).toBe(201);
+    const { id } = await response.json() as { id: string };
+    try {
+      const [project] = await db.select().from(projects).where(eq(projects.id, id));
+      expect(project.description).toBe(description?.trim() || "");
+      const queued = await db.select().from(jobs).where(eq(jobs.targetId, id));
+      expect(queued).toHaveLength(1);
+      expect(queued[0].kind).toBe("design");
+    } finally {
+      await db.delete(jobs).where(eq(jobs.targetId, id));
+      await db.delete(projects).where(eq(projects.id, id));
+    }
+  }
+});

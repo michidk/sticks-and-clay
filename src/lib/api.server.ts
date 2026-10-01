@@ -343,7 +343,6 @@ export async function api(request: Request) {
       const description = z
         .string()
         .trim()
-        .min(10, "Write a brief or use AI generate brief first")
         .max(12000)
         .parse(form.get("description") || "");
       const saved = form.get("draftId")
