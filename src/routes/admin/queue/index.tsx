@@ -1,15 +1,26 @@
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  Info,
+  XCircle,
+} from "lucide-react";
 import { request, json } from "../../../lib/client";
-import { Progress } from "../../../components/progress";
 import { QueueSkeleton } from "../../../components/loading";
+import {
+  QueueJobCard,
+  type QueueJob,
+} from "./-components/queue-job-card";
+import "./-components/queue.css";
+
 export const Route = createFileRoute("/admin/queue/")({ component: QueuePage });
 function QueuePage() {
-  const [jobs, setJobs] = useState<any[]>([]),
+  const [jobs, setJobs] = useState<QueueJob[]>([]),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false);
@@ -43,9 +54,31 @@ function QueuePage() {
   const active = jobs.filter((j) =>
     ["queued", "running", "cancelling"].includes(j.status),
   );
+  const running = jobs.filter((j) =>
+    ["running", "cancelling"].includes(j.status),
+  );
+  const queued = jobs.filter((j) => j.status === "queued");
+  const history = jobs.filter((j) => !active.includes(j));
+  const summary = [
+    { label: "In progress", value: running.length, tone: "running", icon: Activity },
+    { label: "Waiting", value: queued.length, tone: "warning", icon: Clock3 },
+    {
+      label: "Completed",
+      value: jobs.filter((j) => j.status === "done").length,
+      tone: "done",
+      icon: CheckCircle2,
+    },
+    {
+      label: "Needs attention",
+      value: jobs.filter((j) => j.status === "failed").length,
+      tone: "failed",
+      icon: AlertTriangle,
+    },
+  ] as const;
+
   return (
-    <div className="admin-page">
-      <section className="page-heading">
+    <div className="admin-page queue-page">
+      <section className="page-heading queue-heading">
         <div>
           <h1>Generation queue</h1>
           <p className="lede">
@@ -55,10 +88,11 @@ function QueuePage() {
         </div>
         <Button
           variant="outline"
-          disabled={busy || !jobs.some((j) => j.status === "queued")}
+          disabled={busy || queued.length === 0}
           onClick={() => cancel("queue/cancel-pending")}
         >
-          Abort pending queue
+          <XCircle aria-hidden="true" />
+          Cancel waiting jobs
         </Button>
       </section>
       {error && (
@@ -69,79 +103,86 @@ function QueuePage() {
       {loading ? (
         <QueueSkeleton />
       ) : (
-        <p>
-          {active.length} active jobs ·{" "}
-          {jobs.filter((j) => j.status === "queued").length} waiting
-        </p>
+        <div className="queue-summary" aria-label="Queue summary">
+          {summary.map(({ label, value, tone, icon: Icon }) => (
+            <div className="queue-stat" data-tone={tone} key={label}>
+              <span className="queue-stat-icon">
+                <Icon aria-hidden="true" />
+              </span>
+              <div>
+                <strong>{value}</strong>
+                <span>{label}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
-      <p className="note">
-        Brief buttons call TanStack AI directly and never enter this queue.
-        Stopping a running job requests cancellation; it may take time for an
-        active Blender operation to stop.
+      <p className="queue-guidance">
+        <Info aria-hidden="true" />
+        <span>
+          Brief generation runs immediately and does not appear here. Stop
+          requests can take a moment while an active Blender operation exits.
+        </span>
       </p>
-      {!loading &&
-        ["Active", "History"].map((section) => (
-          <section key={section}>
-            <h2>{section}</h2>
-            {jobs
-              .filter((j) =>
-                section === "Active" ? active.includes(j) : !active.includes(j),
-              )
-              .map((j) => (
-                <Card className="panel" key={j.id}>
-                  <div className="section-title">
-                    <div>
-                      <h3>{j.name}</h3>
-                      {j.projectId && (
-                        <Link
-                          to="/projects/$projectId"
-                          params={{ projectId: j.projectId }}
-                        >
-                          {j.projectName}
-                        </Link>
-                      )}
-                    </div>
-                    <Badge variant="secondary" className={"badge " + j.status}>
-                      {j.status}
-                    </Badge>
-                  </div>
-                  <p>
-                    {j.kind} · {new Date(j.createdAt).toLocaleString()}
-                  </p>
-                  {["running", "queued"].includes(j.status) &&
-                    ["model", "project-photo"].includes(j.kind) && (
-                      <Progress
-                        value={j.progress || 0}
-                        label={j.phase || j.status}
-                      />
-                    )}
-                  {j.error && <p className="muted">{j.error}</p>}
-                  {j.kind === "project-photo" && j.status === "failed" && (
-                    <Button
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => cancel("queue/" + j.id + "/resume")}
-                    >
-                      Resume photography
-                    </Button>
-                  )}
-                  {["queued", "running", "cancelling"].includes(j.status) && (
-                    <Button
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => cancel("queue/" + j.id + "/cancel")}
-                    >
-                      {j.status === "queued"
-                        ? "Remove from queue"
-                        : j.status === "cancelling"
-                          ? "Retry stop request"
-                          : "Stop job"}
-                    </Button>
-                  )}
-                </Card>
-              ))}
-          </section>
-        ))}
+      {!loading && (
+        <>
+          <QueueSection
+            title="Active queue"
+            description={`${active.length} ${active.length === 1 ? "job" : "jobs"} in progress or waiting`}
+            jobs={active}
+            busy={busy}
+            onAction={cancel}
+            empty="The queue is clear. New generation work will appear here."
+          />
+          <QueueSection
+            title="Recent history"
+            description={`${history.length} completed or stopped ${history.length === 1 ? "job" : "jobs"}`}
+            jobs={history}
+            busy={busy}
+            onAction={cancel}
+            empty="No completed jobs yet."
+          />
+        </>
+      )}
     </div>
+  );
+}
+
+function QueueSection({
+  title,
+  description,
+  jobs,
+  busy,
+  onAction,
+  empty,
+}: {
+  title: string;
+  description: string;
+  jobs: QueueJob[];
+  busy: boolean;
+  onAction: (path: string) => void;
+  empty: string;
+}) {
+  return (
+    <section className="queue-section">
+      <div className="queue-section-heading">
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+      {jobs.length ? (
+        <div className="queue-job-list">
+          {jobs.map((job) => (
+            <QueueJobCard
+              key={job.id}
+              job={job}
+              busy={busy}
+              onAction={onAction}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="queue-empty">{empty}</p>
+      )}
+    </section>
   );
 }

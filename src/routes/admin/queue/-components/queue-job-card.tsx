@@ -1,0 +1,148 @@
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { Progress } from "@/components/progress";
+import { Link } from "@tanstack/react-router";
+import {
+  Box,
+  Camera,
+  Clapperboard,
+  ListChecks,
+  RotateCcw,
+  Square,
+  X,
+} from "lucide-react";
+
+export type QueueJob = {
+  id: string;
+  kind: string;
+  status: string;
+  createdAt: string;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  error?: string | null;
+  name: string;
+  projectId?: string;
+  projectName?: string;
+  phase?: string;
+  progress?: number;
+};
+
+const kindDetails: Record<
+  string,
+  { label: string; icon: typeof Box }
+> = {
+  model: { label: "Model build", icon: Box },
+  plan: { label: "Collection plan", icon: ListChecks },
+  demo: { label: "Collection render", icon: Clapperboard },
+  "project-photo": { label: "Project photography", icon: Camera },
+};
+
+function jobTime(job: QueueJob) {
+  const value = job.finishedAt || job.startedAt || job.createdAt;
+  const label = job.finishedAt
+    ? "Finished"
+    : job.startedAt
+      ? "Started"
+      : "Added";
+
+  return { label, value };
+}
+
+export function QueueJobCard({
+  job,
+  busy,
+  onAction,
+}: {
+  job: QueueJob;
+  busy: boolean;
+  onAction: (path: string) => void;
+}) {
+  const kind = kindDetails[job.kind] || { label: job.kind, icon: Box };
+  const Icon = kind.icon;
+  const time = jobTime(job);
+  const canCancel = ["queued", "running", "cancelling"].includes(job.status);
+  const showProgress =
+    ["running", "queued"].includes(job.status) &&
+    ["model", "project-photo"].includes(job.kind);
+
+  return (
+    <Card className="queue-job">
+      <div className="queue-job-icon" data-kind={job.kind}>
+        <Icon aria-hidden="true" />
+      </div>
+      <div className="queue-job-content">
+        <div className="queue-job-heading">
+          <div>
+            <h3>{job.name}</h3>
+            <div className="queue-job-meta">
+              <span>{kind.label}</span>
+              <span aria-hidden="true">·</span>
+              <time dateTime={time.value}>
+                {time.label} {new Date(time.value).toLocaleString()}
+              </time>
+            </div>
+          </div>
+          <Badge variant="secondary" className={"badge " + job.status}>
+            {job.status}
+          </Badge>
+        </div>
+
+        {job.projectId && (
+          <Link
+            className="queue-job-project"
+            to="/projects/$projectId"
+            params={{ projectId: job.projectId }}
+          >
+            {job.projectName}
+          </Link>
+        )}
+
+        {showProgress && (
+          <div className="queue-job-progress">
+            <Progress
+              value={job.progress || 0}
+              label={job.phase || job.status}
+            />
+          </div>
+        )}
+
+        {job.error && <p className="queue-job-error">{job.error}</p>}
+      </div>
+
+      {(canCancel || (job.kind === "project-photo" && job.status === "failed")) && (
+        <div className="queue-job-actions">
+          {job.kind === "project-photo" && job.status === "failed" ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => onAction("queue/" + job.id + "/resume")}
+            >
+              <RotateCcw aria-hidden="true" />
+              Resume
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => onAction("queue/" + job.id + "/cancel")}
+            >
+              {job.status === "running" ? (
+                <Square aria-hidden="true" />
+              ) : (
+                <X aria-hidden="true" />
+              )}
+              {job.status === "queued"
+                ? "Remove"
+                : job.status === "cancelling"
+                  ? "Retry stop"
+                  : "Stop"}
+            </Button>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
