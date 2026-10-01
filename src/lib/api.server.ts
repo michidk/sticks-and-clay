@@ -573,7 +573,7 @@ export async function api(request: Request) {
           throw new Error("Approve the design before generating models");
         const input = z
           .object({
-            prompt: z.string().trim().min(10).max(12000),
+            prompt: z.string().trim().max(12000).default(""),
             count: z.number().int().min(1).max(20),
             judgeIterations: z.number().int().min(0).max(5),
           })

@@ -125,3 +125,35 @@ integration("project creation accepts omitted, blank and short optional briefs",
     }
   }
 });
+
+integration("model generation accepts optional briefs and preserves the design snapshot", async () => {
+  const { batches, jobs } = await import("../db/schema");
+  const id = crypto.randomUUID();
+  const design = "# Approved design\nA coherent family of clay farm props.";
+  await db.insert(projects).values({ id, name: "Optional model brief", description: "", status: "ready", design, designVersion: 2 });
+  try {
+    for (const prompt of [undefined, "   ", "Oak"]) {
+      const response = await api(new Request(`http://localhost/api/projects/${id}/generate`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, count: 2, judgeIterations: 0 }),
+      }));
+      expect(response.status).toBe(201);
+      const { id: batchId } = await response.json() as { id: string };
+      try {
+        const [batch] = await db.select().from(batches).where(eq(batches.id, batchId));
+        expect(batch.prompt).toBe(prompt?.trim() || "");
+        expect(batch.design).toBe(design);
+        expect(batch.designVersion).toBe(2);
+        expect(batch.count).toBe(2);
+        const queued = await db.select().from(jobs).where(eq(jobs.targetId, batchId));
+        expect(queued).toHaveLength(1);
+        expect(queued[0].kind).toBe("plan");
+      } finally {
+        await db.delete(jobs).where(eq(jobs.targetId, batchId));
+        await db.delete(batches).where(eq(batches.id, batchId));
+      }
+    }
+  } finally {
+    await db.delete(projects).where(eq(projects.id, id));
+  }
+});

@@ -867,7 +867,7 @@ function ProjectPage() {
             </div>
             <div className="brief-field">
               <div className="field-heading">
-                <Label htmlFor="model-brief">Model brief</Label>
+                <Label htmlFor="model-brief">Model brief (optional)</Label>
                 <Button
                   variant="outline"
                   size="sm"
@@ -895,10 +895,9 @@ function ProjectPage() {
                 value={modelBrief}
                 onChange={(e) => setModelBrief(e.target.value)}
                 disabled={briefing}
-                required
-                minLength={10}
+                maxLength={12000}
                 rows={5}
-                placeholder="e.g. Create five distinct village walls: a plain section, an archway, a damaged section…"
+                placeholder="Describe specific models, or leave blank to let AI choose from your approved design."
               />
             </div>
             {briefing && (
