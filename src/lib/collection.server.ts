@@ -1,10 +1,31 @@
 import { assertJobActive } from "./queue.server";
 import { eq } from "drizzle-orm";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { db } from "../db/client";
 import { batches, models } from "../db/schema";
 import { DATA, filePath, publishFiles } from "./storage.server";
+
+export const COLLECTION_FRONT_AZIMUTH = -55;
+
+export function photographyFrontAzimuth(receipt: unknown) {
+  const value = (receipt as { settings?: { frontAzimuth?: unknown } })
+    ?.settings?.frontAzimuth;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : COLLECTION_FRONT_AZIMUTH;
+}
+
+async function assetFrontAzimuth(artifacts: Record<string, unknown>) {
+  const manifest = (
+    artifacts.photography as { manifest?: unknown } | undefined
+  )?.manifest;
+  if (typeof manifest !== "string") return COLLECTION_FRONT_AZIMUTH;
+  return photographyFrontAzimuth(
+    JSON.parse(await readFile(await filePath(manifest), "utf8")),
+  );
+}
+
 export async function renderCollection(batchId: string) {
   const assets = await db
     .select()
@@ -33,10 +54,12 @@ export async function renderCollection(batchId: string) {
   await mkdir(output, { recursive: true });
   const config = {
     output,
+    frontAzimuth: COLLECTION_FRONT_AZIMUTH,
     assets: await Promise.all(
       ready.map(async (m) => ({
         name: m.name,
         path: await filePath(String(m.artifacts!.glb)),
+        frontAzimuth: await assetFrontAzimuth(m.artifacts!),
       })),
     ),
   };

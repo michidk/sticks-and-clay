@@ -1,7 +1,10 @@
 """Deterministic collection views. Imported GLBs keep their relative scale."""
 import bpy,json,sys,math,os
-from mathutils import Vector
+from mathutils import Matrix, Vector
 config=json.load(open(sys.argv[sys.argv.index('--')+1]))
+front_azimuth=config.get('frontAzimuth',-55)
+front_angle=math.radians(front_azimuth)
+front_direction=Vector((math.cos(front_angle),math.sin(front_angle),0))
 bpy.ops.object.select_all(action='SELECT');bpy.ops.object.delete(use_global=False)
 groups=[];asset_objects=[];cursor=0;maxheight=0
 for item in config['assets']:
@@ -9,6 +12,9 @@ for item in config['assets']:
     bpy.ops.import_scene.gltf(filepath=item['path'])
     objects=set(bpy.data.objects)-before
     roots=[o for o in objects if o.parent not in objects]
+    rotation=Matrix.Rotation(math.radians(front_azimuth-item.get('frontAzimuth',front_azimuth)),4,'Z')
+    for o in roots:o.matrix_world=rotation@o.matrix_world
+    bpy.context.view_layer.update()
     asset_objects.extend(o for o in objects if o.type=="MESH")
     points=[o.matrix_world@Vector(c) for o in objects if o.type=='MESH' for c in o.bound_box]
     lo=Vector([min(p[i] for p in points) for i in range(3)]);hi=Vector([max(p[i] for p in points) for i in range(3)])
@@ -26,7 +32,7 @@ shader=next(n for n in mat.node_tree.nodes if n.type=='BSDF_PRINCIPLED');shader.
 scene.world.color=(.3,.3,.3)
 for offset,power in [((-.5,-1,1.5),1200),((1,1,1),900),((1,-1,.8),700)]:
     bpy.ops.object.light_add(type='AREA',location=center+Vector(offset)*span);o=bpy.context.object;o.data.energy=power*span**2/4;o.data.size=span;o.rotation_euler=(center-o.location).to_track_quat('-Z','Y').to_euler()
-bpy.ops.object.camera_add(location=center+Vector((.15,-1.8,.9))*span);camera=bpy.context.object;scene.camera=camera;camera.data.type='ORTHO';camera.data.ortho_scale=span*1.1;camera.rotation_euler=(center-camera.location).to_track_quat('-Z','Y').to_euler()
+bpy.ops.object.camera_add(location=center+(front_direction*1.8+Vector((0,0,.9)))*span);camera=bpy.context.object;scene.camera=camera;camera.data.type='ORTHO';camera.data.ortho_scale=span*1.1;camera.rotation_euler=(center-camera.location).to_track_quat('-Z','Y').to_euler()
 def fit_camera():
     bpy.context.view_layer.update()
     inverse=camera.matrix_world.inverted()
@@ -38,10 +44,10 @@ def fit_camera():
     bpy.context.view_layer.update()
 fit_camera()
 scene.render.filepath=os.path.join(config['output'],'lineup.png');bpy.ops.render.render(write_still=True)
-# A staggered display arrangement makes the rear and depth legible together.
+# Stagger away from the hero camera while keeping every asset's front visible.
 for i,(roots,width,depth,height,x) in enumerate(groups):
-    for o in roots:o.location.y+=(i%2)*max(depth,maxheight*.5)
-center.y=maxheight*.2;camera.location=center+Vector((.65,-1.5,1))*span;camera.rotation_euler=(center-camera.location).to_track_quat('-Z','Y').to_euler();camera.data.ortho_scale=span*1.25
+    for o in roots:o.location-=front_direction*(i%2)*max(depth,maxheight*.5)
+center-=front_direction*maxheight*.2;camera.location=center+(front_direction*1.65+Vector((0,0,1)))*span;camera.rotation_euler=(center-camera.location).to_track_quat('-Z','Y').to_euler();camera.data.ortho_scale=span*1.25
 fit_camera()
 scene.render.filepath=os.path.join(config['output'],'scene.png');bpy.ops.render.render(write_still=True)
 bpy.ops.wm.save_as_mainfile(filepath=os.path.join(config['output'],'collection.blend'))
