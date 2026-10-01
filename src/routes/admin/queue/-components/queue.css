@@ -114,7 +114,7 @@
 }
 
 .queue-stat strong,
-.queue-stat span {
+.queue-stat > div > span {
   display: block;
 }
 
@@ -124,7 +124,7 @@
   line-height: 1;
 }
 
-.queue-stat span {
+.queue-stat > div > span {
   margin-top: 4px;
   color: var(--muted-foreground);
   font-size: 10px;

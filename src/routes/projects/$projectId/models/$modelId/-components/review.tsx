@@ -1,6 +1,7 @@
-import { fileUrl } from "@/lib/client";
 import { reviewImageNumbers } from "../-lib/review-images";
 import { AssetImage } from "@/components/asset-image";
+import { useLightbox } from "@/components/image-lightbox";
+import { renderGallery } from "./media";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, CircleAlert, ClipboardCheck } from "lucide-react";
 import type { Review } from "../-lib/model";
@@ -20,6 +21,8 @@ export function ReviewNotes({
   review?: Review;
   renders?: string[];
 }) {
+  const openLightbox = useLightbox();
+  const gallery = renderGallery(renders);
   if (!review)
     return (
       <div className="model-detail-empty">
@@ -102,20 +105,19 @@ export function ReviewNotes({
                     {numbers.length > 0 && (
                       <div className="review-thumbs">
                         {numbers.map((number) => (
-                          <a
+                          <button
+                            type="button"
                             key={number}
-                            href={fileUrl(renders[number - 1])}
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label={`Open render ${number}`}
+                            aria-label={`View render ${number} full size`}
+                            onClick={() => openLightbox(gallery, number - 1)}
                           >
                             <AssetImage
-                              src={fileUrl(renders[number - 1])}
+                              src={gallery[number - 1].src}
                               alt=""
                               loading="lazy"
                             />
                             <span aria-hidden="true">{number}</span>
-                          </a>
+                          </button>
                         ))}
                       </div>
                     )}

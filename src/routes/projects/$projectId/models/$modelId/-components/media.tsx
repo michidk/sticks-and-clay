@@ -1,7 +1,8 @@
 import { lazy, Suspense } from "react";
-import { Boxes, ImageOff, ArrowUpRight } from "lucide-react";
+import { Boxes, ImageOff, Maximize2 } from "lucide-react";
 import { AssetImage } from "@/components/asset-image";
 import { ViewerSkeleton } from "@/components/loading";
+import { useLightbox, type LightboxImage } from "@/components/image-lightbox";
 import { fileUrl } from "@/lib/client";
 import type { Artifacts } from "../-lib/model";
 const Viewer = lazy(() =>
@@ -9,6 +10,15 @@ const Viewer = lazy(() =>
     default: module.ModelViewer,
   })),
 );
+
+/** Lightbox entries for a version's product renders, in render order. */
+export function renderGallery(renders: string[] = []): LightboxImage[] {
+  return renders.map((key, index) => ({
+    src: fileUrl(key),
+    title: `Render ${index + 1}`,
+    caption: "Product render",
+  }));
+}
 
 export function ModelMedia({
   view,
@@ -21,6 +31,7 @@ export function ModelMedia({
   target?: string;
   name: string;
 }) {
+  const openLightbox = useLightbox();
   if (view === "3d" && artifacts?.glb)
     return (
       <Suspense fallback={<ViewerSkeleton />}>
@@ -32,29 +43,38 @@ export function ModelMedia({
         />
       </Suspense>
     );
-  if (view === "target" && target)
+  if (view === "target" && target) {
+    const image: LightboxImage = {
+      src: fileUrl(target),
+      title: "Visual target",
+      caption: "Design reference · not a generated 3D model",
+    };
     return (
-      <a
+      <button
+        type="button"
         className="model-detail-target"
-        href={fileUrl(target)}
-        target="_blank"
-        rel="noreferrer"
+        onClick={() => openLightbox([image])}
       >
-        <AssetImage src={fileUrl(target)} alt={name + " visual target"} />
+        <AssetImage src={image.src} alt={name + " visual target"} />
         <span>
-          Visual target · design reference <ArrowUpRight size={14} />
+          Visual target · design reference <Maximize2 size={14} />
         </span>
-      </a>
+      </button>
     );
+  }
   const images =
     view === "renders"
-      ? artifacts?.renders?.map((key, index) => ({
-          key,
-          name: `Render ${index + 1}`,
-          kind: "Product render",
+      ? renderGallery(artifacts?.renders).map((image, index) => ({
+          ...image,
+          key: artifacts!.renders[index],
         }))
       : view === "textures"
-        ? artifacts?.textures
+        ? artifacts?.textures?.map((texture) => ({
+            key: texture.key,
+            src: fileUrl(texture.key),
+            title: texture.name,
+            caption: texture.kind,
+          }))
         : undefined;
   if (images?.length)
     return (
@@ -63,22 +83,22 @@ export function ModelMedia({
           "model-detail-gallery " + (view === "textures" ? "is-textures" : "")
         }
       >
-        {images.map((image) => (
-          <a
+        {images.map((image, index) => (
+          <button
+            type="button"
             key={image.key}
-            href={fileUrl(image.key)}
-            target="_blank"
-            rel="noreferrer"
+            onClick={() => openLightbox(images, index)}
+            aria-label={`View ${image.title} full size`}
           >
-            <AssetImage src={fileUrl(image.key)} alt={image.name} />
+            <AssetImage src={image.src} alt="" />
             <div>
               <span>
-                <strong>{image.name}</strong>
-                <small>{image.kind}</small>
+                <strong>{image.title}</strong>
+                <small>{image.caption}</small>
               </span>
-              <ArrowUpRight size={17} />
+              <Maximize2 size={16} />
             </div>
-          </a>
+          </button>
         ))}
       </div>
     );

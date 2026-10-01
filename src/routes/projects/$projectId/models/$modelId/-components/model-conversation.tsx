@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
+  ArrowUpRight,
   Boxes,
   Camera,
   Check,
@@ -38,7 +39,9 @@ export function ModelConversation({
   workspace,
   versions,
   selectedVersionId,
+  notice,
   onInspect,
+  onReview,
   onCreated,
   onRefresh,
 }: {
@@ -47,7 +50,9 @@ export function ModelConversation({
   workspace: Workspace;
   versions: Version[];
   selectedVersionId?: string;
+  notice?: ReactNode;
   onInspect: (id: string) => void;
+  onReview: (id: string) => void;
   onCreated: (id: string) => void;
   onRefresh: () => Promise<void>;
 }) {
@@ -62,6 +67,7 @@ export function ModelConversation({
   const [replaceReference, setReplaceReference] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const feed = useRef<HTMLDivElement>(null);
   const source = selectedVersionId
     ? versions.find((v) => v.id === selectedVersionId && v.artifacts?.blend)
     : versions.find((v) => v.artifacts?.blend);
@@ -75,6 +81,20 @@ export function ModelConversation({
   );
   const updates =
     workspace.designUpdates?.filter((item) => item.modelId === model.id) || [];
+  const latestStep = steps.at(-1);
+  const scrollKey = `${steps.length}:${latestStep?.state}:${children.length}`;
+  useEffect(() => {
+    const node = feed.current;
+    if (node) node.scrollTop = node.scrollHeight;
+  }, [model.id, scrollKey]);
+  const canSubmit =
+    !busy &&
+    !!source &&
+    prompt.trim().length >= 3 &&
+    (kind !== "fork" || !!name.trim()) &&
+    Number.isInteger(rounds) &&
+    rounds >= 0 &&
+    rounds <= 5;
   async function createBranch() {
     if (!source) return;
     setBusy(true);
@@ -119,54 +139,60 @@ export function ModelConversation({
     }
   }
   return (
-    <div className="model-story-layout">
-      <section
-        className="model-story"
-        aria-labelledby="model-conversation-title"
+    <>
+      <div
+        ref={feed}
+        className="studio-chat-feed"
+        aria-live="polite"
+        aria-label="Build story"
       >
-        <header className="conversation-heading">
-          <div>
-            <div className="eyebrow">MODEL CONVERSATION</div>
-            <h2 id="model-conversation-title">Build story</h2>
+        {parent && (
+          <div className="chat-message is-user">
+            <small>
+              <GitBranch size={13} />
+              {model.branchKind === "fork" ? "Forked" : "Iterated"} from{" "}
+              <Link
+                to="/projects/$projectId/models/$modelId"
+                params={{ projectId, modelId: parent.id }}
+                search={{ view: "3d", section: "review" }}
+              >
+                {parent.name.replaceAll("_", " ")}
+              </Link>
+            </small>
+            <p>{model.changePrompt}</p>
           </div>
-          <p>The same saved steps as the pipeline, in reading order.</p>
-        </header>
-        <div className="conversation-feed" aria-live="polite">
-          {parent && (
-            <div className="conversation-item conversation-user">
-              <GitBranch size={16} />
-              <span>
-                {model.branchKind === "fork" ? "Forked" : "Iterated"} from{" "}
-                <Link
-                  to="/projects/$projectId/models/$modelId"
-                  params={{ projectId, modelId: parent.id }}
-                  search={{ view: "3d", section: "review" }}
-                >
-                  {parent.name.replaceAll("_", " ")}
-                </Link>
-                <br />
-                {model.changePrompt}
-              </span>
-            </div>
-          )}
-          <details className="conversation-item conversation-user">
-            <summary>Original build brief</summary>
-            <p>{model.prompt}</p>
-          </details>
-          {steps.map((step) => (
+        )}
+        <details className="chat-message is-user chat-brief">
+          <summary>Original build brief</summary>
+          <p>{model.prompt}</p>
+        </details>
+        {steps.map((step) => {
+          const Icon =
+            roleIcons[step.run.role as keyof typeof roleIcons] || Sparkles;
+          const tone =
+            step.state === "Running"
+              ? "is-running"
+              : ["Failed", "Interrupted", "Cancelled"].includes(step.state)
+                ? "is-failed"
+                : step.state === "Changes requested"
+                  ? "is-warning"
+                  : "";
+          return (
             <article
               key={step.run.id}
-              className="conversation-item conversation-agent"
+              className={"chat-message is-agent " + tone}
             >
-              <div className="conversation-item-title">
-                {(() => {
-                  const Icon =
-                    roleIcons[step.run.role as keyof typeof roleIcons] ||
-                    Sparkles;
-                  return <Icon size={15} />;
-                })()}
+              <div className="chat-agent-head">
+                <span className="chat-agent-icon">
+                  <Icon size={14} />
+                </span>
                 <strong>{step.label}</strong>
-                <span>{step.state}</span>
+                <span className="chat-agent-state">
+                  {step.state === "Running" && (
+                    <LoaderCircle size={12} className="spin" />
+                  )}
+                  {step.state}
+                </span>
               </div>
               <p>
                 {step.review?.summary ||
@@ -177,128 +203,154 @@ export function ModelConversation({
                     : "Result recorded in activity history.")}
               </p>
               {step.review && (
-                <small>
-                  {step.review.score}/100 · {step.review.improvements.length}{" "}
-                  finding{step.review.improvements.length === 1 ? "" : "s"}
-                </small>
+                <div className="chat-review-summary">
+                  <strong>{step.review.score}/100</strong>
+                  <span>
+                    {step.review.passed ? "Passed" : "Changes requested"} ·{" "}
+                    {step.review.improvements.length} finding
+                    {step.review.improvements.length === 1 ? "" : "s"}
+                  </span>
+                </div>
               )}
               {step.version && (
-                <Button
-                  variant="link"
-                  onClick={() => onInspect(step.version!.id)}
-                >
-                  Inspect {versionLabel(step.version)} →
-                </Button>
+                <div className="chat-message-actions">
+                  {step.review && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onReview(step.version!.id)}
+                    >
+                      Read review
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onInspect(step.version!.id)}
+                  >
+                    Inspect {versionLabel(step.version)}{" "}
+                    <ArrowUpRight size={13} />
+                  </Button>
+                </div>
               )}
             </article>
-          ))}
-          {!steps.length && (
-            <p className="conversation-empty">
-              The queued build will appear here as steps are recorded.
-            </p>
-          )}
-          {children.map((child) => (
-            <div
-              key={child.id}
-              className="conversation-item conversation-agent"
-            >
-              <GitBranch size={15} />
-              <span>
-                {child.branchKind === "fork" ? "Fork" : "Iteration"}:{" "}
-                <Link
-                  to="/projects/$projectId/models/$modelId"
-                  params={{ projectId, modelId: child.id }}
-                  search={{ view: "3d", section: "review" }}
-                >
-                  {child.name.replaceAll("_", " ")}
-                </Link>{" "}
-                · {child.status}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
-      <section className="model-compose" aria-labelledby="model-compose-title">
-        <div className="conversation-compose">
-          <h3 id="model-compose-title">Continue from a saved version</h3>
-          <p>
-            {source
-              ? `Starting from ${versionLabel(source)}. Select another version in the viewer to change the source.`
-              : "A saved Blender version is needed before continuing."}
+          );
+        })}
+        {!steps.length && (
+          <p className="conversation-empty">
+            The queued build will appear here as steps are recorded.
           </p>
-          <div
-            className="conversation-mode"
-            role="group"
-            aria-label="Continuation type"
-          >
-            <Button
-              variant={kind === "iterate" ? "default" : "outline"}
-              onClick={() => setKind("iterate")}
-            >
-              Iterate
-            </Button>
-            <Button
-              variant={kind === "fork" ? "default" : "outline"}
-              onClick={() => setKind("fork")}
-            >
-              Fork variant
-            </Button>
+        )}
+        {children.map((child) => (
+          <div key={child.id} className="chat-message is-note">
+            <GitBranch size={13} />
+            <span>
+              {child.branchKind === "fork" ? "Fork" : "Iteration"}:{" "}
+              <Link
+                to="/projects/$projectId/models/$modelId"
+                params={{ projectId, modelId: child.id }}
+                search={{ view: "3d", section: "review" }}
+              >
+                {child.name.replaceAll("_", " ")}
+              </Link>{" "}
+              · {child.status}
+            </span>
           </div>
-          {kind === "fork" && (
-            <div>
-              <Label htmlFor="fork-name">Variant name</Label>
-              <Input
-                id="fork-name"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                maxLength={100}
-                placeholder="New variant name"
-              />
-            </div>
-          )}
-          <div>
-            <Label htmlFor="continuation-prompt">What should change?</Label>
-            <Textarea
-              id="continuation-prompt"
-              value={prompt}
-              onChange={(event) => setPrompt(event.target.value)}
-              maxLength={12000}
-              placeholder="Describe the shape, construction or materials you want changed…"
-              rows={4}
-            />
-          </div>
-          <div>
-            <Label htmlFor="continuation-rounds">Review rounds per stage</Label>
+        ))}
+        {notice}
+      </div>
+      <div className="studio-chat-compose">
+        <p className="studio-compose-source">
+          {source
+            ? `${kind === "fork" ? "Forking" : "Continuing"} from ${versionLabel(source)} · Ctrl or ⌘ + Enter sends`
+            : "A saved Blender version is needed before continuing."}
+        </p>
+        {kind === "fork" && (
+          <div className="studio-compose-field">
+            <Label htmlFor="fork-name">Variant name</Label>
             <Input
-              id="continuation-rounds"
-              type="number"
-              min={0}
-              max={5}
-              value={rounds}
-              onChange={(event) => setRounds(Number(event.target.value))}
+              id="fork-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              maxLength={100}
+              placeholder="New variant name"
             />
           </div>
-          <Button
-            disabled={
-              busy ||
-              !source ||
-              prompt.trim().length < 3 ||
-              (kind === "fork" && !name.trim()) ||
-              !Number.isInteger(rounds) ||
-              rounds < 0 ||
-              rounds > 5
-            }
-            onClick={createBranch}
-          >
-            {busy ? (
-              <LoaderCircle className="spin" size={16} />
-            ) : (
-              <Send size={16} />
-            )}
-            {kind === "fork" ? "Create fork" : "Iterate model"}
-          </Button>
+        )}
+        <div className="studio-compose-box">
+          <Textarea
+            id="continuation-prompt"
+            aria-label="What should change?"
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            onKeyDown={(event) => {
+              if (
+                (event.metaKey || event.ctrlKey) &&
+                event.key === "Enter" &&
+                canSubmit
+              ) {
+                event.preventDefault();
+                void createBranch();
+              }
+            }}
+            maxLength={12000}
+            placeholder="Describe the shape, construction or materials you want changed…"
+            rows={3}
+          />
+          <div className="studio-compose-row">
+            <div
+              className="conversation-mode"
+              role="group"
+              aria-label="Continuation type"
+            >
+              <Button
+                type="button"
+                size="sm"
+                variant={kind === "iterate" ? "secondary" : "ghost"}
+                aria-pressed={kind === "iterate"}
+                onClick={() => setKind("iterate")}
+              >
+                Iterate
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={kind === "fork" ? "secondary" : "ghost"}
+                aria-pressed={kind === "fork"}
+                onClick={() => setKind("fork")}
+              >
+                Fork variant
+              </Button>
+            </div>
+            <Label
+              htmlFor="continuation-rounds"
+              className="studio-compose-rounds"
+            >
+              Review rounds
+              <Input
+                id="continuation-rounds"
+                type="number"
+                min={0}
+                max={5}
+                value={rounds}
+                onChange={(event) => setRounds(Number(event.target.value))}
+              />
+            </Label>
+            <Button
+              type="button"
+              size="icon"
+              aria-label={kind === "fork" ? "Create fork" : "Iterate model"}
+              title={kind === "fork" ? "Create fork" : "Iterate model"}
+              disabled={!canSubmit}
+              onClick={createBranch}
+            >
+              {busy ? <LoaderCircle className="spin" /> : <Send />}
+            </Button>
+          </div>
+        </div>
+        <details className="studio-compose-design">
+          <summary>Use this model in the design</summary>
           <div className="conversation-design">
-            <h3>Use this model in the design</h3>
             <p>
               AI drafts a new design revision using the model and references.
               One selected render joins the project references. Review and
@@ -361,14 +413,14 @@ export function ModelConversation({
               </small>
             )}
           </div>
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-        </div>
-      </section>
-    </div>
+        </details>
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+      </div>
+    </>
   );
 }
 
