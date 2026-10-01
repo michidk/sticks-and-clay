@@ -1,5 +1,6 @@
 node_modules/
 data/
+output/
 .env*
 !.env.example
 .output/
@@ -10,3 +11,10 @@ __pycache__/
 *.pyc
 
 .venv-imagegen/
+
+# User-local agent and development-tool state
+.codex/
+.claude/
+.serena/
+.agents/
+.gitnexus/
