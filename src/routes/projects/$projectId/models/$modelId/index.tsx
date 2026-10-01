@@ -36,6 +36,7 @@ import { TriangleCount } from "@/components/triangle-count";
 import { request, json, fileUrl, costSummary } from "@/lib/client";
 import { History } from "../../-components/history";
 import { ModelPipeline } from "./-components/pipeline";
+import { ModelConversation } from "./-components/model-conversation";
 import { ModelMedia } from "./-components/media";
 import { ReviewNotes } from "./-components/review";
 import {
@@ -426,7 +427,9 @@ function ModelPage() {
             <small>
               All attempts · {versions.length} build
               {versions.length === 1 ? "" : "s"}
-              {unpriced ? ` · ${unpriced} request${unpriced === 1 ? "" : "s"} not yet priced` : ""}
+              {unpriced
+                ? ` · ${unpriced} request${unpriced === 1 ? "" : "s"} not yet priced`
+                : ""}
             </small>
           </div>
           {model.error && (
@@ -442,152 +445,191 @@ function ModelPage() {
           )}
         </aside>
       </div>
-      <ModelPipeline
-        key={model.id}
-        model={model}
-        runs={runs}
-        versions={versions}
-        onInspect={(version, view, section) => {
-          void updateSearch({ version, view, section });
-          document
-            .getElementById(
-              section === "activity" ? "model-detail-notes" : "model-preview",
-            )
-            ?.scrollIntoView({ block: "start" });
-        }}
-      />
-      <section id="model-detail-notes" className="model-detail-notes">
-        <Tabs
-          value={search.section}
-          onValueChange={(value) =>
-            updateSearch({ section: value as typeof search.section })
-          }
-        >
-          <TabsList
-            variant="line"
-            className="model-notes-tabs"
-            aria-label="Model details"
-          >
-            <TabsTrigger value="review">
-              <CircleCheck size={16} />
-              Review notes
-            </TabsTrigger>
-            <TabsTrigger value="checks">Analysis & cleanup</TabsTrigger>
-            <TabsTrigger value="versions">
-              <HistoryIcon size={16} />
-              Version history <span>{versions.length}</span>
-            </TabsTrigger>
-            <TabsTrigger value="brief">
-              <FileText size={16} />
-              Build brief
-            </TabsTrigger>
-            <TabsTrigger value="activity">
-              <Activity size={16} />
-              Activity & cost
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent
-            value={search.section}
-            className="model-detail-note-content"
-          >
-            {search.section === "review" && (
-              <ReviewNotes review={selected.feedback} renders={artifacts?.renders} />
-            )}
-            {search.section === "checks" && (
-              <ModelChecks
-                artifacts={artifacts}
-                judges={checkedVersion?.judges}
-              />
-            )}
-            {search.section === "brief" && (
-              <article className="model-detail-brief">
-                <div className="eyebrow">THE BUILD REQUEST</div>
-                <h2>A direction for every detail.</h2>
-                <p>{model.prompt}</p>
-              </article>
-            )}
-            {search.section === "activity" && (
-              <History runs={runs} models={[model]} />
-            )}
-            {search.section === "versions" &&
-              (versions.length ? (
-                <div className="model-version-list">
-                  {versions.map((version) => (
-                    <article
-                      key={version.id}
-                      className={
-                        version.id === search.version ? "is-selected" : ""
-                      }
-                    >
-                      <div className="model-version-marker">
-                        <HistoryIcon size={17} />
-                      </div>
-                      <div>
-                        <div className="model-version-title">
-                          <h3>{versionLabel(version)}</h3>
-                          <Badge variant="outline">{version.status}</Badge>
-                        </div>
-                        <time>
-                          {new Date(version.createdAt).toLocaleString()}
-                        </time>
-                        <p>
-                          {version.summary ||
-                            version.error ||
-                            "No build summary was recorded."}
-                        </p>
-                        {!version.artifacts && (
-                          <p className="muted">
-                            No verified export saved for this attempt.
-                          </p>
-                        )}
-                        <details className="my-4">
-                          <summary className="cursor-pointer">
-                            Analysis & cleanup
-                          </summary>
-                          <ModelChecks
-                            artifacts={version.artifacts}
-                            judges={version.judges}
-                          />
-                        </details>
-                        {version.judges.length ? (
-                          version.judges.map((judge) => (
-                            <p key={judge.id} className="model-version-judge">
-                              {judge.result
-                                ? `Judge · ${judge.result.score}/100 · ${judge.result.passed ? "Passed" : "Changes requested"} — ${judge.result.summary}`
-                                : `Judge · ${judge.status}${judge.error ? " — " + judge.error : ""}`}
+      <div className="model-process-layout">
+        <div className="model-process-main">
+          <ModelPipeline
+            key={model.id}
+            model={model}
+            runs={runs}
+            versions={versions}
+            onInspect={(version, view, section) => {
+              void updateSearch({ version, view, section });
+              document
+                .getElementById(
+                  section === "activity"
+                    ? "model-detail-notes"
+                    : "model-preview",
+                )
+                ?.scrollIntoView({ block: "start" });
+            }}
+          />
+
+          <section id="model-detail-notes" className="model-detail-notes">
+            <Tabs
+              value={search.section}
+              onValueChange={(value) =>
+                updateSearch({ section: value as typeof search.section })
+              }
+            >
+              <TabsList
+                variant="line"
+                className="model-notes-tabs"
+                aria-label="Model details"
+              >
+                <TabsTrigger value="review">
+                  <CircleCheck size={16} />
+                  Review notes
+                </TabsTrigger>
+                <TabsTrigger value="checks">Analysis & cleanup</TabsTrigger>
+                <TabsTrigger value="versions">
+                  <HistoryIcon size={16} />
+                  Version history <span>{versions.length}</span>
+                </TabsTrigger>
+                <TabsTrigger value="brief">
+                  <FileText size={16} />
+                  Build brief
+                </TabsTrigger>
+                <TabsTrigger value="activity">
+                  <Activity size={16} />
+                  Activity & cost
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent
+                value={search.section}
+                className="model-detail-note-content"
+              >
+                {search.section === "review" && (
+                  <ReviewNotes
+                    review={selected.feedback}
+                    renders={artifacts?.renders}
+                  />
+                )}
+                {search.section === "checks" && (
+                  <ModelChecks
+                    artifacts={artifacts}
+                    judges={checkedVersion?.judges}
+                  />
+                )}
+                {search.section === "brief" && (
+                  <article className="model-detail-brief">
+                    <div className="eyebrow">THE BUILD REQUEST</div>
+                    <h2>A direction for every detail.</h2>
+                    <p>{model.prompt}</p>
+                  </article>
+                )}
+                {search.section === "activity" && (
+                  <History runs={runs} models={[model]} />
+                )}
+                {search.section === "versions" &&
+                  (versions.length ? (
+                    <div className="model-version-list">
+                      {versions.map((version) => (
+                        <article
+                          key={version.id}
+                          className={
+                            version.id === search.version ? "is-selected" : ""
+                          }
+                        >
+                          <div className="model-version-marker">
+                            <HistoryIcon size={17} />
+                          </div>
+                          <div>
+                            <div className="model-version-title">
+                              <h3>{versionLabel(version)}</h3>
+                              <Badge variant="outline">{version.status}</Badge>
+                            </div>
+                            <time>
+                              {new Date(version.createdAt).toLocaleString()}
+                            </time>
+                            <p>
+                              {version.summary ||
+                                version.error ||
+                                "No build summary was recorded."}
                             </p>
-                          ))
-                        ) : (
-                          <p className="muted">
-                            No judge review for this attempt.
-                          </p>
-                        )}
-                      </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          void updateSearch({
-                            version: version.id,
-                            section: "review",
-                          });
-                          window.scrollTo({ top: 0 });
-                        }}
-                      >
-                        Inspect version <ArrowUpRight size={15} />
-                      </Button>
-                    </article>
+                            {!version.artifacts && (
+                              <p className="muted">
+                                No verified export saved for this attempt.
+                              </p>
+                            )}
+                            <details className="my-4">
+                              <summary className="cursor-pointer">
+                                Analysis & cleanup
+                              </summary>
+                              <ModelChecks
+                                artifacts={version.artifacts}
+                                judges={version.judges}
+                              />
+                            </details>
+                            {version.judges.length ? (
+                              version.judges.map((judge) => (
+                                <p
+                                  key={judge.id}
+                                  className="model-version-judge"
+                                >
+                                  {judge.result
+                                    ? `Judge · ${judge.result.score}/100 · ${judge.result.passed ? "Passed" : "Changes requested"} — ${judge.result.summary}`
+                                    : `Judge · ${judge.status}${judge.error ? " — " + judge.error : ""}`}
+                                </p>
+                              ))
+                            ) : (
+                              <p className="muted">
+                                No judge review for this attempt.
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              void updateSearch({
+                                version: version.id,
+                                section: "review",
+                              });
+                              window.scrollTo({ top: 0 });
+                            }}
+                          >
+                            Inspect version <ArrowUpRight size={15} />
+                          </Button>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="model-detail-empty">
+                      <HistoryIcon size={30} />
+                      <h3>No build history yet</h3>
+                      <p>
+                        Each attempt will appear here as the model is built.
+                      </p>
+                    </div>
                   ))}
-                </div>
-              ) : (
-                <div className="model-detail-empty">
-                  <HistoryIcon size={30} />
-                  <h3>No build history yet</h3>
-                  <p>Each attempt will appear here as the model is built.</p>
-                </div>
-              ))}
-          </TabsContent>
-        </Tabs>
-      </section>
+              </TabsContent>
+            </Tabs>
+          </section>
+        </div>
+        <ModelConversation
+          key={model.id}
+          projectId={projectId}
+          model={model}
+          workspace={data}
+          versions={versions}
+          selectedVersionId={search.version}
+          onInspect={(version) => {
+            void updateSearch({ version, view: "3d", section: "review" });
+            document
+              .getElementById("model-preview")
+              ?.scrollIntoView({ block: "start" });
+          }}
+          onCreated={(id) =>
+            void navigate({
+              to: "/projects/$projectId/models/$modelId",
+              params: { projectId, modelId: id },
+              search: { view: "3d", section: "review" },
+            })
+          }
+          onRefresh={async () =>
+            setData(await request<Workspace>("projects/" + projectId))
+          }
+        />
+      </div>
     </main>
   );
 }

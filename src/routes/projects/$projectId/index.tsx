@@ -819,7 +819,12 @@ function ProjectPage() {
                             </Link>
                           )}
                         </h3>
-                        <p>{m.prompt}</p>
+                        {m.branchKind && (
+                          <span className="model-branch-label">
+                            {m.branchKind === "fork" ? "Forked variant" : "Prompt iteration"}
+                          </span>
+                        )}
+                        <p>{m.changePrompt || m.prompt}</p>
                         {!isGraphics && m.artifacts && (
                           <Button
                             variant="outline"

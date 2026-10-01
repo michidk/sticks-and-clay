@@ -32,6 +32,10 @@ export const roles = {
   "model-brief": role("tanstack", "model-brief", briefResult),
   "graphic-brief": role("tanstack", "graphic-brief", briefResult),
   designer: role("tanstack", "designer", designResult),
+  "design-from-model": {
+    ...role("tanstack", "designer", designResult),
+    inputTemplate: "design-from-model-input",
+  },
   "graphic-designer": role("tanstack", "graphic-designer", designResult),
   planner: role("eve", "planner", planResult),
   "graphic-planner": role("eve", "graphic-planner", planResult),

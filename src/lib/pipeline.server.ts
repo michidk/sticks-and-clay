@@ -88,6 +88,70 @@ export async function executeJob(kind: string, targetId: string) {
         author: "designer",
       });
     });
+  } else if (kind === "design-from-model") {
+    const snapshot = job.checkpoint;
+    const [p] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, targetId));
+    const [model] = await db
+      .select()
+      .from(models)
+      .where(eq(models.id, snapshot.modelId));
+    if (!p || !model || model.projectId !== p.id)
+      throw new Error("Model or project is missing");
+    if (p.designVersion !== Number(snapshot.designVersion))
+      throw new Error("Design changed since this update was requested");
+    const references: string[] = JSON.parse(snapshot.references);
+    const { result } = await runRole({
+      role: "design-from-model",
+      projectId: p.id,
+      modelId: model.id,
+      input: await roleInput("design-from-model", {
+        name: p.name,
+        version: snapshot.designVersion,
+        design: snapshot.design,
+        model: model.name,
+        request: snapshot.modelPrompt,
+        summary: snapshot.sourceSummary,
+        metrics: snapshot.sourceMetrics,
+        feedback: snapshot.sourceFeedback,
+      }),
+      images: [...references, snapshot.view],
+    });
+    await assertJobActive();
+    await db.transaction(async (tx) => {
+      const updated = await tx
+        .update(projects)
+        .set({
+          design: result.design,
+          designVersion: p.designVersion + 1,
+          references: [...references, snapshot.view],
+          status: "review",
+          phase: "Review design",
+          progress: 100,
+          error: null,
+        })
+        .where(
+          and(
+            eq(projects.id, p.id),
+            eq(projects.designVersion, p.designVersion),
+          ),
+        )
+        .returning();
+      if (!updated.length) throw new Error("Design changed during the update");
+      await tx.insert(revisions).values({
+        id: crypto.randomUUID(),
+        projectId: p.id,
+        version: p.designVersion + 1,
+        content: result.design,
+        author: "model",
+      });
+      await tx
+        .update(jobs)
+        .set({ checkpoint: { ...snapshot, applied: "yes" } })
+        .where(eq(jobs.id, job.id));
+    });
   } else if (kind === "plan") {
     const batch = await one(
       await db.select().from(batches).where(eq(batches.id, targetId)),
@@ -106,9 +170,7 @@ export async function executeJob(kind: string, targetId: string) {
         JSON.stringify(referenceProject.references),
       );
     const plannerRole =
-      referenceProject.assetType === "graphic"
-        ? "graphic-planner"
-        : "planner";
+      referenceProject.assetType === "graphic" ? "graphic-planner" : "planner";
     const { result, runId } = await runRole({
       images: JSON.parse(job.checkpoint["planner-references"]),
       projectId: batch.projectId,
@@ -214,10 +276,26 @@ export async function executeJob(kind: string, targetId: string) {
       await settleBatch(batch.id);
       return;
     }
+    const [sourceRun] = model.sourceRunId
+      ? await db
+          .select()
+          .from(runs)
+          .where(
+            and(
+              eq(runs.id, model.sourceRunId),
+              eq(runs.modelId, model.parentModelId!),
+            ),
+          )
+      : [];
+    const sourceArtifacts = (sourceRun?.result as any)?.artifacts;
+    if (model.sourceRunId && !sourceArtifacts?.blend)
+      throw new Error("The selected source version is unavailable");
     let feedback: unknown = model.feedback,
-      previous = model.artifacts?.blend
-        ? resolve(DATA, String(model.artifacts.blend))
-        : "",
+      previous = sourceArtifacts?.blend
+        ? resolve(DATA, String(sourceArtifacts.blend))
+        : model.artifacts?.blend
+          ? resolve(DATA, String(model.artifacts.blend))
+          : "",
       passed = false,
       artifacts: Record<string, unknown> = {};
     const legacy =
@@ -230,12 +308,16 @@ export async function executeJob(kind: string, targetId: string) {
         : job.checkpoint.pipeline === "model-quality:3"
           ? photographyPipeline(batch.judgeIterations)
           : refinementPipeline(batch.judgeIterations);
-    const rounds = definition.nodes.filter((node) => node.task === "builder").length;
+    const rounds = definition.nodes.filter(
+      (node) => node.task === "builder",
+    ).length;
     const modelProgress = (iteration: number, fraction = 0) =>
-      Math.round((legacy ? 0 : 5) +
-        ((iteration + fraction) / rounds) * (legacy ? 100 : 95));
+      Math.round(
+        (legacy ? 0 : 5) +
+          ((iteration + fraction) / rounds) * (legacy ? 100 : 95),
+      );
     let metrics: any;
-    let images: string[] = [];
+    let images: string[] = sourceArtifacts?.renders || [];
     const photography = definition.version >= 3;
     let currentBuilderRunId = "";
     let buildSummary = "";
@@ -265,7 +347,9 @@ export async function executeJob(kind: string, targetId: string) {
                 name: model.name,
                 request: model.prompt,
               }),
-              images: project.references,
+              images: job.checkpoint["branch-references"]
+                ? JSON.parse(job.checkpoint["branch-references"])
+                : project.references,
             }),
           );
         const targetInput = JSON.parse(job.checkpoint["visual-target-input"]);
@@ -292,7 +376,9 @@ export async function executeJob(kind: string, targetId: string) {
     }
     const visualReferences: string[] = job.checkpoint["visual-target-input"]
       ? JSON.parse(job.checkpoint["visual-target-input"]).images
-      : project.references;
+      : job.checkpoint["branch-references"]
+        ? JSON.parse(job.checkpoint["branch-references"])
+        : project.references;
     let geometryBlocked = false;
     await runPipeline(
       definition,
@@ -357,25 +443,36 @@ export async function executeJob(kind: string, targetId: string) {
             batchId: batch.id,
             modelId: model.id,
             iteration,
-            images: [...(target ? [target] : []), ...visualReferences,
-              ...(workPass ? images : [])],
-            input: (await roleInput("builder", {
-              version: batch.designVersion,
-              design: batch.design,
-              name: model.name,
-              request: model.prompt,
-              capability,
-              directory: resolve(DATA, directory),
-              previous: previous || "None",
-              feedback: JSON.stringify(feedback || null, null, 2),
-              stage: stage || "complete",
-              target: target
-                ? resolve(DATA, target)
-                : "No visual target (legacy attempt)",
-            })) + (workPass ? "\n\n" + await prompt("modeling-pass", {
-              pass: workPass,
-              photographs: images.length,
-            }) : ""),
+            images: [
+              ...(target ? [target] : []),
+              ...visualReferences,
+              ...(workPass ? images : []),
+            ],
+            input:
+              (await roleInput("builder", {
+                version: batch.designVersion,
+                design: batch.design,
+                name: model.name,
+                request: model.prompt,
+                capability,
+                directory: resolve(DATA, directory),
+                previous: previous || "None",
+                feedback: JSON.stringify(feedback || null, null, 2),
+                stage: stage || "complete",
+                target: target
+                  ? resolve(DATA, target)
+                  : "No visual target (legacy attempt)",
+              })) +
+              (model.sourceRunId && iteration === 0
+                ? `\n\nThis is a ${model.branchKind === "fork" ? "fork" : "prompt iteration"} of a saved model. Load the supplied previous Blender source and revise its actual geometry/materials for the requested change; preserve useful existing work. The first additional photographs show the selected source version.`
+                : "") +
+              (workPass
+                ? "\n\n" +
+                  (await prompt("modeling-pass", {
+                    pass: workPass,
+                    photographs: images.length,
+                  }))
+                : ""),
           });
           currentBuilderRunId = builderRunId;
           try {
@@ -444,7 +541,9 @@ export async function executeJob(kind: string, targetId: string) {
             .select()
             .from(runs)
             .where(eq(runs.id, builderRunId));
-          buildSummary = String((builtRun.result as any)?.summary || "Not recorded");
+          buildSummary = String(
+            (builtRun.result as any)?.summary || "Not recorded",
+          );
           await db
             .update(runs)
             .set({ result: { ...(builtRun.result as object), artifacts } })
@@ -569,17 +668,23 @@ export async function executeJob(kind: string, targetId: string) {
               ...(target ? [target] : []),
               ...visualReferences,
             ],
-            input: (await roleInput("judge", {
-              design: batch.design,
-              stage: stage || "complete",
-              target: judgeImageLabels(images, Boolean(target)),
-              analysis: JSON.stringify(analysis),
-              request: model.prompt,
-              metrics: JSON.stringify(metrics),
-              feedback: JSON.stringify(feedback),
-            })) + (workPass ? "\n\n" + await prompt("modeling-review", {
-              pass: workPass, summary: buildSummary,
-            }) : ""),
+            input:
+              (await roleInput("judge", {
+                design: batch.design,
+                stage: stage || "complete",
+                target: judgeImageLabels(images, Boolean(target)),
+                analysis: JSON.stringify(analysis),
+                request: model.prompt,
+                metrics: JSON.stringify(metrics),
+                feedback: JSON.stringify(feedback),
+              })) +
+              (workPass
+                ? "\n\n" +
+                  (await prompt("modeling-review", {
+                    pass: workPass,
+                    summary: buildSummary,
+                  }))
+                : ""),
           });
           await assertJobActive();
           feedback = result;
@@ -630,6 +735,7 @@ export async function executeJob(kind: string, targetId: string) {
   }
 }
 export async function failJob(kind: string, id: string, error: string) {
+  if (kind === "design-from-model") return;
   if (kind === "design")
     await db
       .update(projects)
@@ -658,17 +764,16 @@ async function settleBatch(id: string) {
     return;
   const [batch] = await db.select().from(batches).where(eq(batches.id, id));
   const [project] = batch
-    ? await db
-        .select()
-        .from(projects)
-        .where(eq(projects.id, batch.projectId))
+    ? await db.select().from(projects).where(eq(projects.id, batch.projectId))
     : [];
   const graphics = project?.assetType === "graphic";
   const hasFinalAsset = rows.some(
     (m) =>
       m.status === "done" &&
       m.artifacts &&
-      (graphics ? Boolean(m.artifacts.image) : m.artifacts.stage !== "geometry"),
+      (graphics
+        ? Boolean(m.artifacts.image)
+        : m.artifacts.stage !== "geometry"),
   );
   await db.transaction(async (tx) => {
     const [claimed] = await tx

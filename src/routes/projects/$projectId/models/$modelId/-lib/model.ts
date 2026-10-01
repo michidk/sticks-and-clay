@@ -29,8 +29,13 @@ export type Artifacts = {
 };
 export type Model = {
   id: string;
+  batchId?: string;
   name: string;
   prompt: string;
+  parentModelId?: string | null;
+  sourceRunId?: string | null;
+  changePrompt?: string | null;
+  branchKind?: "iterate" | "fork" | null;
   status: string;
   phase: string;
   progress: number;
@@ -58,9 +63,22 @@ export type Version = {
   }[];
 };
 export type Workspace = {
-  project: { id: string; name: string };
+  project: {
+    id: string;
+    name: string;
+    designVersion: number;
+    status: string;
+    references: string[];
+  };
   models: Model[];
+  batches: { id: string; judgeIterations: number }[];
   versions: Version[];
+  designUpdates?: {
+    id: string;
+    modelId: string;
+    status: string;
+    error?: string | null;
+  }[];
   runs: (PipelineRun & {
     id: string;
     modelId?: string;

@@ -78,20 +78,21 @@ export async function api(request: Request) {
     }
     if (path[0] === "queue") {
       if (request.method === "GET") {
-        const [list, assets, collections, workspaces, settings, worker] = await Promise.all([
-          db
-            .select()
-            .from(jobs)
-            .where(
-              inArray(jobs.kind, ["model", "plan", "demo", "project-photo"]),
-            )
-            .orderBy(desc(jobs.createdAt)),
-          db.select().from(models),
-          db.select().from(batches),
-          db.select().from(projects),
-          loadRuntimeSettings(),
-          readWorkerHeartbeat(),
-        ]);
+        const [list, assets, collections, workspaces, settings, worker] =
+          await Promise.all([
+            db
+              .select()
+              .from(jobs)
+              .where(
+                inArray(jobs.kind, ["model", "plan", "demo", "project-photo"]),
+              )
+              .orderBy(desc(jobs.createdAt)),
+            db.select().from(models),
+            db.select().from(batches),
+            db.select().from(projects),
+            loadRuntimeSettings(),
+            readWorkerHeartbeat(),
+          ]);
         return reply({
           control: {
             ...settings.queue,
@@ -188,18 +189,31 @@ export async function api(request: Request) {
     if (path[0] === "agents" && request.method === "GET")
       return reply({ agents: await agentSettings() });
     if (path[0] === "agents" && request.method === "PATCH") {
-      const input = z.object({
-        id: z.string().min(1),
-        engine: z.enum(["eve", "tanstack", "imagegen"]),
-        model: z.string().trim().min(1).max(100),
-        effort: z.enum(["low", "medium", "high"]),
-      }).parse(await request.json());
-      const configured = (await agentSettings()).find((agent) => agent.id === input.id);
+      const input = z
+        .object({
+          id: z.string().min(1),
+          engine: z.enum(["eve", "tanstack", "imagegen"]),
+          model: z.string().trim().min(1).max(100),
+          effort: z.enum(["low", "medium", "high"]),
+        })
+        .parse(await request.json());
+      const configured = (await agentSettings()).find(
+        (agent) => agent.id === input.id,
+      );
       if (!configured || configured.engine !== input.engine)
         throw new Error("Unknown or mismatched agent role");
-      const patch = input.engine === "imagegen"
-        ? { imageAgents: { [input.id]: { model: input.model, quality: input.effort } } }
-        : { agents: { [input.id]: { model: input.model, effort: input.effort } } };
+      const patch =
+        input.engine === "imagegen"
+          ? {
+              imageAgents: {
+                [input.id]: { model: input.model, quality: input.effort },
+              },
+            }
+          : {
+              agents: {
+                [input.id]: { model: input.model, effort: input.effort },
+              },
+            };
       await updateRuntimeSettings(patch);
       return reply({ agents: await agentSettings() });
     }
@@ -207,9 +221,13 @@ export async function api(request: Request) {
       if (request.method === "GET")
         return reply({ settings: await loadRuntimeSettings() });
       if (request.method === "PUT")
-        return reply({ settings: await saveRuntimeSettings(await request.json()) });
+        return reply({
+          settings: await saveRuntimeSettings(await request.json()),
+        });
       if (request.method === "PATCH")
-        return reply({ settings: await updateRuntimeSettings(await request.json()) });
+        return reply({
+          settings: await updateRuntimeSettings(await request.json()),
+        });
     }
     if (path[0] === "diagnostics" && request.method === "GET")
       return reply(await diagnosticsSnapshot());
@@ -263,7 +281,12 @@ export async function api(request: Request) {
         .from(models)
         .orderBy(desc(models.createdAt));
       const collections = await db
-        .select({ id: batches.id, projectId: batches.projectId, status: batches.status, count: batches.count })
+        .select({
+          id: batches.id,
+          projectId: batches.projectId,
+          status: batches.status,
+          count: batches.count,
+        })
         .from(batches);
       return reply({
         projects: list.map((p) => ({
@@ -493,28 +516,36 @@ export async function api(request: Request) {
         return reply({ id: jobId }, 201);
       }
       if (request.method === "GET") {
-        const [assets, history, versions, requests] = await Promise.all([
-          db
-            .select()
-            .from(models)
-            .where(eq(models.projectId, id))
-            .orderBy(models.createdAt, models.name, models.id),
-          db
-            .select()
-            .from(runs)
-            .where(eq(runs.projectId, id))
-            .orderBy(desc(runs.createdAt)),
-          db
-            .select()
-            .from(revisions)
-            .where(eq(revisions.projectId, id))
-            .orderBy(desc(revisions.version)),
-          db
-            .select()
-            .from(batches)
-            .where(eq(batches.projectId, id))
-            .orderBy(desc(batches.createdAt)),
-        ]);
+        const [assets, history, versions, requests, designUpdates] =
+          await Promise.all([
+            db
+              .select()
+              .from(models)
+              .where(eq(models.projectId, id))
+              .orderBy(models.createdAt, models.name, models.id),
+            db
+              .select()
+              .from(runs)
+              .where(eq(runs.projectId, id))
+              .orderBy(desc(runs.createdAt)),
+            db
+              .select()
+              .from(revisions)
+              .where(eq(revisions.projectId, id))
+              .orderBy(desc(revisions.version)),
+            db
+              .select()
+              .from(batches)
+              .where(eq(batches.projectId, id))
+              .orderBy(desc(batches.createdAt)),
+            db
+              .select()
+              .from(jobs)
+              .where(
+                and(eq(jobs.kind, "design-from-model"), eq(jobs.targetId, id)),
+              )
+              .orderBy(desc(jobs.createdAt)),
+          ]);
         return reply({
           project,
           photographs: await projectPhotographs(id),
@@ -562,6 +593,15 @@ export async function api(request: Request) {
           runs: history,
           revisions: versions,
           batches: requests,
+          designUpdates: designUpdates.map(
+            ({ id, status, error, checkpoint, createdAt }) => ({
+              id,
+              status,
+              error,
+              createdAt,
+              modelId: checkpoint.modelId,
+            }),
+          ),
         });
       }
       if (path[2] === "model-brief" && request.method === "POST") {
@@ -695,6 +735,160 @@ export async function api(request: Request) {
         });
         return reply({ ok: true });
       }
+    }
+    if (
+      path[0] === "models" &&
+      path[1] &&
+      path[2] === "branch" &&
+      request.method === "POST"
+    ) {
+      const id = uuid.parse(path[1]);
+      const input = z
+        .object({
+          kind: z.enum(["iterate", "fork"]),
+          sourceRunId: uuid,
+          prompt: z.string().trim().min(3).max(12000),
+          name: z.string().trim().min(1).max(100).optional(),
+          judgeIterations: z.number().int().min(0).max(5),
+        })
+        .parse(await request.json());
+      const [parent] = await db.select().from(models).where(eq(models.id, id));
+      if (!parent) return reply({ error: "Model not found" }, 404);
+      const [source] = await db
+        .select()
+        .from(runs)
+        .where(
+          and(
+            eq(runs.id, input.sourceRunId),
+            eq(runs.modelId, id),
+            eq(runs.role, "builder"),
+          ),
+        );
+      if (
+        !source ||
+        source.status !== "done" ||
+        !(source.result as any)?.artifacts?.blend
+      )
+        throw new Error("Choose a saved build version with a Blender source");
+      const [parentBatch] = await db
+        .select()
+        .from(batches)
+        .where(eq(batches.id, parent.batchId));
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, parent.projectId));
+      if (!parentBatch || !project || project.assetType !== "model")
+        throw new Error("Only 3D models can be iterated or forked");
+      const batchId = crypto.randomUUID();
+      const modelId = crypto.randomUUID();
+      const name = input.kind === "fork" ? input.name : parent.name;
+      if (!name) throw new Error("Name the fork");
+      const fullPrompt = `${parent.prompt}\n\nRequested change from saved version:\n${input.prompt}`;
+      await db.transaction(async (tx) => {
+        await tx.insert(batches).values({
+          id: batchId,
+          projectId: parent.projectId,
+          prompt: input.prompt,
+          count: 1,
+          judgeIterations: input.judgeIterations,
+          design: parentBatch.design,
+          designVersion: parentBatch.designVersion,
+          status: "building",
+        });
+        await tx.insert(models).values({
+          id: modelId,
+          projectId: parent.projectId,
+          batchId,
+          name,
+          prompt: fullPrompt,
+          parentModelId: parent.id,
+          sourceRunId: source.id,
+          changePrompt: input.prompt,
+          branchKind: input.kind,
+        });
+        await tx.insert(jobs).values({
+          id: crypto.randomUUID(),
+          kind: "model",
+          targetId: modelId,
+          checkpoint: {
+            "branch-references": JSON.stringify(project.references),
+          },
+        });
+      });
+      return reply({ id: modelId }, 201);
+    }
+    if (
+      path[0] === "models" &&
+      path[1] &&
+      path[2] === "design-update" &&
+      request.method === "POST"
+    ) {
+      const id = uuid.parse(path[1]);
+      const input = z
+        .object({
+          sourceRunId: uuid,
+          view: z.number().int().min(0).max(12),
+          replaceReference: z.string().optional(),
+        })
+        .parse(await request.json());
+      const [model] = await db.select().from(models).where(eq(models.id, id));
+      if (!model) return reply({ error: "Model not found" }, 404);
+      const [source] = await db
+        .select()
+        .from(runs)
+        .where(
+          and(
+            eq(runs.id, input.sourceRunId),
+            eq(runs.modelId, id),
+            eq(runs.role, "builder"),
+          ),
+        );
+      const artifacts = (source?.result as any)?.artifacts;
+      const view = artifacts?.renders?.[input.view];
+      if (!source || source.status !== "done" || !view)
+        throw new Error("Choose a saved build and render view");
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, model.projectId));
+      if (!project || !["ready", "review"].includes(project.status))
+        throw new Error("The design must be available before updating it");
+      if (
+        input.replaceReference &&
+        !project.references.includes(input.replaceReference)
+      )
+        throw new Error("Choose a reference from this project to replace");
+      if (project.references.length >= 6 && !input.replaceReference)
+        throw new Error(
+          "Choose a reference to replace before adding this model view",
+        );
+      const references = project.references.filter(
+        (key) => key !== input.replaceReference,
+      );
+      const jobId = crypto.randomUUID();
+      await db.insert(jobs).values({
+        id: jobId,
+        kind: "design-from-model",
+        targetId: project.id,
+        checkpoint: {
+          modelId: id,
+          sourceRunId: source.id,
+          view,
+          designVersion: String(project.designVersion),
+          design: project.design,
+          references: JSON.stringify(references),
+          modelPrompt: model.prompt,
+          sourceSummary: String(
+            (source.result as any)?.summary || "Not recorded",
+          ),
+          sourceMetrics: JSON.stringify(artifacts.metrics || {}),
+          sourceFeedback: JSON.stringify(
+            model.artifacts?.blend === artifacts.blend ? model.feedback : null,
+          ),
+        },
+      });
+      return reply({ id: jobId }, 201);
     }
     if (
       path[0] === "models" &&
