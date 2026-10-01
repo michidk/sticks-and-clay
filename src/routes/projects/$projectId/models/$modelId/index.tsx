@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingRegion } from "@/components/loading";
+import { TriangleCount } from "@/components/triangle-count";
 import { request, json, fileUrl, money } from "@/lib/client";
 import { History } from "../../-components/history";
 import { ModelPipeline } from "./-components/pipeline";
@@ -368,7 +369,7 @@ function ModelPage() {
               <div>
                 <dt>Triangles</dt>
                 <dd>
-                  {artifacts?.metrics?.triangles?.toLocaleString() ?? "—"}
+                  <TriangleCount artifacts={artifacts} legend />
                 </dd>
               </div>
               <div>

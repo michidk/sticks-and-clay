@@ -34,6 +34,7 @@ import {
   TextSkeleton,
 } from "@/components/loading";
 import { AssetImage } from "@/components/asset-image";
+import { TriangleCount } from "@/components/triangle-count";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -787,8 +788,7 @@ function ProjectPage() {
                         <div className="card-meta">
                           <span>
                             {m.artifacts && !isGraphics
-                              ? m.artifacts.metrics.triangles.toLocaleString() +
-                                " tris"
+                              ? <TriangleCount artifacts={m.artifacts} suffix />
                               : isGraphics && m.artifacts?.image
                                 ? "PNG"
                                 : m.phase}
