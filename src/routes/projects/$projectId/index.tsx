@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/markdown-textarea";
 import {
   Accordion,
   AccordionItem,
@@ -321,10 +322,12 @@ function ProjectPage() {
           <h1>{p.name}</h1>
           <details className="overview-brief">
             <summary>Project brief</summary>
-            <p className="overview-description">
-              {p.description ||
-                "One visual direction. A collection of possibilities."}
-            </p>
+            <div className="overview-description markdown">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {p.description ||
+                  "One visual direction. A collection of possibilities."}
+              </ReactMarkdown>
+            </div>
           </details>
           <div className="overview-actions">
             <Button disabled={!ready} onClick={() => setGenerate(true)}>
@@ -1070,7 +1073,7 @@ function ProjectPage() {
                   {briefing ? "Writing brief…" : "Draft brief with AI"}
                 </Button>
               </div>
-              <Textarea
+              <MarkdownTextarea
                 id="model-brief"
                 name="prompt"
                 value={modelBrief}

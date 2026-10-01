@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/markdown-textarea";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,8 @@ import { appendReferenceImages } from "@/lib/image-file";
 import { AssetImage } from "@/components/asset-image";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Plus,
   ArrowUpRight,
@@ -314,10 +316,16 @@ function ProjectsPage() {
                       {p.name}
                       <ArrowUpRight size={19} />
                     </h3>
-                    <p>
-                      {p.description ||
-                        "A collection inspired by its name and references."}
-                    </p>
+                    <div className="project-card-brief">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        allowedElements={["p", "strong", "em", "del"]}
+                        unwrapDisallowed
+                      >
+                        {p.description ||
+                          "A collection inspired by its name and references."}
+                      </ReactMarkdown>
+                    </div>
                     {["queued", "designing"].includes(p.status) && (
                       <Progress value={p.progress} label={p.phase} />
                     )}
@@ -464,9 +472,10 @@ function ProjectsPage() {
                   placeholder="e.g. Stonehaven village"
                 />
               </Label>
-              <Label>
-                The brief (optional)
-                <Textarea
+              <div className="brief-field">
+                <Label htmlFor="project-brief">The brief (optional)</Label>
+                <MarkdownTextarea
+                  id="project-brief"
                   name="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
@@ -475,7 +484,7 @@ function ProjectsPage() {
                   rows={4}
                   placeholder="Add any direction you have, or leave this empty to use the project name and references."
                 />
-              </Label>
+              </div>
               <PictureUploader
                 images={uploader.images}
                 onFilesAdded={uploader.addFiles}
