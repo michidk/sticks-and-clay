@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { roles } from "./roles";
+import { imageRoles, roles } from "./roles";
 import { price } from "../../lib/contracts";
 import { mkdir, writeFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -47,6 +47,16 @@ test("Eve chooses the persisted model and effort, not a new registry default", a
     else process.env.STUDIO_DATA_DIR = previous;
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("graphics use the Codex-configured image API role", () => {
+  expect(roles["graphic-designer"].engine).toBe("tanstack");
+  expect(roles["graphic-planner"].engine).toBe("eve");
+  expect(imageRoles.graphic).toMatchObject({
+    engine: "imagegen",
+    model: "gpt-image-2",
+    quality: "high",
+  });
 });
 
 test("Astra long context tier applies per model call", () => {

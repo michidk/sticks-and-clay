@@ -157,3 +157,71 @@ integration("model generation accepts optional briefs and preserves the design s
     await db.delete(projects).where(eq(projects.id, id));
   }
 });
+
+integration("graphic projects persist their type and skip 3D judge settings", async () => {
+  const { batches, jobs } = await import("../db/schema");
+  const form = new FormData();
+  form.set("name", "Graphic fixture");
+  form.set("assetType", "graphic");
+  const created = await api(
+    new Request("http://localhost/api/projects", {
+      method: "POST",
+      body: form,
+    }),
+  );
+  expect(created.status).toBe(201);
+  const { id } = (await created.json()) as { id: string };
+  try {
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, id));
+    expect(project.assetType).toBe("graphic");
+    await db
+      .update(projects)
+      .set({
+        status: "ready",
+        design: "# Graphic system\nSquare editorial illustrations in forest green.",
+        designVersion: 1,
+      })
+      .where(eq(projects.id, id));
+    const invalid = await api(
+      new Request(`http://localhost/api/projects/${id}/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: "", count: 1, judgeIterations: 1 }),
+      }),
+    );
+    expect(invalid.status).toBe(400);
+    const generated = await api(
+      new Request(`http://localhost/api/projects/${id}/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: "",
+          count: 1,
+          judgeIterations: 0,
+          imageSize: "1536x1024",
+        }),
+      }),
+    );
+    expect(generated.status).toBe(201);
+    const { id: batchId } = (await generated.json()) as { id: string };
+    const [batch] = await db
+      .select()
+      .from(batches)
+      .where(eq(batches.id, batchId));
+    expect(batch.judgeIterations).toBe(0);
+    expect(batch.imageSize).toBe("1536x1024");
+  } finally {
+    const projectBatches = await db
+      .select()
+      .from(batches)
+      .where(eq(batches.projectId, id));
+    for (const batch of projectBatches)
+      await db.delete(jobs).where(eq(jobs.targetId, batch.id));
+    await db.delete(jobs).where(eq(jobs.targetId, id));
+    await db.delete(batches).where(eq(batches.projectId, id));
+    await db.delete(projects).where(eq(projects.id, id));
+  }
+});

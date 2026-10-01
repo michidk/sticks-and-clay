@@ -18,7 +18,7 @@ import { runRole, roleInput, agentSettings } from "../modules/ai/index.server";
 // Preserve the field-fill HTTP response shape while sharing the execution boundary.
 async function draftBrief(
   args: import("../modules/ai/index.server").RunInput<
-    "project-brief" | "model-brief"
+    "project-brief" | "model-brief" | "graphic-brief"
   >,
 ) {
   const { result, runId } = await runRole(args);
@@ -52,6 +52,7 @@ async function resumeJob(
   return resumed || null;
 }
 const uuid = z.string().uuid();
+const assetType = z.enum(["model", "graphic"]);
 const reply = (v: unknown, status = 200) => Response.json(v, { status });
 export async function api(request: Request) {
   try {
@@ -225,11 +226,21 @@ export async function api(request: Request) {
         })
         .from(runs);
       const photos = await projectPhotographs();
+      const generated = await db
+        .select()
+        .from(models)
+        .orderBy(desc(models.createdAt));
       return reply({
         projects: list.map((p) => ({
           ...p,
-          thumbnail: photos.find((photo) => photo.projectId === p.id)
-            ?.thumbnail,
+          thumbnail:
+            p.assetType === "graphic"
+              ? generated.find(
+                  (asset) =>
+                    asset.projectId === p.id &&
+                    typeof asset.artifacts?.image === "string",
+                )?.artifacts?.image
+              : photos.find((photo) => photo.projectId === p.id)?.thumbnail,
           usage: usage
             .filter((r) => r.projectId === p.id)
             .reduce(
@@ -253,6 +264,7 @@ export async function api(request: Request) {
         .string()
         .max(12000)
         .parse(form.get("description") || "");
+      const type = assetType.parse(form.get("assetType") || "model");
       const draftId = form.get("draftId")
         ? uuid.parse(form.get("draftId"))
         : crypto.randomUUID();
@@ -282,6 +294,7 @@ export async function api(request: Request) {
               .update(projects)
               .set({
                 name,
+                assetType: type,
                 description,
                 references,
               })
@@ -295,6 +308,7 @@ export async function api(request: Request) {
             await tx.insert(projects).values({
               id: draftId,
               name,
+              assetType: type,
               description,
               references,
               status: "draft",
@@ -310,13 +324,12 @@ export async function api(request: Request) {
         .from(projects)
         .where(eq(projects.id, draftId));
       try {
+        const briefRole =
+          type === "graphic" ? "graphic-brief" : "project-brief";
         const result = await draftBrief({
           projectId: draftId,
-          role: "project-brief",
-          input: await roleInput("project-brief", {
-            name,
-            description,
-          }),
+          role: briefRole,
+          input: await roleInput(briefRole, { name, description }),
           images: draft.references,
         });
         await db
@@ -355,6 +368,7 @@ export async function api(request: Request) {
         .trim()
         .max(12000)
         .parse(form.get("description") || "");
+      const type = assetType.parse(form.get("assetType") || "model");
       const saved = form.get("draftId")
         ? (
             await db
@@ -384,6 +398,7 @@ export async function api(request: Request) {
               .update(projects)
               .set({
                 name,
+                assetType: type,
                 description,
                 references,
                 status: "queued",
@@ -397,7 +412,7 @@ export async function api(request: Request) {
           } else
             await tx
               .insert(projects)
-              .values({ id, name, description, references });
+              .values({ id, name, assetType: type, description, references });
           await tx
             .insert(jobs)
             .values({ id: crypto.randomUUID(), kind: "design", targetId: id });
@@ -522,7 +537,9 @@ export async function api(request: Request) {
           .select({ name: models.name, prompt: models.prompt })
           .from(models)
           .where(eq(models.projectId, id));
-        const text = await roleInput("model-brief", {
+        const briefRole =
+          project.assetType === "graphic" ? "graphic-brief" : "model-brief";
+        const text = await roleInput(briefRole, {
           name: project.name,
           version: project.designVersion,
           design: project.design,
@@ -534,7 +551,7 @@ export async function api(request: Request) {
           hint: input.hint || "Propose a useful set.",
         });
         return reply(
-          await draftBrief({ projectId: id, role: "model-brief", input: text }),
+          await draftBrief({ projectId: id, role: briefRole, input: text }),
         );
       }
       if (path[2] === "design" && request.method === "PUT") {
@@ -580,14 +597,21 @@ export async function api(request: Request) {
       }
       if (path[2] === "generate" && request.method === "POST") {
         if (project.status !== "ready")
-          throw new Error("Approve the design before generating models");
+          throw new Error("Approve the design before generating assets");
         const input = z
           .object({
             prompt: z.string().trim().max(12000).default(""),
             count: z.number().int().min(1).max(20),
             judgeIterations: z.number().int().min(0).max(5),
+            imageSize: z
+              .enum(["1024x1024", "1024x1536", "1536x1024"])
+              .default("1024x1024"),
           })
           .parse(await request.json());
+        if (project.assetType === "graphic" && input.judgeIterations !== 0)
+          throw new Error("Graphic generation does not use 3D judge rounds");
+        if (project.assetType === "model" && input.imageSize !== "1024x1024")
+          throw new Error("Image size applies only to graphic projects");
         const batchId = crypto.randomUUID();
         await db.transaction(async (tx) => {
           await tx.insert(batches).values({

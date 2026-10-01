@@ -7,6 +7,8 @@ All authored agent instructions and input templates live here.
 - `designer.md`: uses TanStack AI to write the project's design reference.
 - `model-brief.md`: uses TanStack AI to draft the editable Model brief from the approved design and requested count.
 - `planner.md`: turns a submitted model brief into individual builder tasks.
+- `graphic-brief.md`, `graphic-designer.md`, `graphic-planner.md`: the parallel brief, visual-system, and planning roles for 2D graphic collections.
+- `graphic.md`: the final prompt sent to the configured Image API for each planned graphic.
 - `builder.md`, `photographer.md`, `judge.md`: build, photograph the exported GLB, and visually review assets.
 - `*-input.md`: task-specific input templates, with `{{placeholders}}` populated by the app.
 - `modeling-pass.md`, `modeling-review.md`: required v4 modeling passes and review of their recorded changes.
@@ -17,7 +19,7 @@ Each run stores the rendered inputs and role instructions in the database. Resum
 
 Model and effort settings are configured in `src/modules/ai/roles.ts` and shown at `/admin/agents`. Builder/judge instructions require developed geometry rather than unmodified primitive assemblies. Builders can use `generate_texture`, the TypeScript image-generation API integration, and must connect the generated images to UV-mapped materials. Triangle counts are informational metrics, with no budget configuration or enforcement.
 
-`visual-target.md` drives the imagegen concept step. See [quality pipeline](../docs/quality-pipeline.md) for geometry gates, target thumbnails, image accounting and legacy recovery semantics.
+`visual-target.md` drives the imagegen concept step for 3D models. Graphic projects send `graphic.md` directly through the same logged one-shot Image API adapter and retain the resulting PNG in collection and activity history. See [quality pipeline](../docs/quality-pipeline.md) for geometry gates, target thumbnails, image accounting and legacy recovery semantics.
 
 ## Focused construction references
 

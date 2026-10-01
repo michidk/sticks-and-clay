@@ -38,3 +38,12 @@ test("agent settings include authored prompts and shared references", async () =
     settings.find((agent) => agent.id === "visual-target")?.promptFiles,
   ).toHaveLength(1);
 });
+
+test("graphic roles stay focused on two-dimensional deliverables", async () => {
+  const designer = await roleInstructions("graphic-designer");
+  const planner = await roleInstructions("graphic-planner");
+  expect(designer).toContain("coherent graphics collection");
+  expect(designer).not.toContain("ground-center origins");
+  expect(planner).toContain("distinct, useful graphics");
+  expect(planner).not.toContain("grounded dimensions");
+});

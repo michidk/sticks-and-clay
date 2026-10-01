@@ -25,6 +25,7 @@ test("image adapter sends generation and multipart reference requests with usage
       else {
         const body = await request.formData();
         expect(body.get("prompt")).toBe(base.prompt);
+        expect(body.get("size")).toBe("1024x1536");
         expect(body.getAll("image[]")).toHaveLength(2);
       }
       return Response.json({
@@ -44,6 +45,7 @@ test("image adapter sends generation and multipart reference requests with usage
     await requestImage({
       ...base,
       provider,
+      size: "1024x1536",
       references: [
         new File(["a"], "a.png", { type: "image/png" }),
         new File(["b"], "b.jpg", { type: "image/jpeg" }),

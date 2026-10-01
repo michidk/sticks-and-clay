@@ -285,11 +285,27 @@ h3 {
   height: 100%;
   object-fit: cover;
 }
+.graphic-cover {
+  background: var(--muted);
+}
+.graphic-cover img {
+  object-fit: contain;
+}
 .project-cover > .badge,
 .model-cover > .badge {
   position: absolute;
   top: 15px;
   left: 15px;
+}
+.project-cover > .asset-type-badge {
+  left: auto;
+  right: 15px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  color: var(--foreground);
+  border-color: var(--border);
 }
 .abstract {
   height: 100%;

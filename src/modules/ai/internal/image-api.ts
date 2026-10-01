@@ -7,12 +7,14 @@ export type ImageApiResult = {
   data?: { b64_json?: string }[];
   usage?: ImageUsage;
 };
+export type ImageSize = "1024x1024" | "1024x1536" | "1536x1024";
 
 /** One request, no automatic retries: failed/ambiguous requests stay in audit history. */
 export async function requestImage(args: {
   provider: { key: string; url: string };
   model: string;
   quality: string;
+  size?: ImageSize;
   prompt: string;
   references: File[];
   signal: AbortSignal;
@@ -21,7 +23,7 @@ export async function requestImage(args: {
     model: args.model,
     quality: args.quality,
     prompt: args.prompt,
-    size: "1024x1024",
+    size: args.size || "1024x1024",
     output_format: "png",
     n: "1",
   };

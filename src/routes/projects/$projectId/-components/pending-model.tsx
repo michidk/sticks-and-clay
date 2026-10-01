@@ -1,4 +1,10 @@
-import { Boxes, Clock3, LoaderCircle, CircleAlert } from "lucide-react";
+import {
+  Boxes,
+  Clock3,
+  LoaderCircle,
+  CircleAlert,
+  Image as ImageIcon,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,14 +16,17 @@ export function PendingModel({
   placeholder,
   busy,
   onResume,
+  assetType,
 }: {
   batch: PendingBatch;
   index: number;
   placeholder: boolean;
   busy: boolean;
   onResume: () => void;
+  assetType: "model" | "graphic";
 }) {
   const failed = batch.status === "failed";
+  const graphic = assetType === "graphic";
   const Icon = failed
     ? CircleAlert
     : batch.status === "planning"
@@ -28,13 +37,19 @@ export function PendingModel({
       <div className="model-cover">
         <div className="pending-art">
           <div className="pending-cube">
-            <Boxes size={48} strokeWidth={1} />
+            {graphic ? (
+              <ImageIcon size={48} strokeWidth={1} />
+            ) : (
+              <Boxes size={48} strokeWidth={1} />
+            )}
           </div>
           <span>
             {failed
               ? "Needs attention"
               : batch.status === "planning"
-                ? "Finding its form"
+                ? graphic
+                  ? "Planning the composition"
+                  : "Finding its form"
                 : "A new idea is in line"}
           </span>
         </div>
@@ -53,10 +68,15 @@ export function PendingModel({
       <div className="project-body">
         <h3>
           {placeholder
-            ? `Upcoming model${batch.count > 1 ? ` ${index + 1}` : ""}`
+            ? `Upcoming ${graphic ? "graphic" : "model"}${
+                batch.count > 1 ? ` ${index + 1}` : ""
+              }`
             : "Generation needs attention"}
         </h3>
-        <p>{batch.prompt || "A model inspired by your project design."}</p>
+        <p>
+          {batch.prompt ||
+            `A ${graphic ? "graphic" : "model"} inspired by your project design.`}
+        </p>
         <div className="pending-status">
           {failed ? (
             <p role="alert">
@@ -69,10 +89,13 @@ export function PendingModel({
                 label={
                   batch.status === "queued"
                     ? "Waiting for the planner"
-                    : "Defining the model brief"
+                    : `Defining the ${graphic ? "graphic" : "model"} brief`
                 }
               />
-              <small>The model name and preview will appear here.</small>
+              <small>
+                The {graphic ? "graphic" : "model"} name and preview will
+                appear here.
+              </small>
             </>
           )}
         </div>

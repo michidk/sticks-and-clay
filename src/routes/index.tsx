@@ -6,6 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,7 +26,13 @@ import { appendReferenceImages } from "@/lib/image-file";
 import { AssetImage } from "@/components/asset-image";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Plus, ArrowUpRight, Layers, LoaderCircle } from "lucide-react";
+import {
+  Plus,
+  ArrowUpRight,
+  Layers,
+  LoaderCircle,
+  Image as ImageIcon,
+} from "lucide-react";
 import { request, money, fileUrl } from "../lib/client";
 import { Progress } from "../components/progress";
 export const Route = createFileRoute("/")({ component: ProjectsPage });
@@ -33,12 +46,14 @@ function ProjectsPage() {
     [error, setError] = useState(""),
     [name, setName] = useState(""),
     [description, setDescription] = useState(""),
+    [assetType, setAssetType] = useState<"model" | "graphic">("model"),
     [draftId, setDraftId] = useState<string | null>(null),
     [briefing, setBriefing] = useState(false);
   function newProject(event: React.MouseEvent<HTMLElement>) {
     dialogOpener.current = event.currentTarget;
     setName("");
     setDescription("");
+    setAssetType("model");
     setDraftId(null);
     uploader.reset();
     setCreating(true);
@@ -50,6 +65,7 @@ function ProjectsPage() {
       const form = new FormData();
       form.set("name", name);
       form.set("description", description);
+      form.set("assetType", assetType);
       if (draftId) form.set("draftId", draftId);
       appendReferenceImages(form, uploader.images);
       const result = await request("projects/brief", {
@@ -121,14 +137,14 @@ function ProjectsPage() {
       <section className="page-heading">
         <div>
           <h1>
-            Build a world.
+            Build a vision.
             <br />
-            <em>Keep it consistent.</em>
+            <em>Shape every detail.</em>
           </h1>
           <p className="lede">
-            Turn references into a shared design language.
+            Turn references into a shared visual language.
             <br />
-            Let your agents build, review, and refine the details.
+            Generate cohesive 3D assets and graphics with your agents.
           </p>
         </div>
         <Button variant="default" className="" onClick={newProject}>
@@ -166,6 +182,7 @@ function ProjectsPage() {
                         e.preventDefault();
                         setName(p.name);
                         setDescription(p.description);
+                        setAssetType(p.assetType || "model");
                         setDraftId(p.id);
                         uploader.reset(p.references);
                         setCreating(true);
@@ -191,6 +208,17 @@ function ProjectsPage() {
                   )}
                   <Badge variant="secondary" className={"badge " + p.status}>
                     {p.status.replace("_", " ")}
+                  </Badge>
+                  <Badge
+                    variant="secondary"
+                    className="badge asset-type-badge"
+                  >
+                    {p.assetType === "graphic" ? (
+                      <ImageIcon size={12} />
+                    ) : (
+                      <Layers size={12} />
+                    )}
+                    {p.assetType === "graphic" ? "Graphics" : "3D assets"}
                   </Badge>
                 </div>
                 <div className="project-body">
@@ -230,7 +258,7 @@ function ProjectsPage() {
             <span className="circle">
               <Plus size={24} />
             </span>
-            <strong>A new world starts here</strong>
+            <strong>A new collection starts here</strong>
             <span>
               Name your project, then optionally add a brief or references.
             </span>
@@ -256,7 +284,7 @@ function ProjectsPage() {
           <DialogHeader>
             <div className="eyebrow">START A COLLECTION</div>
             <DialogTitle className="text-[27px]">
-              Give your world a direction.
+              Give your collection a direction.
             </DialogTitle>
             <DialogDescription className="muted">
               Start with a name. Add an optional brief or reference images
@@ -264,6 +292,25 @@ function ProjectsPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={create}>
+            <input type="hidden" name="assetType" value={assetType} />
+            <Label>
+              What are you creating?
+              <Select
+                value={assetType}
+                onValueChange={(value) =>
+                  setAssetType(value as "model" | "graphic")
+                }
+                disabled={briefing || Boolean(draftId)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="model">3D assets</SelectItem>
+                  <SelectItem value="graphic">Graphics</SelectItem>
+                </SelectContent>
+              </Select>
+            </Label>
             <Label>
               Project name
               <Input

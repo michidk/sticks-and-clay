@@ -1,5 +1,9 @@
 import { provider } from "./provider.server";
-import { requestImage, type ImageUsage } from "./image-api";
+import {
+  requestImage,
+  type ImageSize,
+  type ImageUsage,
+} from "./image-api";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
@@ -15,9 +19,10 @@ import {
 } from "../../../lib/storage.server";
 
 export type ImageInput = {
-  role: "texture" | "visual-target";
+  role: "graphic" | "texture" | "visual-target";
   name: string;
   prompt: string;
+  size?: ImageSize;
   directory: string;
   projectId: string;
   batchId?: string | null;
@@ -31,11 +36,12 @@ export async function imageRequest(
   args: ImageInput,
 ): Promise<{ path: string; key: string; runId: string; name: string }> {
   await args.assertActive();
-  if (
-    !/^models\/[0-9a-f-]+\/[0-9a-f-]+\/(concept|iteration-\d+\/textures)$/.test(
+  if (!(
+    /^models\/[0-9a-f-]+\/[0-9a-f-]+\/(concept|iteration-\d+\/textures)$/.test(
       args.directory,
-    )
-  )
+    ) ||
+    /^graphics\/[0-9a-f-]+\/[0-9a-f-]+$/.test(args.directory)
+  ))
     throw new Error("Invalid image workspace");
   await mkdir(resolve(DATA, args.directory), { recursive: true });
   const textureDir = await filePath(args.directory);
@@ -51,7 +57,7 @@ export async function imageRequest(
   );
   // Prompt identity makes tool retries reusable without overwriting a different image.
   const digest = createHash("sha256")
-    .update(JSON.stringify([args.prompt, args.images || []]))
+    .update(JSON.stringify([args.prompt, args.images || [], args.size]))
     .digest("hex")
     .slice(0, 16);
   const identity = `${args.name}-${digest}.png`;
@@ -116,8 +122,8 @@ export async function imageRequest(
     images: args.images || [],
     engine: "imagegen",
     model: imageRoles[args.role].model,
-    systemPrompt: `Image API · 1024x1024 · ${imageRoles[args.role].quality} quality`,
-    promptVersion: "image-api-v2",
+    systemPrompt: `Image API · ${args.size || "1024x1024"} · ${imageRoles[args.role].quality} quality`,
+    promptVersion: "image-api-v3",
     input: args.prompt,
     rates,
   });
@@ -132,6 +138,7 @@ export async function imageRequest(
       provider: await provider(),
       model: imageRoles[args.role].model,
       quality: imageRoles[args.role].quality,
+      size: args.size,
       prompt: args.prompt,
       references,
       signal: controller.signal,

@@ -52,12 +52,14 @@ export async function executeJob(kind: string, targetId: string) {
         progress: 20,
       })
       .where(eq(projects.id, p.id));
-    const input = await roleInput("designer", {
+    const designRole =
+      p.assetType === "graphic" ? "graphic-designer" : "designer";
+    const input = await roleInput(designRole, {
       name: p.name,
       description: p.description,
     });
     const { result } = await runRole({
-      role: "designer",
+      role: designRole,
       projectId: p.id,
       input,
       images: p.references,
@@ -103,12 +105,16 @@ export async function executeJob(kind: string, targetId: string) {
         "planner-references",
         JSON.stringify(referenceProject.references),
       );
+    const plannerRole =
+      referenceProject.assetType === "graphic"
+        ? "graphic-planner"
+        : "planner";
     const { result, runId } = await runRole({
       images: JSON.parse(job.checkpoint["planner-references"]),
       projectId: batch.projectId,
       batchId: batch.id,
-      role: "planner",
-      input: await roleInput("planner", {
+      role: plannerRole,
+      input: await roleInput(plannerRole, {
         version: batch.designVersion,
         design: batch.design,
         request: batch.prompt,
@@ -156,13 +162,64 @@ export async function executeJob(kind: string, targetId: string) {
     const project = await one(
       await db.select().from(projects).where(eq(projects.id, model.projectId)),
     );
+    const attempt = job.checkpoint.workspace || job.id;
+    if (project.assetType === "graphic") {
+      await db
+        .update(models)
+        .set({
+          status: "building",
+          phase: "Generating final graphic",
+          progress: 10,
+        })
+        .where(eq(models.id, model.id));
+      const graphic = await runImageRole({
+        role: "graphic",
+        name: "graphic",
+        stepId: "graphic",
+        projectId: model.projectId,
+        batchId: batch.id,
+        modelId: model.id,
+        directory: `graphics/${model.id}/${attempt}`,
+        prompt: await prompt("graphic", {
+          design: batch.design,
+          name: model.name,
+          request: model.prompt,
+        }),
+        size: batch.imageSize,
+        images: project.references,
+        assertActive: assertJobActive,
+      });
+      await assertJobActive();
+      await db.transaction(async (tx) => {
+        await tx
+          .update(models)
+          .set({
+            status: "done",
+            phase: "Graphic ready",
+            progress: 100,
+            verdict: "unreviewed",
+            visualTarget: graphic.key,
+            artifacts: {
+              image: graphic.key,
+              stage: "final",
+              format: "png",
+            },
+          })
+          .where(eq(models.id, model.id));
+        await tx
+          .update(jobs)
+          .set({ checkpoint: { ...job.checkpoint, applied: "yes" } })
+          .where(eq(jobs.id, job.id));
+      });
+      await settleBatch(batch.id);
+      return;
+    }
     let feedback: unknown = model.feedback,
       previous = model.artifacts?.blend
         ? resolve(DATA, String(model.artifacts.blend))
         : "",
       passed = false,
       artifacts: Record<string, unknown> = {};
-    const attempt = job.checkpoint.workspace || job.id;
     const legacy =
       job.checkpoint.pipeline === "model-review:1" ||
       (!job.checkpoint.pipeline && Boolean(job.checkpoint["agent:builder:0"]));
@@ -599,15 +656,31 @@ async function settleBatch(id: string) {
     !rows.every((m) => ["done", "failed", "cancelled"].includes(m.status))
   )
     return;
+  const [batch] = await db.select().from(batches).where(eq(batches.id, id));
+  const [project] = batch
+    ? await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, batch.projectId))
+    : [];
+  const graphics = project?.assetType === "graphic";
   const hasFinalAsset = rows.some(
     (m) =>
-      m.status === "done" && m.artifacts && m.artifacts.stage !== "geometry",
+      m.status === "done" &&
+      m.artifacts &&
+      (graphics ? Boolean(m.artifacts.image) : m.artifacts.stage !== "geometry"),
   );
   await db.transaction(async (tx) => {
     const [claimed] = await tx
       .update(batches)
       .set({
-        status: hasFinalAsset ? "rendering" : "completed_with_errors",
+        status: graphics
+          ? rows.every((m) => m.status === "done")
+            ? "done"
+            : "completed_with_errors"
+          : hasFinalAsset
+            ? "rendering"
+            : "completed_with_errors",
       })
       .where(and(eq(batches.id, id), eq(batches.status, "building")))
       .returning();
@@ -623,7 +696,7 @@ async function settleBatch(id: string) {
           targetId: claimed.projectId,
         });
     }
-    if (claimed && hasFinalAsset)
+    if (claimed && hasFinalAsset && !graphics)
       await tx
         .insert(jobs)
         .values({ id: crypto.randomUUID(), kind: "demo", targetId: id });

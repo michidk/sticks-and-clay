@@ -18,12 +18,14 @@ export function ProjectSetup({
     progress: number;
     phase: string;
     error?: string | null;
+    assetType?: "model" | "graphic";
   };
   error: string;
   retrying: boolean;
   onRetry: () => void;
 }) {
   const failed = project.status === "failed" || Boolean(project.error);
+  const graphic = project.assetType === "graphic";
   return (
     <main className="project-overview">
       <Link to="/" className="back">
@@ -41,7 +43,7 @@ export function ProjectSetup({
         <p className="muted">
           {failed
             ? "Your brief is saved. Retry to finish creating your design specs."
-            : "We’re turning your brief and references into a shared visual direction. You’ll review and edit the specs before generating models."}
+            : `We’re turning your brief and references into a shared visual direction. You’ll review and edit the specs before generating ${graphic ? "graphics" : "3D assets"}.`}
         </p>
         {!failed && (
           <Progress

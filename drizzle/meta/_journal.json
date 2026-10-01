@@ -50,6 +50,20 @@
       "when": 1790700344565,
       "tag": "0006_elite_romulus",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790846157251,
+      "tag": "0007_steady_misty_knight",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790846990136,
+      "tag": "0008_greedy_thunderbird",
+      "breakpoints": true
     }
   ]
 }

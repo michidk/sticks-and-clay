@@ -1,6 +1,6 @@
 # Sticks & Clay
 
-A working game-asset pipeline application, built alongside CodeTend with the same core stack: **Bun, React 19, TanStack Start/Router, Vite, Tailwind 4, Drizzle/PostgreSQL, and Eve**. React Three Fiber provides the interactive GLB viewer; Blender runs locally through an isolated MCP adapter.
+A visual asset studio for cohesive **3D asset and graphic collections**, built alongside CodeTend with the same core stack: **Bun, React 19, TanStack Start/Router, Vite, Tailwind 4, Drizzle/PostgreSQL, and Eve**. React Three Fiber provides the interactive GLB viewer; Blender runs locally through an isolated MCP adapter; graphic agents use the Codex-configured OpenAI-compatible Image API.
 
 The interface uses locally owned [shadcn components](https://ui.shadcn.com/) and a custom ivory, forest-green, and sage theme in `src/styles.css`. Configure/add primitives through `components.json` and keep app-specific layout in the routes. Skeletons cover initial page, image, and viewer loading; polling retains already loaded content.
 
@@ -15,14 +15,16 @@ The application design guide describes Sticks & Clay itself. Each asset project'
 
 ## Workflow
 
-1. Start a project with a name, an optional brief, and up to six optional reference images. Generate or enhance the brief using AI, including the button below the references, then edit it before continuing. A blank brief proceeds directly to design generation using the name and any references; it does not implicitly generate a separate brief.
-2. A TanStack AI background call inspects the images and writes a Markdown design reference. The database stores the document and revisions. Edit it, then save and approve it. GFM rendering supports tables, task lists and strikethrough. Immutable database revisions are compared using the `diff` library; Restore as draft loads an older version into the editor, and Save creates a new revision without overwriting history.
-3. Optionally request concrete models, or leave the model brief blank so the planner proposes a set from the approved design and references. Choose 1–20 models and 0–5 maximum judge rounds. A batch snapshots the approved design; later edits cannot change its contract.
+1. Start a project by choosing **3D assets** or **Graphics**, then add a name, optional brief, and up to six optional reference images. Generate or enhance the brief using AI, then edit it before continuing. A blank brief proceeds directly to design generation using the name and references.
+2. A type-specific TanStack AI background call inspects the inputs and writes a Markdown design reference: construction and material rules for 3D, or composition and visual-system rules for graphics. The database stores immutable revisions. Edit, save, and approve the direction before generation.
+3. Optionally request concrete deliverables, or leave the brief blank so the matching planner proposes a set from the approved design and references. Choose 1–20 items. Every batch snapshots the approved design; later edits cannot change its contract.
 4. A PostgreSQL job queue dispatches model attempts, with two concurrent workers by default. Each first generates an imagegen visual target from the approved design, model brief and references. The target is its thumbnail until a 3D render exists and remains available in the Visual target tab. Each build iteration has an isolated Blender directory and process.
 5. With judging enabled, the builder first develops geometry with temporary matte materials, exports GLB/source/metrics and three views, and inspects them through `view_render`. A dedicated photographer imports the archived GLB into a clean studio, renders and inspects three views, and supplies those exact images to the geometry judge and gallery. Geometry must pass before final texture/material work begins.
 6. Each geometry or surface review receives actual renders, the visual target, user references, design, brief and metrics. Concrete prioritized corrections go to a fresh builder with the preceding source while that stage has rounds remaining. Texture requests and image targets have separate history, token usage and cost records.
 7. Passing assets finish early. At the review limit, remaining issues stay visible as **completed with issues**, not an approval. Zero rounds performs the four modeling passes plus photography, with no judge. Technical failures are separate and can be retried; every attempt remains in history.
 8. Final material exports render in a scale lineup and staged collection demo, with a downloadable scene. Geometry-only previews are excluded. The web app provides orbit/zoom previews, product renders, GLB/source downloads, design history, agent transcripts, and usage/cost breakdowns.
+
+For a graphics project, choose a square, portrait, or landscape canvas for the batch. Each planned image goes directly through the audited one-shot Image API adapter using `gpt-image-2` at high quality. Reference images are sent as edit inputs when present. The returned PNG is validated, stored with the project, exposed for preview/download, and recorded as an `imagegen` run with reported token usage. Graphics do not start Blender, run 3D judges, or create collection scenes.
 
 Progress represents workflow milestones, not a predicted wall-clock percentage. New attempts apply the round limit per stage: two permits up to two geometry build/review pairs, then up to two surface pairs. Early passes skip unused rounds; geometry exhaustion withholds surface work. New v4 attempts require blockout → photography → shape refinement → photography → geometry judge, then materials → photography → polish → photography → surface judge. Additional review rounds repeat refinement or polish when needed. A first passing judge cannot skip these mandatory passes. Existing v1/v2/v3 attempts retain their original pipeline on resume. Resume reuses Eve sessions and completed step checkpoints. Every builder iteration retains an archived export and its judge feedback; collection thumbnails use only the latest version.
 
@@ -70,6 +72,7 @@ The full viewer's camera menu captures the current scene as a PNG (all four pane
 - `src/lib/pipeline.server.ts`: designer → planner → builder/judge → collection workflow.
 - `src/modules/ai/internal/eve.server.ts`: fresh Eve sessions, structured output validation, event persistence and token accounting.
 - `src/modules/ai/internal/tanstack.server.ts`: structured brief/design calls through TanStack AI, with persisted run results and usage estimates.
+- `src/modules/ai/internal/image.server.ts`: Codex-configured Image API calls for graphics, visual targets, and textures, with durable receipts and usage accounting.
 - `scripts/worker.ts`: PostgreSQL job claiming (`SKIP LOCKED`), bounded concurrency, coordinator lock and restart recovery.
 - `src/db/schema.ts`, `drizzle/`: projects, immutable design revisions, batches, models, agent runs, events and jobs.
 - `eve/agent/`: model configuration, authenticated local channel, Blender MCP connection and authored vision tool.
@@ -85,7 +88,7 @@ Eve 0.63 accepts user images as **file parts with an image media type**, despite
 
 The configured gateway cannot retrieve non-persisted Responses item IDs. Eve explicitly uses `store: false`, so local assistant messages and paired function calls are serialized in full; reasoning history is omitted. Graceful shutdown requeues interrupted jobs with their checkpoints. The single-process local service uses a 60-second recovery lease instead of the SDK's 860-second default. New sessions do not expire automatically; per-request timeouts remain bounded. The administration Settings page persists runtime limits in `data/runtime-settings.json`; the worker and Blender service read it before each new operation, so saving needs no restart. Environment values remain first-run defaults: `AGENT_TIMEOUT_MS` defaults to 20 minutes, `BUILDER_TIMEOUT_MS` to 45 minutes, and `BLENDER_BUILD_TIMEOUT_SECONDS` to 600 seconds. A timed-out client explicitly cancels its Eve session so tools cannot continue writing after the job is marked failed.
 
-## Asset contract
+## 3D asset contract
 
 Every build has a ground-centered origin, meters, an individual GLB and `.blend`, named materials, reported triangle counts, and three consistent product renders. Textured mode validates embedded base-color and tangent-space normal maps on exported materials. Explicit poly mode rejects image textures. Triangle counts are reported for information; there is no triangle-budget setting or enforcement. Architectural openings, material scale, believable silhouettes, and the earlier bark texture lessons are in the prompts.
 

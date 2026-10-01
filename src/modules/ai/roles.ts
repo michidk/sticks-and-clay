@@ -30,8 +30,11 @@ function role<S extends z.ZodType>(
 export const roles = {
   "project-brief": role("tanstack", "project-brief", briefResult),
   "model-brief": role("tanstack", "model-brief", briefResult),
+  "graphic-brief": role("tanstack", "graphic-brief", briefResult),
   designer: role("tanstack", "designer", designResult),
+  "graphic-designer": role("tanstack", "graphic-designer", designResult),
   planner: role("eve", "planner", planResult),
+  "graphic-planner": role("eve", "graphic-planner", planResult),
   builder: role("eve", "builder", buildResult, "gpt-6-astra", "high", [
     "references/modeling-method",
     "references/hard-surface",
@@ -72,6 +75,13 @@ export function executionPolicy(role: Role, legacyDesigner = false) {
 
 /** Image roles are one-shot requests, not resumable Eve sessions. */
 export const imageRoles = {
+  graphic: {
+    engine: "imagegen",
+    model: "gpt-image-2",
+    quality: "high",
+    prompt: "graphic",
+    inputTemplate: "graphic",
+  },
   "visual-target": {
     engine: "imagegen",
     model: "gpt-image-2",

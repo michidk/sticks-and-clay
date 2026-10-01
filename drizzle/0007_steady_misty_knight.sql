@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "asset_type" text DEFAULT 'model' NOT NULL;

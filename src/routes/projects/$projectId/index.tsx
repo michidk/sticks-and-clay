@@ -22,6 +22,13 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   WorkspaceSkeleton,
   ViewerSkeleton,
   TextSkeleton,
@@ -42,6 +49,7 @@ import {
   FileText,
   Play,
   LoaderCircle,
+  Image as ImageIcon,
 } from "lucide-react";
 import { request, json, money, fileUrl } from "../../../lib/client";
 import { Progress } from "../../../components/progress";
@@ -158,7 +166,13 @@ function ProjectPage() {
         json({
           prompt: f.get("prompt"),
           count: Number(f.get("count")),
-          judgeIterations: Number(f.get("iterations")),
+          judgeIterations: data.project.assetType === "graphic"
+            ? 0
+            : Number(f.get("iterations")),
+          imageSize:
+            data.project.assetType === "graphic"
+              ? f.get("imageSize")
+              : "1024x1024",
         }),
       );
       setGenerate(false);
@@ -184,6 +198,9 @@ function ProjectPage() {
     );
   const p = data.project,
     rs = data.runs;
+  const isGraphics = p.assetType === "graphic";
+  const assetPlural = isGraphics ? "graphics" : "models";
+  const assetSingular = isGraphics ? "graphic" : "model";
   const total = rs.reduce(
     (a: any, r: any) => ({
       cost: a.cost + (r.estimatedCost || 0),
@@ -278,7 +295,7 @@ function ProjectPage() {
           </p>
           <div className="overview-actions">
             <Button disabled={!ready} onClick={() => setGenerate(true)}>
-              <Plus size={17} /> Generate models
+              <Plus size={17} /> Generate {assetPlural}
             </Button>
             <Button variant="outline" onClick={() => setTab("design")}>
               <FileText size={16} />{" "}
@@ -289,7 +306,7 @@ function ProjectPage() {
           </div>
           {!ready && (
             <p className="overview-hint">
-              Approve the design reference to start generating models.
+              Approve the design reference to start generating {assetPlural}.
             </p>
           )}
         </div>
@@ -364,7 +381,7 @@ function ProjectPage() {
       <Tabs value={activeTab} onValueChange={setTab} className="workspace-tabs">
         <TabsList variant="line" className="tabs" aria-label="Project views">
           {[
-            ["models", "Models", Boxes],
+            ["models", isGraphics ? "Graphics" : "3D assets", isGraphics ? ImageIcon : Boxes],
             ["design", "Design reference", FileText],
             ["history", "Activity & cost", Activity],
           ]
@@ -542,7 +559,7 @@ function ProjectPage() {
               </div>
               <Input
                 aria-label="Search collection"
-                placeholder="Find a model…"
+                placeholder={`Find a ${assetSingular}…`}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
@@ -553,7 +570,7 @@ function ProjectPage() {
               aria-label="Filter collection"
             >
               {[
-                ["all", "All models", data.models.length + queuedCount],
+                ["all", `All ${assetPlural}`, data.models.length + queuedCount],
                 ["working", "In progress", working],
                 ["attention", "Needs attention", needsReview],
                 ["finished", "Completed", completed],
@@ -569,7 +586,7 @@ function ProjectPage() {
                 </Button>
               ))}
             </div>
-            {data.batches
+            {!isGraphics && data.batches
               .filter((b: any) => b.preview)
               .map((b: any) => (
                 <Card className="panel collection-preview" key={b.id}>
@@ -608,12 +625,12 @@ function ProjectPage() {
             {!data.models.length && !data.batches.length ? (
               <Empty className="empty">
                 <div className="circle">
-                  <Boxes size={32} />
+                  {isGraphics ? <ImageIcon size={32} /> : <Boxes size={32} />}
                 </div>
                 <h2>Your collection is a blank canvas.</h2>
                 <p>
                   {ready
-                    ? "Describe a model, or ask your agents to invent a cohesive set."
+                    ? `Describe a ${assetSingular}, or ask your agents to invent a cohesive set.`
                     : "Start by reviewing and approving your project design."}
                 </p>
                 <Button
@@ -621,7 +638,9 @@ function ProjectPage() {
                   className=""
                   onClick={() => (ready ? setGenerate(true) : setTab("design"))}
                 >
-                  {ready ? "Create your first models" : "Open design reference"}
+                  {ready
+                    ? `Create your first ${assetPlural}`
+                    : "Open design reference"}
                   <ArrowLeft
                     style={{ transform: "rotate(180deg)" }}
                     size={16}
@@ -638,6 +657,7 @@ function ProjectPage() {
                     placeholder={item.placeholder}
                     busy={busy}
                     onResume={() => resumeBatch(item.batch.id)}
+                    assetType={p.assetType}
                   />
                 ))}
                 {visibleModels.map((m: any) => {
@@ -649,8 +669,23 @@ function ProjectPage() {
                     );
                   return (
                     <Card key={m.id} className="model-card">
-                      <div className="model-cover">
-                        {previewModelId === m.id && m.artifacts ? (
+                      <div
+                        className={`model-cover${isGraphics ? " graphic-cover" : ""}`}
+                      >
+                        {isGraphics && m.artifacts?.image ? (
+                          <a
+                            className="model-cover-image"
+                            href={fileUrl(m.artifacts.image)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <AssetImage
+                              src={fileUrl(m.artifacts.image)}
+                              alt={m.name}
+                            />
+                            <span className="orbit-label">Open full image ↗</span>
+                          </a>
+                        ) : previewModelId === m.id && m.artifacts ? (
                           <Suspense fallback={<ViewerSkeleton />}>
                             <Viewer
                               src={fileUrl(m.artifacts.glb)}
@@ -713,16 +748,20 @@ function ProjectPage() {
                       </div>
                       <div className="project-body">
                         <h3>
-                          <Link
-                            to="/projects/$projectId/models/$modelId"
-                            params={{ projectId, modelId: m.id }}
-                            search={{ view: "3d", section: "review" }}
-                          >
-                            {m.name.replaceAll("_", " ")}
-                          </Link>
+                          {isGraphics ? (
+                            m.name.replaceAll("_", " ")
+                          ) : (
+                            <Link
+                              to="/projects/$projectId/models/$modelId"
+                              params={{ projectId, modelId: m.id }}
+                              search={{ view: "3d", section: "review" }}
+                            >
+                              {m.name.replaceAll("_", " ")}
+                            </Link>
+                          )}
                         </h3>
                         <p>{m.prompt}</p>
-                        {m.artifacts && (
+                        {!isGraphics && m.artifacts && (
                           <Button
                             variant="outline"
                             onClick={() =>
@@ -747,22 +786,30 @@ function ProjectPage() {
                         )}
                         <div className="card-meta">
                           <span>
-                            {m.artifacts
+                            {m.artifacts && !isGraphics
                               ? m.artifacts.metrics.triangles.toLocaleString() +
                                 " tris"
-                              : m.phase}
+                              : isGraphics && m.artifacts?.image
+                                ? "PNG"
+                                : m.phase}
                           </span>
                           <span>{money(cost)}</span>
                         </div>
-                        <Button variant="outline" asChild>
-                          <Link
-                            to="/projects/$projectId/models/$modelId"
-                            params={{ projectId, modelId: m.id }}
-                            search={{ view: "3d", section: "versions" }}
-                          >
-                            View model & history ↗
-                          </Link>
-                        </Button>
+                        {isGraphics ? (
+                          <Button variant="outline" onClick={() => setTab("history")}>
+                            View generation activity ↗
+                          </Button>
+                        ) : (
+                          <Button variant="outline" asChild>
+                            <Link
+                              to="/projects/$projectId/models/$modelId"
+                              params={{ projectId, modelId: m.id }}
+                              search={{ view: "3d", section: "versions" }}
+                            >
+                              View model & history ↗
+                            </Link>
+                          </Button>
+                        )}
                         {m.error && (
                           <Alert variant="destructive" className="error">
                             <AlertDescription>{m.error}</AlertDescription>
@@ -783,10 +830,17 @@ function ProjectPage() {
                               }
                             }}
                           >
-                            Resume model
+                            Resume {assetSingular}
                           </Button>
                         )}
-                        {m.artifacts && (
+                        {isGraphics && m.artifacts?.image ? (
+                          <div className="downloads">
+                            <a href={fileUrl(m.artifacts.image)} download>
+                              <Download size={14} />
+                              Download PNG
+                            </a>
+                          </div>
+                        ) : m.artifacts ? (
                           <div className="downloads">
                             <a href={fileUrl(m.artifacts.glb)} download>
                               <Download size={14} />
@@ -796,14 +850,14 @@ function ProjectPage() {
                               Blender source
                             </a>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     </Card>
                   );
                 })}
                 {!visibleModels.length && !visiblePending.length && (
                   <Empty className="collection-no-results">
-                    <h3>No matching models</h3>
+                    <h3>No matching {assetPlural}</h3>
                     <p>Try another search or filter.</p>
                     <Button
                       variant="outline"
@@ -812,7 +866,7 @@ function ProjectPage() {
                         setFilter("all");
                       }}
                     >
-                      Show all models
+                      Show all {assetPlural}
                     </Button>
                   </Empty>
                 )}
@@ -831,17 +885,17 @@ function ProjectPage() {
           <DialogHeader>
             <div className="eyebrow">EXPAND YOUR COLLECTION</div>
             <DialogTitle className="text-[27px]">
-              What should we build?
+              What should we create?
             </DialogTitle>
             <DialogDescription className="muted">
-              Artists will follow design v{p.designVersion}. Give them
+              Agents will follow design v{p.designVersion}. Give them
               specifics, or let them propose the set.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={build}>
             <div className="form-row">
               <Label>
-                Number of models
+                Number of {assetPlural}
                 <Input
                   name="count"
                   type="number"
@@ -853,21 +907,39 @@ function ProjectPage() {
                   required
                 />
               </Label>
-              <Label>
-                Maximum judge rounds
-                <Input
-                  name="iterations"
-                  type="number"
-                  min={0}
-                  max={5}
-                  defaultValue={2}
-                  required
-                />
-              </Label>
+              {isGraphics ? (
+                <Label>
+                  Canvas
+                  <Select name="imageSize" defaultValue="1024x1024">
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1024x1024">Square</SelectItem>
+                      <SelectItem value="1024x1536">Portrait</SelectItem>
+                      <SelectItem value="1536x1024">Landscape</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </Label>
+              ) : (
+                <Label>
+                  Maximum judge rounds
+                  <Input
+                    name="iterations"
+                    type="number"
+                    min={0}
+                    max={5}
+                    defaultValue={2}
+                    required
+                  />
+                </Label>
+              )}
             </div>
             <div className="brief-field">
               <div className="field-heading">
-                <Label htmlFor="model-brief">Model brief (optional)</Label>
+                <Label htmlFor="model-brief">
+                  {isGraphics ? "Graphic" : "Model"} brief (optional)
+                </Label>
                 <Button
                   variant="outline"
                   size="sm"
@@ -897,7 +969,7 @@ function ProjectPage() {
                 disabled={briefing}
                 maxLength={12000}
                 rows={5}
-                placeholder="Describe specific models, or leave blank to let AI choose from your approved design."
+                placeholder={`Describe specific ${assetPlural}, or leave blank to let AI choose from your approved design.`}
               />
             </div>
             {briefing && (
@@ -906,10 +978,9 @@ function ProjectPage() {
               </p>
             )}
             <p className="note">
-              A visual target comes first, followed by blockout, shape refinement,
-              materials and polish, each with photographs. This sets the maximum
-              judge rounds per stage; geometry must pass before materials.
-              Zero keeps all four passes without judging.
+              {isGraphics
+                ? "Each planned graphic uses the selected canvas through the configured Codex Image API, is saved as a PNG, and is recorded in activity and cost history."
+                : "A visual target comes first, followed by blockout, shape refinement, materials and polish, each with photographs. This sets the maximum judge rounds per stage; geometry must pass before materials. Zero keeps all four passes without judging."}
             </p>
             {error && (
               <Alert variant="destructive" className="error">

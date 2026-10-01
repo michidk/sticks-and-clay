@@ -4,7 +4,7 @@ This is the application's UI design reference, based on the existing theme in `s
 
 ## Character
 
-Sticks & Clay feels like a calm creative workshop: warm ivory surfaces, forest-green typography, sage accents, generous space, and restrained outlines. The assets and reference images provide the visual variety. Keep the interface quiet enough to compare models and read detailed design feedback.
+Sticks & Clay feels like a calm creative workshop: warm ivory surfaces, forest-green typography, sage accents, generous space, and restrained outlines. The assets and reference images provide the visual variety. Keep the interface quiet enough to compare 3D models or graphics and read detailed design feedback.
 
 The home headline pairs a plain sans-serif statement (“Build a world.”) with a softer italic serif line (“Keep it consistent.”). Use that editorial contrast sparingly. The brand combines a shaded forest-green stick overlapping a softly rounded terracotta cube with a rounded, solid-green Sticks & Clay wordmark. The transparent header lockup lives at `public/brand/sticks-and-clay-lockup-v2.png`; the standalone emblem and favicon use `sticks-and-clay-mark-v2.png` and `sticks-and-clay-favicon-v2.png`. Render the lockup at 220px wide on desktop and 200px on phones, with descriptive alternative text and an accessible home link. Reserve terracotta for the brand so forest green remains the action color.
 
@@ -48,10 +48,11 @@ Status badges pair text with color:
 
 ## Components and layout
 
-- **Project list:** eyebrow, two-line headline, supporting copy, and a prominent New project action; a three-column card grid; a dashed creation card; a short three-step workflow explanation.
+- **Project list:** eyebrow, two-line headline, supporting copy, and a prominent New project action; a three-column card grid; a dashed creation card; and an explicit 3D assets / Graphics choice during setup. Cards show their collection type.
 - **Project cards:** 205px cover showing the newest completed project photograph (reference image fallback), status at the top left, name and arrow, two-line description, then a divided metadata row for date and estimated usage. When no reference exists, use the existing soft sage gradient, thin Layers icon, and STYLE STARTS HERE caption.
 - **Project workspace:** back link, project identity and generation action, four statistics, then underlined tabs for Models, Design reference, and Activity & cost.
 - **Models:** 240px cover images with an opt-in inline 3D quick preview, readable status, asset name, brief, triangle/cost metadata, and separate GLB/source downloads. Only one card preview is active at a time; collection renders sit in a two-column panel above model cards when available.
+- **Graphics:** preserve the full square, portrait, or landscape image with contain sizing rather than cropping it into the model-card ratio. Generation asks for a canvas per batch. Cards expose the PNG download, generation status, brief, cost, and a link to activity. Do not show Blender, triangle, judge-round, 3D preview, or collection-scene controls for graphic projects.
 - **Design reference:** readable Markdown with GFM tables and revision comparisons; a main document column with a 280px reference sidebar. The editable source is monospace. Keep save, approval, and revision restoration distinct.
 - **Activity:** expandable run rows with role icons, status, usage, and cost; details reveal transcripts and technical information. Preserve progressive disclosure.
 - **Forms:** shadcn Label, Input, Textarea, and Button with stacked labels, ivory surfaces, generous padding, and dashed upload areas. Use Alert for errors.

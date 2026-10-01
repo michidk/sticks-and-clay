@@ -12,6 +12,10 @@ const created = () =>
 export const projects = pgTable("projects", {
   id: text().primaryKey(),
   name: text().notNull(),
+  assetType: text("asset_type")
+    .$type<"model" | "graphic">()
+    .default("model")
+    .notNull(),
   description: text().notNull(),
   references: jsonb().$type<string[]>().default([]).notNull(),
   design: text().default("").notNull(),
@@ -40,6 +44,10 @@ export const batches = pgTable("batches", {
   prompt: text().notNull(),
   count: integer().notNull(),
   judgeIterations: integer().notNull(),
+  imageSize: text("image_size")
+    .$type<"1024x1024" | "1024x1536" | "1536x1024">()
+    .default("1024x1024")
+    .notNull(),
   design: text().notNull(),
   designVersion: integer().notNull(),
   status: text().default("queued").notNull(),
