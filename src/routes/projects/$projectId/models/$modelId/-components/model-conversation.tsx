@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import {
   Boxes,
   Camera,
+  Check,
   GitBranch,
   Image,
   LoaderCircle,
@@ -15,7 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { request, json } from "@/lib/client";
+import { request, json, fileUrl } from "@/lib/client";
+import { AssetImage } from "@/components/asset-image";
 import { pipelineSteps } from "../-lib/pipeline";
 import {
   versionLabel,
@@ -302,35 +304,34 @@ export function ModelConversation({
               One selected render joins the project references. Review and
               approve the draft in the project workspace.
             </p>
-            <Label htmlFor="design-view">Reference view</Label>
-            <select
-              id="design-view"
-              value={view}
-              onChange={(event) => setView(Number(event.target.value))}
-              disabled={!source?.artifacts?.renders?.length}
-            >
-              {source?.artifacts?.renders?.map((_, index) => (
-                <option key={index} value={index}>
-                  View {index + 1}
-                </option>
-              ))}
-            </select>
+            <ImageChoice
+              name="design-view"
+              legend="Render to add as a reference"
+              value={String(view)}
+              onChange={(value) => setView(Number(value))}
+              disabled={busy}
+              emptyText="No renders are archived for this version yet."
+              options={
+                source?.artifacts?.renders?.map((key, index) => ({
+                  value: String(index),
+                  key,
+                  label: `View ${index + 1}`,
+                })) || []
+              }
+            />
             {workspace.project.references.length >= 6 && (
-              <div className="conversation-replacement">
-                <Label htmlFor="replace-reference">Replace a reference</Label>
-                <select
-                  id="replace-reference"
-                  value={replaceReference}
-                  onChange={(event) => setReplaceReference(event.target.value)}
-                >
-                  <option value="">Choose a reference</option>
-                  {workspace.project.references.map((key, index) => (
-                    <option key={key} value={key}>
-                      Reference {index + 1}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <ImageChoice
+                name="replace-reference"
+                legend="Reference to replace"
+                value={replaceReference}
+                onChange={setReplaceReference}
+                disabled={busy}
+                options={workspace.project.references.map((key, index) => ({
+                  value: key,
+                  key,
+                  label: `Reference ${index + 1}`,
+                }))}
+              />
             )}
             <Button
               variant="outline"
@@ -368,5 +369,60 @@ export function ModelConversation({
         </div>
       </section>
     </div>
+  );
+}
+
+/** Thumbnail radio group: pick an image by seeing it, not by its number. */
+function ImageChoice({
+  name,
+  legend,
+  options,
+  value,
+  onChange,
+  disabled,
+  emptyText,
+}: {
+  name: string;
+  legend: string;
+  options: { value: string; key: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  emptyText?: string;
+}) {
+  return (
+    <fieldset className="image-choice" disabled={disabled}>
+      <legend>{legend}</legend>
+      {options.length ? (
+        <div className="image-choice-grid">
+          {options.map((option) => {
+            const selected = option.value === value;
+            return (
+              <label
+                key={option.value}
+                className={selected ? "is-selected" : ""}
+              >
+                <input
+                  type="radio"
+                  name={name}
+                  value={option.value}
+                  checked={selected}
+                  onChange={() => onChange(option.value)}
+                />
+                <AssetImage
+                  src={fileUrl(option.key)}
+                  alt={option.label}
+                  loading="lazy"
+                />
+                <span>{option.label}</span>
+                {selected && <Check size={13} aria-hidden="true" />}
+              </label>
+            );
+          })}
+        </div>
+      ) : (
+        <p>{emptyText}</p>
+      )}
+    </fieldset>
   );
 }
