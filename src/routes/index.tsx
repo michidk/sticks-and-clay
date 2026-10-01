@@ -39,6 +39,7 @@ import {
 import { projectState } from "@/lib/project-summary";
 import { request, costSummary, fileUrl } from "../lib/client";
 import { Progress } from "../components/progress";
+import { agentStateFromStatus } from "../components/agent-state";
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 function ProjectsPage() {
   const uploader = useImageUpload();
@@ -350,7 +351,11 @@ function ProjectsPage() {
                       </ReactMarkdown>
                     </div>
                     {["queued", "designing"].includes(p.status) && (
-                      <Progress value={p.progress} label={p.phase} />
+                      <Progress
+                        value={p.progress}
+                        label={p.phase}
+                        agentState={agentStateFromStatus(p.status)}
+                      />
                     )}
                     <div className="project-card-status">
                       <span>

@@ -2,6 +2,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/progress";
+import {
+  AgentStateBadge,
+  agentStateFromStatus,
+} from "@/components/agent-state";
 import { Link } from "@tanstack/react-router";
 import {
   Box,
@@ -81,9 +85,14 @@ export function QueueJobCard({
               </time>
             </div>
           </div>
-          <Badge variant="secondary" className={"badge " + job.status}>
-            {job.status}
-          </Badge>
+          <div className="queue-job-badges">
+            <AgentStateBadge state={agentStateFromStatus(job.status)} />
+            {["failed", "cancelled", "cancelling"].includes(job.status) && (
+              <Badge variant="secondary" className={"badge " + job.status}>
+                {job.status}
+              </Badge>
+            )}
+          </div>
         </div>
 
         {job.projectId && (
@@ -101,6 +110,7 @@ export function QueueJobCard({
             <Progress
               value={job.progress || 0}
               label={job.phase || job.status}
+              agentState={agentStateFromStatus(job.status)}
             />
           </div>
         )}

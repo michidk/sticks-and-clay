@@ -255,6 +255,13 @@
   margin-top: 12px;
 }
 
+.queue-job-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
 .queue-job-progress .progress-wrap {
   margin-top: 0;
 }

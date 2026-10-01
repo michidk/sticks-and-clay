@@ -1,9 +1,23 @@
-export function Progress({ value, label }: { value: number; label: string }) {
+import { AgentStateBadge, type AgentState } from "./agent-state";
+import { Progress as ProgressBar } from "./ui/progress";
+
+export function Progress({
+  value,
+  label,
+  agentState,
+}: {
+  value: number;
+  label: string;
+  agentState: AgentState;
+}) {
   return (
     <div className="progress-wrap">
       <div className="progress-label">
         <span>{label}</span>
-        <span>{value}%</span>
+        <span className="progress-status">
+          <AgentStateBadge state={agentState} />
+          <span>{value}%</span>
+        </span>
       </div>
       <ProgressBar
         aria-label={label}
@@ -13,4 +27,3 @@ export function Progress({ value, label }: { value: number; label: string }) {
     </div>
   );
 }
-import { Progress as ProgressBar } from "./ui/progress";

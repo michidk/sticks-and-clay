@@ -38,6 +38,11 @@ Status badges pair text with color:
 | Failed | `#f6e5df` | `#9a5142` | `#e9d1c9` |
 | Warning / review | `#f8efd6` | `#967126` | `#eadcb9` |
 
+Agent lifecycle labels use the same badge language everywhere progress or an
+individual agent run is shown: neutral sage for **Agent: queued**, blue for
+**Agent: working**, and green for **Agent: completed**. Keep technical workflow
+phases and failure outcomes visible separately from this three-state lifecycle.
+
 ## Typography and spacing
 
 - The font stack starts with Inter, then system sans-serif fonts; the app does not currently load a bundled Inter font. Base text is 14px. Georgia supplies the italic headline accent; code, transcripts, and the design editor use system monospace.

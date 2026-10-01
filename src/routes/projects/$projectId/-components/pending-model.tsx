@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/progress";
+import { agentStateFromStatus } from "@/components/agent-state";
 import type { PendingBatch } from "../-lib/collection";
 export function PendingModel({
   batch,
@@ -86,6 +87,7 @@ export function PendingModel({
             <>
               <Progress
                 value={batch.status === "queued" ? 0 : 20}
+                agentState={agentStateFromStatus(batch.status)}
                 label={
                   batch.status === "queued"
                     ? "Waiting for the planner"

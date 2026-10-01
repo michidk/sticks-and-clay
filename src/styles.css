@@ -424,6 +424,30 @@ h3 {
   color: #967126;
   border-color: #eadcb9;
 }
+.agent-state-badge {
+  flex: none;
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.agent-state-queued {
+  border-color: #d6ddce;
+  background: #f4f6ee;
+  color: #67745b;
+}
+.agent-state-working {
+  border-color: #d8e0f3;
+  background: #e8edf8;
+  color: #5b6e98;
+}
+.agent-state-completed {
+  border-color: #d3e0bd;
+  background: #e5efcf;
+  color: #466630;
+}
 .overlay {
   position: fixed;
   inset: 0;
@@ -672,6 +696,17 @@ textarea::placeholder {
   color: #819271;
   gap: 10px;
   margin-bottom: 8px;
+}
+.progress-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.run-state-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 progress {
   appearance: none;

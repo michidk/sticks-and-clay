@@ -9,6 +9,10 @@ import {
 import { Empty } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  AgentStateBadge,
+  agentStateFromStatus,
+} from "@/components/agent-state";
 import { Card } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 import {
@@ -203,9 +207,17 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                       </strong>
                       <small>{new Date(r.createdAt).toLocaleString()}</small>
                     </span>
-                    <Badge variant="secondary" className={"badge " + r.status}>
-                      {r.status}
-                    </Badge>
+                    <span className="run-state-badges">
+                      <AgentStateBadge state={agentStateFromStatus(r.status)} />
+                      {["failed", "cancelled"].includes(r.status) && (
+                        <Badge
+                          variant="secondary"
+                          className={"badge " + r.status}
+                        >
+                          {r.status}
+                        </Badge>
+                      )}
+                    </span>
                     <span className="run-cost">
                       {r.estimatedCost === null
                         ? r.finishedAt

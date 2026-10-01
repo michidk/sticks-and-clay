@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/progress";
+import { agentStateFromStatus } from "@/components/agent-state";
 import { money } from "@/lib/client";
 import {
   modelStatus,
@@ -86,7 +87,11 @@ export function ModelPipeline({
         </Button>
       </div>
       {active && !expanded && (
-        <Progress value={model.progress} label={model.phase} />
+        <Progress
+          value={model.progress}
+          label={model.phase}
+          agentState={agentStateFromStatus(model.status)}
+        />
       )}
       {expanded && (
         <div id="pipeline-details">
@@ -94,6 +99,7 @@ export function ModelPipeline({
             <Progress
               value={model.progress}
               label={active ? model.phase : modelStatus(model)}
+              agentState={agentStateFromStatus(model.status)}
             />
             <p>
               Recorded stages, left to right. Select a step to inspect its

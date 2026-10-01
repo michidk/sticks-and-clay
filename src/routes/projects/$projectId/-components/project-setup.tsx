@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/progress";
+import { agentStateFromStatus } from "@/components/agent-state";
 
 export function ProjectSetup({
   project,
@@ -49,6 +50,7 @@ export function ProjectSetup({
           <Progress
             value={project.progress}
             label={project.phase || "Preparing design specs"}
+            agentState={agentStateFromStatus(project.status)}
           />
         )}
         {(error || project.error) && (

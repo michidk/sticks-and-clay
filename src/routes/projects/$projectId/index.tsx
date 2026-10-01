@@ -67,6 +67,7 @@ import {
   fileUrl,
 } from "../../../lib/client";
 import { Progress } from "../../../components/progress";
+import { agentStateFromStatus } from "../../../components/agent-state";
 import { PendingModel } from "./-components/pending-model";
 import { pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
@@ -863,7 +864,13 @@ function ProjectPage() {
                         )}
                         {!["done", "failed", "cancelled"].includes(
                           m.status,
-                        ) && <Progress value={m.progress} label={m.phase} />}
+                        ) && (
+                          <Progress
+                            value={m.progress}
+                            label={m.phase}
+                            agentState={agentStateFromStatus(m.status)}
+                          />
+                        )}
                         {m.artifacts?.stage === "geometry" && (
                           <p className="note">
                             Geometry preview · materials pending
