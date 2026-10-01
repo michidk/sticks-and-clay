@@ -1491,6 +1491,8 @@ pre {
 .reference-uploader-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; font-weight: 600; margin-bottom: 10px; }
 .reference-uppy { position: relative; }
 .reference-uppy .uppy-Dashboard-inner { border: 1px dashed var(--input); border-radius: 10px; background: var(--muted); }
+/* Uppy can miss its initial ResizeObserver update inside the Radix dialog. */
+.reference-uppy .uppy-Dashboard-innerWrap { opacity: 1; }
 .reference-uppy .uppy-Dashboard-AddFiles { border: 0; background: transparent; }
 .reference-uppy .uppy-Dashboard-AddFiles-title { color: var(--foreground); font-family: inherit; font-size: 13px; line-height: 1.5; }
 .reference-uppy .uppy-Dashboard-browse { color: var(--primary); }
