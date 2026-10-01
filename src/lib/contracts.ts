@@ -1,4 +1,22 @@
 import { z } from "zod";
+export const runtimeSettingsSchema = z
+  .object({
+    agentTimeoutMs: z.number().int().min(60_000).max(24 * 60 * 60 * 1000),
+    builderTimeoutMs: z.number().int().min(60_000).max(24 * 60 * 60 * 1000),
+    blenderBuildTimeoutSeconds: z.number().int().min(60).max(2 * 60 * 60),
+  })
+  .superRefine((settings, ctx) => {
+    if (
+      settings.builderTimeoutMs <
+      settings.blenderBuildTimeoutSeconds * 1000
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["builderTimeoutMs"],
+        message: "Builder timeout must cover one Blender execution",
+      });
+  });
+export type RuntimeSettings = z.infer<typeof runtimeSettingsSchema>;
 export const briefResult = z.object({ brief: z.string().min(10).max(12000) });
 export const designResult = z.object({ design: z.string().min(100) });
 export const planResult = z.object({

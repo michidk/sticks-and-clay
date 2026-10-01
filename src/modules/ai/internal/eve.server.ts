@@ -20,6 +20,7 @@ import { checkpoint, jobContext } from "../../../lib/checkpoint.server";
 import { resolve } from "node:path";
 import { DATA } from "../../../lib/storage.server";
 import { agentTimeoutMs } from "./timeouts";
+import { loadRuntimeSettings } from "../../../lib/runtime-settings.server";
 const client = () =>
   new Client({
     host: process.env.EVE_URL || "http://127.0.0.1:33441",
@@ -114,7 +115,9 @@ export async function agent<T>(
       .where(eq(runs.id, id));
   };
   try {
-    signal = AbortSignal.timeout(agentTimeoutMs(args.role));
+    signal = AbortSignal.timeout(
+      agentTimeoutMs(args.role, await loadRuntimeSettings()),
+    );
     // Persist an idle session before submitting work, so recovery has an identity.
     const session = saved?.sessionId
       ? client().sessions.attach(saved.sessionId)

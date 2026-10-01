@@ -1,10 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FolderOpen, ListTodo, Bot } from "lucide-react";
+import { FolderOpen, ListTodo, Bot, Settings } from "lucide-react";
 
 const sections = [
   { to: "/", label: "Projects", icon: FolderOpen },
   { to: "/admin/queue", label: "Queue", icon: ListTodo },
   { to: "/admin/agents", label: "Agents", icon: Bot },
+  { to: "/admin/settings", label: "Settings", icon: Settings },
 ] as const;
 
 export function StudioNav() {

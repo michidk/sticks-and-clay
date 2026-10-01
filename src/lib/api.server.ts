@@ -28,6 +28,10 @@ import { readStoredFile } from "./storage.server";
 import { fileMimeType } from "./storage/path";
 import { prepareReferences } from "./reference-images.server";
 import { downloadImage } from "./remote-image.server";
+import {
+  loadRuntimeSettings,
+  saveRuntimeSettings,
+} from "./runtime-settings.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   kinds: string[],
@@ -170,6 +174,12 @@ export async function api(request: Request) {
     }
     if (path[0] === "agents" && request.method === "GET")
       return reply({ agents: await agentSettings() });
+    if (path[0] === "settings") {
+      if (request.method === "GET")
+        return reply({ settings: await loadRuntimeSettings() });
+      if (request.method === "PUT")
+        return reply({ settings: await saveRuntimeSettings(await request.json()) });
+    }
     if (
       path[0] === "textures" &&
       path[1] === "generate" &&

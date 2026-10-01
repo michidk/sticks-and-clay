@@ -3,9 +3,13 @@ import asyncio,json,os,pathlib,re,uuid
 from mcp.server.fastmcp import FastMCP
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 DATA=pathlib.Path(os.environ.get('STUDIO_DATA_DIR',ROOT/'data')).resolve()
-BUILD_TIMEOUT_SECONDS=max(1,int(os.environ.get('BLENDER_BUILD_TIMEOUT_SECONDS','600')))
 mcp=FastMCP('Asset Studio Blender',host='127.0.0.1',port=int(os.environ.get('BLENDER_MCP_PORT','33442')),stateless_http=True)
 locks={}
+def build_timeout_seconds():
+    path=DATA/'runtime-settings.json'
+    value=json.loads(path.read_text())['blenderBuildTimeoutSeconds'] if path.exists() else int(os.environ.get('BLENDER_BUILD_TIMEOUT_SECONDS','600'))
+    if isinstance(value,bool) or not isinstance(value,int) or not 60<=value<=7200:raise ValueError('Invalid Blender build timeout setting')
+    return value
 def workspace(capability):
     if not re.fullmatch(r'[0-9a-f-]{36}',capability):raise ValueError('Invalid capability')
     marker=DATA/'capabilities'/f'{capability}.json'
@@ -45,10 +49,11 @@ async def execute_blender_code(capability:str,code:str)->dict:
         env={k:v for k,v in os.environ.items() if not any(s in k.upper() for s in ['TOKEN','SECRET','PASSWORD','API_KEY','CREDENTIAL'])}
         proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'-b','--threads','2','--python-exit-code','1','--python',str(script),cwd=dest,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
         monitor=asyncio.create_task(watch_cancellation(capability,proc))
-        try:out,_=await asyncio.wait_for(proc.communicate(),BUILD_TIMEOUT_SECONDS)
+        timeout=build_timeout_seconds()
+        try:out,_=await asyncio.wait_for(proc.communicate(),timeout)
         except asyncio.TimeoutError:
             if proc.returncode is None:proc.kill()
-            await proc.wait();return {'ok':False,'error':f'Blender exceeded {BUILD_TIMEOUT_SECONDS} seconds'}
+            await proc.wait();return {'ok':False,'error':f'Blender exceeded {timeout} seconds'}
         except asyncio.CancelledError:
             if proc.returncode is None:proc.kill()
             await proc.wait()

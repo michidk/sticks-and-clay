@@ -1,24 +1,31 @@
 import { expect, test } from "bun:test";
 import {
-  agentTimeoutMs,
   DEFAULT_AGENT_TIMEOUT_MS,
+  DEFAULT_BLENDER_BUILD_TIMEOUT_SECONDS,
   DEFAULT_BUILDER_TIMEOUT_MS,
-} from "./timeouts";
+  runtimeSettingsDefaults,
+} from "../../../lib/runtime-settings";
+import { agentTimeoutMs } from "./timeouts";
 
 test("builder turns have a larger default timeout", () => {
-  expect(agentTimeoutMs("builder", {})).toBe(DEFAULT_BUILDER_TIMEOUT_MS);
-  expect(agentTimeoutMs("judge", {})).toBe(DEFAULT_AGENT_TIMEOUT_MS);
+  const settings = runtimeSettingsDefaults({});
+  expect(agentTimeoutMs("builder", settings)).toBe(DEFAULT_BUILDER_TIMEOUT_MS);
+  expect(agentTimeoutMs("judge", settings)).toBe(DEFAULT_AGENT_TIMEOUT_MS);
+  expect(settings.blenderBuildTimeoutSeconds).toBe(
+    DEFAULT_BLENDER_BUILD_TIMEOUT_SECONDS,
+  );
 });
 
 test("timeout overrides remain explicit and validated", () => {
-  expect(agentTimeoutMs("judge", { AGENT_TIMEOUT_MS: "30000" })).toBe(30000);
-  expect(
-    agentTimeoutMs("builder", {
-      AGENT_TIMEOUT_MS: "30000",
-      BUILDER_TIMEOUT_MS: "60000",
-    }),
-  ).toBe(60000);
-  expect(() => agentTimeoutMs("builder", { BUILDER_TIMEOUT_MS: "nope" })).toThrow(
-    "Invalid AI timeout",
-  );
+  const settings = runtimeSettingsDefaults({
+    AGENT_TIMEOUT_MS: "60000",
+    BUILDER_TIMEOUT_MS: "120000",
+    BLENDER_BUILD_TIMEOUT_SECONDS: "90",
+  });
+  expect(agentTimeoutMs("judge", settings)).toBe(60000);
+  expect(agentTimeoutMs("builder", settings)).toBe(120000);
+  expect(settings.blenderBuildTimeoutSeconds).toBe(90);
+  expect(() =>
+    runtimeSettingsDefaults({ BUILDER_TIMEOUT_MS: "nope" }),
+  ).toThrow("Invalid AI timeout");
 });

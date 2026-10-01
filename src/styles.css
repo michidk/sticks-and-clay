@@ -1035,7 +1035,10 @@ pre {
   }
   .studio-nav-link {
     flex: 1;
-    padding-inline: 10px;
+    min-width: 0;
+    gap: 4px;
+    padding-inline: 4px;
+    font-size: 11px;
   }
   .brand {
     font-size: 17px;

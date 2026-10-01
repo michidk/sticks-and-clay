@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as AdminAgentsIndexRouteImport } from './routes/admin/agents/index'
 import { Route as AdminQueueIndexRouteImport } from './routes/admin/queue/index'
+import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
 import { Route as ProjectsProjectIdModelsModelIdIndexRouteImport } from './routes/projects/$projectId/models/$modelId/index'
 
@@ -36,6 +37,11 @@ const AdminQueueIndexRoute = AdminQueueIndexRouteImport.update({
   path: '/admin/queue/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminSettingsIndexRoute = AdminSettingsIndexRouteImport.update({
+  id: '/admin/settings/',
+  path: '/admin/settings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
   id: '/projects/$projectId/',
   path: '/projects/$projectId/',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/api/$': typeof ApiSplatRoute
   '/admin/agents/': typeof AdminAgentsIndexRoute
   '/admin/queue/': typeof AdminQueueIndexRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
   '/projects/$projectId/models/$modelId/': typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/api/$': typeof ApiSplatRoute
   '/admin/agents': typeof AdminAgentsIndexRoute
   '/admin/queue': typeof AdminQueueIndexRoute
+  '/admin/settings': typeof AdminSettingsIndexRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
   '/projects/$projectId/models/$modelId': typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/api/$': typeof ApiSplatRoute
   '/admin/agents/': typeof AdminAgentsIndexRoute
   '/admin/queue/': typeof AdminQueueIndexRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
   '/projects/$projectId/models/$modelId/': typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/api/$'
     | '/admin/agents/'
     | '/admin/queue/'
+    | '/admin/settings/'
     | '/projects/$projectId/'
     | '/projects/$projectId/models/$modelId/'
   fileRoutesByTo: FileRoutesByTo
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/api/$'
     | '/admin/agents'
     | '/admin/queue'
+    | '/admin/settings'
     | '/projects/$projectId'
     | '/projects/$projectId/models/$modelId'
   id:
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/api/$'
     | '/admin/agents/'
     | '/admin/queue/'
+    | '/admin/settings/'
     | '/projects/$projectId/'
     | '/projects/$projectId/models/$modelId/'
   fileRoutesById: FileRoutesById
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   ApiSplatRoute: typeof ApiSplatRoute
   AdminAgentsIndexRoute: typeof AdminAgentsIndexRoute
   AdminQueueIndexRoute: typeof AdminQueueIndexRoute
+  AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
   ProjectsProjectIdModelsModelIdIndexRoute: typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
@@ -139,6 +152,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminQueueIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/settings/': {
+      id: '/admin/settings/'
+      path: '/admin/settings'
+      fullPath: '/admin/settings/'
+      preLoaderRoute: typeof AdminSettingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects/$projectId/': {
       id: '/projects/$projectId/'
       path: '/projects/$projectId'
@@ -161,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSplatRoute: ApiSplatRoute,
   AdminAgentsIndexRoute: AdminAgentsIndexRoute,
   AdminQueueIndexRoute: AdminQueueIndexRoute,
+  AdminSettingsIndexRoute: AdminSettingsIndexRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
   ProjectsProjectIdModelsModelIdIndexRoute:
     ProjectsProjectIdModelsModelIdIndexRoute,
