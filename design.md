@@ -87,7 +87,7 @@ The header groups Projects, Queue and Agents as icon-and-text links, with a fore
 
 ## Reference image intake
 
-The project setup dialog uses a shared picture uploader inspired by Roastbook. A sage drop area offers file selection, drag-and-drop and scoped clipboard paste, with a separate **From URL** disclosure below it. Show the six-image count, supported formats and 8 MB limit before selection. Selected and saved images share a thumbnail grid with individually labelled remove buttons; use three columns on desktop and two on phones. Keep URL import errors inside the uploader, retain selections after errors, and disable competing intake/submission actions while importing. Do not intercept text paste in form fields. Use existing shadcn Button, Input, Collapsible and Alert components and the workshop's semantic colors.
+The project setup dialog uses Uppy’s inline Dashboard for local reference-image selection, drag-and-drop and scoped clipboard paste, with a separate **From URL** disclosure backed by the app’s import endpoint. Show the six-image count, supported formats and 8 MB limit before selection. Selected and saved images share a thumbnail grid with individually labelled remove buttons; use three columns on desktop and two on phones. Keep URL import errors inside the uploader, retain selections after errors, and disable competing intake/submission actions while importing. Do not intercept text paste in form fields. Theme Uppy with the workshop’s semantic colors and use existing shadcn Button, Input, Collapsible and Alert components around it.
 
 ## Model pipeline graph
 

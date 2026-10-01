@@ -310,7 +310,6 @@ function ProjectsPage() {
             </p>
             <PictureUploader
               images={uploader.images}
-              fileInputRef={uploader.fileInputRef}
               onFilesAdded={uploader.addFiles}
               onImportFromUrl={uploader.importFromUrl}
               onRemove={uploader.remove}

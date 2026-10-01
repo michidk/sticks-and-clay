@@ -1,16 +1,17 @@
 import {
   useId,
+  useEffect,
   useState,
   type ClipboardEvent,
-  type DragEvent,
-  type RefObject,
 } from "react";
+import Uppy, { type UppyFile } from "@uppy/core";
+import Dashboard from "@uppy/react/dashboard";
+import "@uppy/core/css/style.min.css";
+import "@uppy/dashboard/css/style.min.css";
 import {
   ChevronDown,
-  ImagePlus,
   Link2,
   LoaderCircle,
-  UploadCloud,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,11 +24,15 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { AssetImage } from "@/components/asset-image";
-import type { ImageFile } from "@/lib/image-file";
+import {
+  IMAGE_MIME_TYPES,
+  MAX_IMAGE_BYTES,
+  MAX_REFERENCE_IMAGES,
+  type ImageFile,
+} from "@/lib/image-file";
 
 type Props = {
   images: readonly ImageFile[];
-  fileInputRef: RefObject<HTMLInputElement | null>;
   onFilesAdded: (files: readonly File[]) => Promise<void>;
   onImportFromUrl: (url: string) => Promise<void>;
   onRemove: (id: string) => void;
@@ -35,10 +40,9 @@ type Props = {
   isBusy?: boolean;
 };
 
-// Adapted from Roastbook's PictureUploader: all intake paths share one file model.
+// Uppy owns local intake; saved files and URL imports share the app's file model.
 export function PictureUploader({
   images,
-  fileInputRef,
   onFilesAdded,
   onImportFromUrl,
   onRemove,
@@ -48,19 +52,63 @@ export function PictureUploader({
   const [urlOpen, setUrlOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [error, setError] = useState("");
-  const [dragging, setDragging] = useState(false);
+  const [uppy] = useState(
+    () =>
+      new Uppy({
+        autoProceed: false,
+        restrictions: {
+          allowedFileTypes: [...IMAGE_MIME_TYPES],
+          maxFileSize: MAX_IMAGE_BYTES,
+          maxNumberOfFiles: MAX_REFERENCE_IMAGES,
+        },
+      }),
+  );
   const id = useId();
   const busy = disabled || isBusy;
-  const full = images.length >= 6;
-  async function addFiles(files: readonly File[]) {
-    if (busy || !files.length) return;
-    setError("");
-    try {
-      await onFilesAdded(files);
-    } catch (error) {
-      setError((error as Error).message);
+  const full = images.length >= MAX_REFERENCE_IMAGES;
+
+  useEffect(() => {
+    uppy.setOptions({
+      restrictions: {
+        allowedFileTypes: [...IMAGE_MIME_TYPES],
+        maxFileSize: MAX_IMAGE_BYTES,
+        maxNumberOfFiles: Math.max(1, MAX_REFERENCE_IMAGES - images.length),
+      },
+    });
+  }, [images.length, uppy]);
+
+  useEffect(() => {
+    function filesAdded(
+      files: UppyFile<Record<string, unknown>, Record<string, unknown>>[],
+    ) {
+      const selected = files.flatMap((file) =>
+        file.data instanceof File ? [file.data] : [],
+      );
+      if (!selected.length) return;
+      setError("");
+      void onFilesAdded(selected)
+        .catch((error) => setError((error as Error).message))
+        .finally(() => uppy.removeFiles(files.map((file) => file.id)));
     }
-  }
+    function restrictionFailed(
+      _file:
+        | UppyFile<Record<string, unknown>, Record<string, unknown>>
+        | undefined,
+      error: Error,
+    ) {
+      // Uppy emits this before `files-added` for a mixed valid/invalid batch.
+      queueMicrotask(() => setError(error.message));
+    }
+    uppy.on("files-added", filesAdded);
+    uppy.on("restriction-failed", restrictionFailed);
+    return () => {
+      uppy.off("files-added", filesAdded);
+      uppy.off("restriction-failed", restrictionFailed);
+    };
+  }, [onFilesAdded, uppy]);
+
+  useEffect(() => () => uppy.destroy(), [uppy]);
+
   async function importUrl() {
     if (busy || !imageUrl.trim()) return;
     setError("");
@@ -81,18 +129,9 @@ export function PictureUploader({
       target.closest("input, textarea, select, [contenteditable=true]")
     )
       return;
-    const files = Array.from(event.clipboardData.files);
-    if (!files.length) {
-      for (const item of Array.from(event.clipboardData.items)) {
-        const file = item.kind === "file" ? item.getAsFile() : null;
-        if (file) files.push(file);
-      }
-    }
-    if (files.length) {
-      event.preventDefault();
-      event.stopPropagation();
-      void addFiles(files);
-    } else {
+    // Uppy handles image files. This wrapper only turns pasted URLs into the
+    // app's URL-import flow.
+    if (!event.clipboardData.files.length) {
       const text = event.clipboardData.getData("text/plain").trim();
       if (/^https?:\/\//i.test(text)) {
         event.preventDefault();
@@ -100,11 +139,6 @@ export function PictureUploader({
         setUrlOpen(true);
       }
     }
-  }
-  function drop(event: DragEvent<HTMLButtonElement>) {
-    event.preventDefault();
-    setDragging(false);
-    void addFiles(Array.from(event.dataTransfer.files));
   }
   return (
     <div
@@ -155,55 +189,33 @@ export function PictureUploader({
         </ul>
       )}
       <Collapsible open={urlOpen} onOpenChange={setUrlOpen}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="bare"
-          className={"reference-dropzone" + (dragging ? " is-dragging" : "")}
-          disabled={busy || full}
-          aria-describedby={id + "-hint"}
-          onClick={() => fileInputRef.current?.click()}
-          onDragEnter={(event) => {
-            event.preventDefault();
-            if (!busy && !full) setDragging(true);
-          }}
-          onDragOver={(event) => event.preventDefault()}
-          onDragLeave={(event) => {
-            if (
-              !event.currentTarget.contains(event.relatedTarget as Node | null)
-            )
-              setDragging(false);
-          }}
-          onDrop={drop}
-        >
-          <span className="reference-upload-icon">
-            {isBusy ? (
-              <LoaderCircle className="spin size-6" />
-            ) : dragging ? (
-              <UploadCloud className="size-6" />
-            ) : (
-              <ImagePlus className="size-6" />
-            )}
-          </span>
-          <span>
-            <strong>
-              {isBusy
-                ? "Adding image…"
-                : full
-                  ? "All 6 references added"
-                  : dragging
-                    ? "Drop images here"
-                    : images.length
-                      ? "Add more references"
-                      : "Give your world a visual starting point"}
-            </strong>
-            <span>
-              {full
-                ? "Remove one to add another"
-                : "Choose files, drag & drop, or paste an image"}
+        <div className="reference-uppy" aria-describedby={id + "-hint"}>
+          <Dashboard
+            uppy={uppy}
+            width="100%"
+            height={150}
+            disabled={Boolean(busy || full)}
+            hideUploadButton
+            disableStatusBar
+            showSelectedFiles={false}
+            proudlyDisplayPoweredByUppy={false}
+            locale={{
+              strings: {
+                dropPasteFiles: "Drop files here, paste, or %{browseFiles}",
+              },
+            }}
+            note={
+              full
+                ? "All 6 references added — remove one to add another"
+                : "Choose files, drag and drop, or paste an image"
+            }
+          />
+          {isBusy && (
+            <span className="reference-uppy-busy" aria-live="polite">
+              <LoaderCircle className="spin size-5" /> Adding image…
             </span>
-          </span>
-        </Button>
+          )}
+        </div>
         <div className="reference-upload-options">
           <span id={id + "-hint"}>PNG, JPG or WebP · up to 8 MB each</span>
           <CollapsibleTrigger asChild>
@@ -257,20 +269,6 @@ export function PictureUploader({
           </div>
         </CollapsibleContent>
       </Collapsible>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        multiple
-        disabled={busy || full}
-        hidden
-        aria-label="Choose reference images"
-        onChange={(event) => {
-          const files = Array.from(event.target.files || []);
-          event.target.value = "";
-          void addFiles(files);
-        }}
-      />
       {error && (
         <Alert variant="destructive" role="alert" className="mt-3">
           <AlertDescription>{error}</AlertDescription>

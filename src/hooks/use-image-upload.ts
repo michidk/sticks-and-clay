@@ -14,7 +14,6 @@ export function useImageUpload() {
   const locked = useRef(false);
   const alive = useRef(true);
   const controller = useRef<AbortController | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     alive.current = true;
@@ -106,7 +105,6 @@ export function useImageUpload() {
   return {
     images,
     isBusy,
-    fileInputRef,
     addFiles,
     importFromUrl,
     remove,
