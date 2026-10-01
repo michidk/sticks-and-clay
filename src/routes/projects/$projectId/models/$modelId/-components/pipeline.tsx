@@ -86,12 +86,60 @@ export function ModelPipeline({
           {expanded ? "Hide pipeline" : "Show pipeline"}
         </Button>
       </div>
+      {!expanded && !!steps.length && (
+        <ol className="pipeline-strip" aria-label="Generation steps">
+          {steps.map((step) => {
+            const Icon = icons[step.run.role as keyof typeof icons];
+            const tone =
+              step.state === "Running"
+                ? "is-running"
+                : ["Failed", "Interrupted", "Cancelled"].includes(step.state)
+                  ? "is-failed"
+                  : step.state === "Changes requested"
+                    ? "is-warning"
+                    : step.state === "Passed"
+                      ? "is-passed"
+                      : "";
+            return (
+              <li key={step.run.id}>
+                <button
+                  type="button"
+                  className={"pipeline-chip " + tone}
+                  aria-label={`${step.label}: ${step.state}. Show step details`}
+                  onClick={() => {
+                    setExpanded(true);
+                    select(step.run.id);
+                  }}
+                >
+                  <Icon size={14} />
+                  <span>{step.label}</span>
+                  {step.state === "Running" ? (
+                    <LoaderCircle size={12} className="spin" />
+                  ) : tone === "is-failed" || tone === "is-warning" ? (
+                    <CircleAlert size={12} />
+                  ) : step.state === "Complete" || step.state === "Passed" ? (
+                    <Check size={12} />
+                  ) : (
+                    <Clock3 size={12} />
+                  )}
+                  {step.review && <small>{step.review.score}</small>}
+                </button>
+              </li>
+            );
+          })}
+          <li className="pipeline-strip-outcome">
+            {active ? model.phase : modelStatus(model)}
+          </li>
+        </ol>
+      )}
       {active && !expanded && (
-        <Progress
-          value={model.progress}
-          label={model.phase}
-          agentState={agentStateFromStatus(model.status)}
-        />
+        <div className="pipeline-progress-compact">
+          <Progress
+            value={model.progress}
+            label={model.phase}
+            agentState={agentStateFromStatus(model.status)}
+          />
+        </div>
       )}
       {expanded && (
         <div id="pipeline-details">
