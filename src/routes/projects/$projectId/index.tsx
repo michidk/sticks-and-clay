@@ -1,3 +1,4 @@
+import { collectionSummary, projectState } from "@/lib/project-summary";
 import { ProjectSetup } from "./-components/project-setup";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,13 @@ import {
   LoaderCircle,
   Image as ImageIcon,
 } from "lucide-react";
-import { request, json, money, fileUrl } from "../../../lib/client";
+import {
+  request,
+  json,
+  money,
+  costSummary,
+  fileUrl,
+} from "../../../lib/client";
 import { Progress } from "../../../components/progress";
 import { PendingModel } from "./-components/pending-model";
 import { pendingCollectionItems } from "./-lib/collection";
@@ -82,7 +89,8 @@ function ProjectPage() {
     [modelBrief, setModelBrief] = useState(""),
     [modelCount, setModelCount] = useState(1),
     [judgeIterations, setJudgeIterations] = useState(2),
-    [imageSize, setImageSize] = useState<RuntimeSettings["generationDefaults"]["imageSize"]>("1024x1024"),
+    [imageSize, setImageSize] =
+      useState<RuntimeSettings["generationDefaults"]["imageSize"]>("1024x1024"),
     [briefSubmitting, setBriefSubmitting] = useState(false);
   const briefing = briefSubmitting;
   async function generateBrief() {
@@ -110,11 +118,13 @@ function ProjectPage() {
     return d;
   }
   useEffect(() => {
-    void request<{ settings: RuntimeSettings }>("settings").then(({ settings }) => {
-      setModelCount(settings.generationDefaults.count);
-      setJudgeIterations(settings.generationDefaults.judgeIterations);
-      setImageSize(settings.generationDefaults.imageSize);
-    }).catch((e) => setError(e.message));
+    void request<{ settings: RuntimeSettings }>("settings")
+      .then(({ settings }) => {
+        setModelCount(settings.generationDefaults.count);
+        setJudgeIterations(settings.generationDefaults.judgeIterations);
+        setImageSize(settings.generationDefaults.imageSize);
+      })
+      .catch((e) => setError(e.message));
   }, []);
   useEffect(() => {
     setData(undefined);
@@ -176,9 +186,10 @@ function ProjectPage() {
         json({
           prompt: f.get("prompt"),
           count: Number(f.get("count")),
-          judgeIterations: data.project.assetType === "graphic"
-            ? 0
-            : Number(f.get("iterations")),
+          judgeIterations:
+            data.project.assetType === "graphic"
+              ? 0
+              : Number(f.get("iterations")),
           imageSize:
             data.project.assetType === "graphic"
               ? f.get("imageSize")
@@ -220,6 +231,13 @@ function ProjectPage() {
     { cost: 0, tokens: 0, unpriced: 0 },
   );
   const ready = p.status === "ready";
+  const collection = collectionSummary(data.models, data.batches);
+  const state = projectState(p.status, collection);
+  const designChanged = design !== p.design;
+  const designHeadings = [
+    ...(design || p.design || "").matchAll(/^## (.+)$/gm),
+  ].map((match, index) => ({ title: match[1], id: `design-section-${index}` }));
+  let headingIndex = 0;
   const completed = data.models.filter((m: any) => m.status === "done").length;
   const pending = pendingCollectionItems(data.batches, data.models);
   const queuedCount = pending.filter((item) => item.placeholder).length;
@@ -293,16 +311,21 @@ function ProjectPage() {
       <section className="overview-hero">
         <div className="overview-intro">
           <div className="eyebrow">
-            YOUR CREATIVE WORKSHOP{" "}
-            <Badge variant="secondary" className={"badge " + p.status}>
-              {p.status}
+            <Badge variant="secondary" className={"badge " + state.tone}>
+              {state.label}
             </Badge>
+            <span>
+              {ready ? "Design approved" : "Design awaiting approval"}
+            </span>
           </div>
           <h1>{p.name}</h1>
-          <p className="overview-description">
-            {p.description ||
-              "One visual direction. A collection of possibilities."}
-          </p>
+          <details className="overview-brief">
+            <summary>Project brief</summary>
+            <p className="overview-description">
+              {p.description ||
+                "One visual direction. A collection of possibilities."}
+            </p>
+          </details>
           <div className="overview-actions">
             <Button disabled={!ready} onClick={() => setGenerate(true)}>
               <Plus size={17} /> Generate {assetPlural}
@@ -364,10 +387,12 @@ function ProjectPage() {
             <span>need attention</span>
           </div>
           <button onClick={() => setTab("history")}>
-            <strong>{money(total.cost)}</strong>
+            <strong>Est. {costSummary(total.cost)}</strong>
             <span>
-              estimated cost
-              {total.unpriced ? ` · ${total.unpriced} pending` : ""} ↗
+              {total.unpriced
+                ? `${total.unpriced} request${total.unpriced === 1 ? "" : "s"} not yet priced`
+                : "View cost breakdown"}{" "}
+              ↗
             </span>
           </button>
         </div>
@@ -391,7 +416,11 @@ function ProjectPage() {
       <Tabs value={activeTab} onValueChange={setTab} className="workspace-tabs">
         <TabsList variant="line" className="tabs" aria-label="Project views">
           {[
-            ["models", isGraphics ? "Graphics" : "3D assets", isGraphics ? ImageIcon : Boxes],
+            [
+              "models",
+              isGraphics ? "Graphics" : "3D assets",
+              isGraphics ? ImageIcon : Boxes,
+            ],
             ["design", "Design reference", FileText],
             ["history", "Activity & cost", Activity],
           ]
@@ -412,20 +441,42 @@ function ProjectPage() {
           <div className="design-layout">
             <Card className="panel">
               <div className="section-title">
-                <h2>design.md</h2>
+                <div>
+                  <h2>
+                    Design reference · v
+                    {version < 0 ? p.designVersion : version}
+                  </h2>
+                  <p className="muted">
+                    {designChanged
+                      ? "Unsaved draft · not used for generation"
+                      : ready
+                        ? "Approved for new generations"
+                        : "Awaiting approval"}
+                  </p>
+                </div>
                 <Button
                   variant="outline"
                   onClick={() => {
-                    if (!editing) {
-                      setDesign(p.design);
-                      setVersion(p.designVersion);
-                    }
                     setEditing(!editing);
                   }}
                 >
                   {editing ? "Preview" : "Edit design"}
                 </Button>
               </div>
+              <p className="note">
+                Saving a draft requires approval before new generation. Approval
+                applies to future batches; existing batches keep their saved
+                design.
+              </p>
+              {!editing && !!designHeadings.length && (
+                <nav className="design-contents" aria-label="Design sections">
+                  {designHeadings.map((heading) => (
+                    <a key={heading.id} href={`#${heading.id}`}>
+                      {heading.title}
+                    </a>
+                  ))}
+                </nav>
+              )}
               {editing ? (
                 <Textarea
                   className="design-editor"
@@ -436,7 +487,16 @@ function ProjectPage() {
               ) : (
                 <div className="markdown">
                   {design || p.design ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        h2: ({ children }) => (
+                          <h2 id={`design-section-${headingIndex++}`}>
+                            {children}
+                          </h2>
+                        ),
+                      }}
+                    >
                       {design || p.design}
                     </ReactMarkdown>
                   ) : (
@@ -447,14 +507,32 @@ function ProjectPage() {
                   )}
                 </div>
               )}
-              {p.design && (
-                <div className="actions">
+              {p.design && (editing || designChanged || !ready) && (
+                <div className="actions design-actions">
+                  <span>
+                    {designChanged
+                      ? "Unsaved changes"
+                      : "Review this direction before approving"}
+                  </span>
+                  {editing && (
+                    <Button
+                      variant="ghost"
+                      disabled={busy}
+                      onClick={() => {
+                        setDesign(p.design);
+                        setVersion(p.designVersion);
+                        setEditing(false);
+                      }}
+                    >
+                      Discard edits
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
-                    disabled={busy || design.length < 100}
+                    disabled={busy || !designChanged || design.length < 100}
                     onClick={() => save(false)}
                   >
-                    Save draft
+                    Save as draft
                   </Button>
                   <Button
                     variant="default"
@@ -463,7 +541,11 @@ function ProjectPage() {
                     onClick={() => save(true)}
                   >
                     <Check size={17} />
-                    {busy ? "Saving…" : "Save & approve design"}
+                    {busy
+                      ? "Saving…"
+                      : designChanged
+                        ? "Save & approve design"
+                        : "Approve design"}
                   </Button>
                 </div>
               )}
@@ -561,10 +643,8 @@ function ProjectPage() {
           <>
             <div className="collection-heading">
               <div>
-                <div className="eyebrow">MADE FOR THIS WORLD</div>
                 <h2>
-                  Your collection{" "}
-                  <span>{data.models.length + queuedCount}</span>
+                  Collection <span>{data.models.length + queuedCount}</span>
                 </h2>
               </div>
               <Input
@@ -596,42 +676,6 @@ function ProjectPage() {
                 </Button>
               ))}
             </div>
-            {!isGraphics && data.batches
-              .filter((b: any) => b.preview)
-              .map((b: any) => (
-                <Card className="panel collection-preview" key={b.id}>
-                  <div className="section-title">
-                    <h2>Collection studio</h2>
-                    <a href={fileUrl(b.preview.blend)} download>
-                      Download demo scene ↗
-                    </a>
-                  </div>
-                  <div className="collection-renders">
-                    <a
-                      href={fileUrl(b.preview.lineup)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <AssetImage
-                        src={fileUrl(b.preview.lineup)}
-                        alt="Collection at consistent scale"
-                      />
-                      <span>Scale lineup</span>
-                    </a>
-                    <a
-                      href={fileUrl(b.preview.scene)}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <AssetImage
-                        src={fileUrl(b.preview.scene)}
-                        alt="Collection demo scene"
-                      />
-                      <span>Demo scene</span>
-                    </a>
-                  </div>
-                </Card>
-              ))}
             {!data.models.length && !data.batches.length ? (
               <Empty className="empty">
                 <div className="circle">
@@ -693,7 +737,9 @@ function ProjectPage() {
                               src={fileUrl(m.artifacts.image)}
                               alt={m.name}
                             />
-                            <span className="orbit-label">Open full image ↗</span>
+                            <span className="orbit-label">
+                              Open full image ↗
+                            </span>
                           </a>
                         ) : previewModelId === m.id && m.artifacts ? (
                           <Suspense fallback={<ViewerSkeleton />}>
@@ -796,16 +842,21 @@ function ProjectPage() {
                         )}
                         <div className="card-meta">
                           <span>
-                            {m.artifacts && !isGraphics
-                              ? <TriangleCount artifacts={m.artifacts} suffix />
-                              : isGraphics && m.artifacts?.image
-                                ? "PNG"
-                                : m.phase}
+                            {m.artifacts && !isGraphics ? (
+                              <TriangleCount artifacts={m.artifacts} suffix />
+                            ) : isGraphics && m.artifacts?.image ? (
+                              "PNG"
+                            ) : (
+                              m.phase
+                            )}
                           </span>
                           <span>{money(cost)}</span>
                         </div>
                         {isGraphics ? (
-                          <Button variant="outline" onClick={() => setTab("history")}>
+                          <Button
+                            variant="outline"
+                            onClick={() => setTab("history")}
+                          >
                             View generation activity ↗
                           </Button>
                         ) : (
@@ -881,6 +932,46 @@ function ProjectPage() {
                 )}
               </div>
             )}
+            {!isGraphics &&
+              data.batches
+                .filter((b: any) => b.preview)
+                .map((b: any) => (
+                  <details className="panel collection-preview" key={b.id}>
+                    <summary>
+                      Collection studio · scale lineup & demo scene
+                    </summary>
+                    <div className="section-title">
+                      <h3>Presentation renders</h3>
+                      <a href={fileUrl(b.preview.blend)} download>
+                        Download demo scene ↗
+                      </a>
+                    </div>
+                    <div className="collection-renders">
+                      <a
+                        href={fileUrl(b.preview.lineup)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <AssetImage
+                          src={fileUrl(b.preview.lineup)}
+                          alt="Collection at consistent scale"
+                        />
+                        <span>Scale lineup</span>
+                      </a>
+                      <a
+                        href={fileUrl(b.preview.scene)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <AssetImage
+                          src={fileUrl(b.preview.scene)}
+                          alt="Collection demo scene"
+                        />
+                        <span>Demo scene</span>
+                      </a>
+                    </div>
+                  </details>
+                ))}
           </>
         )}
       </Tabs>
@@ -897,8 +988,8 @@ function ProjectPage() {
               What should we create?
             </DialogTitle>
             <DialogDescription className="muted">
-              Agents will follow design v{p.designVersion}. Give them
-              specifics, or let them propose the set.
+              Agents will follow design v{p.designVersion}. Give them specifics,
+              or let them propose the set.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={build}>
@@ -919,7 +1010,13 @@ function ProjectPage() {
               {isGraphics ? (
                 <Label>
                   Canvas
-                  <Select name="imageSize" value={imageSize} onValueChange={(value: typeof imageSize) => setImageSize(value)}>
+                  <Select
+                    name="imageSize"
+                    value={imageSize}
+                    onValueChange={(value: typeof imageSize) =>
+                      setImageSize(value)
+                    }
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
@@ -932,14 +1029,16 @@ function ProjectPage() {
                 </Label>
               ) : (
                 <Label>
-                  Maximum judge rounds
+                  Review rounds per stage
                   <Input
                     name="iterations"
                     type="number"
                     min={0}
                     max={5}
                     value={judgeIterations}
-                    onChange={(event) => setJudgeIterations(event.target.valueAsNumber)}
+                    onChange={(event) =>
+                      setJudgeIterations(event.target.valueAsNumber)
+                    }
                     required
                   />
                 </Label>
@@ -968,7 +1067,7 @@ function ProjectPage() {
                   ) : (
                     <FileText size={16} />
                   )}
-                  {briefing ? "Writing brief…" : "AI generate brief"}
+                  {briefing ? "Writing brief…" : "Draft brief with AI"}
                 </Button>
               </div>
               <Textarea
@@ -989,8 +1088,10 @@ function ProjectPage() {
             )}
             <p className="note">
               {isGraphics
-                ? "Each planned graphic uses the selected canvas through the configured Codex Image API, is saved as a PNG, and is recorded in activity and cost history."
-                : "A visual target comes first, followed by blockout, shape refinement, materials and polish, each with photographs. This sets the maximum judge rounds per stage; geometry must pass before materials. Zero keeps all four passes without judging."}
+                ? "Each graphic is generated on your chosen canvas and saved as a PNG. Usage is recorded in Activity & cost."
+                : judgeIterations === 0
+                  ? "No judging: each model still gets blockout, shape refinement, materials and polish, with photographs. It will finish without a review score."
+                  : `Up to ${judgeIterations} review round${judgeIterations === 1 ? "" : "s"} for geometry, then ${judgeIterations} for materials. Passing ends review early; geometry must pass before materials begin. More rounds can increase time and cost.`}
             </p>
             {error && (
               <Alert variant="destructive" className="error">

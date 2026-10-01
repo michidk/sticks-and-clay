@@ -4,7 +4,6 @@ import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -12,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -33,11 +33,15 @@ import {
   LoaderCircle,
   Image as ImageIcon,
 } from "lucide-react";
-import { request, money, fileUrl } from "../lib/client";
+import { projectState } from "@/lib/project-summary";
+import { request, costSummary, fileUrl } from "../lib/client";
 import { Progress } from "../components/progress";
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 function ProjectsPage() {
   const uploader = useImageUpload();
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("recent");
+  const [statusFilter, setStatusFilter] = useState("all");
   const dialogOpener = useRef<HTMLElement | null>(null);
   const [projects, setProjects] = useState<any[]>([]),
     [loading, setLoading] = useState(true),
@@ -51,6 +55,7 @@ function ProjectsPage() {
     [briefing, setBriefing] = useState(false);
   function newProject(event: React.MouseEvent<HTMLElement>) {
     dialogOpener.current = event.currentTarget;
+    setError("");
     setName("");
     setDescription("");
     setAssetType("model");
@@ -131,8 +136,30 @@ function ProjectsPage() {
       setBusy(false);
     }
   }
+  const visibleProjects = projects
+    .filter(
+      (p) =>
+        (p.name + " " + p.description)
+          .toLowerCase()
+          .includes(query.trim().toLowerCase()) &&
+        (statusFilter === "all" ||
+          (statusFilter === "active"
+            ? p.collection?.active + p.collection?.queued > 0 ||
+              ["queued", "designing"].includes(p.status)
+            : p.collection?.attention > 0 ||
+              ["failed", "review"].includes(p.status))),
+    )
+    .sort((a, b) =>
+      sort === "name"
+        ? a.name.localeCompare(b.name)
+        : +new Date(b.createdAt) - +new Date(a.createdAt),
+    );
   return (
-    <main>
+    <main
+      className={
+        projects.length ? "projects-page has-projects" : "projects-page"
+      }
+    >
       <div className="eyebrow">YOUR CREATIVE WORKSPACE</div>
       <section className="page-heading">
         <div>
@@ -142,8 +169,7 @@ function ProjectsPage() {
             <em>Shape every detail.</em>
           </h1>
           <p className="lede">
-            Turn references into a shared visual language.
-            <br />
+            Turn references into a shared visual language. <br />
             Generate cohesive 3D assets and graphics with your agents.
           </p>
         </div>
@@ -159,9 +185,48 @@ function ProjectsPage() {
             {projects.length}
           </Badge>
         </h2>
-        <span>Every collection starts with a direction.</span>
+        <span>
+          {projects.length
+            ? "Your collections, at a glance."
+            : "Every collection starts with a direction."}
+        </span>
       </div>
-      {error && (
+      {!!projects.length && (
+        <div className="project-list-tools">
+          <Input
+            aria-label="Search projects"
+            placeholder="Find a project…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <Label>
+            Show
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger aria-label="Filter projects">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All projects</SelectItem>
+                <SelectItem value="active">In progress</SelectItem>
+                <SelectItem value="attention">Needs attention</SelectItem>
+              </SelectContent>
+            </Select>
+          </Label>
+          <Label>
+            Sort
+            <Select value={sort} onValueChange={setSort}>
+              <SelectTrigger aria-label="Sort projects">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Newest first</SelectItem>
+                <SelectItem value="name">Name A–Z</SelectItem>
+              </SelectContent>
+            </Select>
+          </Label>
+        </div>
+      )}
+      {error && !creating && (
         <Alert variant="destructive" role="alert" className="error">
           {error}
         </Alert>
@@ -170,85 +235,143 @@ function ProjectsPage() {
         <CardsSkeleton />
       ) : (
         <div className="project-grid">
-          {projects.map((p) => (
-            <Card key={p.id} asChild className="project-card">
-              <Link
-                to="/projects/$projectId"
-                params={{ projectId: p.id }}
-                onClick={
-                  p.status === "draft"
-                    ? (e) => {
-                        dialogOpener.current = e.currentTarget;
-                        e.preventDefault();
-                        setName(p.name);
-                        setDescription(p.description);
-                        setAssetType(p.assetType || "model");
-                        setDraftId(p.id);
-                        uploader.reset(p.references);
-                        setCreating(true);
-                      }
-                    : undefined
-                }
-              >
-                <div
-                  className="project-cover"
-                  style={{ aspectRatio: "16 / 9", height: "auto" }}
+          {visibleProjects.map((p) => {
+            const state = projectState(
+              p.status,
+              p.collection || {
+                total: 0,
+                active: 0,
+                queued: 0,
+                completed: 0,
+                attention: 0,
+              },
+            );
+            return (
+              <Card key={p.id} asChild className="project-card">
+                <Link
+                  to="/projects/$projectId"
+                  params={{ projectId: p.id }}
+                  onClick={
+                    p.status === "draft"
+                      ? (e) => {
+                          dialogOpener.current = e.currentTarget;
+                          e.preventDefault();
+                          setName(p.name);
+                          setDescription(p.description);
+                          setAssetType(p.assetType || "model");
+                          setDraftId(p.id);
+                          uploader.reset(p.references);
+                          setCreating(true);
+                        }
+                      : undefined
+                  }
                 >
-                  {p.thumbnail || p.references[0] ? (
-                    <AssetImage
-                      src={fileUrl(p.thumbnail || p.references[0])}
-                      alt={`${p.name} ${p.thumbnail ? "asset collection" : "reference"}`}
-                      style={p.thumbnail ? { objectFit: "contain" } : undefined}
-                    />
-                  ) : (
-                    <div className="abstract">
-                      <Layers size={68} strokeWidth={0.8} />
-                      <span>STYLE STARTS HERE</span>
-                    </div>
-                  )}
-                  <Badge variant="secondary" className={"badge " + p.status}>
-                    {p.status.replace("_", " ")}
-                  </Badge>
-                  <Badge
-                    variant="secondary"
-                    className="badge asset-type-badge"
+                  <div
+                    className="project-cover"
+                    style={{ aspectRatio: "16 / 9", height: "auto" }}
                   >
-                    {p.assetType === "graphic" ? (
-                      <ImageIcon size={12} />
+                    {p.thumbnail || p.references[0] ? (
+                      <AssetImage
+                        src={fileUrl(p.thumbnail || p.references[0])}
+                        alt={`${p.name} ${p.thumbnail ? "asset collection" : "reference"}`}
+                        style={
+                          p.thumbnail ? { objectFit: "contain" } : undefined
+                        }
+                      />
                     ) : (
-                      <Layers size={12} />
+                      <div className="abstract">
+                        <Layers size={68} strokeWidth={0.8} />
+                        <span>STYLE STARTS HERE</span>
+                      </div>
                     )}
-                    {p.assetType === "graphic" ? "Graphics" : "3D assets"}
-                  </Badge>
-                </div>
-                <div className="project-body">
-                  <h3>
-                    {p.name}
-                    <ArrowUpRight size={19} />
-                  </h3>
-                  <p>
-                    {p.description ||
-                      "A collection inspired by its name and references."}
-                  </p>
-                  {["queued", "designing"].includes(p.status) && (
-                    <Progress value={p.progress} label={p.phase} />
-                  )}
-                  <div className="card-meta">
-                    <span>
-                      {new Date(p.createdAt).toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                      })}
-                    </span>
-                    <span>
-                      {p.usage.tokens.toLocaleString()} tokens ·{" "}
-                      {money(p.usage.cost)}
-                    </span>
+                    <Badge
+                      variant="secondary"
+                      className={"badge " + state.tone}
+                    >
+                      {state.label}
+                    </Badge>
+                    {(p.thumbnail || p.references[0]) && (
+                      <span className="cover-provenance">
+                        {p.thumbnail
+                          ? "Generated collection"
+                          : "Reference image"}
+                      </span>
+                    )}
+                    <Badge
+                      variant="secondary"
+                      className="badge asset-type-badge"
+                    >
+                      {p.assetType === "graphic" ? (
+                        <ImageIcon size={12} />
+                      ) : (
+                        <Layers size={12} />
+                      )}
+                      {p.assetType === "graphic" ? "Graphics" : "3D assets"}
+                    </Badge>
                   </div>
-                </div>
-              </Link>
-            </Card>
-          ))}
+                  <div className="project-body">
+                    <h3>
+                      {p.name}
+                      <ArrowUpRight size={19} />
+                    </h3>
+                    <p>
+                      {p.description ||
+                        "A collection inspired by its name and references."}
+                    </p>
+                    {["queued", "designing"].includes(p.status) && (
+                      <Progress value={p.progress} label={p.phase} />
+                    )}
+                    <div className="project-card-status">
+                      <span>
+                        {p.collection?.total || 0}{" "}
+                        {p.assetType === "graphic"
+                          ? p.collection?.total === 1
+                            ? "graphic"
+                            : "graphics"
+                          : p.collection?.total === 1
+                            ? "model"
+                            : "models"}{" "}
+                        · {p.collection?.completed || 0} completed
+                      </span>
+                      {!!p.collection?.attention && (
+                        <span>{p.collection.attention} need attention</span>
+                      )}
+                      {p.status === "ready" && <span>Design approved</span>}
+                    </div>
+                    <div className="card-meta">
+                      <span>
+                        {new Date(p.createdAt).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                      <span>
+                        Est. {costSummary(p.usage.cost)}
+                        {p.usage.unpriced > 0 && (
+                          <span> · {p.usage.unpriced} not yet priced</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              </Card>
+            );
+          })}
+          {!visibleProjects.length && !!projects.length && (
+            <div className="collection-no-results">
+              <h3>No matching projects</h3>
+              <p>Try another search or filter.</p>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setQuery("");
+                  setStatusFilter("all");
+                }}
+              >
+                Show all projects
+              </Button>
+            </div>
+          )}
           <Button
             variant="ghost"
             size="bare"
@@ -275,6 +398,7 @@ function ProjectsPage() {
         }}
       >
         <DialogContent
+          className="setup-dialog"
           showCloseButton={!busy && !briefing && !uploader.isBusy}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
@@ -287,116 +411,122 @@ function ProjectsPage() {
               Give your collection a direction.
             </DialogTitle>
             <DialogDescription className="muted">
-              Start with a name. Add an optional brief or reference images
-              to guide your design.
+              Start with a name. Add an optional brief or reference images to
+              guide your design.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={create}>
-            <input type="hidden" name="assetType" value={assetType} />
-            <Label>
-              What are you creating?
-              <Select
-                value={assetType}
-                onValueChange={(value) =>
-                  setAssetType(value as "model" | "graphic")
-                }
-                disabled={briefing || Boolean(draftId)}
+          <form onSubmit={create} className="setup-form">
+            <div className="setup-fields">
+              <input type="hidden" name="assetType" value={assetType} />
+              <fieldset
+                className="asset-type-choice"
+                disabled={busy || briefing || Boolean(draftId)}
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="model">3D assets</SelectItem>
-                  <SelectItem value="graphic">Graphics</SelectItem>
-                </SelectContent>
-              </Select>
-            </Label>
-            <Label>
-              Project name
-              <Input
-                name="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={briefing}
-                required
-                maxLength={100}
-                placeholder="e.g. Stonehaven village"
+                <legend>What are you creating?</legend>
+                <div>
+                  {(["model", "graphic"] as const).map((type) => (
+                    <label key={type}>
+                      <input
+                        type="radio"
+                        name="assetTypeChoice"
+                        value={type}
+                        checked={assetType === type}
+                        onChange={() => setAssetType(type)}
+                      />
+                      {type === "model" ? (
+                        <Layers size={20} />
+                      ) : (
+                        <ImageIcon size={20} />
+                      )}
+                      <span>
+                        <strong>
+                          {type === "model" ? "3D assets" : "Graphics"}
+                        </strong>
+                        <small>
+                          {type === "model"
+                            ? "Models & Blender source"
+                            : "Images & illustrations"}
+                        </small>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <Label>
+                Project name
+                <Input
+                  name="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={briefing}
+                  required
+                  maxLength={100}
+                  placeholder="e.g. Stonehaven village"
+                />
+              </Label>
+              <Label>
+                The brief (optional)
+                <Textarea
+                  name="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  disabled={briefing}
+                  maxLength={12000}
+                  rows={4}
+                  placeholder="Add any direction you have, or leave this empty to use the project name and references."
+                />
+              </Label>
+              <PictureUploader
+                images={uploader.images}
+                onFilesAdded={uploader.addFiles}
+                onImportFromUrl={uploader.importFromUrl}
+                onRemove={uploader.remove}
+                disabled={busy || briefing}
+                isBusy={uploader.isBusy}
               />
-            </Label>
-            <Label>
-              The brief (optional)
-              <Textarea
-                name="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                disabled={briefing}
-                maxLength={12000}
-                rows={4}
-                placeholder="Add any direction you have, or leave this empty to use the project name and references."
-              />
-            </Label>
-            <Button
-              variant="outline"
-              type="button"
-              disabled={busy || briefing || uploader.isBusy || !name.trim()}
-              onClick={generateBrief}
-            >
-              {briefing && <LoaderCircle className="spin" size={16} />}
-              {briefing
-                ? description.trim()
-                  ? "Enhancing brief…"
-                  : "Writing brief…"
-                : description.trim()
-                  ? "Enhance with AI"
-                  : "Generate with AI"}
-            </Button>
-            <p className="note">
-              {description.trim()
-                ? "AI will refine your notes using the project name and references. Review the result before continuing."
-                : "AI will draft a brief from the project name and references. You can edit it before continuing."}
-            </p>
-            <PictureUploader
-              images={uploader.images}
-              onFilesAdded={uploader.addFiles}
-              onImportFromUrl={uploader.importFromUrl}
-              onRemove={uploader.remove}
-              disabled={busy || briefing}
-              isBusy={uploader.isBusy}
-            />
-            <Button
-              variant="outline"
-              type="button"
-              className="w-full whitespace-normal h-auto min-h-9"
-              disabled={
-                busy || briefing || uploader.isBusy || !name.trim() ||
-                !uploader.images.length
-              }
-              onClick={generateBrief}
-            >
-              {briefing && <LoaderCircle className="spin shrink-0" size={16} />}
-              {briefing ? "Writing brief…" : "Generate brief from reference images"}
-            </Button>
-            <p className="note">
-              Add reference images and a project name to draft an editable brief.
-              Any notes above will be included.
-            </p>
-            {error && (
-              <Alert variant="destructive" className="error">
-                {error}
-              </Alert>
-            )}
-            <Button
-              variant="default"
-              className="wide"
-              disabled={busy || briefing || uploader.isBusy}
-            >
-              {busy ? (
-                <LoaderCircle className="spin" size={18} />
-              ) : (
-                <Plus size={18} />
-              )}{" "}
-              {busy ? "Creating project…" : "Create project & generate design"}
-            </Button>
+              <Button
+                variant="outline"
+                type="button"
+                className="w-full whitespace-normal h-auto min-h-9"
+                disabled={busy || briefing || uploader.isBusy || !name.trim()}
+                onClick={generateBrief}
+              >
+                {briefing && (
+                  <LoaderCircle className="spin shrink-0" size={16} />
+                )}
+                {briefing
+                  ? "Writing brief…"
+                  : description.trim()
+                    ? "Refine brief with AI"
+                    : "Draft brief with AI"}
+              </Button>
+              <p className="note">
+                {name.trim()
+                  ? `Uses your name${uploader.images.length ? `, ${uploader.images.length} reference image${uploader.images.length === 1 ? "" : "s"}` : ""} and any notes. Review and edit the result before continuing.`
+                  : "Enter a project name to draft a brief. References and notes are optional."}
+              </p>
+              {error && (
+                <Alert variant="destructive" className="error">
+                  {error}
+                </Alert>
+              )}
+            </div>
+            <div className="setup-footer">
+              <Button
+                variant="default"
+                className="wide"
+                disabled={busy || briefing || uploader.isBusy}
+              >
+                {busy ? (
+                  <LoaderCircle className="spin" size={18} />
+                ) : (
+                  <Plus size={18} />
+                )}{" "}
+                {busy
+                  ? "Creating project…"
+                  : "Create project & generate design"}
+              </Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

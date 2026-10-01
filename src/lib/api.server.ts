@@ -1,4 +1,5 @@
 import { recordedAnalysis } from "../modules/model-analysis/report";
+import { collectionSummary } from "./project-summary";
 import { databaseErrorResponse } from "./database-error";
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -123,6 +124,7 @@ export async function api(request: Request) {
                     ? "Plan collection"
                     : "Render collection"),
               projectId: project?.id,
+              modelId: model?.id,
               projectName: project?.name,
               phase:
                 model?.phase ||
@@ -260,9 +262,16 @@ export async function api(request: Request) {
         .select()
         .from(models)
         .orderBy(desc(models.createdAt));
+      const collections = await db
+        .select({ id: batches.id, projectId: batches.projectId, status: batches.status, count: batches.count })
+        .from(batches);
       return reply({
         projects: list.map((p) => ({
           ...p,
+          collection: collectionSummary(
+            generated.filter((m) => m.projectId === p.id),
+            collections.filter((b) => b.projectId === p.id),
+          ),
           thumbnail:
             p.assetType === "graphic"
               ? generated.find(
@@ -277,8 +286,9 @@ export async function api(request: Request) {
               (a, r) => ({
                 tokens: a.tokens + r.input + r.output,
                 cost: a.cost + (r.cost || 0),
+                unpriced: a.unpriced + (r.cost === null ? 1 : 0),
               }),
-              { tokens: 0, cost: 0 },
+              { tokens: 0, cost: 0, unpriced: 0 },
             ),
         })),
       });

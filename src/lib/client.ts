@@ -21,3 +21,12 @@ export const money = (value: number) =>
     currency: "USD",
     minimumFractionDigits: 4,
   }).format(value);
+export const costSummary = (value: number) =>
+  value > 0 && value < 0.01
+    ? "<$0.01"
+    : new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(value);

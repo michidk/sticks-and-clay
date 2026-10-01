@@ -23,6 +23,7 @@ import {
   Rotate3D,
   Sun,
   Footprints,
+  SlidersHorizontal,
 } from "lucide-react";
 import {
   Component,
@@ -119,6 +120,13 @@ export function ModelViewer({
   onLoad,
   onError,
 }: ModelViewerProps) {
+  const [touchControls, setTouchControls] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(pointer: coarse), (max-width: 600px)");
+    const update = () => setTouchControls(query.matches);
+    update(); query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   const [mode, setMode] = useState<ViewerMode>(requestedMode ?? "orbit");
   const viewerKey = useId();
   const [lighting, setLighting] = useState<ViewerLighting>(requestedLighting ?? "day");
@@ -285,7 +293,7 @@ export function ModelViewer({
         <Canvas
           key={mode === "split" ? "split-front" : "single-view"}
           dpr={[1, 2]}
-          camera={{ position: mode === "split" ? [0, 0, 3] : [2.6, 1.9, 2.6], fov: 42, near: 0.01, far: 1000 }}
+          camera={{ position: mode === "split" ? [0, 0, 3] : [2.6, 1.9, -2.6], fov: 42, near: 0.01, far: 1000 }}
           gl={{ antialias: true, alpha: false, preserveDrawingBuffer: showUi, powerPreference: "high-performance" }}
           onCreated={({ gl }) => { canvasRef.current = gl.domElement; }}
           style={{ cursor: mode === "firstPerson" ? "crosshair" : "move" }}
@@ -353,6 +361,16 @@ export function ModelViewer({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            {touchControls ? <DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" className="viewer-mobile-tools" aria-label="View options"><SlidersHorizontal /> View</Button></DropdownMenuTrigger><DropdownMenuContent align="start" className="viewer-mobile-menu">
+              <DropdownMenuItem onSelect={() => changeMode("orbit")}>Orbit camera {mode === "orbit" && <Check />}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => changeMode("split")}>Four-view split {mode === "split" && <Check />}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => changeMode("firstPerson")}>Fly camera (keyboard) {mode === "firstPerson" && <Check />}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => changeLighting(lighting === "day" ? "night" : "day")}>{lighting === "day" ? "Switch to night" : "Switch to day"}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setGrid(!grid)}>{grid ? "Hide grid" : "Show grid"}</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setResetToken((n) => n + 1)}>Reset view</DropdownMenuItem>
+              <DropdownMenuItem disabled={!loaded || viewerError || (mode === "split" && splitReady.size !== splitViews.length)} onSelect={() => void capture("copy")}>Copy image</DropdownMenuItem>
+              <DropdownMenuItem disabled={!loaded || viewerError || (mode === "split" && splitReady.size !== splitViews.length)} onSelect={() => void capture("download")}>Download image</DropdownMenuItem>
+            </DropdownMenuContent></DropdownMenu> : <>
             <div className="viewer-toolbar-group" aria-label="Interaction mode">
               <ViewerButton icon={<Rotate3D />} label="Orbit camera" active={mode === "orbit"} onClick={() => changeMode("orbit")} />
               <ViewerButton icon={<LayoutGrid />} label="Four-view split" active={mode === "split"} onClick={() => changeMode("split")} />
@@ -375,13 +393,14 @@ export function ModelViewer({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            </>}
           </div>
           <div className="viewer-help" role={captureFeedback?.error ? "alert" : "status"}>
             {captureFeedback?.message ?? (mode === "firstPerson"
               ? pointerLockAvailable
                 ? locked ? "WASD to fly · Space up · Shift down · Esc to release" : "Click scene to look · WASD to fly · Space / Shift vertically"
                 : "Drag to look · WASD to fly · Space / Shift vertically"
-              : mode === "split" ? "Front · Right · Back · Left — drag any view to orbit" : "Drag to orbit · Scroll to zoom")}
+              : mode === "split" ? "Front · Right · Back · Left — drag any view to orbit" : touchControls ? "Drag to orbit · Pinch to zoom" : "Drag to orbit · Scroll to zoom")}
           </div>
           <Button type="button" size="icon-sm" variant="ghost" className="viewer-fullscreen" aria-label={isFullscreen || isExpanded ? "Exit fullscreen" : "Enter fullscreen"} title={isFullscreen || isExpanded ? "Exit fullscreen" : "Enter fullscreen"} onClick={() => void toggleFullscreen()}>
             {isFullscreen || isExpanded ? <Minimize2 /> : <Maximize2 />}
@@ -464,7 +483,7 @@ function FitOnRequest({ token, face }: { token: number; face?: ViewFace }) {
     const frame = requestAnimationFrame(() => {
       bounds.refresh();
       const { center, distance } = bounds.getSize();
-      const vector = face ? faceVector(face, face) : [2.6, 1.9, 2.6];
+      const vector = face ? faceVector(face, face) : [2.6, 1.9, -2.6];
       const scale = distance / Math.hypot(...vector);
       bounds.moveTo([
         center.x + vector[0] * scale,

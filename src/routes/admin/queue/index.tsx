@@ -83,7 +83,8 @@ function QueuePage() {
     ["running", "cancelling"].includes(j.status),
   );
   const queued = jobs.filter((j) => j.status === "queued");
-  const history = jobs.filter((j) => !active.includes(j));
+  const attention = jobs.filter((j) => j.status === "failed");
+  const history = jobs.filter((j) => !active.includes(j) && j.status !== "failed");
   const summary = [
     { label: "In progress", value: running.length, tone: "running", icon: Activity },
     { label: "Waiting", value: queued.length, tone: "warning", icon: Clock3 },
@@ -177,6 +178,7 @@ function QueuePage() {
       </p>
       {!loading && (
         <>
+          {!!attention.length && <QueueSection title="Needs attention" description="Inspect failed work and choose how to recover it." jobs={attention} busy={busy} onAction={cancel} empty="No failed jobs." />}
           <QueueSection
             title="Active queue"
             description={`${active.length} ${active.length === 1 ? "job" : "jobs"} in progress or waiting`}

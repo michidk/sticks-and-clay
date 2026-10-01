@@ -23,15 +23,13 @@ export type QueueJob = {
   error?: string | null;
   name: string;
   projectId?: string;
+  modelId?: string;
   projectName?: string;
   phase?: string;
   progress?: number;
 };
 
-const kindDetails: Record<
-  string,
-  { label: string; icon: typeof Box }
-> = {
+const kindDetails: Record<string, { label: string; icon: typeof Box }> = {
   model: { label: "Model build", icon: Box },
   plan: { label: "Collection plan", icon: ListChecks },
   demo: { label: "Collection render", icon: Clapperboard },
@@ -107,10 +105,46 @@ export function QueueJobCard({
           </div>
         )}
 
-        {job.error && <p className="queue-job-error">{job.error}</p>}
+        {job.status === "failed" && (
+          <div className="queue-failure-guidance">
+            <p>
+              {/timeout|timed out/i.test(job.error || "")
+                ? "This job exceeded its time limit. Inspect its saved progress before resuming."
+                : "This job stopped before finishing. Inspect its saved progress and error details to choose the next step."}
+            </p>
+            {job.projectId &&
+              (job.modelId ? (
+                <Button variant="outline" asChild>
+                  <Link
+                    to="/projects/$projectId/models/$modelId"
+                    params={{ projectId: job.projectId, modelId: job.modelId }}
+                    search={{ view: "3d", section: "activity" }}
+                  >
+                    Inspect model & recovery
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" asChild>
+                  <Link
+                    to="/projects/$projectId"
+                    params={{ projectId: job.projectId }}
+                  >
+                    Open project & recovery
+                  </Link>
+                </Button>
+              ))}
+          </div>
+        )}
+        {job.error && (
+          <details className="queue-job-error">
+            <summary>Error details</summary>
+            <p>{job.error}</p>
+          </details>
+        )}
       </div>
 
-      {(canCancel || (job.kind === "project-photo" && job.status === "failed")) && (
+      {(canCancel ||
+        (job.kind === "project-photo" && job.status === "failed")) && (
         <div className="queue-job-actions">
           {job.kind === "project-photo" && job.status === "failed" ? (
             <Button

@@ -33,7 +33,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { LoadingRegion } from "@/components/loading";
 import { TriangleCount } from "@/components/triangle-count";
-import { request, json, fileUrl, money } from "@/lib/client";
+import { request, json, fileUrl, costSummary } from "@/lib/client";
 import { History } from "../../-components/history";
 import { ModelPipeline } from "./-components/pipeline";
 import { ModelMedia } from "./-components/media";
@@ -267,20 +267,6 @@ function ModelPage() {
           </AlertDescription>
         </Alert>
       )}
-      <ModelPipeline
-        key={model.id}
-        model={model}
-        runs={runs}
-        versions={versions}
-        onInspect={(version, view, section) => {
-          void updateSearch({ version, view, section });
-          document
-            .getElementById(
-              section === "activity" ? "model-detail-notes" : "model-preview",
-            )
-            ?.scrollIntoView({ block: "start" });
-        }}
-      />
       <div id="model-preview" className="model-detail-layout">
         <section className="model-detail-stage" aria-label="Model preview">
           <Tabs
@@ -436,11 +422,11 @@ function ModelPage() {
           </Card>
           <div className="model-detail-cost">
             <span>Model total estimate</span>
-            <strong>{money(cost)}</strong>
+            <strong>{costSummary(cost)}</strong>
             <small>
               All attempts · {versions.length} build
               {versions.length === 1 ? "" : "s"}
-              {unpriced ? ` · ${unpriced} request(s) awaiting cost` : ""}
+              {unpriced ? ` · ${unpriced} request${unpriced === 1 ? "" : "s"} not yet priced` : ""}
             </small>
           </div>
           {model.error && (
@@ -456,6 +442,20 @@ function ModelPage() {
           )}
         </aside>
       </div>
+      <ModelPipeline
+        key={model.id}
+        model={model}
+        runs={runs}
+        versions={versions}
+        onInspect={(version, view, section) => {
+          void updateSearch({ version, view, section });
+          document
+            .getElementById(
+              section === "activity" ? "model-detail-notes" : "model-preview",
+            )
+            ?.scrollIntoView({ block: "start" });
+        }}
+      />
       <section id="model-detail-notes" className="model-detail-notes">
         <Tabs
           value={search.section}
@@ -491,7 +491,7 @@ function ModelPage() {
             className="model-detail-note-content"
           >
             {search.section === "review" && (
-              <ReviewNotes review={selected.feedback} />
+              <ReviewNotes review={selected.feedback} renders={artifacts?.renders} />
             )}
             {search.section === "checks" && (
               <ModelChecks

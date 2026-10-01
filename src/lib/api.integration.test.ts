@@ -225,3 +225,24 @@ integration("graphic projects persist their type and skip 3D judge settings", as
     await db.delete(projects).where(eq(projects.id, id));
   }
 });
+
+
+integration("project cards report planned and generated work; queue links identify the failed model", async () => {
+  const { batches, models, jobs } = await import("../db/schema");
+  const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
+  await db.insert(projects).values({ id: projectId, name: "UI summary fixture", description: "", status: "ready" });
+  try {
+    await db.insert(batches).values({ id: batchId, projectId, prompt: "Test", count: 3, judgeIterations: 0, design: "Test", designVersion: 1, status: "planning" });
+    await db.insert(models).values({ id: modelId, projectId, batchId, name: "Failed fixture", prompt: "Test", status: "failed" });
+    await db.insert(jobs).values({ id: jobId, targetId: modelId, kind: "model", status: "failed" });
+    const list = await (await api(new Request("http://localhost/api/projects"))).json() as any;
+    expect(list.projects.find((p: any) => p.id === projectId).collection).toEqual({ total: 3, queued: 0, active: 2, completed: 0, attention: 1 });
+    const queue = await (await api(new Request("http://localhost/api/queue"))).json() as any;
+    expect(queue.jobs.find((job: any) => job.id === jobId)).toMatchObject({ projectId, modelId, status: "failed" });
+  } finally {
+    await db.delete(jobs).where(eq(jobs.id, jobId));
+    await db.delete(models).where(eq(models.projectId, projectId));
+    await db.delete(batches).where(eq(batches.projectId, projectId));
+    await db.delete(projects).where(eq(projects.id, projectId));
+  }
+});
