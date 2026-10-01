@@ -61,11 +61,6 @@ export async function updateRuntimeSettings(input: unknown, path = RUNTIME_SETTI
     ...current,
     timeouts: { ...current.timeouts, ...patch.timeouts },
     queue: { ...current.queue, ...patch.queue },
-    pricing: {
-      defaultText: { ...current.pricing.defaultText, ...patch.pricing?.defaultText },
-      astra: { ...current.pricing.astra, ...patch.pricing?.astra },
-      image: { ...current.pricing.image, ...patch.pricing?.image },
-    },
     agents: mergeOverrides(current.agents, patch.agents),
     imageAgents: mergeOverrides(current.imageAgents, patch.imageAgents),
     generationDefaults: { ...current.generationDefaults, ...patch.generationDefaults },

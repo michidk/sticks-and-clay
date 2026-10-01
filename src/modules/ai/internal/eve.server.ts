@@ -41,7 +41,7 @@ export async function agent<T>(
     : `agent:${args.role}:${args.iteration || 0}`;
   const profile = await textRoleProfile(args.role);
   const agentModel = profile.model;
-  const rates = pricingSnapshot(agentModel, profile.settings);
+  const rates = pricingSnapshot(agentModel);
   const savedId = jobContext.getStore()?.checkpoint[key];
   const [saved] = savedId
     ? await db.select().from(runs).where(eq(runs.id, savedId))
@@ -70,6 +70,7 @@ export async function agent<T>(
   let inputTokens = 0,
     outputTokens = 0,
     cachedTokens = 0,
+    cacheWriteTokens = 0,
     reportedSteps = 0,
     estimatedSteps = 0,
     output = "",
@@ -82,22 +83,28 @@ export async function agent<T>(
     modelStarted = false,
     stepActive = false;
   let estimatedCost = 0,
+    costAvailable = !runRates.unavailable,
     accountedInput = 0,
     accountedOutput = 0,
-    accountedCached = 0;
+    accountedCached = 0,
+    accountedCacheWrite = 0;
   let signal: AbortSignal | undefined;
   const saveUsage = () => {
     // Accumulate per-step estimates: the long-context tier is per request, not per session total.
     if (inputTokens !== accountedInput || outputTokens !== accountedOutput) {
-      estimatedCost += price(
+      const stepCost = price(
         inputTokens - accountedInput,
         outputTokens - accountedOutput,
         cachedTokens - accountedCached,
         runRates,
+        cacheWriteTokens - accountedCacheWrite,
       );
+      if (stepCost === null) costAvailable = false;
+      else estimatedCost += stepCost;
       accountedInput = inputTokens;
       accountedOutput = outputTokens;
       accountedCached = cachedTokens;
+      accountedCacheWrite = cacheWriteTokens;
     }
     return db
       .update(runs)
@@ -105,7 +112,8 @@ export async function agent<T>(
         inputTokens,
         outputTokens,
         cachedTokens,
-        estimatedCost: reportedSteps + estimatedSteps ? estimatedCost : null,
+        cacheWriteTokens,
+        estimatedCost: reportedSteps + estimatedSteps && costAvailable ? estimatedCost : null,
         usageSource: estimatedSteps
           ? reportedSteps
             ? "mixed"
@@ -238,6 +246,7 @@ export async function agent<T>(
           inputTokens += usage.inputTokens || 0;
           outputTokens += usage.outputTokens || 0;
           cachedTokens += usage.cacheReadTokens || 0;
+          cacheWriteTokens += usage.cacheWriteTokens || 0;
           reportedSteps++;
         } else {
           inputTokens += stepInputEstimate;
@@ -355,6 +364,7 @@ export async function agent<T>(
             inputTokens: 0,
             outputTokens: 0,
             cachedTokens: 0,
+            cacheWriteTokens: 0,
             usageSource: "not_started",
             estimatedCost: 0,
           })

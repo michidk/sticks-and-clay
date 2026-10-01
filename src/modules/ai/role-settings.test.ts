@@ -63,13 +63,15 @@ test("Astra long context tier applies per model call", () => {
   const rates = {
     input: 10,
     cached: 1,
+    cacheWrite: 12.5,
     output: 50,
     longContextThreshold: 272000,
     longContextInputMultiplier: 2,
     longContextOutputMultiplier: 1.5,
   };
-  expect(price(300000, 1000, 100000, rates)).toBeCloseTo(4.275);
+  expect(price(300000, 1000, 100000, rates)!).toBeCloseTo(4.275);
   expect(
-    price(200000, 1000, 0, rates) + price(200000, 1000, 0, rates),
+    price(200000, 1000, 0, rates)! + price(200000, 1000, 0, rates)!,
   ).toBeCloseTo(4.1);
+  expect(price(1000, 0, 0, rates, 1000)!).toBeCloseTo(0.0125);
 });

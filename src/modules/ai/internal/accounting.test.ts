@@ -1,21 +1,22 @@
 import { expect, test } from "bun:test";
-import { runtimeSettingsDefaults } from "../../../lib/runtime-settings";
-import { pricingSnapshot } from "./accounting.server";
+import { imagePrice, imagePricingSnapshot, pricingSnapshot } from "./accounting.server";
 
-test("pricing snapshots use the effective model tier without mutating defaults", () => {
-  const settings = runtimeSettingsDefaults();
-  settings.pricing.defaultText = {
-    input: 3,
-    cached: 0.3,
-    output: 12,
-    source: "Admin assumption",
-  };
-  settings.pricing.astra = {
-    input: 11,
-    cached: 1.1,
-    output: 55,
-    source: "Admin Astra assumption",
-  };
-  expect(pricingSnapshot("custom-model", settings)).toEqual(settings.pricing.defaultText);
-  expect(pricingSnapshot("gpt-6-astra", settings)).toEqual(settings.pricing.astra);
+test("pricing snapshots are selected by canonical model id", () => {
+  expect(pricingSnapshot("openai/gpt-6-sol")).toMatchObject({
+    input: 2, cached: 0.2, cacheWrite: 2.5, output: 10,
+  });
+  expect(pricingSnapshot("gpt-6-astra")).toMatchObject({
+    input: 10, cached: 1, cacheWrite: 12.5, output: 50,
+  });
+  expect(pricingSnapshot("custom-model")).toMatchObject({ unavailable: true });
+});
+
+test("image pricing uses the provider's text and image token split", () => {
+  const rates = imagePricingSnapshot("gpt-image-2");
+  expect(imagePrice({
+    input_tokens: 150,
+    output_tokens: 20,
+    input_tokens_details: { text_tokens: 100, image_tokens: 50 },
+    output_tokens_details: { image_tokens: 20 },
+  }, rates)).toBeCloseTo((100 * 5 + 50 * 8 + 20 * 30) / 1e6);
 });

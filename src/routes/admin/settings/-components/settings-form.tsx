@@ -47,7 +47,6 @@ export function SettingsForm() {
         "settings",
         json({
           timeouts: settings.timeouts,
-          pricing: settings.pricing,
           generationDefaults: settings.generationDefaults,
         }, "PATCH"),
       );
@@ -93,62 +92,6 @@ export function SettingsForm() {
                 onChange={(event) => setTimeout("blenderSeconds", Number(event.target.value) * 60)} />
             </Label>
           </div>
-        </Card>
-        <Card className="panel settings-section">
-          <div className="settings-section-heading">
-            <div><span className="eyebrow">Estimates</span><h2>Pricing assumptions</h2></div>
-            <p>USD per million tokens. Every new run snapshots the effective rates.</p>
-          </div>
-          {(["defaultText", "astra"] as const).map((tier) => (
-            <fieldset className="pricing-row" key={tier}>
-              <legend>{tier === "astra" ? "Astra models" : "Default text models"}</legend>
-              {(["input", "cached", "output"] as const).map((key) => (
-                <Label key={key}>{key[0].toUpperCase() + key.slice(1)}
-                  <Input type="number" min="0" step="0.01" required
-                    value={settings.pricing[tier][key]}
-                    onChange={(event) => setSettings({
-                      ...settings,
-                      pricing: { ...settings.pricing, [tier]: {
-                        ...settings.pricing[tier], [key]: Number(event.target.value),
-                      }},
-                    })} />
-                </Label>
-              ))}
-              <Label className="pricing-source">Source note
-                <Input maxLength={300} required value={settings.pricing[tier].source}
-                  onChange={(event) => setSettings({
-                    ...settings,
-                    pricing: { ...settings.pricing, [tier]: {
-                      ...settings.pricing[tier], source: event.target.value,
-                    }},
-                  })} />
-              </Label>
-            </fieldset>
-          ))}
-          <fieldset className="pricing-row">
-            <legend>Image tokens</legend>
-            {(["input", "output"] as const).map((key) => (
-              <Label key={key}>{key[0].toUpperCase() + key.slice(1)}
-                <Input type="number" min="0" step="0.01" required
-                  value={settings.pricing.image[key]}
-                  onChange={(event) => setSettings({
-                    ...settings,
-                    pricing: { ...settings.pricing, image: {
-                      ...settings.pricing.image, [key]: Number(event.target.value),
-                    }},
-                  })} />
-              </Label>
-            ))}
-            <Label className="pricing-source">Source note
-              <Input maxLength={300} required value={settings.pricing.image.source}
-                onChange={(event) => setSettings({
-                  ...settings,
-                  pricing: { ...settings.pricing, image: {
-                    ...settings.pricing.image, source: event.target.value,
-                  }},
-                })} />
-            </Label>
-          </fieldset>
         </Card>
         <Card className="panel settings-section">
           <div className="settings-section-heading">

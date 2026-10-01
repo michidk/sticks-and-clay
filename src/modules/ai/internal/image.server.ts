@@ -11,6 +11,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../../db/client";
 import { runs, events } from "../../../db/schema";
 import { imageRoleProfile } from "../config.server";
+import { imagePrice, imagePricingSnapshot } from "./accounting.server";
 import {
   DATA,
   filePath,
@@ -103,14 +104,7 @@ export async function imageRequest(
   const id = crypto.randomUUID();
   // Interrupted requests can still finish at the provider; never share their output file.
   const filename = `${args.name}-${digest}-${id}.png`;
-  const rates = {
-    input: profile.settings.pricing.image.input,
-    cached: 0,
-    output: profile.settings.pricing.image.output,
-    source: profile.settings.pricing.image.source,
-  };
-  if ([rates.input, rates.output].some((n) => !Number.isFinite(n) || n < 0))
-    throw new Error("Invalid image rates");
+  const rates = imagePricingSnapshot(profile.model);
   await db.insert(runs).values({
     id,
     projectId: args.projectId,
@@ -201,10 +195,7 @@ export async function imageRequest(
           inputTokens: input,
           outputTokens: output,
           usageSource: "reported",
-          estimatedCost:
-            rates.input > 0 && rates.output > 0
-              ? (input * rates.input + output * rates.output) / 1e6
-              : null,
+          estimatedCost: imagePrice(usage, rates),
         })
         .where(eq(runs.id, id));
     }

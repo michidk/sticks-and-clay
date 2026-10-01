@@ -41,7 +41,7 @@ export async function draftBrief(args: RunInput) {
   const id = crypto.randomUUID(),
     system = await readFile(`prompts/${roles[args.role].prompt}.md`, "utf8");
   const model = profile.model;
-  const rates = pricingSnapshot(model, profile.settings);
+  const rates = pricingSnapshot(model);
   await recordRun(args, {
     id,
     engine: "tanstack",
@@ -62,6 +62,7 @@ export async function draftBrief(args: RunInput) {
         (args.images?.length || 0) * 1000;
     const out = usage?.completionTokens ?? Math.ceil(output.length / 4);
     const cached = usage?.promptTokensDetails?.cachedTokens || 0;
+    const cacheWrite = usage?.promptTokensDetails?.cacheWriteTokens || 0;
     await db
       .update(runs)
       .set({
@@ -69,8 +70,9 @@ export async function draftBrief(args: RunInput) {
         inputTokens: input,
         outputTokens: out,
         cachedTokens: cached,
+        cacheWriteTokens: cacheWrite,
         usageSource: usage ? "reported" : "estimated",
-        estimatedCost: price(input, out, cached, rates),
+        estimatedCost: price(input, out, cached, rates, cacheWrite),
       })
       .where(eq(runs.id, id));
   };
@@ -113,6 +115,9 @@ export async function draftBrief(args: RunInput) {
                 cachedTokens:
                   (usage?.promptTokensDetails?.cachedTokens || 0) +
                   (next.promptTokensDetails?.cachedTokens || 0),
+                cacheWriteTokens:
+                  (usage?.promptTokensDetails?.cacheWriteTokens || 0) +
+                  (next.promptTokensDetails?.cacheWriteTokens || 0),
               },
             };
             await saveUsage();

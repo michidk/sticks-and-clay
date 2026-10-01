@@ -1,6 +1,8 @@
 export type ImageUsage = {
   input_tokens: number;
   output_tokens: number;
+  input_tokens_details?: { text_tokens?: number; image_tokens?: number };
+  output_tokens_details?: { text_tokens?: number; image_tokens?: number };
   [key: string]: unknown;
 };
 export type ImageApiResult = {

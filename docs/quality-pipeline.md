@@ -17,7 +17,7 @@ The text design wins if the generated image contradicts it. Triangle counts are 
 
 Eve Responses calls explicitly use `store: false`: the SDK serializes local assistant content and function calls instead of server-side item references. Reasoning history is omitted for gateway compatibility; function `call_id` identity remains intact. A regression test exercises the actual provider serialization.
 
-Image requests are one-shot calls, not Eve sessions. Completed requests reuse their receipt/run; interrupted requests are recorded as failed and retried separately. Cancellation stops the image subprocess. Image API token usage is stored verbatim and priced only when image-token rates are configured; missing rates remain unavailable, never a fabricated zero-dollar cost.
+Image requests are one-shot calls, not Eve sessions. Completed requests reuse their receipt/run; interrupted requests are recorded as failed and retried separately. Cancellation stops the image subprocess. Image API token usage is stored verbatim and priced from the code-owned entry for the exact model, including separate text-input, image-input and image-output token classes. Unknown models remain unavailable, never a fabricated zero-dollar cost.
 
 The renderer puts its ground plane at Z=0, matching normalized asset contact. PostgreSQL uses one pool per process across development reloads.
 

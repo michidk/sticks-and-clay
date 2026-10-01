@@ -91,8 +91,13 @@ export class LocalStorageProvider implements StorageProvider {
         return;
       }
       for (const entry of await readdir(directory, { withFileTypes: true })) {
-        if (entry.isFile() || entry.isDirectory())
+        if (!entry.isFile() && !entry.isDirectory()) continue;
+        try {
           await walk(resolve(directory, entry.name));
+        } catch (error) {
+          const code = (error as NodeJS.ErrnoException).code;
+          if (code !== "EACCES" && code !== "EPERM") throw error;
+        }
       }
     };
     try {

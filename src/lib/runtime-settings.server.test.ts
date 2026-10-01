@@ -39,7 +39,7 @@ test("legacy timeout files are normalized without losing defaults", async () => 
     blenderBuildTimeoutSeconds: 480,
   }));
   expect(await loadRuntimeSettings(path)).toMatchObject({
-    version: 2,
+    version: 3,
     timeouts: { agentMs: 900_000, builderMs: 2_400_000, blenderSeconds: 480 },
     queue: { paused: false, concurrency: 2 },
     generationDefaults: { count: 1, judgeIterations: 2, imageSize: "1024x1024" },

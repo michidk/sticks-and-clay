@@ -71,6 +71,13 @@
       "when": 1790874178233,
       "tag": "0009_unknown_ego",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790887352956,
+      "tag": "0010_striped_guardsmen",
+      "breakpoints": true
     }
   ]
 }

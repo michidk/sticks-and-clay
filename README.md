@@ -34,7 +34,7 @@ Progress represents workflow milestones, not a predicted wall-clock percentage. 
 
 Requirements: Bun, Node 24+, Python 3.11+, Blender on PATH, and Docker for PostgreSQL.
 
-Before starting services, copy `.env.example` to `.env` and configure the database and model provider privately. On machines without Codex provider configuration, set `OPENAI_API_KEY` and `OPENAI_BASE_URL` in the service environment. Review the model and estimated pricing settings for your provider.
+Before starting services, copy `.env.example` to `.env` and configure the database and model provider privately. On machines without Codex provider configuration, set `OPENAI_API_KEY` and `OPENAI_BASE_URL` in the service environment. Model pricing is code-owned and selected from the exact model ID used by each run.
 
 ```sh
 bun install
@@ -103,12 +103,15 @@ Each run stores the role, prompt content/hash, concrete input, image keys, struc
 Provider `costUsd` is not used. Estimates are calculated as:
 
 ```
-((input - cache_read) × input_rate + cache_read × cached_rate + output × output_rate) / 1,000,000
+((input - cache_read - cache_write) × input_rate
+ + cache_read × cached_rate
+ + cache_write × cache_write_rate
+ + output × output_rate) / 1,000,000
 ```
 
-Configured default assumptions are $2/M input, $0.20/M cached input and $10/M output for the configured GPT-6 Sol model. Verify/set current rates when selecting a model; these are estimates, not invoiced charges. Stored rates preserve reproducibility when configuration changes later.
+The code-owned catalog follows official OpenAI standard rates for [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol), [GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra), and [GPT Image 2](https://developers.openai.com/api/docs/pricing#image-generation). It includes cache-write rates, per-request long-context multipliers, and GPT Image 2's separate text-input, image-input, and image-output token rates. Provider-prefixed model IDs such as `openai/gpt-6-astra` resolve to the same catalog entry. Unknown model overrides remain usable but are explicitly unpriced instead of inheriting another model's rates. These are estimates, not invoiced charges, and every run stores its resolved rate snapshot.
 
-If step usage is absent/zero, the adapter estimates text at four characters per token, adds 1,000 tokens per image per step, and approximates tool context. Records distinguish reported, estimated, mixed, pending and not-started usage. Hidden reasoning and image tokenization can differ from these assumptions. A rejected request before model execution has zero model tokens. Local Blender CPU time has no model-token charge; elapsed run time is recorded separately. Imagegen requests store reported image API tokens; cost remains unavailable unless image-token pricing is configured.
+If step usage is absent/zero, the adapter estimates text at four characters per token, adds 1,000 tokens per image per step, and approximates tool context. Records distinguish reported, estimated, mixed, pending and not-started usage. Hidden reasoning and image tokenization can differ from these assumptions. A rejected request before model execution has zero model tokens. Local Blender CPU time has no model-token charge; elapsed run time is recorded separately. Imagegen requests store the reported token-class split and use the matching model catalog entry.
 
 ## Verification
 
@@ -137,7 +140,7 @@ Project/model brief buttons call TanStack AI directly. They create no Eve sessio
 
 The header has one Admin entry. Its responsive subnavigation opens Queue, Agents, Diagnostics and Settings. Queue lists model generation, planning and collection-render jobs, with per-job cancellation and Abort pending queue. Operators can pause future claims and choose one to four concurrent jobs; work already claimed continues normally. Running cancellations are cooperative: the UI shows Cancelling until the worker stops. Cancelled jobs are not resumed automatically. Model iteration history lives in each model viewer; previous GLBs, Blender files, renders and judge reviews stay accessible.
 
-Diagnostics reports redacted database, worker, Eve, Blender and storage health plus recent failed job kinds. It deliberately omits credentials, service URLs, process IDs, executable paths and filesystem paths. Settings controls generation defaults, the full set of operation timeouts and estimated pricing assumptions. Changes are validated, written atomically to `data/runtime-settings.json` and applied to new work without a restart.
+Diagnostics reports redacted database, worker, Eve, Blender and storage health plus recent failed job kinds. It deliberately omits credentials, service URLs, process IDs, executable paths and filesystem paths. Settings controls generation defaults and the full set of operation timeouts. Changes are validated, written atomically to `data/runtime-settings.json` and applied to new work without a restart. Pricing is repository-managed rather than operator-configurable.
 
 ## AI module boundaries
 
@@ -145,9 +148,9 @@ Use `src/modules/ai/index.server.ts` (`runRole`, `roleInput`) for all AI work. R
 
 ## Role settings and generated textures
 
-`/admin/agents` displays each role's engine and read-only prompt source, and lets operators override its model and effort or image quality for new requests. Code still owns engines, schemas and prompts. Builder, photographer and judge default to `gpt-6-astra`, medium effort; other text roles default to `gpt-6-sol`, medium effort. Each run snapshots its selected profile and pricing, so later settings changes do not rewrite history or alter resumed work. Eve reads a saved `data/session-config/<sessionId>.json` model/effort snapshot before each model step. Keep these files with the database and Eve storage. Rebuild/restart Eve when its tool or model adapter changes.
+`/admin/agents` displays each role's engine and read-only prompt source, and lets operators override its model and effort or image quality for new requests. Code still owns engines, schemas and prompts. Builder and judge default to `gpt-6-astra` at high effort, photographer to `gpt-6-astra` at medium effort, and other text roles to `gpt-6-sol` at medium effort. Each run snapshots its selected profile and pricing, so later code changes do not rewrite history or alter resumed work. Eve reads a saved `data/session-config/<sessionId>.json` model/effort snapshot before each model step. Keep these files with the database and Eve storage. Rebuild/restart Eve when its tool or model adapter changes.
 
-Astra estimates initially use [documented standard token rates](https://developers.openai.com/api/docs/models/gpt-6-astra): $10/M input, $1/M cached input, $50/M output, with the long-context multiplier evaluated per model call. Settings can update the default text, Astra and image-generation assumptions for future work. These remain estimates rather than invoices.
+Astra estimates use [documented standard token rates](https://developers.openai.com/api/docs/models/gpt-6-astra): $10/M input, $1/M cached input, $12.50/M cache writes and $50/M output, with the long-context multiplier evaluated per model call. Sol uses $2/$0.20/$2.50/$10 for the same token classes. These remain estimates rather than invoices.
 
 The builder-only `generate_texture` tool calls `/api/textures/generate` with its workspace capability. The server uses the TypeScript Image API adapter in `src/modules/ai/internal/image-api.ts` for both textures and visual targets. It shares provider resolution with the direct text adapter, sends reference images as multipart edits, and records returned image-token usage and configured cost estimates. No Python environment or installed imagegen skill is required. Python remains for Blender/BMesh and Trimesh/libigl analysis.
 
@@ -156,7 +159,7 @@ Requests retain their existing history, receipts and cancellation checks. There 
 Generated base colors must be connected to UV-mapped materials; matching normal maps remain part of the asset contract. Poly mode skips texture generation but still receives a visual target.
 
 
-Image generation logs inputs, output paths, status and raw reported token usage separately in Activity & cost. Set both `IMAGE_INPUT_USD_PER_MILLION` and `IMAGE_OUTPUT_USD_PER_MILLION` for an operator-assumed image-token estimate. Without those rates, cost is explicitly unavailable; it is not treated as a free request. Provider cost fields are ignored. An interrupted image request can incur unknown usage; retrying can create another charge. Successful identical texture requests reuse their saved receipt.
+Image generation logs inputs, output paths, status and raw reported token usage separately in Activity & cost. GPT Image 2 uses the [official standard token rates](https://developers.openai.com/api/docs/pricing#image-generation): $5/M text input, $8/M image input, $1.25/M cached text input, $2/M cached image input and $30/M image output. Provider cost fields are ignored. An interrupted image request can incur unknown usage; retrying can create another charge. Successful identical texture requests reuse their saved receipt. Migration `0010` backfills previously unpriced GPT Image 2 runs when their saved usage receipt contains the required token split.
 
 The model viewer's **Textures** tab shows generated/source PNGs and the actual embedded GLB textures for the selected iteration. Existing archives without a texture manifest show an explicit empty state. Model thumbnails still use only the latest renders.
 

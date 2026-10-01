@@ -12,7 +12,7 @@ function SettingsPage() {
         <div>
           <h1>Runtime settings</h1>
           <p className="lede">
-            Timeouts, pricing assumptions, and defaults for new generation work.
+            Timeouts and defaults for new generation work.
           </p>
         </div>
       </section>

@@ -1,8 +1,6 @@
 import { z } from "zod";
 
 const timeoutMs = z.number().int().min(60_000).max(24 * 60 * 60 * 1000);
-const rate = z.number().min(0).max(10_000);
-const source = z.string().trim().min(1).max(300);
 export const effortSchema = z.enum(["low", "medium", "high"]);
 export const imageQualitySchema = z.enum(["low", "medium", "high"]);
 export const imageSizeSchema = z.enum(["1024x1024", "1024x1536", "1536x1024"]);
@@ -17,16 +15,6 @@ export const timeoutSettingsSchema = z.object({
   analysisBlenderMs: timeoutMs,
   analysisPythonMs: timeoutMs,
 });
-export const textPricingSchema = z.object({
-  input: rate,
-  cached: rate,
-  output: rate,
-  source,
-  longContextThreshold: z.number().int().positive().optional(),
-  longContextInputMultiplier: z.number().positive().max(20).optional(),
-  longContextOutputMultiplier: z.number().positive().max(20).optional(),
-});
-export const imagePricingSchema = z.object({ input: rate, output: rate, source });
 const agentOverrideSchema = z.object({
   model: z.string().trim().min(1).max(100),
   effort: effortSchema,
@@ -46,14 +34,9 @@ const generationDefaultsSchema = z.object({
 });
 export const runtimeSettingsSchema = z
   .object({
-    version: z.literal(2),
+    version: z.literal(3),
     timeouts: timeoutSettingsSchema,
     queue: queueSettingsSchema,
-    pricing: z.object({
-      defaultText: textPricingSchema,
-      astra: textPricingSchema,
-      image: imagePricingSchema,
-    }),
     agents: z.record(z.string(), agentOverrideSchema),
     imageAgents: z.record(z.string(), imageOverrideSchema),
     generationDefaults: generationDefaultsSchema,
@@ -69,11 +52,6 @@ export const runtimeSettingsSchema = z
 export const runtimeSettingsPatchSchema = z.object({
   timeouts: timeoutSettingsSchema.partial().optional(),
   queue: queueSettingsSchema.partial().optional(),
-  pricing: z.object({
-    defaultText: textPricingSchema.partial().optional(),
-    astra: textPricingSchema.partial().optional(),
-    image: imagePricingSchema.partial().optional(),
-  }).optional(),
   agents: z.record(z.string(), agentOverrideSchema.nullable()).optional(),
   imageAgents: z.record(z.string(), imageOverrideSchema.nullable()).optional(),
   generationDefaults: generationDefaultsSchema.partial().optional(),
@@ -105,14 +83,16 @@ export function nextStage(passed: boolean, iteration: number, limit: number) {
   return passed ? "approved" : iteration >= limit ? "limit_reached" : "revise";
 }
 export function price(input: number, output: number, cached: number, rates: {
-  input: number; output: number; cached: number;
+  input: number; output: number; cached: number; cacheWrite?: number; unavailable?: boolean;
   longContextThreshold?: number; longContextInputMultiplier?: number; longContextOutputMultiplier?: number;
-}) {
+}, cacheWrite = 0) {
+  if (rates.unavailable) return null;
   const long = rates.longContextThreshold !== undefined && input > rates.longContextThreshold;
   const inputMultiplier = long ? rates.longContextInputMultiplier || 1 : 1;
   const outputMultiplier = long ? rates.longContextOutputMultiplier || 1 : 1;
-  return (Math.max(0, input - cached) * rates.input * inputMultiplier +
+  return (Math.max(0, input - cached - cacheWrite) * rates.input * inputMultiplier +
     Math.min(input, cached) * rates.cached * inputMultiplier +
+    Math.min(Math.max(0, input - cached), cacheWrite) * (rates.cacheWrite ?? rates.input) * inputMultiplier +
     output * rates.output * outputMultiplier) / 1e6;
 }
 export function progress(iteration: number, limit: number, stage: "build" | "judge" | "done") {

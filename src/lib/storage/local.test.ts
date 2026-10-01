@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LocalStorageProvider } from "./local.server";
@@ -62,6 +62,24 @@ test("storage rejects traversal and symlink escapes on reads and writes", async 
     ).rejects.toThrow("Invalid storage path");
     expect(await storage.list()).toEqual([]);
   } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("listing skips an inaccessible sibling without hiding stored objects", async () => {
+  const root = await mkdtemp(join(tmpdir(), "studio-storage-health-"));
+  const blocked = join(root, "postgres");
+  const storage = new LocalStorageProvider({ basePath: root, baseUrl: "/api/files" });
+  try {
+    await mkdir(blocked);
+    await writeFile(join(blocked, "database"), "private");
+    await chmod(blocked, 0o000);
+    await storage.upload(new Blob(["image"]), "references/photo.png");
+    expect(await storage.listObjects()).toEqual([
+      { path: "references/photo.png", sizeBytes: 5 },
+    ]);
+  } finally {
+    await chmod(blocked, 0o700).catch(() => {});
     await rm(root, { recursive: true, force: true });
   }
 });

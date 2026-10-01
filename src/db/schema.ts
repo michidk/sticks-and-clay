@@ -110,6 +110,7 @@ export const runs = pgTable(
     inputTokens: integer().default(0).notNull(),
     outputTokens: integer().default(0).notNull(),
     cachedTokens: integer().default(0).notNull(),
+    cacheWriteTokens: integer("cache_write_tokens").default(0).notNull(),
     usageSource: text().default("pending").notNull(),
     estimatedCost: doublePrecision(),
     rates: jsonb()
@@ -117,10 +118,17 @@ export const runs = pgTable(
         input: number;
         output: number;
         cached: number;
+        cacheWrite?: number;
         source: string;
+        unavailable?: boolean;
         longContextThreshold?: number;
         longContextInputMultiplier?: number;
         longContextOutputMultiplier?: number;
+        textInput?: number;
+        cachedTextInput?: number;
+        imageInput?: number;
+        cachedImageInput?: number;
+        imageOutput?: number;
       }>()
       .notNull(),
     createdAt: created(),
