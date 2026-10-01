@@ -5,10 +5,12 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { extractMeshes } from "./extract";
+import { loadRuntimeSettings } from "../../lib/runtime-settings.server";
 const execute = promisify(execFile);
 
 /** Advisory only; partial reports survive expensive-check failures. Logged in judge input. */
 export async function analyzeModel(path: string) {
+  const settings = await loadRuntimeSettings();
   let directory: string | undefined;
   let sha256: string | undefined;
   let reportPath: string | undefined;
@@ -45,7 +47,7 @@ export async function analyzeModel(path: string) {
           raw,
           topology,
         ],
-        { timeout: 90_000, maxBuffer: 1024 * 1024 },
+        { timeout: settings.timeouts.analysisBlenderMs, maxBuffer: 1024 * 1024 },
       );
       input = topology;
     } catch {
@@ -56,7 +58,7 @@ export async function analyzeModel(path: string) {
     await execute(
       process.env.ANALYSIS_PYTHON || resolve(".venv/bin/python"),
       [resolve("blender/analyze_mesh.py"), input, reportPath],
-      { timeout: 60_000, maxBuffer: 1024 * 1024 },
+      { timeout: settings.timeouts.analysisPythonMs, maxBuffer: 1024 * 1024 },
     );
     const report = JSON.parse(await readFile(reportPath, "utf8"));
     return {

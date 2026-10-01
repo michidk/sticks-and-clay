@@ -7,7 +7,10 @@ mcp=FastMCP('Asset Studio Blender',host='127.0.0.1',port=int(os.environ.get('BLE
 locks={}
 def build_timeout_seconds():
     path=DATA/'runtime-settings.json'
-    value=json.loads(path.read_text())['blenderBuildTimeoutSeconds'] if path.exists() else int(os.environ.get('BLENDER_BUILD_TIMEOUT_SECONDS','600'))
+    if path.exists():
+        settings=json.loads(path.read_text())
+        value=settings.get('timeouts',{}).get('blenderSeconds',settings.get('blenderBuildTimeoutSeconds',600))
+    else:value=int(os.environ.get('BLENDER_BUILD_TIMEOUT_SECONDS','600'))
     if isinstance(value,bool) or not isinstance(value,int) or not 60<=value<=7200:raise ValueError('Invalid Blender build timeout setting')
     return value
 def workspace(capability):

@@ -14,6 +14,7 @@ import { createOpenaiChat } from "@tanstack/ai-openai";
 import { checkpoint, jobContext } from "../../../lib/checkpoint.server";
 import { price } from "../../../lib/contracts";
 import { imagePart } from "../../../lib/storage.server";
+import { textRoleProfile } from "../config.server";
 export async function draftBrief(args: RunInput) {
   const checkpointKey = args.stepId
     ? `step:${args.stepId}`
@@ -36,22 +37,24 @@ export async function draftBrief(args: RunInput) {
         })
         .where(eq(runs.id, priorId));
   }
+  const profile = await textRoleProfile(args.role);
   const id = crypto.randomUUID(),
     system = await readFile(`prompts/${roles[args.role].prompt}.md`, "utf8");
-  const model = roles[args.role].model;
-  const rates = pricingSnapshot(model);
+  const model = profile.model;
+  const rates = pricingSnapshot(model, profile.settings);
   await recordRun(args, {
     id,
     engine: "tanstack",
     model,
     systemPrompt: system,
     rates,
+    effort: profile.effort,
   });
   if (jobContext.getStore()) await checkpoint(checkpointKey, id);
   let output = "",
     usage: TokenUsage | undefined;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 180000);
+  const timer = setTimeout(() => controller.abort(), profile.settings.timeouts.tanstackMs);
   const saveUsage = async () => {
     const input =
       usage?.promptTokens ??
@@ -94,7 +97,7 @@ export async function draftBrief(args: RunInput) {
         },
       ],
       outputSchema: roles[args.role].schema,
-      modelOptions: { reasoning: { effort: roles[args.role].effort } },
+      modelOptions: { reasoning: { effort: profile.effort } },
       stream: false,
       abortController: controller,
       middleware: [

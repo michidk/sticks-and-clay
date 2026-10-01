@@ -1,35 +1,12 @@
 import { createHash } from "node:crypto";
 import { db } from "../../../db/client";
 import { runs } from "../../../db/schema";
-import { roles, type RunInput } from "../roles";
+import type { RunInput } from "../roles";
+import type { RuntimeSettings } from "../../../lib/contracts";
+import { runtimeSettingsDefaults } from "../../../lib/runtime-settings";
 
-export function pricingSnapshot(model?: string) {
-  if (model === "gpt-6-astra")
-    return {
-      input: 10,
-      cached: 1,
-      output: 50,
-      source:
-        "OpenAI gpt-6-astra standard token pricing · 2026-09-29 · https://developers.openai.com/api/docs/models/gpt-6-astra",
-      longContextThreshold: 272000,
-      longContextInputMultiplier: 2,
-      longContextOutputMultiplier: 1.5,
-    };
-  const rates = {
-    input: Number(process.env.INPUT_USD_PER_MILLION || 2),
-    cached: Number(process.env.CACHED_USD_PER_MILLION || 0.2),
-    output: Number(process.env.OUTPUT_USD_PER_MILLION || 10),
-    source:
-      process.env.PRICE_SOURCE ||
-      "Operator assumption; verify configured model rates",
-  };
-  if (
-    [rates.input, rates.cached, rates.output].some(
-      (n) => !Number.isFinite(n) || n < 0,
-    )
-  )
-    throw new Error("Invalid token pricing rates");
-  return rates;
+export function pricingSnapshot(model?: string, settings: RuntimeSettings = runtimeSettingsDefaults()) {
+  return model === "gpt-6-astra" ? settings.pricing.astra : settings.pricing.defaultText;
 }
 
 export async function recordRun(
@@ -40,11 +17,12 @@ export async function recordRun(
     model: string;
     systemPrompt: string;
     rates: ReturnType<typeof pricingSnapshot>;
+    effort: "low" | "medium" | "high";
   },
 ) {
   await db.insert(runs).values({
     ...details,
-    effort: roles[args.role].effort,
+    effort: details.effort,
     projectId: args.projectId,
     batchId: args.batchId,
     modelId: args.modelId,

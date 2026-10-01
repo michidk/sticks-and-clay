@@ -11,6 +11,7 @@ import {
   type RoleResult,
   type RunInput,
 } from "./roles";
+import { imageRoleProfile, textRoleProfile } from "./config.server";
 export { roles, executionPolicy } from "./roles";
 export type { Role, RoleResult, RunInput } from "./roles";
 
@@ -62,17 +63,14 @@ async function promptFiles(
 
 export async function agentSettings() {
   const settings = [
-    ...Object.entries(roles).map(([id, { schema, ...settings }]) => ({
-      id,
-      ...settings,
-      resumable: settings.engine === "eve",
-    })),
-    ...Object.entries(imageRoles).map(([id, settings]) => ({
-      id,
-      ...settings,
-      effort: settings.quality,
-      resumable: false,
-    })),
+    ...(await Promise.all(Object.keys(roles).map(async (id) => {
+      const { schema, settings: _runtime, ...profile } = await textRoleProfile(id as Role);
+      return { id, ...profile, resumable: profile.engine === "eve" };
+    }))),
+    ...(await Promise.all(Object.keys(imageRoles).map(async (id) => {
+      const { settings: _runtime, ...profile } = await imageRoleProfile(id as keyof typeof imageRoles);
+      return { id, ...profile, effort: profile.quality, resumable: false };
+    }))),
   ];
   return Promise.all(
     settings.map(async (agent) => ({

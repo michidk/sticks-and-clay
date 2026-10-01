@@ -35,6 +35,7 @@ import {
 } from "@/components/loading";
 import { AssetImage } from "@/components/asset-image";
 import { TriangleCount } from "@/components/triangle-count";
+import type { RuntimeSettings } from "@/lib/contracts";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -80,6 +81,8 @@ function ProjectPage() {
     [previewModelId, setPreviewModelId] = useState<string | null>(null),
     [modelBrief, setModelBrief] = useState(""),
     [modelCount, setModelCount] = useState(1),
+    [judgeIterations, setJudgeIterations] = useState(2),
+    [imageSize, setImageSize] = useState<RuntimeSettings["generationDefaults"]["imageSize"]>("1024x1024"),
     [briefSubmitting, setBriefSubmitting] = useState(false);
   const briefing = briefSubmitting;
   async function generateBrief() {
@@ -107,6 +110,13 @@ function ProjectPage() {
     return d;
   }
   useEffect(() => {
+    void request<{ settings: RuntimeSettings }>("settings").then(({ settings }) => {
+      setModelCount(settings.generationDefaults.count);
+      setJudgeIterations(settings.generationDefaults.judgeIterations);
+      setImageSize(settings.generationDefaults.imageSize);
+    }).catch((e) => setError(e.message));
+  }, []);
+  useEffect(() => {
     setData(undefined);
     setVersion(-1);
     setDesign("");
@@ -115,7 +125,6 @@ function ProjectPage() {
     setFilter("all");
     setQuery("");
     setModelBrief("");
-    setModelCount(1);
     let active = true;
     const refresh = () =>
       request("projects/" + projectId)
@@ -910,7 +919,7 @@ function ProjectPage() {
               {isGraphics ? (
                 <Label>
                   Canvas
-                  <Select name="imageSize" defaultValue="1024x1024">
+                  <Select name="imageSize" value={imageSize} onValueChange={(value: typeof imageSize) => setImageSize(value)}>
                     <SelectTrigger className="w-full">
                       <SelectValue />
                     </SelectTrigger>
@@ -929,7 +938,8 @@ function ProjectPage() {
                     type="number"
                     min={0}
                     max={5}
-                    defaultValue={2}
+                    value={judgeIterations}
+                    onChange={(event) => setJudgeIterations(event.target.valueAsNumber)}
                     required
                   />
                 </Label>

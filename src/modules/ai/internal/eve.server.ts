@@ -21,6 +21,7 @@ import { resolve } from "node:path";
 import { DATA } from "../../../lib/storage.server";
 import { agentTimeoutMs } from "./timeouts";
 import { loadRuntimeSettings } from "../../../lib/runtime-settings.server";
+import { textRoleProfile } from "../config.server";
 const client = () =>
   new Client({
     host: process.env.EVE_URL || "http://127.0.0.1:33441",
@@ -38,8 +39,9 @@ export async function agent<T>(
   const key = args.stepId
     ? `step:${args.stepId}`
     : `agent:${args.role}:${args.iteration || 0}`;
-  const agentModel = roles[args.role].model;
-  const rates = pricingSnapshot(agentModel);
+  const profile = await textRoleProfile(args.role);
+  const agentModel = profile.model;
+  const rates = pricingSnapshot(agentModel, profile.settings);
   const savedId = jobContext.getStore()?.checkpoint[key];
   const [saved] = savedId
     ? await db.select().from(runs).where(eq(runs.id, savedId))
@@ -61,6 +63,7 @@ export async function agent<T>(
       model: agentModel,
       systemPrompt,
       rates,
+      effort: profile.effort,
     });
   await checkpoint(key, id);
   const runRates = saved?.rates || rates;
@@ -137,7 +140,7 @@ export async function agent<T>(
           role: args.role,
           runId: id,
           model: saved?.model || agentModel,
-          effort: saved?.effort || roles[args.role].effort,
+          effort: saved?.effort || profile.effort,
         }),
         { flag: "wx" },
       );

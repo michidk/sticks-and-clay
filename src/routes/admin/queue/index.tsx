@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
@@ -8,6 +10,8 @@ import {
   CheckCircle2,
   Clock3,
   Info,
+  Pause,
+  Play,
   XCircle,
 } from "lucide-react";
 import { request, json } from "../../../lib/client";
@@ -19,13 +23,22 @@ import {
 import "./-components/queue.css";
 
 export const Route = createFileRoute("/admin/queue/")({ component: QueuePage });
+type QueueControl = {
+  paused: boolean;
+  concurrency: number;
+  activeJobs: number;
+  workerHealthy: boolean;
+};
 function QueuePage() {
   const [jobs, setJobs] = useState<QueueJob[]>([]),
+    [control, setControl] = useState<QueueControl | null>(null),
     [error, setError] = useState(""),
     [loading, setLoading] = useState(true),
     [busy, setBusy] = useState(false);
   const load = async () => {
-    setJobs((await request("queue")).jobs);
+    const result = await request<{ jobs: QueueJob[]; control: QueueControl }>("queue");
+    setJobs(result.jobs);
+    setControl(result.control);
     setLoading(false);
   };
   useEffect(() => {
@@ -44,6 +57,18 @@ function QueuePage() {
     setError("");
     try {
       await request(path, json({}));
+      await load();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function updateControl(patch: Partial<Pick<QueueControl, "paused" | "concurrency">>) {
+    setBusy(true);
+    setError("");
+    try {
+      await request("settings", json({ queue: patch }, "PATCH"));
       await load();
     } catch (e) {
       setError((e as Error).message);
@@ -99,6 +124,32 @@ function QueuePage() {
         <Alert variant="destructive" role="alert" className="error">
           {error}
         </Alert>
+      )}
+      {control && (
+        <Card className="queue-control-card">
+          <div className="queue-control-status" data-paused={control.paused}>
+            <span>{control.paused ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}</span>
+            <div>
+              <strong>{control.paused ? "Queue paused" : "Queue accepting work"}</strong>
+              <small>{control.activeJobs} active · worker {control.workerHealthy ? "online" : "not reporting"}</small>
+            </div>
+          </div>
+          <div className="queue-control-actions">
+            <label>
+              Concurrent jobs
+              <Select value={String(control.concurrency)} disabled={busy}
+                onValueChange={(value) => updateControl({ concurrency: Number(value) })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{[1, 2, 3, 4].map((value) => <SelectItem key={value} value={String(value)}>{value}</SelectItem>)}</SelectContent>
+              </Select>
+            </label>
+            <Button variant={control.paused ? "default" : "outline"} disabled={busy}
+              onClick={() => updateControl({ paused: !control.paused })}>
+              {control.paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}
+              {control.paused ? "Resume claims" : "Pause claims"}
+            </Button>
+          </div>
+        </Card>
       )}
       {loading ? (
         <QueueSkeleton />

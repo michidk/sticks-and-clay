@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Bot, ListTodo, Settings } from "lucide-react";
+import { Activity, Bot, ListTodo, Settings } from "lucide-react";
 
 const sections = [
   {
@@ -15,9 +15,15 @@ const sections = [
     icon: Bot,
   },
   {
+    to: "/admin/diagnostics",
+    label: "Diagnostics",
+    description: "Service health",
+    icon: Activity,
+  },
+  {
     to: "/admin/settings",
     label: "Settings",
-    description: "Runtime limits",
+    description: "Runtime defaults",
     icon: Settings,
   },
 ] as const;

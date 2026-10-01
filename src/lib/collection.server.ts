@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { db } from "../db/client";
 import { batches, models } from "../db/schema";
 import { DATA, filePath, publishFiles } from "./storage.server";
+import { loadRuntimeSettings } from "./runtime-settings.server";
 
 export const COLLECTION_FRONT_AZIMUTH = -55;
 
@@ -27,6 +28,7 @@ async function assetFrontAzimuth(artifacts: Record<string, unknown>) {
 }
 
 export async function renderCollection(batchId: string) {
+  const settings = await loadRuntimeSettings();
   const assets = await db
     .select()
     .from(models)
@@ -83,7 +85,7 @@ export async function renderCollection(batchId: string) {
   const cancellation = setInterval(() => {
     void assertJobActive().catch(() => proc.kill());
   }, 1000);
-  const timer = setTimeout(() => proc.kill(), 240000);
+  const timer = setTimeout(() => proc.kill(), settings.timeouts.collectionMs);
   try {
     const [exit, out, err] = await Promise.all([
       proc.exited,

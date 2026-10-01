@@ -133,7 +133,9 @@ The retained history reports 822,705 input and 31,032 output tokens, with a **$1
 
 Project/model brief buttons call TanStack AI directly. They create no Eve session and no queue job. Their inputs, outputs, token usage, cached tokens, pricing snapshot, and cost estimate are saved in project history. Design generation is a durable background job using TanStack AI; interruption retries a direct call, while a completed response checkpoint is reused. An interrupted direct request may have unknown usage until the provider reports it.
 
-The header Queue link opens `/admin/queue`. It lists model generation, planning and collection-render jobs, with per-job cancellation and Abort pending queue. Running cancellations are cooperative: the UI shows Cancelling until the worker stops. Cancelled jobs are not resumed automatically. Model iteration history lives in each model viewer; previous GLBs, Blender files, renders and judge reviews stay accessible.
+The header has one Admin entry. Its responsive subnavigation opens Queue, Agents, Diagnostics and Settings. Queue lists model generation, planning and collection-render jobs, with per-job cancellation and Abort pending queue. Operators can pause future claims and choose one to four concurrent jobs; work already claimed continues normally. Running cancellations are cooperative: the UI shows Cancelling until the worker stops. Cancelled jobs are not resumed automatically. Model iteration history lives in each model viewer; previous GLBs, Blender files, renders and judge reviews stay accessible.
+
+Diagnostics reports redacted database, worker, Eve, Blender and storage health plus recent failed job kinds. It deliberately omits credentials, service URLs, process IDs, executable paths and filesystem paths. Settings controls generation defaults, the full set of operation timeouts and estimated pricing assumptions. Changes are validated, written atomically to `data/runtime-settings.json` and applied to new work without a restart.
 
 ## AI module boundaries
 
@@ -141,9 +143,9 @@ Use `src/modules/ai/index.server.ts` (`runRole`, `roleInput`) for all AI work. R
 
 ## Role settings and generated textures
 
-`/admin/agents` displays code-configured roles, engines, model IDs, effort levels and prompt paths. Edit `src/modules/ai/roles.ts` to change settings for new requests. Builder, photographer and judge use `gpt-6-astra`, medium effort; other roles use `gpt-6-sol`, medium effort. Eve reads a saved `data/session-config/<sessionId>.json` model/effort snapshot before each model step. Keep these files with the database and Eve storage. Rebuild/restart Eve when its tool or model adapter changes.
+`/admin/agents` displays each role's engine and read-only prompt source, and lets operators override its model and effort or image quality for new requests. Code still owns engines, schemas and prompts. Builder, photographer and judge default to `gpt-6-astra`, medium effort; other text roles default to `gpt-6-sol`, medium effort. Each run snapshots its selected profile and pricing, so later settings changes do not rewrite history or alter resumed work. Eve reads a saved `data/session-config/<sessionId>.json` model/effort snapshot before each model step. Keep these files with the database and Eve storage. Rebuild/restart Eve when its tool or model adapter changes.
 
-Astra estimates use [documented standard token rates](https://developers.openai.com/api/docs/models/gpt-6-astra): $10/M input, $1/M cached input, $50/M output, with the long-context multiplier evaluated per model call. These remain estimates rather than invoices. Other model rates use the existing operator configuration.
+Astra estimates initially use [documented standard token rates](https://developers.openai.com/api/docs/models/gpt-6-astra): $10/M input, $1/M cached input, $50/M output, with the long-context multiplier evaluated per model call. Settings can update the default text, Astra and image-generation assumptions for future work. These remain estimates rather than invoices.
 
 The builder-only `generate_texture` tool calls `/api/textures/generate` with its workspace capability. The server uses the TypeScript Image API adapter in `src/modules/ai/internal/image-api.ts` for both textures and visual targets. It shares provider resolution with the direct text adapter, sends reference images as multipart edits, and records returned image-token usage and configured cost estimates. No Python environment or installed imagegen skill is required. Python remains for Blender/BMesh and Trimesh/libigl analysis.
 

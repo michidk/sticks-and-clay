@@ -31,7 +31,10 @@ import { downloadImage } from "./remote-image.server";
 import {
   loadRuntimeSettings,
   saveRuntimeSettings,
+  updateRuntimeSettings,
 } from "./runtime-settings.server";
+import { readWorkerHeartbeat } from "./worker-control.server";
+import { diagnosticsSnapshot } from "./diagnostics.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   kinds: string[],
@@ -74,7 +77,7 @@ export async function api(request: Request) {
     }
     if (path[0] === "queue") {
       if (request.method === "GET") {
-        const [list, assets, collections, workspaces] = await Promise.all([
+        const [list, assets, collections, workspaces, settings, worker] = await Promise.all([
           db
             .select()
             .from(jobs)
@@ -85,8 +88,15 @@ export async function api(request: Request) {
           db.select().from(models),
           db.select().from(batches),
           db.select().from(projects),
+          loadRuntimeSettings(),
+          readWorkerHeartbeat(),
         ]);
         return reply({
+          control: {
+            ...settings.queue,
+            activeJobs: worker?.activeJobs ?? 0,
+            workerHealthy: worker?.healthy ?? false,
+          },
           jobs: list.map((j) => {
             const model = assets.find((m) => m.id === j.targetId),
               batch = collections.find(
@@ -175,12 +185,32 @@ export async function api(request: Request) {
     }
     if (path[0] === "agents" && request.method === "GET")
       return reply({ agents: await agentSettings() });
+    if (path[0] === "agents" && request.method === "PATCH") {
+      const input = z.object({
+        id: z.string().min(1),
+        engine: z.enum(["eve", "tanstack", "imagegen"]),
+        model: z.string().trim().min(1).max(100),
+        effort: z.enum(["low", "medium", "high"]),
+      }).parse(await request.json());
+      const configured = (await agentSettings()).find((agent) => agent.id === input.id);
+      if (!configured || configured.engine !== input.engine)
+        throw new Error("Unknown or mismatched agent role");
+      const patch = input.engine === "imagegen"
+        ? { imageAgents: { [input.id]: { model: input.model, quality: input.effort } } }
+        : { agents: { [input.id]: { model: input.model, effort: input.effort } } };
+      await updateRuntimeSettings(patch);
+      return reply({ agents: await agentSettings() });
+    }
     if (path[0] === "settings") {
       if (request.method === "GET")
         return reply({ settings: await loadRuntimeSettings() });
       if (request.method === "PUT")
         return reply({ settings: await saveRuntimeSettings(await request.json()) });
+      if (request.method === "PATCH")
+        return reply({ settings: await updateRuntimeSettings(await request.json()) });
     }
+    if (path[0] === "diagnostics" && request.method === "GET")
+      return reply(await diagnosticsSnapshot());
     if (
       path[0] === "textures" &&
       path[1] === "generate" &&

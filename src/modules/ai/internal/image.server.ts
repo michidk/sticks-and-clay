@@ -10,7 +10,7 @@ import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "../../../db/client";
 import { runs, events } from "../../../db/schema";
-import { imageRoles } from "../roles";
+import { imageRoleProfile } from "../config.server";
 import {
   DATA,
   filePath,
@@ -36,6 +36,7 @@ export async function imageRequest(
   args: ImageInput,
 ): Promise<{ path: string; key: string; runId: string; name: string }> {
   await args.assertActive();
+  const profile = await imageRoleProfile(args.role);
   if (!(
     /^models\/[0-9a-f-]+\/[0-9a-f-]+\/(concept|iteration-\d+\/textures)$/.test(
       args.directory,
@@ -103,11 +104,10 @@ export async function imageRequest(
   // Interrupted requests can still finish at the provider; never share their output file.
   const filename = `${args.name}-${digest}-${id}.png`;
   const rates = {
-    input: Number(process.env.IMAGE_INPUT_USD_PER_MILLION || 0),
+    input: profile.settings.pricing.image.input,
     cached: 0,
-    output: Number(process.env.IMAGE_OUTPUT_USD_PER_MILLION || 0),
-    source:
-      "Operator image-token rate assumption; unset means cost unavailable",
+    output: profile.settings.pricing.image.output,
+    source: profile.settings.pricing.image.source,
   };
   if ([rates.input, rates.output].some((n) => !Number.isFinite(n) || n < 0))
     throw new Error("Invalid image rates");
@@ -121,23 +121,24 @@ export async function imageRequest(
     stepId,
     images: args.images || [],
     engine: "imagegen",
-    model: imageRoles[args.role].model,
-    systemPrompt: `Image API · ${args.size || "1024x1024"} · ${imageRoles[args.role].quality} quality`,
+    model: profile.model,
+    effort: profile.quality,
+    systemPrompt: `Image API · ${args.size || "1024x1024"} · ${profile.quality} quality`,
     promptVersion: "image-api-v3",
     input: args.prompt,
     rates,
   });
   const controller = new AbortController();
   let usage: ImageUsage | undefined;
-  const timer = setTimeout(() => controller.abort(), 240000);
+  const timer = setTimeout(() => controller.abort(), profile.settings.timeouts.imageMs);
   const monitor = setInterval(() => {
     void args.assertActive().catch(() => controller.abort());
   }, 500);
   try {
     const response = await requestImage({
       provider: await provider(),
-      model: imageRoles[args.role].model,
-      quality: imageRoles[args.role].quality,
+      model: profile.model,
+      quality: profile.quality,
       size: args.size,
       prompt: args.prompt,
       references,
@@ -201,8 +202,7 @@ export async function imageRequest(
           outputTokens: output,
           usageSource: "reported",
           estimatedCost:
-            process.env.IMAGE_INPUT_USD_PER_MILLION &&
-            process.env.IMAGE_OUTPUT_USD_PER_MILLION
+            rates.input > 0 && rates.output > 0
               ? (input * rates.input + output * rates.output) / 1e6
               : null,
         })

@@ -2,6 +2,9 @@ import { Alert } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Accordion,
   AccordionContent,
@@ -11,7 +14,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Bot, Check, Copy, FileText, ImageIcon, Workflow } from "lucide-react";
-import { request } from "../../../lib/client";
+import { json, request } from "../../../lib/client";
 import { CardsSkeleton } from "../../../components/loading";
 
 type PromptFile = {
@@ -24,7 +27,7 @@ type AgentSettings = {
   id: string;
   engine: "eve" | "imagegen" | "tanstack";
   model: string;
-  effort: string;
+  effort: "low" | "medium" | "high";
   prompt: string;
   inputTemplate: string;
   promptFiles: PromptFile[];
@@ -52,6 +55,7 @@ function AgentsPage() {
   const [agents, setAgents] = useState<AgentSettings[] | null>(null);
   const [error, setError] = useState("");
   const [copiedPrompt, setCopiedPrompt] = useState("");
+  const [savingId, setSavingId] = useState("");
   useEffect(() => {
     request("agents")
       .then((r) => setAgents(r.agents))
@@ -64,14 +68,36 @@ function AgentsPage() {
     window.setTimeout(() => setCopiedPrompt(""), 1800);
   }
 
+  function updateAgent(id: string, patch: Partial<AgentSettings>) {
+    setAgents((current) => current?.map((agent) => agent.id === id ? { ...agent, ...patch } : agent) ?? null);
+  }
+
+  async function saveAgent(agent: AgentSettings) {
+    setSavingId(agent.id);
+    setError("");
+    try {
+      const response = await request<{ agents: AgentSettings[] }>("agents", json({
+        id: agent.id,
+        engine: agent.engine,
+        model: agent.model,
+        effort: agent.effort,
+      }, "PATCH"));
+      setAgents(response.agents);
+    } catch (cause) {
+      setError((cause as Error).message);
+    } finally {
+      setSavingId("");
+    }
+  }
+
   return (
     <div className="admin-page agents-page">
       <section className="page-heading">
         <div>
           <h1>Agents & AI roles</h1>
           <p className="lede">
-            Execution settings for new requests. Existing sessions retain their
-            saved settings.
+            Tune models and reasoning for new requests. Existing sessions retain
+            their saved configuration.
           </p>
         </div>
       </section>
@@ -87,8 +113,8 @@ function AgentsPage() {
         <div className="agent-overview-note">
           <FileText aria-hidden="true" />
           <span>
-            Live authored prompts from <code>prompts/</code>. Settings are
-            read-only.
+            Models are configurable. Authored prompts from <code>prompts/</code>
+            remain read-only and repository-managed.
           </span>
         </div>
       </Card>
@@ -128,20 +154,32 @@ function AgentsPage() {
               </Badge>
             </div>
             <p className="agent-description">{roleDescriptions[agent.id]}</p>
-            <dl className="role-settings">
+            <div className="role-settings role-settings-editable">
+              <Label>
+                Model
+                <Input value={agent.model} maxLength={100} disabled={savingId === agent.id}
+                  onChange={(event) => updateAgent(agent.id, { model: event.target.value })} />
+              </Label>
+              <Label>
+                {agent.engine === "imagegen" ? "Quality" : "Effort"}
+                <Select value={agent.effort} disabled={savingId === agent.id}
+                  onValueChange={(effort: AgentSettings["effort"]) => updateAgent(agent.id, { effort })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Label>
               <div>
-                <dt>Model</dt>
-                <dd>{agent.model}</dd>
+                <span>Prompt files</span>
+                <strong>{agent.promptFiles.length}</strong>
               </div>
-              <div>
-                <dt>{agent.engine === "imagegen" ? "Quality" : "Effort"}</dt>
-                <dd>{agent.effort}</dd>
-              </div>
-              <div>
-                <dt>Prompt files</dt>
-                <dd>{agent.promptFiles.length}</dd>
-              </div>
-            </dl>
+              <Button size="sm" onClick={() => saveAgent(agent)} disabled={savingId === agent.id || !agent.model.trim()}>
+                {savingId === agent.id ? "Saving…" : "Save profile"}
+              </Button>
+            </div>
             <div className="agent-prompts">
               <div className="agent-prompts-heading">
                 <h3>Authored prompts</h3>
