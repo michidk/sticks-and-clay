@@ -55,6 +55,7 @@ integration(
       rates: { input: 0, cached: 0, output: 0, source: "test" },
     });
     try {
+      let originalModelId = "";
       for (let i = 0; i < 2; i++) {
         const batchId = crypto.randomUUID();
         await db.insert(batches).values({
@@ -66,8 +67,10 @@ integration(
           design: "test",
           designVersion: 1,
         });
+        const modelId = crypto.randomUUID();
+        if (i === 0) originalModelId = modelId;
         await db.insert(models).values({
-          id: crypto.randomUUID(),
+          id: modelId,
           projectId: id,
           batchId,
           name: `model${i}`,
@@ -75,6 +78,28 @@ integration(
           artifacts: { glb: key, stage: i ? "geometry" : "complete" },
         });
       }
+      const iterationBatchId = crypto.randomUUID();
+      const iterationModelId = crypto.randomUUID();
+      await db.insert(batches).values({
+        id: iterationBatchId,
+        projectId: id,
+        prompt: "iteration",
+        count: 1,
+        judgeIterations: 0,
+        design: "test",
+        designVersion: 1,
+      });
+      await db.insert(models).values({
+        id: iterationModelId,
+        projectId: id,
+        batchId: iterationBatchId,
+        name: "model0",
+        prompt: "iteration",
+        parentModelId: originalModelId,
+        branchKind: "iterate",
+        status: "done",
+        artifacts: { glb: key, stage: "complete" },
+      });
       await mkdir(resolve(DATA, `test-photo/${id}`), { recursive: true });
       await writeFile(resolve(DATA, key), bytes);
       await mkdir(resolve(DATA, directory), { recursive: true });
@@ -104,6 +129,12 @@ integration(
       expect(await projectPhotographs(id)).toHaveLength(1);
       const snapshot = JSON.parse(context.checkpoint["project-photo-input"]);
       expect(snapshot.assets).toHaveLength(2);
+      expect(snapshot.assets.map((asset: any) => asset.modelId)).toContain(
+        iterationModelId,
+      );
+      expect(snapshot.assets.map((asset: any) => asset.modelId)).not.toContain(
+        originalModelId,
+      );
       expect(snapshot.assets[0].renderGlb).toContain(
         "versions/project-snapshot-",
       );

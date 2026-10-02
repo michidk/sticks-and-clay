@@ -8,6 +8,7 @@ import { DATA, publishFiles, readStoredFile } from "./storage.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { assertJobActive } from "./queue.server";
 import { roleInput, runRole } from "../modules/ai/index.server";
+import { collectionAssetGroups } from "./project-summary";
 
 export async function projectPhotographs(projectId?: string) {
   const photos = await db
@@ -42,16 +43,28 @@ export async function photographProject(projectId: string) {
       .from(projects)
       .where(eq(projects.id, projectId));
     if (!project) throw new Error("Project not found");
-    const assets = (
-      await db.select().from(models).where(eq(models.projectId, projectId))
-    )
-      .filter((m) => m.artifacts?.glb)
+    const projectModels = await db
+      .select()
+      .from(models)
+      .where(eq(models.projectId, projectId));
+    const assets = collectionAssetGroups(projectModels)
+      .flatMap((group) => {
+        const latest = group.assets
+          .filter((model) => model.artifacts?.glb)
+          .sort(
+            (a, b) =>
+              a.createdAt.getTime() - b.createdAt.getTime() ||
+              a.id.localeCompare(b.id),
+          )
+          .at(-1);
+        return latest ? [latest] : [];
+      })
       .sort((a, b) => a.id.localeCompare(b.id))
-      .map((m) => ({
-        modelId: m.id,
-        name: m.name,
-        glb: String(m.artifacts!.glb),
-        stage: m.artifacts!.stage,
+      .map((model) => ({
+        modelId: model.id,
+        name: model.name,
+        glb: String(model.artifacts!.glb),
+        stage: model.artifacts!.stage,
       }));
     if (!assets.length) return;
     // Older builds predate immutable version archives. Freeze their actual bytes
