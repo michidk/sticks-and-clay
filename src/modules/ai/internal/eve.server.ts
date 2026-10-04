@@ -335,7 +335,7 @@ export async function agent<T>(
   } catch (error) {
     if (signal?.aborted && sessionId) {
       try {
-        await client().sessions.attach(sessionId).cancel({ tasks: true });
+        await client().sessions.attach(sessionId).cancel();
       } catch (cancelError) {
         console.error("Failed to cancel timed-out Eve session", cancelError);
       }

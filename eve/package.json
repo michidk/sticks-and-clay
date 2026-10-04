@@ -1,1 +1,1 @@
-{"name":"asset-studio-agent","private":true,"type":"module","dependencies":{"eve":"0.63.0","@ai-sdk/openai":"^4.0.66","ai":"^7.0.105","zod":"^4.6.5"}}
+{"name":"asset-studio-agent","private":true,"type":"module","dependencies":{"eve":"0.71.0","@ai-sdk/openai":"^4.0.83","ai":"^7.0.127","zod":"^4.6.5"}}

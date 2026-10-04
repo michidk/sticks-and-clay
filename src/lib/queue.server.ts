@@ -155,7 +155,7 @@ export async function cancelJob(id: string, queuedOnly = false) {
   });
   for (const run of history)
     if (run.sessionId && run.status === "running")
-      await client.sessions.attach(run.sessionId).cancel({ tasks: true });
+      await client.sessions.attach(run.sessionId).cancel();
   return "cancelling";
 }
 

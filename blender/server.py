@@ -1,9 +1,9 @@
 """Loopback MCP adapter. Each capability owns an independent Blender process/workdir."""
 import asyncio,json,os,pathlib,re,uuid
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 DATA=pathlib.Path(os.environ.get('STUDIO_DATA_DIR',ROOT/'data')).resolve()
-mcp=FastMCP('Asset Studio Blender',host='127.0.0.1',port=int(os.environ.get('BLENDER_MCP_PORT','33442')),stateless_http=True)
+mcp=MCPServer('Asset Studio Blender')
 locks={}
 def build_timeout_seconds():
     path=DATA/'runtime-settings.json'
@@ -101,4 +101,4 @@ async def photograph_asset(capability:str,front_azimuth:float=-55,elevation:floa
         (dest/'photography.log').write_bytes(out)
         return {'ok':proc.returncode==0,'log':out.decode(errors='replace')[-(1200 if proc.returncode==0 else 6000):]}
 
-if __name__=='__main__':mcp.run(transport='streamable-http')
+if __name__=='__main__':mcp.run(transport='streamable-http',host='127.0.0.1',port=int(os.environ.get('BLENDER_MCP_PORT','33442')),stateless_http=True)
