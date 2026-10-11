@@ -9,7 +9,7 @@ Implementation date: 2026-10-11. The delivered scope is procedural PBR materials
 - Shared review traversal, instruction assembly and image evidence ordering. Legacy model v1–v4 definitions remain intact; zero judge rounds still preserve the four v4 construction passes.
 - Stable animation-index selection, loop/one-shot sampling, framing and pivot controls, strict shared palettes, individual sprite frames, diagnostic sheets and interactive playback. Sprite-target model generation passes the target through construction, rendering and judging.
 - Interactive material inspection and comparison, isolated material bindings, UV/slot checks, derived GLB assignment with source/map hashes, source bundles, delivery packages and bounded verified material caching.
-- Shared host render slots, process ownership/cleanup, retained logs, typed failures, artifact receipts and candidate publication for material/sprite exports. See the publication consolidation item in `plan.md` for the remaining legacy-runtime distinction.
+- Shared host render slots, process ownership/cleanup, retained logs, typed failures, artifact receipts and candidate publication for material/sprite exports. All current entry points use committed generations and recoverable compatibility filenames; older pinned bundles retain their original protocol.
 
 ## Checks performed
 
@@ -40,10 +40,14 @@ Calibration targets record source URLs, license, physical scale, file hashes, pr
 
 ## Remaining acceptance
 
-Live builder/judge evaluation was attempted but no configured API credential was available. Cached paid-step replay and real local render/repair tests verify orchestration, not model quality. Matched-budget prompt A/B results, repair costs and feature coverage remain unmeasured.
+The first live builder/judge attempt had no configured API credential. A provider is now available; matched-budget trials remain to be run. Cached paid-step replay and real local render/repair tests verify orchestration, not model quality. Matched-budget prompt A/B results, repair costs and feature coverage remain unmeasured.
 
-The POSIX process supervisor has not been exercised on Linux in this session. Bundle telemetry records before/after RSS, not peak memory; no streaming rewrite is justified by this small fixture workload. The remaining roadmap items are listed explicitly in `plan.md`.
+The runtime and publication suites pass on Windows and Linux Docker (eight tests per platform), including waiting cancellation, owned descendants, failed commit rollback, interrupted alias recovery and corrupt-candidate rejection. Bundle telemetry records before/after RSS, not peak memory; no streaming rewrite is justified by this small fixture workload. The remaining roadmap items are listed explicitly in `plan.md`.
 
 ## Applying the change
 
 Apply the additive migrations with `bun run db:migrate`, then rebuild/restart Eve and the worker. Existing source bundles keep their pinned helpers. Newly prepared bundles include the expanded material/sprite/runtime modules and recorded toolchain information. Offline rebuilding does not require PostgreSQL or an agent credential; matching toolchain versions is required for reproducibility, and byte-identical GPU renders across machines are not promised.
+
+## Publication follow-up verification
+
+The database-enabled suite passes 118 tests with seven environment-dependent skips. The new supervised publication integration verifies the Python/TypeScript boundary and source-bundle exclusions. Vision tests verify that partial compatibility-file writes cannot change the committed evidence, and reject tampered artifacts. Actual Blender assignment, sprites and photographer publication pass. The model workflow additionally verifies a relocated offline rebuild followed by a failing edit that retains the successful GLB. Application verification and Eve compilation pass after the publication changes.

@@ -4,15 +4,14 @@ from mcp.server.mcpserver import MCPServer
 from starlette.responses import JSONResponse
 try:
     from .workspace import prepare, save_script
-    from .build_artifacts import receipt
+    from .build_artifacts import receipt, publish_workspace, recover_workspace, committed_directory
 except ImportError:
     from workspace import prepare, save_script
-    from build_artifacts import receipt
+    from build_artifacts import receipt, publish_workspace, recover_workspace, committed_directory
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 DATA=pathlib.Path(os.environ.get('STUDIO_DATA_DIR',ROOT/'data')).resolve()
 mcp=MCPServer('Asset Studio Blender')
 locks={}
-build_slots=asyncio.Semaphore(max(1,int(os.environ.get('BLENDER_CONCURRENCY','2'))))
 def build_timeout_seconds():
     path=DATA/'runtime-settings.json'
     if path.exists():
@@ -45,7 +44,13 @@ async def get_scene_info(capability:str)->dict:
     dest.mkdir(parents=True,exist_ok=True)
     proc=await asyncio.create_subprocess_exec(sys.executable,str(ROOT/'blender'/'build_runtime.py'),'--cwd',str(dest),'--timeout',str(build_timeout_seconds()),'--',os.environ.get('BLENDER_BIN','blender'),'--version',stdout=asyncio.subprocess.PIPE)
     out,_=await proc.communicate()
-    return {'version':next((line for line in out.decode().splitlines() if line.startswith('Blender ')), 'Unavailable'),'directory':str(dest),'metrics':json.loads((dest/'metrics.json').read_text()) if (dest/'metrics.json').exists() else None,'clean_execution':True}
+    current=committed_directory(dest)
+    catalogs={}
+    for name,location in [('final',current),('quick',committed_directory(dest/'preview'))]:
+        if (location/'build-receipt.json').exists():
+            record=json.loads((location/'build-receipt.json').read_text())
+            catalogs[name]={'buildId':record['buildId'],'artifacts':record['artifacts']}
+    return {'version':next((line for line in out.decode().splitlines() if line.startswith('Blender ')), 'Unavailable'),'directory':str(dest),'metrics':json.loads((current/'metrics.json').read_text()) if (current/'metrics.json').exists() else None,'builds':catalogs,'clean_execution':True}
 @mcp.tool()
 async def execute_blender_code(capability:str,code:str,preview:bool=False)->dict:
     """Execute a reproducible asset script. assetkit and finish_asset() are provided. preview=True makes cheap draft views; finish with preview=False to publish GLB/source/metrics. Inspect drafts using view_render views preview_front/preview_rear/preview_detail. Final builds retain pivots/hierarchy. No shared scene state."""
@@ -56,8 +61,9 @@ async def run_saved_asset(capability,preview=False,code=None):
     dest=workspace(capability)
     info=json.loads((DATA/'capabilities'/f'{capability}.json').read_text())
     if info.get('role')=='photographer':raise ValueError('Photographer capabilities cannot execute build code')
-    async with locks.setdefault(capability,asyncio.Lock()),build_slots:
+    async with locks.setdefault(capability,asyncio.Lock()):
         workspace(capability)
+        recover_workspace(dest)
         prepare(ROOT,DATA,dest,info)
         if code is None:
             if not (dest/'asset.py').exists():raise ValueError('Write asset.py before running it')
@@ -92,7 +98,7 @@ async def run_saved_asset(capability,preview=False,code=None):
         proc=await asyncio.create_subprocess_exec(sys.executable,str(ROOT/'blender'/'build_runtime.py'),'--cwd',str(dest),'--timeout',str(build_timeout_seconds()),'--',os.environ.get('BLENDER_BIN','blender'),'-b','--factory-startup','--threads','2','--python-exit-code','1','--python',str(script),cwd=candidate,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
         monitor=asyncio.create_task(watch_cancellation(capability,proc))
         timeout=build_timeout_seconds()
-        try:out,_=await asyncio.wait_for(proc.communicate(),timeout)
+        try:out,_=await asyncio.wait_for(proc.communicate(),timeout+5)
         except asyncio.TimeoutError:
             if proc.returncode is None:proc.kill()
             await proc.wait()
@@ -112,28 +118,16 @@ async def run_saved_asset(capability,preview=False,code=None):
         state={'ok':ok,'preview':preview,'scriptSha256':hashlib.sha256(code.encode()).hexdigest()}
         output=dest/'preview' if preview else dest
         if ok:
-            output.mkdir(exist_ok=True)
-            for pattern in ('frame-*.png','review-*-f*-d*.png','sprite-checks.json'):
-                for old in output.glob(pattern):old.unlink()
-                for path in candidate.glob(pattern):shutil.copyfile(path,output/path.name)
-            names=required if preview else required+['asset.py','build-config.json','helpers.py','rebuild.py','render.py','build_runtime.py','params.json']
-            for name in names:
-                if name=='build_runtime.py' and not (candidate/name).exists():continue
-                shutil.copyfile(candidate/name,output/name)
-            if preview:
-                for name in ['sprites.png','sprites.json']:
-                    if (candidate/name).exists():shutil.copyfile(candidate/name,output/name)
-                    else:(output/name).unlink(missing_ok=True)
             if not preview:
-                for path in [dest/'sprites.png',dest/'sprites.json',dest/'lods.json',*dest.glob('asset-lod-*.glb')]:path.unlink(missing_ok=True)
-                for name in ['assetkit','inputs','textures']:
-                    if (candidate/name).exists():shutil.copytree(candidate/name,dest/name,dirs_exist_ok=True)
-                for name in ['sprites.png','sprites.json']:
-                    if (candidate/name).exists():shutil.copyfile(candidate/name,dest/name)
-                for path in candidate.glob('asset-lod-*.glb'):shutil.copyfile(path,dest/path.name)
-                if (candidate/'lods.json').exists():shutil.copyfile(candidate/'lods.json',dest/'lods.json')
-            receipt(output,'model','quick' if preview else 'final',state['scriptSha256'],{'runner':'2'})
-            (output/'state.json').write_text(json.dumps(state))
+                if (dest/'script-revisions').exists():shutil.copytree(dest/'script-revisions',candidate/'script-revisions')
+                if (dest/'build-request.json').exists():shutil.copyfile(dest/'build-request.json',candidate/'build-request.json')
+            names=required if preview else required+['build-config.json','helpers.py','rebuild.py','render.py','build_runtime.py','build_artifacts.py','params.json','assetkit','inputs','textures']
+            names=[name for name in names if (candidate/name).exists()]
+            for pattern in ('frame-*.png','review-*-f*-d*.png','sprite-checks.json','sprites.png','sprites.json','asset-lod-*.glb','lods.json'):
+                names.extend(path.name for path in candidate.glob(pattern))
+            receipt(candidate,'model','quick' if preview else 'final',state['scriptSha256'],{'runner':'3'})
+            (candidate/'state.json').write_text(json.dumps(state))
+            publish_workspace(candidate,output,sorted(set(names+['build-receipt.json','state.json'])))
         (dest/'build-state.json').write_text(json.dumps(state))
         metrics=json.loads((candidate/'metrics.json').read_text()) if ok else None
         shutil.rmtree(candidate)
@@ -153,6 +147,7 @@ async def asset_workspace(input):
         return await run_saved_asset(capability,mode=='quick')
     async with locks.setdefault(capability,asyncio.Lock()):
         workspace(capability)
+        recover_workspace(dest)
         prepare(ROOT,DATA,dest,info)
         current=(dest/'asset.py').read_text(encoding='utf-8') if (dest/'asset.py').exists() else ''
         digest=hashlib.sha256(current.encode()).hexdigest()
@@ -194,7 +189,7 @@ def get_render(capability:str,view:str='front')->dict:
     return {'view':view,'exists':path.exists(),'instruction':'Use the view_render vision tool with the same capability to inspect the pixels. Never encode image bytes as text.'}
 @mcp.tool()
 async def photograph_asset(capability:str,front_azimuth:float=-55,elevation:float=25,framing:float=1.2,exposure:float=0)->dict:
-    """Render the exact authorized GLB in an isolated studio. No asset editing. Produces front/rear/detail and, for model review capabilities, left/right/top/bottom PNGs for view_render. Angles are degrees; framing 1.05–1.8; exposure -1–1."""
+    """Render the exact authorized GLB in an isolated studio. No asset editing. Produces front/rear/detail and, for model review capabilities, left/right/top/bottom PNGs for view_render. Angles are degrees; framing 1.05â€“1.8; exposure -1â€“1."""
     import math
     dest=workspace(capability)
     info=json.loads((DATA/'capabilities'/f'{capability}.json').read_text())
@@ -208,6 +203,7 @@ async def photograph_asset(capability:str,front_azimuth:float=-55,elevation:floa
     async with locks.setdefault(capability,asyncio.Lock()):
         workspace(capability)
         dest.mkdir(parents=True,exist_ok=True)
+        recover_workspace(dest)
         candidate=dest/('.candidate-'+str(uuid.uuid4()));candidate.mkdir()
         (dest/'build-state.json').write_text(json.dumps({'ok':False,'state':'building'}))
         script=candidate/'photograph.py'
@@ -231,9 +227,7 @@ async def photograph_asset(capability:str,front_azimuth:float=-55,elevation:floa
                 path=candidate/(view+'.png')
                 if not re.fullmatch(r'[a-z]+',view) or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:raise ValueError('Invalid photograph receipt')
             receipt(candidate,'photography','final',hashlib.sha256(json.dumps(manifest,sort_keys=True).encode()).hexdigest(),{'runner':'2'})
-            for path in candidate.iterdir():
-                if path.suffix=='.png':shutil.copyfile(path,dest/path.name)
-            for name in ['photography.json','build-receipt.json']:shutil.copyfile(candidate/name,dest/name)
+            publish_workspace(candidate,dest,[path.name for path in candidate.iterdir() if path.suffix=='.png']+['photography.json','build-receipt.json'])
         (dest/'build-state.json').write_text(json.dumps({'ok':ok,'state':'done' if ok else 'failed'}))
         shutil.rmtree(candidate)
         return {'ok':ok,'log':out.decode(errors='replace')[-(1200 if ok else 6000):]}

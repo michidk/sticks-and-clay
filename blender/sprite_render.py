@@ -56,7 +56,7 @@ def render(root):
     render_sheet(scene,camera,center,span,str(out),options)
     if hashlib.sha256(source.read_bytes()).hexdigest()!=digest:raise ValueError('Source changed')
     (out/'receipt.json').write_text(json.dumps({'sourceSha256':digest,'frames':frames,'blender':bpy.app.version_string}),encoding='utf-8')
-    receipt(out,'sprite','final',hashlib.sha256(source.read_bytes()+(root/'params.json').read_bytes()).hexdigest(),{'blender':bpy.app.version_string})
+    receipt(out,'sprite','final',hashlib.sha256(source.read_bytes()+(root/'params.json').read_bytes()).hexdigest(),{'blender':bpy.app.version_string,'runner':'3'})
     publish(out,root/'output')
 
 

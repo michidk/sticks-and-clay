@@ -42,6 +42,7 @@ class MaterialQualityTests(unittest.TestCase):
             root=pathlib.Path(directory)/'bundle';root.mkdir()
             for path in (pathlib.Path(__file__).parent/'materials').iterdir():
                 if path.is_file():shutil.copy2(path,root/path.name)
+            shutil.copy2(pathlib.Path(__file__).parent/'build_artifacts.py',root/'build_artifacts.py')
             (root/'params.json').write_text(json.dumps({'recipe':'wood','size':64}))
             (root/'asset.py').write_text("from materialkit import build_material\nfrom pathlib import Path\ndef build(params):\n    with Path(__file__).with_name('calls.txt').open('a') as f:f.write('x')\n    return build_material(params)\n")
             env={**os.environ,'STUDIO_MATERIAL_CACHE':str(pathlib.Path(directory)/'cache')}

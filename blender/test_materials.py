@@ -45,6 +45,7 @@ class MaterialTests(unittest.TestCase):
             for name in ('render.py','materialkit.py','materialcore.py','materialcache.py','materialcalibration.py','calibration-targets.json','materialrecipes.py','materialoutput.py','requirements.txt'):
                 shutil.copy2(pathlib.Path(__file__).parent/'materials'/name,root/name)
             params=check({'size':64,'recipe':'brick'})
+            shutil.copy2(pathlib.Path(__file__).parent/'build_artifacts.py',root/'build_artifacts.py')
             (root/'params.json').write_text(json.dumps(params))
             (root/'asset.py').write_text('from materialkit import build_material\ndef build(params): return build_material(params)\n')
             subprocess.run([sys.executable,str(root/'render.py')],cwd=root,check=True,capture_output=True)

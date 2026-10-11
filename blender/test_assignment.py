@@ -27,6 +27,7 @@ class AssignmentTests(unittest.TestCase):
             before=(root/'source.glb').read_bytes()
             (root/'params.json').write_text(json.dumps({'slot':'Surface','repeat':2,'materialVersionId':'fixture'}))
             shutil.copyfile(pathlib.Path(__file__).parent/'assign_material.py',root/'assign_material.py')
+            shutil.copyfile(pathlib.Path(__file__).parent/'build_artifacts.py',root/'build_artifacts.py')
             runpy.run_path(str(root/'assign_material.py'))
             self.assertEqual((root/'source.glb').read_bytes(),before)
             result=(root/'derived.glb').read_bytes();doc=json.loads(result[20:20+int.from_bytes(result[12:16],'little')])

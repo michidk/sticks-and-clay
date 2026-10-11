@@ -1,4 +1,8 @@
-import { runExportProcess } from "../modules/asset-builds/index.server";
+import {
+  runExportProcess,
+  commitGeneratedBuild,
+} from "../modules/asset-builds/index.server";
+import { createHash } from "node:crypto";
 import { assertJobActive } from "./queue.server";
 import { eq } from "drizzle-orm";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -54,8 +58,10 @@ export async function renderCollection(batchId: string) {
   const directory = `collections/${batchId}/${crypto.randomUUID()}`,
     output = resolve(DATA, directory);
   await mkdir(output, { recursive: true });
+  const candidate = resolve(output, `.candidate-${crypto.randomUUID()}`);
+  await mkdir(candidate);
   const config = {
-    output,
+    output: candidate,
     frontAzimuth: COLLECTION_FRONT_AZIMUTH,
     assets: await Promise.all(
       ready.map(async (m) => ({
@@ -84,8 +90,14 @@ export async function renderCollection(batchId: string) {
     settings.timeouts.collectionMs,
   );
   await assertJobActive();
+  await commitGeneratedBuild(
+    candidate,
+    output,
+    "photography",
+    createHash("sha256").update(JSON.stringify(config.assets)).digest("hex"),
+  );
   await publishFiles(
-    ["lineup.png", "scene.png", "collection.blend"].map(
+    ["lineup.png", "scene.png", "collection.blend", "build-receipt.json"].map(
       (file) => `${directory}/${file}`,
     ),
   );

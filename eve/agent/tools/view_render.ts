@@ -5,6 +5,7 @@ import { resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { committedDirectory } from "../../../src/modules/asset-builds/publication.server";
 const dataDirectory = () => resolve(process.env.STUDIO_DATA_DIR || "../data");
 export default defineTool({
   description:
@@ -46,17 +47,28 @@ export default defineTool({
         "utf8",
       ),
     );
+    const output = await committedDirectory(
+      resolve(
+        dataDir,
+        authorization.directory,
+        view.startsWith("preview_") ? "preview" : ".",
+      ),
+    );
     let artifactPath: string | undefined, artifactHash: string | undefined;
-    if (artifactId) {
-      const receipt = JSON.parse(
-        await readFile(
-          resolve(dataDir, authorization.directory, "build-receipt.json"),
-          "utf8",
-        ),
-      );
+    const receiptText = await readFile(
+      resolve(output, "build-receipt.json"),
+      "utf8",
+    ).catch((error) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (artifactId || receiptText) {
+      const receipt = receiptText ? JSON.parse(receiptText) : { artifacts: [] };
+      const id =
+        artifactId || (view.startsWith("preview_") ? view.slice(8) : view);
       const artifact = receipt.artifacts.find(
         (a: { id: string; mime: string }) =>
-          a.id === artifactId && a.mime === "image/png",
+          a.id === id && a.mime === "image/png",
       );
       if (!artifact || !/^[a-zA-Z0-9_.-]+\.png$/.test(artifact.path))
         throw new Error("Unknown image artifact");
@@ -65,11 +77,10 @@ export default defineTool({
     }
     const path = await realpath(
       resolve(
-        dataDir,
-        authorization.directory,
+        output,
         artifactPath ||
           (view.startsWith("preview_")
-            ? "preview/" + view.slice(8) + ".png"
+            ? view.slice(8) + ".png"
             : view + ".png"),
       ),
     );
@@ -109,14 +120,7 @@ export default defineTool({
     )
       .then(JSON.parse)
       .catch(() => undefined);
-    const artifactState = await readFile(
-      resolve(
-        dataDir,
-        authorization.directory,
-        view.startsWith("preview_") ? "preview/state.json" : "state.json",
-      ),
-      "utf8",
-    )
+    const artifactState = await readFile(resolve(output, "state.json"), "utf8")
       .then(JSON.parse)
       .catch(() => undefined);
     const stale =

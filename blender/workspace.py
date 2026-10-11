@@ -56,14 +56,14 @@ def prepare(root, data, dest, info):
         shutil.copytree(support / 'assetkit', temporary / 'assetkit', ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copyfile(support / 'helpers.py', temporary / 'helpers.py')
         # Runner protocol is shared by old and new helper bundles.
-        for name in ['rebuild.py', 'render.py', 'build_runtime.py']:
+        for name in ['rebuild.py', 'render.py', 'build_runtime.py', 'build_artifacts.py']:
             shutil.copyfile(root / 'blender' / name, temporary / name)
         temporary.rename(snapshot)
     # Upgrade the runner protocol while preserving pinned geometry helpers.
-    for name in ['rebuild.py', 'render.py', 'build_runtime.py']:
+    for name in ['rebuild.py', 'render.py', 'build_runtime.py', 'build_artifacts.py']:
         shutil.copyfile(root / 'blender' / name, snapshot / name)
-    atomic_write(dest / 'work-source.json', json.dumps({'dependencies': sorted(set(dependencies))}))
-    for name in ['helpers.py', 'rebuild.py', 'render.py', 'build_runtime.py']:
+    atomic_write(dest / 'work-source.json', json.dumps({'runnerProtocol':3,'dependencies': sorted(set(dependencies))}))
+    for name in ['helpers.py', 'rebuild.py', 'render.py', 'build_runtime.py', 'build_artifacts.py']:
         if not (dest / name).exists(): shutil.copyfile(snapshot / name, dest / name)
     if not (dest / 'assetkit').exists(): shutil.copytree(snapshot / 'assetkit', dest / 'assetkit')
     if not (dest / 'build-config.json').exists():

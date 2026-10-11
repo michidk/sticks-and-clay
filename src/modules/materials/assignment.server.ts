@@ -8,7 +8,11 @@ import { jobs, models } from "../../db/schema";
 import { checkpointMany, jobContext } from "../../lib/checkpoint.server";
 import { DATA, publishFiles } from "../../lib/storage.server";
 import { assertJobActive } from "../../lib/queue.server";
-import { exportBundle, runExportProcess } from "../asset-builds/index.server";
+import {
+  exportBundle,
+  runExportProcess,
+  readReceipt,
+} from "../asset-builds/index.server";
 
 export async function createAssignment(modelId: string, value: unknown) {
   const input = z
@@ -139,7 +143,11 @@ export async function renderAssignment() {
         throw new Error(`Saved ${name} map changed`);
       await writeFile(resolve(root, "maps", `${name}.png`), map);
     }
-    for (const name of ["assign_material.py", "build_runtime.py"])
+    for (const name of [
+      "assign_material.py",
+      "build_runtime.py",
+      "build_artifacts.py",
+    ])
       await copyFile(resolve("blender", name), resolve(root, name));
     await writeFile(
       resolve(root, "params.json"),
@@ -169,10 +177,19 @@ export async function renderAssignment() {
   );
   if (provenance.sourceSha256 !== job.checkpoint.sourceHash)
     throw new Error("Assignment source mismatch");
+  const hasReceipt = await readFile(resolve(root, "build-receipt.json")).then(
+    () => true,
+    (error) => {
+      if (error.code === "ENOENT") return false;
+      throw error;
+    },
+  );
+  if (hasReceipt) await readReceipt(root);
   await exportBundle(directory);
   const files = [
     "derived.glb",
     "assignment.json",
+    ...(hasReceipt ? ["build-receipt.json"] : []),
     "source.zip",
     "delivery.zip",
     "build-manifest.json",

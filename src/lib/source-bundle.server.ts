@@ -71,6 +71,9 @@ export async function bundleFiles(directory: string) {
           "build-manifest.json",
           "bundle-stats.json",
           "output.last",
+          ".published",
+          "publication-pending.json",
+          "output-current.json",
         ].includes(entry.name) ||
         entry.name.startsWith(".candidate-")
       )

@@ -2,9 +2,14 @@
 import hashlib
 import json
 import pathlib
+import sys
+import uuid
+import shutil
 import bpy
 
 root = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0,str(root))
+from build_artifacts import receipt, publish_workspace
 params = json.loads((root / 'params.json').read_text())
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=str(root / 'source.glb'))
@@ -40,11 +45,13 @@ for obj in bpy.context.scene.objects:
             if not obj.data.uv_layers: raise ValueError('Selected mesh has no UV coordinates: ' + obj.name)
             slot.material = material; assigned += 1
 if not assigned: raise ValueError('Selected material slot is absent from the source model')
-candidate = root / 'derived.candidate.glb'
-bpy.ops.export_scene.gltf(filepath=str(candidate), export_format='GLB')
-candidate.replace(root / 'derived.glb')
-(root / 'assignment.json').write_text(json.dumps({
+candidate = root / ('.candidate-'+uuid.uuid4().hex);candidate.mkdir()
+bpy.ops.export_scene.gltf(filepath=str(candidate/'derived.glb'), export_format='GLB')
+(candidate / 'assignment.json').write_text(json.dumps({
     'version': 1, 'sourceSha256': hashlib.sha256((root / 'source.glb').read_bytes()).hexdigest(),
     'parameters': params, 'assignedSlots': assigned, 'blender': bpy.app.version_string,
     'conventions': 'sRGB albedo; linear data; OpenGL normal. Height remains a separate map.'
 }, indent=2))
+receipt(candidate,'model','final',hashlib.sha256((root/'source.glb').read_bytes()+(root/'params.json').read_bytes()).hexdigest(),{'blender':bpy.app.version_string,'runner':'3'})
+publish_workspace(candidate,root,['derived.glb','assignment.json','build-receipt.json'])
+shutil.rmtree(candidate)

@@ -15,6 +15,7 @@ import {
   exportBundle,
   runExportProcess,
   readReceipt,
+  commitGeneratedBuild,
 } from "../modules/asset-builds/index.server";
 import { copyFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -342,8 +343,10 @@ export async function renderPresentation() {
   }
   const script = resolve(destination, "render.py"),
     literal = (value: unknown) => JSON.stringify(value);
+  const candidate = resolve(destination, `.candidate-${crypto.randomUUID()}`);
+  await mkdir(candidate);
   let code = await readFile("blender/photograph.py", "utf8");
-  code += `\nphotograph(${literal(resolve(DATA, artifacts.glb))},${literal(destination)},coverage=${literal(REVIEW_VIEWS)})\n`;
+  code += `\nphotograph(${literal(resolve(DATA, artifacts.glb))},${literal(candidate)},coverage=${literal(REVIEW_VIEWS)})\n`;
   await writeFile(script, code);
   await assertJobActive();
   await runExportProcess(
@@ -362,9 +365,18 @@ export async function renderPresentation() {
     900000,
   );
   await assertJobActive();
+  await commitGeneratedBuild(
+    candidate,
+    destination,
+    "photography",
+    createHash("sha256")
+      .update(await readFile(resolve(DATA, artifacts.glb)))
+      .digest("hex"),
+  );
   const files = [
     ...REVIEW_VIEWS.map((v) => `${directory}/${v}.png`),
     `${directory}/photography.json`,
+    `${directory}/build-receipt.json`,
   ];
   await publishFiles(files);
   await checkpoint("files", JSON.stringify(files));

@@ -62,7 +62,7 @@ Evidence: `blender/server.py` mixes authorization, subprocesses, candidate works
 - [x] Extract process supervision and candidate-output handling from the Python server; retain capability checks and HTTP/MCP as adapters.
 - [x] Use one host-level Blender resource gate across launch paths. Acquire once; preserve separate workspace locks. Offline runners must not depend on PostgreSQL.
 - [x] Standardize cancellation, owned-child cleanup, wait versus execution time, overall deadlines, log retention, and bounded progress events.
-- [ ] Give every kind candidate directories, receipt validation, last-good retention, and publication through a committed manifest/pointer. Publish storage objects before exposing a completed database version.
+- [x] Give every kind candidate directories, receipt validation, last-good retention, and publication through a committed manifest/pointer. Publish storage objects before exposing a completed database version.
 - [x] Classify script, validation, dependency, timeout/resource, cancelled, and runner errors. Script repair gets the actual traceback; operational failures do not trigger artistic rewrites.
 - [x] Extend inspection to receipt-backed artifact IDs, crops, and paged sheets. Preserve scoped access, immutable vision references, actual image transport, and current-build hashes.
 - [x] Pin runner protocol/helper versions explicitly. Record compatibility upgrades rather than silently changing an in-progress job's runtime.
@@ -202,8 +202,9 @@ Evidence: `src/components/model-viewer/index.tsx` combines toolbar, scene, camer
 
 ## Remaining acceptance and consolidation
 
-1. **M2 publication consolidation:** material and sprite exports use candidate directories and last-good retention. Photographer MCP builds stage candidates and commit receipts last; model workspaces retain the established build-state/artifact-state contract and immutable archive publication. Consolidating every legacy root into the same directory-pointer layout remains open; existing public paths and archived bundles must retain compatibility.
-3. **M10 live prompt evaluation:** fixed-seed recipe evaluation is recorded, but matched-budget builder/judge A/B evaluation needs a configured agent credential. No artistic quality improvement or repair-cost reduction is claimed from mocked replay tests.
-4. **Runtime acceptance:** Windows process ownership is tested. Run the cancellation/resource tests on Linux before treating the POSIX supervisor as production-verified. Eve compilation succeeds; full sandbox prewarming needs access to its container image registry.
+1. **M10 live prompt evaluation:** fixed-seed recipe evaluation is recorded. A provider is now available for matched-budget prompt trials; those trials and their quality/repair-cost report remain outstanding.
+2. **Eve sandbox acceptance:** compilation succeeds, but full sandbox prewarming still needs access to its container image registry.
+
+Publication consolidation is delivered: current builds use immutable generations and an atomic pointer, with recoverable compatibility filenames. Inspection/archive readers resolve one committed generation. Runtime and publication recovery tests pass on both Windows and Linux, including cancelling a slot waiter without stopping the slot owner. Offline model rebuilds stage outputs and retain the previous successful GLB after a failed edit.
 
 Material history currently displays the most recent 40 jobs, with independent immutable material/version identities saved in PostgreSQL. Pagination across all revisions is a later usability extension. Bundle instrumentation records input bytes, elapsed time and before/after RSS; it is not a peak-memory benchmark. Further streaming work needs representative large bundles.

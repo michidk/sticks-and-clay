@@ -44,6 +44,45 @@ test("quick sprites and retained final evidence follow separate build identities
     expect(final.note).toContain("Historical");
     expect(quick.note).toBeUndefined();
     expect(final.imageKey).not.toBe(quick.imageKey);
+    // An interrupted alias copy must not change the generation inspected by the judge.
+    const { createHash } = await import("node:crypto");
+    const generation = ".published/" + "a".repeat(32);
+    await mkdir(resolve(root, "asset", generation), { recursive: true });
+    const pixels = "committed sprite pixels";
+    const sha256 = createHash("sha256").update(pixels).digest("hex");
+    await writeFile(resolve(root, "asset", generation, "sprites.png"), pixels);
+    const receipt = JSON.stringify({
+      artifacts: [
+        { id: "sprites", path: "sprites.png", mime: "image/png", sha256 },
+      ],
+    });
+    await writeFile(
+      resolve(root, "asset", generation, "build-receipt.json"),
+      receipt,
+    );
+    await writeFile(
+      resolve(root, "asset/output-current.json"),
+      JSON.stringify({
+        directory: generation,
+        receiptSha256: createHash("sha256").update(receipt).digest("hex"),
+      }),
+    );
+    await writeFile(
+      resolve(root, "asset/sprites.png"),
+      "partially replaced alias",
+    );
+    const committed = await (viewRender.execute as any)({
+      capability,
+      view: "sprites",
+    });
+    expect(committed.imageKey).toBe(`vision/${sha256}.png`);
+    await writeFile(
+      resolve(root, "asset", generation, "sprites.png"),
+      "tampered generation",
+    );
+    await expect(
+      (viewRender.execute as any)({ capability, view: "sprites" }),
+    ).rejects.toThrow("Artifact changed");
   } finally {
     if (previous === undefined) delete process.env.STUDIO_DATA_DIR;
     else process.env.STUDIO_DATA_DIR = previous;

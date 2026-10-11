@@ -1,3 +1,4 @@
+import { committedDirectory } from "../modules/asset-builds/publication.server";
 import {
   copyFile,
   cp,
@@ -32,6 +33,7 @@ export async function archiveVersion(
   if (!run) throw new Error("Builder run not found");
   const result = run.result as Record<string, unknown>;
   if (result?.artifacts) return archivedModelSchema.parse(result.artifacts);
+  const inputDirectory = await committedDirectory(resolve(DATA, directory));
   const destination = `versions/${runId}`;
   const temporary = resolve(DATA, `versions/.${runId}-${crypto.randomUUID()}`);
   await mkdir(temporary, { recursive: true });
@@ -43,10 +45,10 @@ export async function archiveVersion(
       ...(includeRenders ? ["front.png", "rear.png", "detail.png"] : []),
       "metrics.json",
     ]) {
-      await copyFile(resolve(DATA, directory, file), resolve(temporary, file));
+      await copyFile(resolve(inputDirectory, file), resolve(temporary, file));
     }
     const sourceFiles: string[] = [];
-    const lods = await readFile(resolve(DATA, directory, "lods.json"), "utf8")
+    const lods = await readFile(resolve(inputDirectory, "lods.json"), "utf8")
       .then(JSON.parse)
       .catch((error) => {
         if (error.code !== "ENOENT") throw error;
@@ -56,7 +58,7 @@ export async function archiveVersion(
       if (!/^asset-lod-[1-3]\.glb$/.test(lod.file))
         throw new Error("Invalid LOD output");
       await copyFile(
-        resolve(DATA, directory, lod.file),
+        resolve(inputDirectory, lod.file),
         resolve(temporary, lod.file),
       );
     }
@@ -68,6 +70,7 @@ export async function archiveVersion(
       "rebuild.py",
       "render.py",
       "build_runtime.py",
+      "build_artifacts.py",
       "params.json",
       "build-config.json",
       "build-request.json",
@@ -75,27 +78,24 @@ export async function archiveVersion(
       "sprites.json",
       "sprite-checks.json",
     ]) {
-      await copyFile(resolve(DATA, directory, name), resolve(temporary, name))
+      await copyFile(resolve(inputDirectory, name), resolve(temporary, name))
         .then(() => sourceFiles.push(name))
         .catch((error) => {
           if (error.code !== "ENOENT") throw error;
         });
     }
     for (const name of ["assetkit", "inputs", "script-revisions"])
-      await cp(resolve(DATA, directory, name), resolve(temporary, name), {
+      await cp(resolve(inputDirectory, name), resolve(temporary, name), {
         recursive: true,
         filter: (path) => !path.includes("__pycache__"),
       }).catch((error) => {
         if (error.code !== "ENOENT") throw error;
       });
-    for (const name of await readdir(resolve(DATA, directory))) {
+    for (const name of await readdir(inputDirectory)) {
       if (
         /^(frame-[0-9]+-[0-9]+|review-[a-z]+-f[0-9]+-d[0-9]+)\.png$/.test(name)
       ) {
-        await copyFile(
-          resolve(DATA, directory, name),
-          resolve(temporary, name),
-        );
+        await copyFile(resolve(inputDirectory, name), resolve(temporary, name));
         sourceFiles.push(name);
       }
     }
@@ -143,7 +143,7 @@ export async function archiveVersion(
     );
     await mkdir(resolve(temporary, "textures"), { recursive: true });
     // Keep generated source images plus the exact embedded textures used in the GLB.
-    const sourceTextures = resolve(DATA, directory, "textures");
+    const sourceTextures = resolve(inputDirectory, "textures");
     for (const file of await readdir(sourceTextures).catch((error) => {
       if (error.code === "ENOENT") return [];
       throw error;
@@ -350,8 +350,9 @@ export async function archivePhotography(
   const model = archivedModelSchema.parse(artifacts);
   let photography = saved ? archivedPhotographySchema.parse(saved) : undefined;
   if (!photography) {
+    const inputDirectory = await committedDirectory(resolve(DATA, directory));
     const receipt = JSON.parse(
-      await readFile(resolve(DATA, directory, "photography.json"), "utf8"),
+      await readFile(resolve(inputDirectory, "photography.json"), "utf8"),
     );
     const hash = createHash("sha256")
       .update(await readFile(resolve(DATA, model.glb)))
@@ -366,7 +367,7 @@ export async function archivePhotography(
     await mkdir(temporary, { recursive: true });
     try {
       for (const view of requiredViews) {
-        const png = await readFile(resolve(DATA, directory, `${view}.png`));
+        const png = await readFile(resolve(inputDirectory, `${view}.png`));
         if (
           png.length < 24 ||
           png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a" ||

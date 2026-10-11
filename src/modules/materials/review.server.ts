@@ -87,6 +87,13 @@ export async function reviewMaterial(
         await mkdir(directory, { recursive: true });
         for (const name of materialSupport)
           await copyFile(resolve(root, name), resolve(directory, name));
+        // Older pinned renderers predate the publication helper; do not upgrade them on resume.
+        await copyFile(
+          resolve(root, "build_artifacts.py"),
+          resolve(directory, "build_artifacts.py"),
+        ).catch((error) => {
+          if (error.code !== "ENOENT") throw error;
+        });
         await writeFile(
           resolve(directory, "params.json"),
           JSON.stringify(parameters, null, 2),

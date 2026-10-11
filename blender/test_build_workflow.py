@@ -89,6 +89,13 @@ class WorkflowTests(unittest.IsolatedAsyncioTestCase):
                 rebuilt=json.loads((other/'metrics.json').read_text())
                 self.assertEqual(rebuilt['dimensions'],final['metrics']['dimensions'])
                 self.assertEqual(rebuilt['triangles'],final['metrics']['triangles'])
+                self.assertTrue((other/'output-current.json').exists())
+                offline_good=(other/'asset.glb').read_bytes()
+                (other/'asset.py').write_text('raise RuntimeError("offline failure")')
+                proc=await asyncio.create_subprocess_exec(sys.executable,str(other/'render.py'),'--mode','final','--blender',os.environ['BLENDER_BIN'],stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
+                await proc.communicate()
+                self.assertNotEqual(proc.returncode,0)
+                self.assertEqual((other/'asset.glb').read_bytes(),offline_good)
             finally:server.DATA=previous
 
 if __name__=='__main__':unittest.main()

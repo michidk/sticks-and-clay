@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, copyFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -8,8 +8,10 @@ import { DATA } from "../../lib/storage.server";
 import { assertJobActive } from "../../lib/queue.server";
 import { bundleFiles, sourceZip } from "../../lib/source-bundle.server";
 import { receiptSchema } from "./contracts";
+import { committedDirectory } from "./publication.server";
 
 export async function readReceipt(directory: string) {
+  directory = await committedDirectory(directory);
   const receipt = receiptSchema.parse(
     JSON.parse(
       await readFile(resolve(directory, "build-receipt.json"), "utf8"),
@@ -21,6 +23,39 @@ export async function readReceipt(directory: string) {
       throw new Error(`Artifact checksum mismatch: ${artifact.id}`);
   }
   return receipt;
+}
+
+export async function commitGeneratedBuild(
+  candidate: string,
+  destination: string,
+  kind: "photography" | "model",
+  inputHash: string,
+) {
+  await copyFile(
+    resolve("blender/build_artifacts.py"),
+    resolve(candidate, "build_artifacts.py"),
+  );
+  const python =
+    process.env.STUDIO_PYTHON ||
+    resolve(
+      process.platform === "win32"
+        ? ".venv/Scripts/python.exe"
+        : ".venv/bin/python",
+    );
+  await runExportProcess(
+    python,
+    [
+      "-c",
+      "import pathlib,sys;from build_artifacts import receipt,publish_workspace;p=pathlib.Path('.');receipt(p,sys.argv[2],'final',sys.argv[3],{'runner':'3'});publish_workspace(p,pathlib.Path(sys.argv[1]),[x.name for x in p.iterdir() if x.suffix in ('.png','.json','.glb','.blend')])",
+      destination,
+      kind,
+      inputHash,
+    ],
+    candidate,
+    60000,
+  );
+  await readReceipt(destination);
+  await rm(candidate, { recursive: true, force: true });
 }
 
 export function savedExport(job: typeof jobs.$inferSelect) {

@@ -13,6 +13,7 @@ import os
 import time
 from materialcache import build_key, restore, populate
 from materialkit import save, check
+from build_artifacts import publish
 from materialcalibration import calibrate
 
 if __name__ == '__main__':
@@ -61,13 +62,7 @@ if __name__ == '__main__':
                      'artifacts':artifacts,'checks':[],'timings':{'executionSeconds':time.perf_counter()-started},'toolchain':{'python':platform.python_version()}}
             (candidate/'build-receipt.json').write_text(json.dumps(receipt,indent=2))
             if cache:populate(cache,key,candidate)
-        last=root/(output.name+'.last')
-        if last.exists(): shutil.rmtree(last)
-        if output.exists(): output.rename(last)
-        try: candidate.rename(output)
-        except Exception:
-            if last.exists(): last.rename(output)
-            raise
+        publish(candidate,output)
         (root/'failure.json').unlink(missing_ok=True)
         print('Review:', output / 'review.png')
     finally:

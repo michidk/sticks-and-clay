@@ -166,6 +166,10 @@ export async function renderMaterial(projectId: string) {
   if (job.checkpoint.prepared !== "yes") {
     for (const name of materialSupport)
       await copyFile(resolve("blender/materials", name), resolve(root, name));
+    await copyFile(
+      resolve("blender/build_artifacts.py"),
+      resolve(root, "build_artifacts.py"),
+    );
     await writeFile(
       resolve(root, "params.json"),
       JSON.stringify(params, null, 2),
@@ -179,7 +183,7 @@ export async function renderMaterial(projectId: string) {
           guidance: job.checkpoint.guidance,
           notes: job.checkpoint.notes,
           toolkitVersion: "2.0.0",
-          runnerProtocol: 2,
+          runnerProtocol: 3,
           parentId: job.checkpoint.parentId,
         },
         null,

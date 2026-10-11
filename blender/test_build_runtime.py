@@ -9,6 +9,28 @@ import unittest
 from blender.build_runtime import launch
 
 class RuntimeTests(unittest.TestCase):
+    def test_cancel_waiting_supervisor_does_not_launch_or_stop_slot_owner(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=pathlib.Path(directory)
+            env={**os.environ,'BLENDER_CONCURRENCY':'1','STUDIO_RENDER_SLOT_DIR':str(root/'slots')}
+            runner=pathlib.Path(__file__).parent/'build_runtime.py'
+            base=[sys.executable,str(runner),'--cwd',directory,'--timeout','20','--',sys.executable,'-c']
+            owner=subprocess.Popen(base+["import pathlib,time;pathlib.Path('owner').write_text('running');time.sleep(15)"],env=env,stdout=subprocess.DEVNULL)
+            waiter=None
+            try:
+                deadline=time.monotonic()+5
+                while not (root/'owner').exists() and time.monotonic()<deadline:time.sleep(.05)
+                self.assertTrue((root/'owner').exists())
+                waiter=subprocess.Popen(base+["import pathlib;pathlib.Path('unexpected').write_text('started')"],env=env,stdout=subprocess.DEVNULL)
+                time.sleep(.2);waiter.kill();waiter.wait(timeout=5)
+                self.assertFalse((root/'unexpected').exists())
+                self.assertIsNone(owner.poll())
+            finally:
+                for proc in [waiter,owner]:
+                    if proc and proc.poll() is None:proc.kill();proc.wait(timeout=5)
+                # The owned-child watcher closes descendants after supervisor death.
+                time.sleep(.3)
+
     def test_supervisor_death_stops_owned_descendants(self):
         with tempfile.TemporaryDirectory() as directory:
             root=pathlib.Path(directory);marker=root/'heartbeat'
