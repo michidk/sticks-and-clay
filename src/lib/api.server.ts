@@ -960,6 +960,7 @@ export async function api(request: Request) {
           judgeIterations: input.judgeIterations,
           design: parentBatch.design,
           designVersion: parentBatch.designVersion,
+          imageSize: parentBatch.imageSize,
           workshop,
           status: "building",
         });

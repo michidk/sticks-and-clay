@@ -219,12 +219,13 @@ def allow_overlap(a,b,reason):
 
 
 def open_surface(obj,reason):
+    if not reason.strip():raise ValueError("Intentional open surface needs a reason")
     obj["open_surface_reason"] = reason
     return obj
 
 
 def grid_piece(obj,cells,cell_size=1):
-    if cell_size <= 0 or any(c < 0 or int(c) != c for c in cells):
+    if len(cells) != 3 or not math.isfinite(cell_size) or cell_size <= 0 or any(not math.isfinite(c) or c < 0 or int(c) != c for c in cells):
         raise ValueError("Grid dimensions use nonnegative whole cells")
     obj["grid_cells"], obj["grid_size"] = list(cells),cell_size
     return obj

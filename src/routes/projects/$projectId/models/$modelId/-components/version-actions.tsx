@@ -48,12 +48,16 @@ export function VersionActions({
       try {
         const next = await request(`workshop-jobs/${jobId}`);
         if (active) {
+          setError("");
           setJob(next);
           if (!["done", "failed", "cancelled"].includes(next.status))
             timer = setTimeout(poll, 2500);
         }
       } catch (e) {
-        if (active) setError((e as Error).message);
+        if (active) {
+          setError((e as Error).message);
+          timer = setTimeout(poll, 2500);
+        }
       }
     };
     void poll();

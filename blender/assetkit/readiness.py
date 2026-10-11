@@ -8,6 +8,7 @@ import bmesh
 def inspect_asset(parts, dimensions):
     findings = []
     nodes = []
+    sockets = {p.name for p in parts if p.get('asset_socket')}
     def issue(code,obj,message):
         findings.append({"code":code,"object":obj.name,"message":message,"severity":"warning"})
     for obj in parts:
@@ -39,13 +40,13 @@ def inspect_asset(parts, dimensions):
         for key in obj.keys():
             if key.startswith('slot_'):
                 slot=json.loads(obj[key])
-                if slot['socket'] not in {p.name for p in parts}:
+                if slot['socket'] not in sockets:
                     issue("slot_socket",obj,f"Missing socket {slot['socket']}")
             if key.startswith('event_'):
                 event=json.loads(obj[key])
                 if not bpy.context.scene.frame_start <= event['frame'] <= bpy.context.scene.frame_end:
                     issue("event_frame",obj,f"Event frame {event['frame']} is outside the animation range")
-                if event.get('socket') and event['socket'] not in {p.name for p in parts}:
+                if event.get('socket') and event['socket'] not in sockets:
                     issue("event_socket",obj,f"Missing event socket {event['socket']}")
     clips={k[5:]:json.loads(bpy.context.scene[k]) for k in bpy.context.scene.keys() if k.startswith('clip_')}
     return {"version":1,"status":"warnings" if findings else "passed","findings":findings,

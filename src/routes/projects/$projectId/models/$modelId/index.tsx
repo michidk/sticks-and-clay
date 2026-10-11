@@ -530,7 +530,12 @@ function ModelPage() {
                         <VersionActions
                           projectId={projectId}
                           modelId={modelId}
-                          sourceRunId={checkedVersion?.id}
+                          sourceRunId={
+                            checkedVersion?.status === "done" &&
+                            checkedVersion.artifacts?.blend
+                              ? checkedVersion.id
+                              : undefined
+                          }
                           artifacts={artifacts}
                           review={selected.feedback}
                         />

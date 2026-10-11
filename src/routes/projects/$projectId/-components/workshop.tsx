@@ -100,6 +100,7 @@ export function WorkshopPanel({
         <div className="space-y-2">
           <Label htmlFor="workshop-memory">Project memory</Label>
           <Textarea
+            disabled={busy}
             id="workshop-memory"
             rows={5}
             maxLength={8000}
@@ -114,6 +115,7 @@ export function WorkshopPanel({
         <div className="space-y-2">
           <Label htmlFor="workshop-style">Shared style</Label>
           <Textarea
+            disabled={busy}
             id="workshop-style"
             rows={4}
             maxLength={4000}
@@ -129,6 +131,7 @@ export function WorkshopPanel({
           <div className="space-y-2">
             <Label htmlFor="workshop-variation">Variation (0–100)</Label>
             <Input
+              disabled={busy}
               id="workshop-variation"
               type="number"
               min={0}
@@ -147,6 +150,7 @@ export function WorkshopPanel({
             <div className="space-y-2">
               <Label htmlFor="workshop-effort">Preview effort</Label>
               <Select
+                disabled={busy}
                 value={draft.effort}
                 onValueChange={(value) => {
                   setSaved(false);
@@ -196,8 +200,9 @@ export function WorkshopPanel({
                     className="workshop-checkbox"
                     checked={draft.exampleRunIds.includes(v.id)}
                     disabled={
-                      !draft.exampleRunIds.includes(v.id) &&
-                      draft.exampleRunIds.length >= 3
+                      busy ||
+                      (!draft.exampleRunIds.includes(v.id) &&
+                        draft.exampleRunIds.length >= 3)
                     }
                     onChange={(e) => {
                       setSaved(false);
@@ -254,6 +259,7 @@ export function WorkshopPanel({
           <Input id="baseline-name" name="name" maxLength={100} required />
           <Label htmlFor="baseline-prompt">Requested changes</Label>
           <Textarea
+            disabled={busy}
             id="baseline-prompt"
             name="prompt"
             minLength={3}

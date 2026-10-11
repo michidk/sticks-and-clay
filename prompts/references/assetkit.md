@@ -12,9 +12,9 @@ These helpers return ordinary bpy objects. They are a construction vocabulary, n
 - `kit.tube(name, points, radii=.1, segments=12, material=None, owner=None)` makes tapered path geometry. Radius may be a number or one value per point. Shape branches, limbs, rails and pipes deliberately.
 - `kit.rock(name, size, seed=1, material=None, owner=None)` provides a seeded irregular mass. Edit it for the requested contour.
 - `kit.tree(name, height=3, seed=1, bark=None, leaves=None)` provides trunk, supporting branches and distinct crown masses. Tune species, branching and silhouette; the preset is a starting structure.
-- `kit.bevel(obj, width=.03, segments=2)`, `kit.parent(obj, owner)`, `kit.pivot(obj, world_position)` retain meaningful part construction and transforms.
+- `kit.bevel(obj, width=.03, segments=2)`, `kit.parent(obj, owner)`, `kit.pivot(obj, position)` retain meaningful part construction and transforms.
 - `kit.color_material(name, color=(r,g,b,a), roughness=.6, metallic=0)` provides matte geometry-review or poly materials.
-- `kit.image_material(name, base_color_path, tangent_normal_path, roughness=.6, metallic=0)` binds and packs supplied maps with correct color spaces. It does not infer normals from color.
+- `kit.image_material(name, base_color, normal, roughness=.6, metallic=0)` binds and packs supplied maps with correct color spaces. It does not infer normals from color.
 - `kit.unwrap(obj)` provides a starting UV layout. Refine islands for directional grain, markings, texel scale and seams.
 
 Prefer expressive authored shapes to a heap of unchanged primitives. Inspect transitions, thickness and believable support. Use custom bpy meshes/modifiers when the vocabulary does not fit.

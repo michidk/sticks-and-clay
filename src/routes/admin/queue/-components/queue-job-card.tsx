@@ -68,7 +68,7 @@ export function QueueJobCard({
   const canCancel = ["queued", "running", "cancelling"].includes(job.status);
   const showProgress =
     ["running", "queued"].includes(job.status) &&
-    ["model", "project-photo", "presentation", "material"].includes(job.kind);
+    ["model", "project-photo", "material"].includes(job.kind);
 
   return (
     <Card className="queue-job">

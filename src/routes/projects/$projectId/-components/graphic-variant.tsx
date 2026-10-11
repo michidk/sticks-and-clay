@@ -35,8 +35,12 @@ export function GraphicVariant({
         `models/${model.id}/branch`,
         json({ kind: "fork", sourceRunId, name, prompt, judgeIterations: 0 }),
       );
-      await onSaved();
       setOpen(false);
+      void onSaved().catch(() => {
+        setError(
+          "Variant queued, but refreshing the list failed. Reload to see it.",
+        );
+      });
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -52,6 +56,7 @@ export function GraphicVariant({
       >
         Create variant
       </Button>
+      {!open && error && <p role="status">{error}</p>}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>

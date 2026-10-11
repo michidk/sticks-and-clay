@@ -52,3 +52,27 @@ test("material comparisons are advisory and expose their measurement limits", ()
   ).toHaveLength(1);
   expect(style.limitations[0]).toContain("image pixels");
 });
+
+test("style comparisons detect palette and image-count drift without depending on material order", () => {
+  const material = (color: number[]) => ({
+    pbrMetallicRoughness: { baseColorFactor: color },
+  });
+  const reference = measureStyle({
+    materials: [material([1, 0, 0, 1]), material([0, 1, 0, 1])],
+    images: [{}],
+  });
+  const reordered = measureStyle({
+    materials: [material([0, 1, 0, 1]), material([1, 0, 0, 1])],
+    images: [{}],
+  });
+  expect(compareStyle(reordered, [{ style: reference }], 0).warnings).toEqual(
+    [],
+  );
+  const drift = measureStyle({
+    materials: [material([0, 0, 1, 1])],
+    images: [{}, {}],
+  });
+  const warnings = compareStyle(drift, [{ style: reference }], 0).warnings;
+  expect(warnings.some((warning) => warning.includes("baseColors"))).toBe(true);
+  expect(warnings.some((warning) => warning.includes("imageCount"))).toBe(true);
+});

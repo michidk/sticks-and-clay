@@ -62,7 +62,7 @@ def prepare(root, data, dest, info):
     # Upgrade the runner protocol while preserving pinned geometry helpers.
     for name in ['rebuild.py', 'render.py', 'build_runtime.py', 'build_artifacts.py']:
         shutil.copyfile(root / 'blender' / name, snapshot / name)
-    atomic_write(dest / 'work-source.json', json.dumps({'runnerProtocol':3,'dependencies': sorted(set(dependencies))}))
+    atomic_write(dest / 'work-source.json', json.dumps({'runnerProtocol':4,'dependencies': sorted(set(dependencies))}))
     for name in ['helpers.py', 'rebuild.py', 'render.py', 'build_runtime.py', 'build_artifacts.py']:
         if not (dest / name).exists(): shutil.copyfile(snapshot / name, dest / name)
     if not (dest / 'assetkit').exists(): shutil.copytree(snapshot / 'assetkit', dest / 'assetkit')

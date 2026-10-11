@@ -30,38 +30,32 @@ integration(
       effort: "quick" as const,
       exampleRunIds: [runId],
     };
-    await db
-      .insert(projects)
-      .values({
-        id: projectId,
-        name: "Workflow fixture",
-        description: "test",
-        status: "ready",
-        design: "Approved original",
-        designVersion: 1,
-        workshop: guidance,
-      });
-    await db
-      .insert(batches)
-      .values({
-        id: batchId,
-        projectId,
-        prompt: "prop",
-        count: 1,
-        judgeIterations: 0,
-        design: "Approved original",
-        designVersion: 1,
-      });
-    await db
-      .insert(models)
-      .values({
-        id: modelId,
-        projectId,
-        batchId,
-        name: "Saved prop",
-        prompt: "prop",
-        status: "done",
-      });
+    await db.insert(projects).values({
+      id: projectId,
+      name: "Workflow fixture",
+      description: "test",
+      status: "ready",
+      design: "Approved original",
+      designVersion: 1,
+      workshop: guidance,
+    });
+    await db.insert(batches).values({
+      id: batchId,
+      projectId,
+      prompt: "prop",
+      count: 1,
+      judgeIterations: 0,
+      design: "Approved original",
+      designVersion: 1,
+    });
+    await db.insert(models).values({
+      id: modelId,
+      projectId,
+      batchId,
+      name: "Saved prop",
+      prompt: "prop",
+      status: "done",
+    });
     const source = {
       artifacts: {
         glb: "fixtures/saved.glb",
@@ -70,21 +64,19 @@ integration(
         metrics: { triangles: 24 },
       },
     };
-    await db
-      .insert(runs)
-      .values({
-        id: runId,
-        projectId,
-        modelId,
-        role: "builder",
-        status: "done",
-        model: "fixture",
-        promptVersion: "test",
-        systemPrompt: "test",
-        input: "test",
-        rates: { input: 0, output: 0, cached: 0, source: "test" },
-        result: source,
-      });
+    await db.insert(runs).values({
+      id: runId,
+      projectId,
+      modelId,
+      role: "builder",
+      status: "done",
+      model: "fixture",
+      promptVersion: "test",
+      systemPrompt: "test",
+      input: "test",
+      rates: { input: 0, output: 0, cached: 0, source: "test" },
+      result: source,
+    });
     let importedKey: string | undefined;
     try {
       const fork = await send(`models/${modelId}/branch`, {
@@ -112,7 +104,13 @@ integration(
       const presentation = await send(`models/${modelId}/presentation`, {
         sourceRunId: runId,
         sprites: true,
-        spriteOptions: { pixel: true, colors: 4, directions: 1, size: 32, frameCount: 2 },
+        spriteOptions: {
+          pixel: true,
+          colors: 4,
+          directions: 1,
+          size: 32,
+          frameCount: 2,
+        },
       });
       expect(presentation.status).toBe(201);
       const renderId = (await presentation.json()).id;
@@ -305,6 +303,7 @@ integration(
       projectId,
       prompt: "icon",
       count: 1,
+      imageSize: "1536x1024",
       judgeIterations: 0,
       design: "Approved graphic design",
       designVersion: 1,
@@ -358,6 +357,11 @@ integration(
       );
       const [variant] = await db.select().from(models).where(eq(models.id, id));
       expect(variant.sourceRunId).toBe(runId);
+      const [variantBatch] = await db
+        .select()
+        .from(batches)
+        .where(eq(batches.id, variant.batchId));
+      expect(variantBatch.imageSize).toBe("1536x1024");
     } finally {
       const ms = await db
         .select()

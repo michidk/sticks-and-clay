@@ -16,6 +16,20 @@ from assetkit.sprites import sample_frames
 class ShapeTests(unittest.TestCase):
     def setUp(self):bpy.ops.wm.read_factory_settings(use_empty=True)
 
+    def test_readiness_requires_real_sockets_and_valid_declarations(self):
+        owner=kit.rounded_box('Owner')
+        target=kit.rounded_box('NotASocket')
+        kit.slot(owner,'grip',target.name,['tool'])
+        owner['event_hit']=json.dumps({'frame':1,'socket':target.name})
+        orphan=bpy.data.objects.new('socket_orphan',None)
+        bpy.context.collection.objects.link(orphan);orphan['asset_socket']=True
+        report=inspect_asset([owner,target,orphan],[1,1,1])
+        self.assertTrue({'slot_socket','event_socket','socket_parent'} <= {f['code'] for f in report['findings']})
+        with self.assertRaises(ValueError):kit.open_surface(owner,'   ')
+        for cells in [(1,2),(1,2,3,4)]:
+            with self.assertRaises(ValueError):kit.grid_piece(owner,cells)
+        kit.grid_piece(owner,(1,1,1))
+
     def test_developed_shapes_are_closed_and_rocks_are_seeded(self):
         shapes=[kit.extrude('Profile',[(0,0),(1,0),(1,.5),(.5,1),(0,.5)],.2),
                 kit.lathe('Vessel',[(.3,0),(.5,.4),(.2,.8)]),

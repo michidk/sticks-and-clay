@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { jobs } from "../../db/schema";
 import { DATA } from "../../lib/storage.server";
 import { assertJobActive } from "../../lib/queue.server";
-import { bundleFiles, sourceZip } from "../../lib/source-bundle.server";
+import { bundleFiles, writeSourceZip } from "../../lib/source-bundle.server";
 import { receiptSchema } from "./contracts";
 import { committedDirectory } from "./publication.server";
 
@@ -176,7 +176,7 @@ export async function exportBundle(directory: string) {
         version: 1,
         files: files.map((f) => ({
           name: f.name,
-          sha256: createHash("sha256").update(f.bytes).digest("hex"),
+          sha256: f.sha256,
         })),
       },
       null,
@@ -184,10 +184,10 @@ export async function exportBundle(directory: string) {
     ),
   );
   await writeFile(resolve(root, "build-manifest.json"), manifest);
-  await writeFile(
-    resolve(root, "source.zip"),
-    sourceZip([...files, { name: "build-manifest.json", bytes: manifest }]),
-  );
+  await writeSourceZip(resolve(root, "source.zip"), [
+    ...files,
+    { name: "build-manifest.json", bytes: manifest },
+  ]);
   const receiptFile = files.find((f) => f.name === "output/build-receipt.json");
   const receiptPaths = receiptFile
     ? new Set(
@@ -207,10 +207,10 @@ export async function exportBundle(directory: string) {
     const instructions = Buffer.from(
       "Runtime assets only. PBR: sRGB albedo, linear data maps, OpenGL +Y normals; ORM channels are AO/roughness/metallic. Consult material.json for tile scale and height units. Sprites: rows are frames, columns are directions; sprites.json records pivots, source times and playback FPS. Source GLBs are preserved; derived.glb contains an explicit material assignment.\n",
     );
-    await writeFile(
-      resolve(root, "delivery.zip"),
-      sourceZip([...delivery, { name: "IMPORT.txt", bytes: instructions }]),
-    );
+    await writeSourceZip(resolve(root, "delivery.zip"), [
+      ...delivery,
+      { name: "IMPORT.txt", bytes: instructions },
+    ]);
   }
   await writeFile(
     resolve(root, "bundle-stats.json"),
@@ -218,7 +218,7 @@ export async function exportBundle(directory: string) {
       {
         version: 1,
         files: files.length,
-        inputBytes: files.reduce((sum, f) => sum + f.bytes.length, 0),
+        inputBytes: files.reduce((sum, f) => sum + f.size, 0),
         milliseconds: performance.now() - started,
         rssBefore,
         rssAfter: process.memoryUsage().rss,

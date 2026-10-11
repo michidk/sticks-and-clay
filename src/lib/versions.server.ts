@@ -17,7 +17,7 @@ import { cleanupGlb } from "../modules/glb/cleanup";
 import { handoverGlb } from "../modules/glb/handover";
 import { DATA, publishFiles } from "./storage.server";
 import { createHash } from "node:crypto";
-import { sourceZip, bundleFiles } from "./source-bundle.server";
+import { writeSourceZip, bundleFiles } from "./source-bundle.server";
 import { measureStyle } from "./asset-style";
 import {
   archivedModelSchema,
@@ -218,8 +218,8 @@ export async function archiveVersion(
         instructions: run.systemPrompt,
         files: files.map((f) => ({
           path: f.name,
-          sha256: createHash("sha256").update(f.bytes).digest("hex"),
-          bytes: f.bytes.length,
+          sha256: f.sha256,
+          bytes: f.size,
         })),
         sourceGlb: "source.glb",
         deliveryGlb: "asset.glb",
@@ -230,11 +230,10 @@ export async function archiveVersion(
       };
       const bytes = Buffer.from(JSON.stringify(manifest, null, 2));
       await writeFile(resolve(temporary, "build-manifest.json"), bytes);
-      files.push({ name: "build-manifest.json", bytes });
-      await writeFile(
-        resolve(temporary, "source-bundle.zip"),
-        sourceZip(files),
-      );
+      await writeSourceZip(resolve(temporary, "source-bundle.zip"), [
+        ...files,
+        { name: "build-manifest.json", bytes },
+      ]);
     }
     await rename(temporary, resolve(DATA, destination)).catch(async (error) => {
       if (!["EEXIST", "ENOTEMPTY"].includes(error.code)) throw error;

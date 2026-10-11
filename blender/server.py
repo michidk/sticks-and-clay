@@ -125,13 +125,13 @@ async def run_saved_asset(capability,preview=False,code=None):
             names=[name for name in names if (candidate/name).exists()]
             for pattern in ('frame-*.png','review-*-f*-d*.png','sprite-checks.json','sprites.png','sprites.json','asset-lod-*.glb','lods.json'):
                 names.extend(path.name for path in candidate.glob(pattern))
-            receipt(candidate,'model','quick' if preview else 'final',state['scriptSha256'],{'runner':'3'})
+            receipt(candidate,'model','quick' if preview else 'final',state['scriptSha256'],{'runner':str(json.loads((dest/'work-source.json').read_text()).get('runnerProtocol',3))})
             (candidate/'state.json').write_text(json.dumps(state))
             publish_workspace(candidate,output,sorted(set(names+['build-receipt.json','state.json'])))
         (dest/'build-state.json').write_text(json.dumps(state))
         metrics=json.loads((candidate/'metrics.json').read_text()) if ok else None
         shutil.rmtree(candidate)
-        return {'ok':ok,'preview':preview,'scriptSha256':state['scriptSha256'],'lastGoodRetained':not ok,'log':out.decode(errors='replace')[-(1200 if ok else 6000):],'metrics':metrics}
+        return {'ok':ok,'preview':preview,'scriptSha256':state['scriptSha256'],'lastGoodRetained':not ok and all((output/f).is_file() for f in required),'log':out.decode(errors='replace')[-(1200 if ok else 6000):],'metrics':metrics}
 
 
 async def asset_workspace(input):

@@ -43,6 +43,15 @@ test("quick sprites and retained final evidence follow separate build identities
     });
     expect(final.note).toContain("Historical");
     expect(quick.note).toBeUndefined();
+    await writeFile(
+      resolve(root, "asset/build-state.json"),
+      JSON.stringify({ ok: true, preview: false }),
+    );
+    const oldDraft = await (viewRender.execute as any)({
+      capability,
+      view: "preview_sprites",
+    });
+    expect(oldDraft.note).toContain("Historical");
     expect(final.imageKey).not.toBe(quick.imageKey);
     // An interrupted alias copy must not change the generation inspected by the judge.
     const { createHash } = await import("node:crypto");

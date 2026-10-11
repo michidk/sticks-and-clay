@@ -164,7 +164,7 @@ Evidence: `src/components/model-viewer/index.tsx` combines toolbar, scene, camer
 - [x] Cache material builds by normalized parameters, script, toolkit/dependencies/calibration, mode, and resolution. Verify hashes; populate atomically; bound retention. A cache is never the only saved copy.
 - [x] Bind reused material sets through the configured Python environment without requiring material dependencies inside Blender.
 - [x] Add lightweight delivery ZIPs separately from reproducible source bundles; derive content and import instructions from validated receipts.
-- [x] Measure bundle memory/time before replacing the buffered ZIP writer. Streaming/compression is follow-up optimization if real workloads justify it.
+- [x] Stream source and delivery ZIP payloads with bounded buffers, verify input hashes during packaging, and publish archives atomically. Keep bundle memory/time instrumentation.
 - [x] Add optional animated previews after authoritative frames/timings are reliable. Engine importers wait for a selected target engine.
 
 **Exit:** correct reuse/invalidation, corruption recovery, cache-free relocated rebuilds, and documented delivery contents.
@@ -208,4 +208,4 @@ The six matched-budget material prompt trials are recorded in [the evaluation re
 
 Publication consolidation is delivered: current builds use immutable generations and an atomic pointer, with recoverable compatibility filenames. Inspection/archive readers resolve one committed generation. Runtime and publication recovery tests pass on both Windows and Linux, including cancelling a slot waiter without stopping the slot owner. Offline model rebuilds stage outputs and retain the previous successful GLB after a failed edit.
 
-Material history currently displays the most recent 40 jobs, with independent immutable material/version identities saved in PostgreSQL. Pagination across all revisions is a later usability extension. Bundle instrumentation records input bytes, elapsed time and before/after RSS; it is not a peak-memory benchmark. Further streaming work needs representative large bundles.
+Material history currently displays the most recent 40 jobs, with independent immutable material/version identities saved in PostgreSQL. Pagination across all revisions is a later usability extension. Bundle instrumentation records input bytes, elapsed time and before/after RSS; it is not a peak-memory benchmark. ZIP payloads now stream in bounded chunks; representative large-bundle peak-memory measurements and compression remain follow-up work.

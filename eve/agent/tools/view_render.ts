@@ -126,6 +126,7 @@ export default defineTool({
     const stale =
       buildState &&
       (!buildState.ok ||
+        (view.startsWith("preview_") && buildState.preview === false) ||
         (artifactState?.scriptSha256 &&
           artifactState.scriptSha256 !== buildState.scriptSha256));
     return {

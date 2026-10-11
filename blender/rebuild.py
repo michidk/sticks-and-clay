@@ -7,6 +7,10 @@ import re
 import random
 
 directory = pathlib.Path(__file__).resolve().parent
+if not globals().get('STUDIO_CANDIDATE'):
+    import runpy
+    runpy.run_path(str(directory / 'render.py'), run_name='__main__', init_globals={'STUDIO_DIRECT_REBUILD': True})
+    raise SystemExit(0)
 config = json.loads((directory / 'build-config.json').read_text(encoding='utf-8'))
 parser = argparse.ArgumentParser()
 parser.add_argument('--mode', choices=['quick', 'final'])

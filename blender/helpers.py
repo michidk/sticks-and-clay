@@ -27,7 +27,7 @@ def finish_asset(material_mode="textured", sprites=None, lod_ratios=None, **_leg
     root=roots[0] if len(roots)==1 else kit.root('Asset')
     parts=[o for o in scene.objects if o.type in ('MESH','EMPTY','ARMATURE') and not o.get('studio_environment')]
     for obj in parts:
-        if obj != root and obj.parent is None:kit.parent(obj,root)
+        if obj != root and obj.parent is None and not obj.get('asset_socket'):kit.parent(obj,root)
     root.location-=offset
     bpy.context.view_layer.update()
     bpy.ops.object.select_all(action='DESELECT')
