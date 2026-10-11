@@ -1,0 +1,3 @@
+Plan the requested number of distinct, useful graphics from the supplied request and approved design reference. If the user names specific graphics, honor them. If asked to invent a set, choose complementary purposes and compositions that form a coherent collection.
+
+Return exactly the requested count in the required `models` field. Each item needs a human-readable name and a concrete, self-contained image brief covering its purpose, subject, composition, focal hierarchy, palette, finish, and any required text. Preserve the collection's fixed visual rules while making each graphic meaningfully distinct. Do not generate images or call tools.

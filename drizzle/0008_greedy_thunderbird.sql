@@ -1,0 +1,1 @@
+ALTER TABLE "batches" ADD COLUMN "image_size" text DEFAULT '1024x1024' NOT NULL;

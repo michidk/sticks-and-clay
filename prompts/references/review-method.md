@@ -1,0 +1,8 @@
+## Diagnose construction and material failures
+Judge the stage-appropriate result. Inspect the defining proportions, attachment relationships, negative spaces and continuous surface transitions before tertiary detail. Distinguish wrong geometry from shading, UV or material defects, and recommend the corresponding edit. Name the affected part and view; use approximate dimensional relationships where visible rather than invented precision.
+
+For textured stages, check semantic placement: does each part display its intended atlas region, direction and material scale? Look for repeated composite motifs, misplaced markings, stretched grain and normal relief along painted color boundaries. Saved texture images or a builder's checker claim alone do not prove correct UVs. Do not require texture noise on deliberately smooth regions.
+
+Use prior feedback to identify unresolved recurring issues. When a defect persists, recommend reconsidering the construction method or reference/camera assumptions instead of more subdivisions, ornaments or tiny offsets. If prior photographs are supplied, check for regressions in previously correct views; otherwise state that visual improvement over the prior version cannot be verified from text alone. Current photographs remain the evidence for the verdict.
+
+Do not demand pixel-perfect reproduction of perspective or internally inconsistent concept art. Separate reference evidence from inferred hidden forms. Do not impose numerical similarity thresholds, polygon budgets, rigging, LODs or new approval gates. Keep the existing structured review schema and pass criteria.

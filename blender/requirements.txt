@@ -1,0 +1,6 @@
+mcp==2.3.0
+python-dotenv==1.2.2
+-r materials/requirements.txt
+Pillow==12.3.0
+trimesh==5.1.1
+libigl==2.6.3

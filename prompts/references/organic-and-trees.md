@@ -1,0 +1,8 @@
+## Organic forms and trees
+Use for plants, animals and other curved assets when relevant to the design.
+
+- Build primary volumes and their flow before surface detail. Loft variable cross-sections or edit a continuous base surface for connected bodies and branches. A remesh can join a blockout, but inspect shrinkage, silhouette loss and attachment thickness afterward. Smooth shading or extra subdivision cannot correct wrong proportions or pinched topology.
+- For trees, establish trunk taper and a branch hierarchy that visibly supports the canopy. Branch radius, direction and junctions must transition coherently. Shape the root flare and ground contact deliberately; avoid constant-radius tubes ending abruptly inside unrelated spheres.
+- Design canopy masses by species and reference: dominant crown direction, uneven but intentional clump sizes, gaps, and supporting branch exposure. Preserve negative space beneath and within the crown. Random offsets and more identical clumps do not create convincing growth structure.
+- Choose solid stylized foliage, leaf cards or a combination from the approved style and intended view. Do not impose transparency, wind data, billboards or LODs unless requested. For cards, inspect backfaces, oblique views and alpha behavior; for solid crowns, inspect contours and overlaps from several angles.
+- Orient bark UVs along growth, keeping grain scale coherent through branches. Place unwrap seams away from focal views; inspect junction stretching. Use restrained broken grain and local variation, not regular stripes or rings. Keep foliage and bark material motifs distinct and subordinate to the larger forms.
