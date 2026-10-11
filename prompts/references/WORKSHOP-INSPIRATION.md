@@ -1,5 +1,5 @@
-# Workshop adaptation notes
+# Workshop design notes
 
-SINNON.NET Asset Generator 1.8.8 was inspected for script-as-asset reproducibility, high-level construction vocabulary, conditional guides, bounded render critique/correction, approved sibling examples, intentional overlap declarations and meaningful game interfaces.
+The workshop uses script-as-asset reproducibility, high-level construction vocabulary, conditional guides, bounded render critique/correction, approved sibling examples, intentional overlap declarations and meaningful game interfaces.
 
-These guides and assetkit are authored for Sticks & Clay. New builders use native scoped file tools to maintain asset.py, with fixed parameters and a standalone render.py launcher, following the inspected file-authoring workflow. They preserve approved design snapshots, independent photographer/judge, four v4 passes, existing Image API textures, immutable history and recovery. Procedural PBR recipes, smart-weathering generators and engine-specific runtime infrastructure are outside scope. This record is not sent to agents.
+These guides and assetkit are authored for Sticks & Clay. New builders use native scoped file tools to maintain asset.py, with fixed parameters and a standalone render.py launcher. They preserve approved design snapshots, independent photographer/judge, four v4 passes, existing Image API textures, immutable history and recovery. Procedural PBR recipes, smart-weathering generators and engine-specific runtime infrastructure are outside scope. This record is not sent to agents.

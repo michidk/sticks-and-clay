@@ -1,6 +1,6 @@
 # Asset workshop
 
-The workshop adds reusable construction and visual correction to the existing v4 generation graph. It keeps approved design snapshots, four required modeling passes, immutable versions, separate artistic judging, and existing run/session/cost recovery. SINNON's staged construction, reusable modeling vocabulary and collection consistency informed the newly authored prompts and helper implementation. See [adaptation notes](../prompts/references/WORKSHOP-INSPIRATION.md).
+The workshop adds reusable construction and visual correction to the existing v4 generation graph. It keeps approved design snapshots, four required modeling passes, immutable versions, separate artistic judging, and existing run/session/cost recovery. The prompts and helpers support staged construction, reusable modeling vocabulary and collection consistency. See [workshop design notes](../prompts/references/WORKSHOP-INSPIRATION.md).
 
 ## Generation and prompts
 
