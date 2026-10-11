@@ -3,12 +3,26 @@ import { z } from "zod";
 import { readFile, realpath, mkdir, writeFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 const dataDirectory = () => resolve(process.env.STUDIO_DATA_DIR || "../data");
 export default defineTool({
   description:
     "Visually inspect an exported Blender render. Sends actual image content to the vision model. Use this instead of reading image bytes or base64 as text.",
   inputSchema: z.object({
     capability: z.string().uuid(),
+    artifactId: z
+      .string()
+      .regex(/^[a-zA-Z0-9_-]+$/)
+      .optional(),
+    crop: z
+      .tuple([
+        z.number().int().min(0),
+        z.number().int().min(0),
+        z.number().int().positive().max(4096),
+        z.number().int().positive().max(4096),
+      ])
+      .optional(),
     view: z.enum([
       "front",
       "rear",
@@ -20,10 +34,11 @@ export default defineTool({
       "preview_front",
       "preview_rear",
       "preview_detail",
+      "preview_sprites",
       "sprites",
     ]),
   }),
-  async execute({ capability, view }) {
+  async execute({ capability, view, artifactId, crop }) {
     const dataDir = dataDirectory();
     const authorization = JSON.parse(
       await readFile(
@@ -31,37 +46,90 @@ export default defineTool({
         "utf8",
       ),
     );
+    let artifactPath: string | undefined, artifactHash: string | undefined;
+    if (artifactId) {
+      const receipt = JSON.parse(
+        await readFile(
+          resolve(dataDir, authorization.directory, "build-receipt.json"),
+          "utf8",
+        ),
+      );
+      const artifact = receipt.artifacts.find(
+        (a: { id: string; mime: string }) =>
+          a.id === artifactId && a.mime === "image/png",
+      );
+      if (!artifact || !/^[a-zA-Z0-9_.-]+\.png$/.test(artifact.path))
+        throw new Error("Unknown image artifact");
+      artifactPath = artifact.path;
+      artifactHash = artifact.sha256;
+    }
     const path = await realpath(
       resolve(
         dataDir,
         authorization.directory,
-        view.startsWith("preview_")
-          ? "preview/" + view.slice(8) + ".png"
-          : view + ".png",
+        artifactPath ||
+          (view.startsWith("preview_")
+            ? "preview/" + view.slice(8) + ".png"
+            : view + ".png"),
       ),
     );
     if (!path.startsWith((await realpath(dataDir)) + sep))
       throw new Error("Invalid render path");
-    const bytes = await readFile(path);
+    let bytes = await readFile(path);
+    if (
+      artifactHash &&
+      createHash("sha256").update(bytes).digest("hex") !== artifactHash
+    )
+      throw new Error("Artifact changed since its build receipt");
+    if (crop) {
+      const script =
+        "import sys,io;from PIL import Image;im=Image.open(sys.argv[1]);x,y,w,h=map(int,sys.argv[2:]);assert x+w<=im.width and y+h<=im.height,'Crop outside image';out=io.BytesIO();im.crop((x,y,x+w,y+h)).save(out,format='PNG');sys.stdout.buffer.write(out.getvalue())";
+      const python =
+        process.env.STUDIO_PYTHON ||
+        resolve(
+          process.platform === "win32"
+            ? "../.venv/Scripts/python.exe"
+            : "../.venv/bin/python",
+        );
+      const result = await promisify(execFile)(
+        python,
+        ["-c", script, path, ...crop.map(String)],
+        { encoding: "buffer", timeout: 10000, maxBuffer: 24 * 1024 * 1024 },
+      );
+      bytes = result.stdout;
+    }
     const imageKey = `vision/${createHash("sha256").update(bytes).digest("hex")}.png`;
     await mkdir(resolve(dataDir, "vision"), { recursive: true });
     await writeFile(resolve(dataDir, imageKey), bytes);
     // Persist a small immutable reference. Raw base64 makes Eve's context-size
     // estimator trigger compaction before the model can inspect the images.
-    const buildState = view.startsWith("preview_")
-      ? await readFile(
-          resolve(dataDir, authorization.directory, "build-state.json"),
-          "utf8",
-        )
-          .then(JSON.parse)
-          .catch(() => undefined)
-      : undefined;
+    const buildState = await readFile(
+      resolve(dataDir, authorization.directory, "build-state.json"),
+      "utf8",
+    )
+      .then(JSON.parse)
+      .catch(() => undefined);
+    const artifactState = await readFile(
+      resolve(
+        dataDir,
+        authorization.directory,
+        view.startsWith("preview_") ? "preview/state.json" : "state.json",
+      ),
+      "utf8",
+    )
+      .then(JSON.parse)
+      .catch(() => undefined);
+    const stale =
+      buildState &&
+      (!buildState.ok ||
+        (artifactState?.scriptSha256 &&
+          artifactState.scriptSha256 !== buildState.scriptSha256));
     return {
-      view,
+      view: `${artifactId || view}${crop ? ` crop ${crop.join(",")}` : ""}`,
       imageKey,
-      ...(buildState && !buildState.ok
+      ...(stale
         ? {
-            note: "Last successful preview retained; the latest build failed or is incomplete.",
+            note: "Historical successful render retained; the current script has not produced this artifact.",
           }
         : {}),
     };

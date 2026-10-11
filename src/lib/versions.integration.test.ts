@@ -99,9 +99,9 @@ integration(
       );
       const first = await archiveVersion(runId, directory, false);
       expect(first.script).toBe(`versions/${runId}/asset.py`);
-      expect(await getStorage().exists(first.sourceBundle)).toBe(true);
+      expect(await getStorage().exists(first.sourceBundle!)).toBe(true);
       const buildManifest = JSON.parse(
-        await readFile(resolve(DATA, first.buildManifest), "utf8"),
+        await readFile(resolve(DATA, first.buildManifest!), "utf8"),
       );
       expect(
         buildManifest.files.some((f: any) => f.path === "assetkit/__init__.py"),
@@ -119,7 +119,7 @@ integration(
             .digest("hex"),
         );
         expect(
-          (await readFile(resolve(DATA, first.sourceBundle))).includes(
+          (await readFile(resolve(DATA, first.sourceBundle!))).includes(
             Buffer.from(name),
           ),
         ).toBe(true);
@@ -133,21 +133,23 @@ integration(
         delivered.toString("utf8", 20, 20 + delivered.readUInt32LE(12)),
       );
       expect(manifest.asset.generator).toBe("Sticks & Clay");
-      expect(first.handover.outputSha256).toBe(
+      expect(first.handover!.outputSha256).toBe(
         createHash("sha256").update(delivered).digest("hex"),
       );
       expect(first.metrics.bytes).toBe(delivered.length);
-      expect(await getStorage().exists(first.handover.manifest)).toBe(true);
-      expect(first.textures).toHaveLength(2);
+      expect(await getStorage().exists(first.handover!.manifest)).toBe(true);
+      expect(first.textures!).toHaveLength(2);
       expect(await getStorage().exists(first.glb)).toBe(true);
       expect(
         new Uint8Array(
           await (
-            await getStorage().download(first.textures[1].key)
+            await getStorage().download(first.textures![1].key)
           ).arrayBuffer(),
         ),
       ).toEqual(new Uint8Array(png));
-      expect(await readFile(resolve(DATA, first.textures[1].key))).toEqual(png);
+      expect(await readFile(resolve(DATA, first.textures![1].key))).toEqual(
+        png,
+      );
       await writeFile(
         resolve(DATA, directory, "textures/stone.png"),
         "changed",
@@ -156,7 +158,7 @@ integration(
       expect(
         await readFile(resolve(DATA, `versions/${runId}/params.json`), "utf8"),
       ).toBe('{"seed":17}');
-      expect(await readFile(resolve(DATA, replay.textures[0].key))).toEqual(
+      expect(await readFile(resolve(DATA, replay.textures![0].key))).toEqual(
         png,
       );
       const photoDir = `${directory}/photos`;

@@ -1,3 +1,4 @@
+import { runExportProcess } from "../asset-builds/index.server";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createHash } from "node:crypto";
@@ -34,7 +35,7 @@ export async function analyzeModel(path: string) {
     );
     let input = raw;
     try {
-      await execute(
+      await runExportProcess(
         process.env.BLENDER_BIN || "blender",
         [
           "--background",
@@ -47,7 +48,8 @@ export async function analyzeModel(path: string) {
           raw,
           topology,
         ],
-        { timeout: settings.timeouts.analysisBlenderMs, maxBuffer: 1024 * 1024 },
+        directory,
+        settings.timeouts.analysisBlenderMs,
       );
       input = topology;
     } catch {
@@ -56,7 +58,13 @@ export async function analyzeModel(path: string) {
       );
     }
     await execute(
-      process.env.ANALYSIS_PYTHON || resolve(".venv/bin/python"),
+      process.env.ANALYSIS_PYTHON ||
+        process.env.STUDIO_PYTHON ||
+        resolve(
+          process.platform === "win32"
+            ? ".venv/Scripts/python.exe"
+            : ".venv/bin/python",
+        ),
       [resolve("blender/analyze_mesh.py"), input, reportPath],
       { timeout: settings.timeouts.analysisPythonMs, maxBuffer: 1024 * 1024 },
     );

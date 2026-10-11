@@ -3,6 +3,10 @@ from mathutils import Vector
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete(use_global=False)
 def finish_asset(material_mode="textured", sprites=None, lod_ratios=None, **_legacy_options):
+    target=globals().get('PARAMS',{}).get('spriteTarget')
+    if target:
+        from assetkit.sprites import sample_frames
+        sprites={**target,'frames':sample_frames(bpy.context.scene,target.get('frameCount',1),target.get('loop',True))}
     # Saved build scripts may pass retired options; exports have no polygon cap.
     scene=bpy.context.scene
     # Previous sources may contain presentation objects. Never export or duplicate them.
@@ -83,7 +87,24 @@ def finish_asset(material_mode="textured", sprites=None, lod_ratios=None, **_leg
     bpy.ops.object.camera_add();camera=bpy.context.object;camera['studio_environment']=True;scene.camera=camera;camera.data.type='ORTHO';camera.data.ortho_scale=span*1.65
     for name,position,zoom in [('front',(1.3,-1.8,1.1),1),('rear',(-1.4,1.8,1),1),('detail',(0.4,-1.7,0.6),0.8)]:
         camera.location=center+Vector(position)*span;camera.rotation_euler=(center-camera.location).to_track_quat('-Z','Y').to_euler();camera.data.ortho_scale=span*1.65*zoom;scene.render.filepath=os.path.join(OUTPUT_DIR,name+'.png');bpy.ops.render.render(write_still=True)
-    if sprites and not preview:
+    if sprites:
         from assetkit.sprites import render_sheet
-        render_sheet(scene,camera,center,span,OUTPUT_DIR,sprites)
+        import math
+        if preview:
+            frames=sprites.get('frames',[scene.frame_current])
+            if len(frames)>3:frames=[frames[0],frames[len(frames)//2],frames[-1]]
+            sprites={**sprites,'directions':min(4,sprites.get('directions',8)),'frames':frames}
+        sprite_points=[]
+        for frame in sprites.get('frames',[scene.frame_current]):
+            scene.frame_set(math.floor(frame),subframe=frame-math.floor(frame))
+            deps=bpy.context.evaluated_depsgraph_get()
+            for obj in meshes:
+                evaluated=obj.evaluated_get(deps)
+                sprite_points.extend(evaluated.matrix_world@Vector(c) for c in evaluated.bound_box)
+        sprite_lo=Vector([min(p[i] for p in sprite_points) for i in range(3)])
+        sprite_hi=Vector([max(p[i] for p in sprite_points) for i in range(3)])
+        sprite_center=(sprite_lo+sprite_hi)/2
+        sprite_span=max((p-sprite_center).length for p in sprite_points)*2
+        sprites={**sprites,'anchorPoint':list(Vector((sprite_center.x,sprite_center.y,sprite_lo.z)) if sprites.get('anchor','ground')=='ground' else sprite_center)}
+        render_sheet(scene,camera,sprite_center,sprite_span,OUTPUT_DIR,sprites)
     print('ASSET_STUDIO_FINISHED',json.dumps(metrics))

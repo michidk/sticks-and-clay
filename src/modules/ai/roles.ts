@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { materialPlanResult } from "../../lib/materials";
+import {
+  materialPlanResult,
+  materialBuildResult,
+  materialReviewResult,
+} from "../../lib/materials";
 import {
   projectNameResult,
   briefResult,
@@ -31,6 +35,21 @@ function role<S extends z.ZodType>(
 /** Authored instructions stay in /prompts; execution policy and contracts live here. */
 export const roles = {
   "material-planner": role("tanstack", "material-planner", materialPlanResult),
+  "material-builder": role(
+    "tanstack",
+    "material-builder",
+    materialBuildResult,
+    "gpt-6-sol",
+    "high",
+    ["references/material-construction"],
+  ),
+  "material-judge": role(
+    "tanstack",
+    "material-judge",
+    materialReviewResult,
+    "gpt-6-sol",
+    "high",
+  ),
   "project-name": role("tanstack", "project-name", projectNameResult),
   "project-brief": role("tanstack", "project-brief", briefResult),
   "model-brief": role("tanstack", "model-brief", briefResult),
@@ -74,7 +93,11 @@ export type RunInput<R extends Role = Role> = {
   stepId?: string;
   input: string;
   images?: string[];
-  construction?: { request: string; stage: string };
+  construction?: {
+    request: string;
+    stage: string;
+    outputTarget?: "model" | "sprite";
+  };
   onActivity?: (tool: string) => Promise<void>;
 };
 

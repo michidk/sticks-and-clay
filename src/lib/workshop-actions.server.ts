@@ -1,9 +1,7 @@
 import { and, eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { db } from "../db/client";
 import { projects, batches, runs, models, jobs } from "../db/schema";
 import { DATA, publishFiles } from "./storage.server";
@@ -11,20 +9,65 @@ import { snapshotWorkshop } from "./workshop.server";
 import { jobContext, checkpoint } from "./checkpoint.server";
 import { assertJobActive } from "./queue.server";
 import { REVIEW_VIEWS } from "./photo-views";
-import { spriteOptionsSchema } from "./materials";
+import { spriteOptionsSchema } from "./sprites";
 import {
   savedExport,
   exportBundle,
   runExportProcess,
-} from "./materials.server";
+  readReceipt,
+} from "../modules/asset-builds/index.server";
 import { copyFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { createAssignment } from "../modules/materials/assignment.server";
 
 const uuid = z.string().uuid();
 export async function workshopAction(
   request: Request,
   path: string[],
 ): Promise<Response | null> {
+  if (
+    path[0] === "models" &&
+    path[2] === "material-assignment" &&
+    request.method === "POST"
+  )
+    return Response.json(
+      await createAssignment(path[1], await request.json()),
+      { status: 201 },
+    );
+  if (
+    path[0] === "models" &&
+    path[2] === "sprite-clips" &&
+    request.method === "GET"
+  ) {
+    const sourceRunId = uuid.parse(
+      new URL(request.url).searchParams.get("sourceRunId"),
+    );
+    const [source] = await db
+      .select()
+      .from(runs)
+      .where(
+        and(
+          eq(runs.id, sourceRunId),
+          eq(runs.modelId, uuid.parse(path[1])),
+          eq(runs.status, "done"),
+        ),
+      );
+    const key = (source?.result as { artifacts?: { glb?: string } })?.artifacts
+      ?.glb;
+    if (!key) throw new Error("Choose a completed model version");
+    const bytes = await readFile(resolve(DATA, key));
+    if (bytes.toString("ascii", 0, 4) !== "glTF")
+      throw new Error("Invalid model file");
+    const doc = JSON.parse(
+      bytes.toString("utf8", 20, 20 + bytes.readUInt32LE(12)),
+    );
+    return Response.json(
+      (doc.animations || []).map((a: { name?: string }, i: number) => ({
+        name: a.name || `Animation_${i}`,
+        index: i,
+      })),
+    );
+  }
   if (
     path[0] === "models" &&
     path[2] === "workshop-jobs" &&
@@ -48,7 +91,10 @@ export async function workshopAction(
       .select()
       .from(jobs)
       .where(eq(jobs.id, uuid.parse(path[1])));
-    if (!job || !["presentation", "material"].includes(job.kind))
+    if (
+      !job ||
+      !["presentation", "material", "material-assignment"].includes(job.kind)
+    )
       return Response.json(
         { error: "Presentation not found" },
         { status: 404 },
@@ -178,7 +224,12 @@ export async function renderPresentation() {
         resolve(destination, "source.glb"),
       );
       await mkdir(resolve(destination, "assetkit"), { recursive: true });
-      for (const name of ["sprites.py", "pixel.py"])
+      for (const name of [
+        "sprites.py",
+        "pixel.py",
+        "timeline.py",
+        "sprite_metadata.py",
+      ])
         await copyFile(
           resolve("blender/assetkit", name),
           resolve(destination, "assetkit", name),
@@ -191,6 +242,14 @@ export async function renderPresentation() {
       await copyFile(
         resolve("blender/sprite_launcher.py"),
         resolve(destination, "render.py"),
+      );
+      await copyFile(
+        resolve("blender/build_runtime.py"),
+        resolve(destination, "build_runtime.py"),
+      );
+      await copyFile(
+        resolve("blender/build_artifacts.py"),
+        resolve(destination, "build_artifacts.py"),
       );
       const options = job.checkpoint.spriteOptions
         ? spriteOptionsSchema.parse(JSON.parse(job.checkpoint.spriteOptions))
@@ -225,6 +284,14 @@ export async function renderPresentation() {
       destination,
       900000,
     );
+    // Legacy pinned runners predate the versioned artifact receipt.
+    if (
+      await readFile(resolve(destination, "build_artifacts.py")).then(
+        () => true,
+        () => false,
+      )
+    )
+      await readReceipt(resolve(destination, "output"));
     const receipt = JSON.parse(
       await readFile(resolve(destination, "output/receipt.json"), "utf8"),
     );
@@ -239,9 +306,34 @@ export async function renderPresentation() {
       "output/sprites.png",
       "output/sprites.json",
       "output/receipt.json",
+      ...((await readFile(
+        resolve(destination, "output/sprite-checks.json"),
+      ).then(
+        () => true,
+        () => false,
+      ))
+        ? ["output/sprite-checks.json"]
+        : []),
+      ...((await readFile(
+        resolve(destination, "output/build-receipt.json"),
+      ).then(
+        () => true,
+        () => false,
+      ))
+        ? ["output/build-receipt.json"]
+        : []),
       "source.zip",
+      "delivery.zip",
       "build-manifest.json",
     ].map((name) => `${directory}/${name}`);
+    const sheet = JSON.parse(
+      await readFile(resolve(destination, "output/sprites.json"), "utf8"),
+    );
+    for (const cell of sheet.cells)
+      if (cell.file) files.push(`${directory}/output/${cell.file}`);
+    for (const name of await readdir(resolve(destination, "output")))
+      if (/^review-[a-z]+-f[0-9]+-d[0-9]+\.png$/.test(name))
+        files.push(`${directory}/output/${name}`);
     await assertJobActive();
     await publishFiles(files);
     await checkpoint("files", JSON.stringify(files));
@@ -254,33 +346,21 @@ export async function renderPresentation() {
   code += `\nphotograph(${literal(resolve(DATA, artifacts.glb))},${literal(destination)},coverage=${literal(REVIEW_VIEWS)})\n`;
   await writeFile(script, code);
   await assertJobActive();
-  const controller = new AbortController();
-  const timer = setInterval(
-    () => void assertJobActive().catch(() => controller.abort()),
-    500,
+  await runExportProcess(
+    process.env.BLENDER_BIN || "blender",
+    [
+      "-b",
+      "--factory-startup",
+      "--threads",
+      "2",
+      "--python-exit-code",
+      "1",
+      "--python",
+      script,
+    ],
+    destination,
+    900000,
   );
-  try {
-    await promisify(execFile)(
-      process.env.BLENDER_BIN || "blender",
-      [
-        "-b",
-        "--factory-startup",
-        "--threads",
-        "2",
-        "--python-exit-code",
-        "1",
-        "--python",
-        script,
-      ],
-      {
-        timeout: 900000,
-        maxBuffer: 4 * 1024 * 1024,
-        signal: controller.signal,
-      },
-    );
-  } finally {
-    clearInterval(timer);
-  }
   await assertJobActive();
   const files = [
     ...REVIEW_VIEWS.map((v) => `${directory}/${v}.png`),

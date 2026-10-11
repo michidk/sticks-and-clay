@@ -194,6 +194,16 @@ function ProjectPage() {
         `projects/${projectId}/generate`,
         json({
           prompt: f.get("prompt"),
+          spriteTarget:
+            f.get("spriteTarget") === "on"
+              ? {
+                  size: Number(f.get("spriteSize")),
+                  directions: 8,
+                  frameCount: Number(f.get("spriteFrames")),
+                  pixel: true,
+                  loop: true,
+                }
+              : undefined,
           count: Number(f.get("count")),
           judgeIterations:
             data.project.assetType === "graphic"
@@ -441,7 +451,9 @@ function ProjectPage() {
             ],
             ["design", "Design reference", FileText],
             ["style", "Collection style", Boxes],
-            ...(!isGraphics && ready ? [["materials", "PBR materials", Boxes]] : []),
+            ...(!isGraphics && ready
+              ? [["materials", "PBR materials", Boxes]]
+              : []),
             ["history", "Activity & cost", Activity],
           ]
             .filter(([id]) => ready || id !== "models")
@@ -457,7 +469,9 @@ function ProjectPage() {
               </TabsTrigger>
             ))}
         </TabsList>
-        {activeTab === "materials" && <MaterialPanel key={projectId} projectId={projectId} />}
+        {activeTab === "materials" && (
+          <MaterialPanel key={projectId} projectId={projectId} />
+        )}
         {activeTab === "style" && (
           <WorkshopPanel
             key={projectId}
@@ -1080,6 +1094,39 @@ function ProjectPage() {
                   required
                 />
               </Label>
+              {!isGraphics && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <input type="checkbox" name="spriteTarget" />
+                    Generate for sprite delivery
+                  </Label>
+                  <Label>
+                    Sprite cell size
+                    <Select name="spriteSize" defaultValue="64">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[32, 64, 128, 256].map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n}px
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Label>
+                  <Label>
+                    Sprite animation frames
+                    <Input
+                      type="number"
+                      name="spriteFrames"
+                      min={1}
+                      max={16}
+                      defaultValue={1}
+                    />
+                  </Label>
+                </div>
+              )}
               {isGraphics ? (
                 <Label>
                   Canvas

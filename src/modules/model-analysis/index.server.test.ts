@@ -50,7 +50,7 @@ blenderTest(
       await rm(directory, { recursive: true, force: true });
     }
   },
-  30_000,
+  process.platform === "win32" ? 120_000 : 30_000,
 );
 
 blenderTest(
@@ -146,22 +146,20 @@ blenderTest(
       await rm(directory, { recursive: true, force: true });
     }
   },
-  30_000,
+  process.platform === "win32" ? 120_000 : 30_000,
 );
 
 blenderTest(
   "native intersection termination retains completed fast findings",
   async () => {
     const directory = await mkdtemp(resolve(tmpdir(), "studio-partial-test-"));
-    const previous = process.env.ANALYSIS_PYTHON;
+    const previous = process.env.PYTHONPATH;
     try {
-      const wrapper = resolve(directory, "terminate-python");
       await writeFile(
-        wrapper,
-        `#!${resolve(".venv/bin/python")}\nimport os, signal, sys, runpy\nimport igl.copyleft.cgal as cgal\ndef terminate(*args, **kwargs):\n    os.kill(os.getpid(), signal.SIGTERM)\ncgal.remesh_self_intersections = terminate\nsys.argv = sys.argv[1:]\nrunpy.run_path(sys.argv[0], run_name='__main__')\n`,
-        { mode: 0o755 },
+        resolve(directory, "sitecustomize.py"),
+        "import os, signal\nimport igl.copyleft.cgal as cgal\ndef terminate(*args, **kwargs):\n    os.kill(os.getpid(), signal.SIGTERM)\ncgal.remesh_self_intersections = terminate\n",
       );
-      process.env.ANALYSIS_PYTHON = wrapper;
+      process.env.PYTHONPATH = directory;
       const d = new Document(),
         b = d.createBuffer();
       const p = d.createPrimitive().setAttribute(
@@ -187,10 +185,10 @@ blenderTest(
         ),
       ).toBe(true);
     } finally {
-      if (previous === undefined) delete process.env.ANALYSIS_PYTHON;
-      else process.env.ANALYSIS_PYTHON = previous;
+      if (previous === undefined) delete process.env.PYTHONPATH;
+      else process.env.PYTHONPATH = previous;
       await rm(directory, { recursive: true, force: true });
     }
   },
-  30_000,
+  process.platform === "win32" ? 120_000 : 30_000,
 );

@@ -1,3 +1,4 @@
+import { spriteOptionsSchema } from "./sprites";
 import { recordedAnalysis } from "../modules/model-analysis/report";
 import { workshopSchema } from "./workshop";
 import { snapshotWorkshop } from "./workshop.server";
@@ -96,6 +97,7 @@ export async function api(request: Request) {
                   "demo",
                   "project-photo",
                   "presentation",
+                  "material-assignment",
                   "material",
                 ]),
               )
@@ -156,7 +158,9 @@ export async function api(request: Request) {
                   ? "Photographing project collection"
                   : undefined),
               progress:
-                (["presentation", "material"].includes(j.kind)
+                (["presentation", "material", "material-assignment"].includes(
+                  j.kind,
+                )
                   ? j.status === "done"
                     ? 100
                     : 5
@@ -185,6 +189,7 @@ export async function api(request: Request) {
                 "demo",
                 "project-photo",
                 "presentation",
+                "material-assignment",
                 "material",
               ]),
             ),
@@ -205,7 +210,12 @@ export async function api(request: Request) {
           .where(eq(jobs.id, uuid.parse(path[1])));
         if (
           !saved ||
-          !["project-photo", "presentation", "material"].includes(saved.kind) ||
+          ![
+            "project-photo",
+            "presentation",
+            "material",
+            "material-assignment",
+          ].includes(saved.kind) ||
           saved.status !== "failed"
         )
           throw new Error(
@@ -270,9 +280,8 @@ export async function api(request: Request) {
       path[1] === "generate" &&
       request.method === "POST"
     ) {
-      const { generateTexture, textureRequest } = await import(
-        "../modules/textures/index.server"
-      );
+      const { generateTexture, textureRequest } =
+        await import("../modules/textures/index.server");
       return reply(
         await generateTexture(textureRequest.parse(await request.json())),
       );
@@ -819,11 +828,14 @@ export async function api(request: Request) {
             prompt: z.string().trim().max(12000).default(""),
             count: z.number().int().min(1).max(20),
             judgeIterations: z.number().int().min(0).max(5),
+            spriteTarget: spriteOptionsSchema.optional(),
             imageSize: z
               .enum(["1024x1024", "1024x1536", "1536x1024"])
               .default("1024x1024"),
           })
           .parse(await request.json());
+        if (project.assetType === "graphic" && input.spriteTarget)
+          throw new Error("Sprite targets require a 3D collection");
         if (project.assetType === "graphic" && input.judgeIterations !== 0)
           throw new Error("Graphic generation does not use 3D judge rounds");
         if (project.assetType === "model" && input.imageSize !== "1024x1024")

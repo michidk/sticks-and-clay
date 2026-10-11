@@ -6,7 +6,11 @@ import { constructionGuides } from "../../../lib/workshop";
 export async function roleInstructions(
   role: Role,
   saved?: string | null,
-  construction?: { request: string; stage: string },
+  construction?: {
+    request: string;
+    stage: string;
+    outputTarget?: "model" | "sprite";
+  },
 ) {
   if (saved != null) return saved;
   const definition = roles[role];
@@ -16,6 +20,9 @@ export async function roleInstructions(
       ...(role === "builder" && construction
         ? constructionGuides(construction.request, construction.stage)
         : definition.references),
+      ...(construction?.outputTarget === "sprite"
+        ? ["references/sprite-target"]
+        : []),
     ].map((name) => readFile(`prompts/${name}.md`, "utf8")),
   );
   return sections.join("\n\n");

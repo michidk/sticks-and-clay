@@ -1,4 +1,10 @@
-import { useEffect, useState } from "react";
+import { useExportHistory } from "@/modules/asset-builds/use-export-history";
+import {
+  materialHistorySchema,
+  type MaterialHistory,
+} from "@/modules/asset-builds/history";
+import { MaterialViewer } from "../../../../components/material-viewer";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -28,6 +34,11 @@ const numericFields = [
   ["roughness", "Roughness", 0.05, 1, 0.05],
   ["coverage", "Coverage", 0, 1, 0.05],
   ["wear", "Wear", 0, 1, 0.05],
+  ["calibration", "Reference response (wood/brick; 0 = off)", 0, 1, 0.1],
+  ["moisture", "Moisture", 0, 1, 0.05],
+  ["dirt", "Dirt deposits", 0, 1, 0.05],
+  ["burial", "Particle burial", 0, 1, 0.05],
+  ["sizeSpread", "Particle size variation", 0, 1, 0.05],
 ] as const;
 const terminal = ["done", "failed", "cancelled"];
 
@@ -36,36 +47,22 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
     materialSchema.parse({}),
   );
   const [brief, setBrief] = useState("");
-  const [saved, setSaved] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true),
-    [busy, setBusy] = useState(false),
+  const [reviewRounds, setReviewRounds] = useState(2),
+    [parentId, setParentId] = useState<string>();
+  const [comparison, setComparison] = useState<string>();
+  const [exampleId, setExampleId] = useState("none");
+  const {
+    saved,
+    loading,
+    error: historyError,
+    refresh,
+    action: historyAction,
+  } = useExportHistory(
+    `projects/${projectId}/materials`,
+    materialHistorySchema,
+  );
+  const [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const [revision, setRevision] = useState(0);
-  useEffect(() => {
-    let active = true;
-    let timer: ReturnType<typeof setTimeout>;
-    async function load() {
-      try {
-        const next = await request(`projects/${projectId}/materials`);
-        if (active) {
-          setSaved(next);
-          setLoading(false);
-          if (next.some((job: any) => !terminal.includes(job.status)))
-            timer = setTimeout(load, 2500);
-        }
-      } catch (e) {
-        if (active) {
-          setError((e as Error).message);
-          setLoading(false);
-        }
-      }
-    }
-    void load();
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, [projectId, revision]);
   async function generate(useBrief: boolean) {
     setBusy(true);
     setError("");
@@ -73,9 +70,15 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
       const parsed = materialSchema.parse(parameters);
       await request(
         `projects/${projectId}/materials`,
-        json({ parameters: parsed, prompt: useBrief ? brief : "" }),
+        json({
+          parameters: parsed,
+          prompt: useBrief ? brief : "",
+          reviewRounds,
+          parentId: useBrief ? parentId : undefined,
+          exampleIds: exampleId === "none" ? [] : [exampleId],
+        }),
       );
-      setRevision((n) => n + 1);
+      refresh();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -85,8 +88,7 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
   async function action(path: string) {
     setError("");
     try {
-      await request(path, json({}));
-      setRevision((n) => n + 1);
+      await historyAction(path);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -102,9 +104,9 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
             the material.
           </p>
         </div>
-        {error && (
+        {(error || historyError) && (
           <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{error || historyError}</AlertDescription>
           </Alert>
         )}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -192,6 +194,23 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
           paint chips on metal and adjusts roughness.
         </p>
         <div className="space-y-2">
+          {parentId && (
+            <p className="text-sm">
+              Continuing selected material{" "}
+              <Button variant="ghost" onClick={() => setParentId(undefined)}>
+                Start new
+              </Button>
+            </p>
+          )}
+          <Label htmlFor="material-rounds">Review rounds</Label>
+          <Input
+            id="material-rounds"
+            type="number"
+            min={0}
+            max={5}
+            value={reviewRounds}
+            onChange={(e) => setReviewRounds(Number(e.target.value))}
+          />
           <Label htmlFor="material-brief">Optional material brief</Label>
           <Textarea
             id="material-brief"
@@ -201,9 +220,9 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
             maxLength={12000}
           />
           <p className="muted text-sm">
-            Generate from brief uses an agent to choose supported recipe
-            settings and records its usage in Activity & cost. Generate maps
-            uses your settings directly.
+            Generate from brief constructs a saved script and reviews final
+            maps, recording usage in Activity & cost. Generate maps uses your
+            settings directly.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -227,6 +246,9 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
         </p>
       ) : (
         saved.map((job) => {
+          const previous =
+            saved.find((v) => v.id === job.parentId) ||
+            saved.find((v) => v.id !== job.id && v.status === "done");
           const preview = job.files.find((key: string) =>
             key.endsWith("/review.png"),
           );
@@ -275,6 +297,44 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
                 </div>
               </div>
               {job.notes && <p>{job.notes}</p>}
+              {job.status === "done" && (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setExampleId(exampleId === job.id ? "none" : job.id)
+                  }
+                >
+                  {exampleId === job.id
+                    ? "Clear style example"
+                    : "Use as style example"}
+                </Button>
+              )}
+              {job.status === "done" && (
+                <div className="space-y-2">
+                  <p>Review: {job.outcome || "unreviewed"}</p>
+                  {job.review && <p>{job.review.assessment}</p>}
+                  {job.review?.findings?.map(
+                    (
+                      finding: { feature: string; correction: string },
+                      i: number,
+                    ) => (
+                      <p key={i}>
+                        {finding.feature}: {finding.correction}
+                      </p>
+                    ),
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setParentId(job.id);
+                      setParameters(materialSchema.parse(job.parameters));
+                      setBrief("");
+                    }}
+                  >
+                    Continue this material
+                  </Button>
+                </div>
+              )}
               {job.validation && (
                 <div className="text-sm">
                   <p>
@@ -291,6 +351,48 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
                   ))}
                 </div>
               )}
+              {previous && job.status === "done" && (
+                <div className="space-y-3">
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      setComparison(comparison === job.id ? undefined : job.id)
+                    }
+                  >
+                    Compare saved versions
+                  </Button>
+                  {comparison === job.id && (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {[previous, job].map((version, index) => (
+                        <figure key={version.id}>
+                          <figcaption>
+                            {index === 0
+                              ? "Comparison version"
+                              : "Current version"}
+                            : {version.parameters?.recipe}, seed{" "}
+                            {version.parameters?.seed},{" "}
+                            {version.parameters?.tileMetres} m tile
+                          </figcaption>
+                          <img
+                            className="w-full"
+                            src={fileUrl(
+                              version.files.find((f) =>
+                                f.endsWith("/review.png"),
+                              )!,
+                            )}
+                            alt={`${index === 0 ? "Comparison" : "Current"} material review`}
+                          />
+                        </figure>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <MaterialViewer
+                files={job.files}
+                projectId={projectId}
+                materialId={job.id}
+              />
               {preview && (
                 <a href={fileUrl(preview)} target="_blank" rel="noreferrer">
                   <img

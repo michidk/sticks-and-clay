@@ -5,7 +5,7 @@ import {
   pricingSnapshot,
   validateCheckpoint,
 } from "./accounting.server";
-import { readFile } from "node:fs/promises";
+import { roleInstructions } from "./role-instructions.server";
 import { eq } from "drizzle-orm";
 import { db } from "../../../db/client";
 import { runs } from "../../../db/schema";
@@ -39,7 +39,7 @@ export async function draftBrief(args: RunInput) {
   }
   const profile = await textRoleProfile(args.role);
   const id = crypto.randomUUID(),
-    system = await readFile(`prompts/${roles[args.role].prompt}.md`, "utf8");
+    system = await roleInstructions(args.role, undefined, args.construction);
   const model = profile.model;
   const rates = pricingSnapshot(model);
   await recordRun(args, {
@@ -54,7 +54,10 @@ export async function draftBrief(args: RunInput) {
   let output = "",
     usage: TokenUsage | undefined;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), profile.settings.timeouts.tanstackMs);
+  const timer = setTimeout(
+    () => controller.abort(),
+    profile.settings.timeouts.tanstackMs,
+  );
   const saveUsage = async () => {
     const input =
       usage?.promptTokens ??

@@ -1,11 +1,13 @@
 """Loopback MCP adapter. Each capability owns an independent Blender process/workdir."""
-import asyncio,json,os,pathlib,re,uuid,shutil,hashlib
+import asyncio,json,os,pathlib,re,uuid,shutil,hashlib,sys
 from mcp.server.mcpserver import MCPServer
 from starlette.responses import JSONResponse
 try:
     from .workspace import prepare, save_script
+    from .build_artifacts import receipt
 except ImportError:
     from workspace import prepare, save_script
+    from build_artifacts import receipt
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 DATA=pathlib.Path(os.environ.get('STUDIO_DATA_DIR',ROOT/'data')).resolve()
 mcp=MCPServer('Asset Studio Blender')
@@ -40,9 +42,10 @@ async def watch_cancellation(capability,proc):
 async def get_scene_info(capability:str)->dict:
     """Read Blender version and existing export metrics for this authorized builder workspace."""
     dest=workspace(capability)
-    proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'--version',stdout=asyncio.subprocess.PIPE)
+    dest.mkdir(parents=True,exist_ok=True)
+    proc=await asyncio.create_subprocess_exec(sys.executable,str(ROOT/'blender'/'build_runtime.py'),'--cwd',str(dest),'--timeout',str(build_timeout_seconds()),'--',os.environ.get('BLENDER_BIN','blender'),'--version',stdout=asyncio.subprocess.PIPE)
     out,_=await proc.communicate()
-    return {'version':out.decode().splitlines()[0],'directory':str(dest),'metrics':json.loads((dest/'metrics.json').read_text()) if (dest/'metrics.json').exists() else None,'clean_execution':True}
+    return {'version':next((line for line in out.decode().splitlines() if line.startswith('Blender ')), 'Unavailable'),'directory':str(dest),'metrics':json.loads((dest/'metrics.json').read_text()) if (dest/'metrics.json').exists() else None,'clean_execution':True}
 @mcp.tool()
 async def execute_blender_code(capability:str,code:str,preview:bool=False)->dict:
     """Execute a reproducible asset script. assetkit and finish_asset() are provided. preview=True makes cheap draft views; finish with preview=False to publish GLB/source/metrics. Inspect drafts using view_render views preview_front/preview_rear/preview_detail. Final builds retain pivots/hierarchy. No shared scene state."""
@@ -86,7 +89,7 @@ async def run_saved_asset(capability,preview=False,code=None):
         (candidate/'build-config.json').write_text(json.dumps({'version':1,'directory':str(dest).replace('\\','/'),'directories':[str(dest).replace('\\','/'),str(dest).replace('\\','\\\\'),str(dest)],'preview':preview,'params':params,'relocations':relocations}),encoding='utf-8')
         script=candidate/'render.py'
         env={k:v for k,v in os.environ.items() if not any(s in k.upper() for s in ['TOKEN','SECRET','PASSWORD','API_KEY','CREDENTIAL'])}
-        proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'-b','--factory-startup','--threads','2','--python-exit-code','1','--python',str(script),cwd=candidate,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
+        proc=await asyncio.create_subprocess_exec(sys.executable,str(ROOT/'blender'/'build_runtime.py'),'--cwd',str(dest),'--timeout',str(build_timeout_seconds()),'--',os.environ.get('BLENDER_BIN','blender'),'-b','--factory-startup','--threads','2','--python-exit-code','1','--python',str(script),cwd=candidate,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
         monitor=asyncio.create_task(watch_cancellation(capability,proc))
         timeout=build_timeout_seconds()
         try:out,_=await asyncio.wait_for(proc.communicate(),timeout)
@@ -110,8 +113,17 @@ async def run_saved_asset(capability,preview=False,code=None):
         output=dest/'preview' if preview else dest
         if ok:
             output.mkdir(exist_ok=True)
-            names=required if preview else required+['asset.py','build-config.json','helpers.py','rebuild.py','render.py','params.json']
-            for name in names:shutil.copyfile(candidate/name,output/name)
+            for pattern in ('frame-*.png','review-*-f*-d*.png','sprite-checks.json'):
+                for old in output.glob(pattern):old.unlink()
+                for path in candidate.glob(pattern):shutil.copyfile(path,output/path.name)
+            names=required if preview else required+['asset.py','build-config.json','helpers.py','rebuild.py','render.py','build_runtime.py','params.json']
+            for name in names:
+                if name=='build_runtime.py' and not (candidate/name).exists():continue
+                shutil.copyfile(candidate/name,output/name)
+            if preview:
+                for name in ['sprites.png','sprites.json']:
+                    if (candidate/name).exists():shutil.copyfile(candidate/name,output/name)
+                    else:(output/name).unlink(missing_ok=True)
             if not preview:
                 for path in [dest/'sprites.png',dest/'sprites.json',dest/'lods.json',*dest.glob('asset-lod-*.glb')]:path.unlink(missing_ok=True)
                 for name in ['assetkit','inputs','textures']:
@@ -120,6 +132,7 @@ async def run_saved_asset(capability,preview=False,code=None):
                     if (candidate/name).exists():shutil.copyfile(candidate/name,dest/name)
                 for path in candidate.glob('asset-lod-*.glb'):shutil.copyfile(path,dest/path.name)
                 if (candidate/'lods.json').exists():shutil.copyfile(candidate/'lods.json',dest/'lods.json')
+            receipt(output,'model','quick' if preview else 'final',state['scriptSha256'],{'runner':'2'})
             (output/'state.json').write_text(json.dumps(state))
         (dest/'build-state.json').write_text(json.dumps(state))
         metrics=json.loads((candidate/'metrics.json').read_text()) if ok else None
@@ -195,18 +208,34 @@ async def photograph_asset(capability:str,front_azimuth:float=-55,elevation:floa
     async with locks.setdefault(capability,asyncio.Lock()):
         workspace(capability)
         dest.mkdir(parents=True,exist_ok=True)
-        script=dest/f'photograph-{uuid.uuid4()}.py'
-        script.write_text((ROOT/'blender'/'photograph.py').read_text()+'\nphotograph('+','.join(repr(v) for v in [glb,str(dest),front_azimuth,elevation,framing,exposure,info.get("views")])+')\n')
+        candidate=dest/('.candidate-'+str(uuid.uuid4()));candidate.mkdir()
+        (dest/'build-state.json').write_text(json.dumps({'ok':False,'state':'building'}))
+        script=candidate/'photograph.py'
+        script.write_text((ROOT/'blender'/'photograph.py').read_text()+'\nphotograph('+','.join(repr(v) for v in [glb,str(candidate),front_azimuth,elevation,framing,exposure,info.get("views")])+')\n')
         env={k:v for k,v in os.environ.items() if not any(s in k.upper() for s in ['TOKEN','SECRET','PASSWORD','API_KEY','CREDENTIAL'])}
-        proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'-b','--threads','2','--python-exit-code','1','--python',str(script),cwd=dest,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
+        proc=await asyncio.create_subprocess_exec(sys.executable,str(ROOT/'blender'/'build_runtime.py'),'--cwd',str(dest),'--timeout',str(build_timeout_seconds()),'--',os.environ.get('BLENDER_BIN','blender'),'-b','--threads','2','--python-exit-code','1','--python',str(script),cwd=dest,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
         monitor=asyncio.create_task(watch_cancellation(capability,proc))
-        try:out,_=await asyncio.wait_for(proc.communicate(),840 if info.get("views") and len(info["views"])>3 else 360)
+        try:out,_=await asyncio.wait_for(proc.communicate(),build_timeout_seconds()+5)
         except (asyncio.TimeoutError,asyncio.CancelledError):
             if proc.returncode is None:proc.kill()
             await proc.wait()
+            (dest/'build-state.json').write_text(json.dumps({'ok':False,'state':'failed'}))
+            shutil.rmtree(candidate,ignore_errors=True)
             raise
         finally:monitor.cancel()
         (dest/'photography.log').write_bytes(out)
-        return {'ok':proc.returncode==0,'log':out.decode(errors='replace')[-(1200 if proc.returncode==0 else 6000):]}
+        ok=proc.returncode==0 and (candidate/'photography.json').exists()
+        if ok:
+            manifest=json.loads((candidate/'photography.json').read_text())
+            for view,digest in manifest.get('images',{}).items():
+                path=candidate/(view+'.png')
+                if not re.fullmatch(r'[a-z]+',view) or hashlib.sha256(path.read_bytes()).hexdigest()!=digest:raise ValueError('Invalid photograph receipt')
+            receipt(candidate,'photography','final',hashlib.sha256(json.dumps(manifest,sort_keys=True).encode()).hexdigest(),{'runner':'2'})
+            for path in candidate.iterdir():
+                if path.suffix=='.png':shutil.copyfile(path,dest/path.name)
+            for name in ['photography.json','build-receipt.json']:shutil.copyfile(candidate/name,dest/name)
+        (dest/'build-state.json').write_text(json.dumps({'ok':ok,'state':'done' if ok else 'failed'}))
+        shutil.rmtree(candidate)
+        return {'ok':ok,'log':out.decode(errors='replace')[-(1200 if ok else 6000):]}
 
 if __name__=='__main__':mcp.run(transport='streamable-http',host='127.0.0.1',port=int(os.environ.get('BLENDER_MCP_PORT','33442')),stateless_http=True)

@@ -1,5 +1,55 @@
 import { test, expect } from "bun:test";
 import viewRender from "../../eve/agent/tools/view_render";
+
+test("quick sprites and retained final evidence follow separate build identities", async () => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { resolve } = await import("node:path");
+  const root = await mkdtemp(resolve(tmpdir(), "sprite-vision-")),
+    previous = process.env.STUDIO_DATA_DIR;
+  process.env.STUDIO_DATA_DIR = root;
+  try {
+    const capability = crypto.randomUUID();
+    await mkdir(resolve(root, "capabilities"));
+    await mkdir(resolve(root, "asset/preview"), { recursive: true });
+    await writeFile(
+      resolve(root, "capabilities", `${capability}.json`),
+      JSON.stringify({ directory: "asset" }),
+    );
+    await writeFile(resolve(root, "asset/sprites.png"), "old final pixels");
+    await writeFile(
+      resolve(root, "asset/preview/sprites.png"),
+      "current quick pixels",
+    );
+    await writeFile(
+      resolve(root, "asset/state.json"),
+      JSON.stringify({ scriptSha256: "old" }),
+    );
+    await writeFile(
+      resolve(root, "asset/preview/state.json"),
+      JSON.stringify({ scriptSha256: "new" }),
+    );
+    await writeFile(
+      resolve(root, "asset/build-state.json"),
+      JSON.stringify({ ok: true, scriptSha256: "new" }),
+    );
+    const final = await (viewRender.execute as any)({
+      capability,
+      view: "sprites",
+    });
+    const quick = await (viewRender.execute as any)({
+      capability,
+      view: "preview_sprites",
+    });
+    expect(final.note).toContain("Historical");
+    expect(quick.note).toBeUndefined();
+    expect(final.imageKey).not.toBe(quick.imageKey);
+  } finally {
+    if (previous === undefined) delete process.env.STUDIO_DATA_DIR;
+    else process.env.STUDIO_DATA_DIR = previous;
+    await rm(root, { recursive: true, force: true });
+  }
+});
 test("render pixels are a vision file part, never base64 text", async () => {
   const output = (await viewRender.toModelOutput!({
     view: "front",

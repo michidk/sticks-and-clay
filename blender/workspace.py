@@ -32,6 +32,7 @@ def prepare(root, data, dest, info):
     source_dir = source.parent if source else None
     config = json.loads((source_dir / 'build-config.json').read_text()) if source_dir and (source_dir / 'build-config.json').exists() else {}
     params = json.loads((source_dir / 'params.json').read_text()) if source_dir and (source_dir / 'params.json').exists() else config.get('params', {'seed': info.get('seed', 1)})
+    if info.get('spriteTarget'): params={**params,'spriteTarget':info['spriteTarget']}
     dependencies = []
     if source:
         code = source.read_text(encoding='utf-8')
@@ -55,14 +56,14 @@ def prepare(root, data, dest, info):
         shutil.copytree(support / 'assetkit', temporary / 'assetkit', ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copyfile(support / 'helpers.py', temporary / 'helpers.py')
         # Runner protocol is shared by old and new helper bundles.
-        for name in ['rebuild.py', 'render.py']:
+        for name in ['rebuild.py', 'render.py', 'build_runtime.py']:
             shutil.copyfile(root / 'blender' / name, temporary / name)
         temporary.rename(snapshot)
     # Upgrade the runner protocol while preserving pinned geometry helpers.
-    for name in ['rebuild.py', 'render.py']:
+    for name in ['rebuild.py', 'render.py', 'build_runtime.py']:
         shutil.copyfile(root / 'blender' / name, snapshot / name)
     atomic_write(dest / 'work-source.json', json.dumps({'dependencies': sorted(set(dependencies))}))
-    for name in ['helpers.py', 'rebuild.py', 'render.py']:
+    for name in ['helpers.py', 'rebuild.py', 'render.py', 'build_runtime.py']:
         if not (dest / name).exists(): shutil.copyfile(snapshot / name, dest / name)
     if not (dest / 'assetkit').exists(): shutil.copytree(snapshot / 'assetkit', dest / 'assetkit')
     if not (dest / 'build-config.json').exists():

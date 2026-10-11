@@ -26,7 +26,7 @@ class SpriteTests(unittest.TestCase):
             bpy.context.scene.frame_start=1; bpy.context.scene.frame_end=5
             bpy.ops.export_scene.gltf(filepath=str(root/'source.glb'),export_format='GLB',export_animations=True)
             before=(root/'source.glb').read_bytes()
-            (root/'params.json').write_text(json.dumps({'pixel':True,'size':32,'directions':1,'frameCount':2,'fps':8,'colors':4,'outline':'#102030'}))
+            (root/'params.json').write_text(json.dumps({'clip':'@animation:0','pixel':True,'size':32,'directions':1,'frameCount':2,'fps':8,'colors':4,'outline':'#102030'}))
             render(root)
             self.assertEqual(before,(root/'source.glb').read_bytes())
             receipt=json.loads((root/'output/receipt.json').read_text())
@@ -40,7 +40,14 @@ class SpriteTests(unittest.TestCase):
             values=np.asarray(image.pixels[:]).reshape(64,32,4)
             self.assertTrue(set(np.unique(values[:,:,3])).issubset({0.,1.}))
             colors=np.unique(values[:,:,:3][values[:,:,3]>.5],axis=0)
-            self.assertLessEqual(len(colors),5)
+            self.assertLessEqual(len(colors),4)
+            self.assertTrue((root/'output/review-silhouette-f0-d0.png').exists())
+            self.assertTrue(all((root/'output'/cell['file']).exists() for cell in doc['cells']))
+            from assetkit.timeline import sample_frames
+            loop=sample_frames(bpy.context.scene,4,True)
+            once=sample_frames(bpy.context.scene,4,False)
+            self.assertLess(loop[-1],once[-1])
+            self.assertEqual(len(set(loop)),4)
             self.assertTrue(np.any(values[:,:,3]>0)); self.assertTrue(np.any(values[:,:,3]==0))
 
     def test_outline_is_cell_local_and_palette_is_shared(self):

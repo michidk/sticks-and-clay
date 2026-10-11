@@ -85,6 +85,20 @@
       "when": 1791730004156,
       "tag": "0011_organic_deathstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791742592855,
+      "tag": "0012_even_nomad",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791742963319,
+      "tag": "0013_wealthy_firestar",
+      "breakpoints": true
     }
   ]
 }

@@ -18,9 +18,8 @@ def main():
         parser.add_argument('--timeout', type=int, default=600)
         args = parser.parse_args()
         if args.timeout < 1: parser.error('Timeout must be positive')
-        env = {k: v for k, v in os.environ.items() if not any(s in k.upper() for s in ['TOKEN', 'SECRET', 'PASSWORD', 'API_KEY', 'CREDENTIAL'])}
-        result = subprocess.run([args.blender, '-b', '--factory-startup', '--threads', '2', '--python-exit-code', '1', '--python', str(directory / 'render.py'), '--', '--mode', args.mode], cwd=directory, env=env, timeout=args.timeout)
-        raise SystemExit(result.returncode)
+        from build_runtime import launch
+        raise SystemExit(launch([args.blender, '-b', '--factory-startup', '--threads', '2', '--python-exit-code', '1', '--python', str(directory / 'render.py'), '--', '--mode', args.mode], str(directory), args.timeout))
     else:
         runpy.run_path(str(directory / 'rebuild.py'), run_name='__main__')
 

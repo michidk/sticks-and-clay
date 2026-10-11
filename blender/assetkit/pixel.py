@@ -13,7 +13,7 @@ def process(sheet, cell_size, colors=16, palette=None, outline=None):
     result=sheet.copy(); alpha=result[:,:,3]>=.5
     pixels=result[:,:,:3][alpha]
     if palette:
-        if len(palette)>32: raise ValueError('Palette has too many colors')
+        if len(palette)>colors: raise ValueError('Custom palette exceeds the color budget')
         centers=np.array([rgb(c) for c in palette])
     elif len(pixels):
         sample=pixels[np.linspace(0,len(pixels)-1,min(4096,len(pixels)),dtype=int)]
@@ -25,6 +25,13 @@ def process(sheet, cell_size, colors=16, palette=None, outline=None):
                 for i in range(len(centers)):
                     if np.any(labels==i): centers[i]=sample[labels==i].mean(axis=0)
     else: centers=np.zeros((1,3))
+    if outline and len(centers):
+        ink=rgb(outline)
+        if palette:
+            ink=centers[np.square(centers-ink).sum(axis=1).argmin()]
+        elif not np.any(np.all(np.isclose(centers,ink,atol=1e-6),axis=1)):
+            if len(centers)>=colors: centers=centers[:colors-1]
+            centers=np.concatenate([centers,ink[None,:]],axis=0)
     if len(pixels):
         mapped=np.empty_like(pixels)
         for start in range(0,len(pixels),8192):
@@ -33,7 +40,6 @@ def process(sheet, cell_size, colors=16, palette=None, outline=None):
         result[:,:,:3][alpha]=mapped
     result[:,:,3]=alpha.astype(np.float32); result[:,:,:3][~alpha]=0
     if outline:
-        ink=rgb(outline)
         for y in range(0,len(result),cell_size):
             for x in range(0,result.shape[1],cell_size):
                 cell=alpha[y:y+cell_size,x:x+cell_size]; expanded=np.zeros_like(cell)

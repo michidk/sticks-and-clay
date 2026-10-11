@@ -26,7 +26,6 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import {
-  Component,
   Suspense,
   useCallback,
   useEffect,
@@ -36,7 +35,7 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ViewerErrorBoundary } from "../viewer-error-boundary";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ViewerSkeleton } from "@/components/loading";
@@ -76,29 +75,6 @@ const splitViews = [
   { label: "Left", position: [-3, 0, 0] },
 ] as const;
 
-class ViewerErrorBoundary extends Component<
-  { children: ReactNode; onError?: (error: Error) => void },
-  { error: Error | null }
-> {
-  state = { error: null as Error | null };
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-  componentDidCatch(error: Error) {
-    this.props.onError?.(error);
-  }
-  render() {
-    if (this.state.error)
-      return (
-        <Alert variant="destructive" role="alert">
-          <AlertDescription>
-            Could not display this model: {this.state.error.message}
-          </AlertDescription>
-        </Alert>
-      );
-    return this.props.children;
-  }
-}
 
 export function ModelViewer({
   src,

@@ -8,8 +8,22 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 import type { Workshop, WorkshopSnapshot } from "../lib/workshop";
+import type { SpriteOptions } from "../lib/sprites";
 const created = () =>
   timestamp("created_at", { withTimezone: true }).defaultNow().notNull();
+export const materialVersions = pgTable("material_versions", {
+  id: text().primaryKey(),
+  materialId: text().notNull(),
+  parentId: text(),
+  projectId: text()
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  jobId: text().notNull(),
+  outcome: text().notNull().default("pending"),
+  snapshot: jsonb().$type<Record<string, unknown>>().notNull(),
+  result: jsonb().$type<Record<string, unknown>>(),
+  createdAt: created(),
+});
 export const projects = pgTable("projects", {
   id: text().primaryKey(),
   name: text().notNull(),
@@ -46,6 +60,7 @@ export const batches = pgTable("batches", {
   prompt: text().notNull(),
   count: integer().notNull(),
   judgeIterations: integer().notNull(),
+  spriteTarget: jsonb().$type<SpriteOptions>(),
   imageSize: text("image_size")
     .$type<"1024x1024" | "1024x1536" | "1536x1024">()
     .default("1024x1024")

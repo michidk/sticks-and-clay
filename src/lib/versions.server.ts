@@ -18,6 +18,10 @@ import { DATA, publishFiles } from "./storage.server";
 import { createHash } from "node:crypto";
 import { sourceZip, bundleFiles } from "./source-bundle.server";
 import { measureStyle } from "./asset-style";
+import {
+  archivedModelSchema,
+  archivedPhotographySchema,
+} from "./model-artifacts";
 
 export async function archiveVersion(
   runId: string,
@@ -26,8 +30,8 @@ export async function archiveVersion(
 ) {
   const [run] = await db.select().from(runs).where(eq(runs.id, runId));
   if (!run) throw new Error("Builder run not found");
-  const result = run.result as Record<string, any>;
-  if (result?.artifacts) return result.artifacts;
+  const result = run.result as Record<string, unknown>;
+  if (result?.artifacts) return archivedModelSchema.parse(result.artifacts);
   const destination = `versions/${runId}`;
   const temporary = resolve(DATA, `versions/.${runId}-${crypto.randomUUID()}`);
   await mkdir(temporary, { recursive: true });
@@ -63,11 +67,13 @@ export async function archiveVersion(
       "helpers.py",
       "rebuild.py",
       "render.py",
+      "build_runtime.py",
       "params.json",
       "build-config.json",
       "build-request.json",
       "sprites.png",
       "sprites.json",
+      "sprite-checks.json",
     ]) {
       await copyFile(resolve(DATA, directory, name), resolve(temporary, name))
         .then(() => sourceFiles.push(name))
@@ -82,6 +88,17 @@ export async function archiveVersion(
       }).catch((error) => {
         if (error.code !== "ENOENT") throw error;
       });
+    for (const name of await readdir(resolve(DATA, directory))) {
+      if (
+        /^(frame-[0-9]+-[0-9]+|review-[a-z]+-f[0-9]+-d[0-9]+)\.png$/.test(name)
+      ) {
+        await copyFile(
+          resolve(DATA, directory, name),
+          resolve(temporary, name),
+        );
+        sourceFiles.push(name);
+      }
+    }
     // Agent -> platform handover: pure local processing before immutable publication.
     const original = await readFile(resolve(temporary, "asset.glb"));
     if (sourceFiles.includes("asset.py"))
@@ -238,10 +255,12 @@ export async function archiveVersion(
   const artifacts = {
     lods: await readFile(resolve(DATA, destination, "lods.json"), "utf8")
       .then((text) =>
-        JSON.parse(text).map((lod: any) => ({
-          ...lod,
-          key: `${destination}/${lod.file}`,
-        })),
+        JSON.parse(text).map(
+          (lod: { file: string; [key: string]: unknown }) => ({
+            ...lod,
+            key: `${destination}/${lod.file}`,
+          }),
+        ),
       )
       .catch((error) => {
         if (error.code !== "ENOENT") throw error;
@@ -286,7 +305,15 @@ export async function archiveVersion(
     ),
   };
   await publishFiles([
-    ...artifacts.lods.map((lod: any) => lod.key),
+    ...(await readdir(resolve(DATA, destination)))
+      .filter(
+        (name) =>
+          /^(frame-[0-9]+-[0-9]+|review-[a-z]+-f[0-9]+-d[0-9]+)\.png$/.test(
+            name,
+          ) || name === "sprite-checks.json",
+      )
+      .map((name) => `${destination}/${name}`),
+    ...artifacts.lods.map((lod: { key: string }) => lod.key),
     ...(artifacts.sourceBundle
       ? [artifacts.sourceBundle, artifacts.script!, artifacts.buildManifest!]
       : []),
@@ -305,7 +332,7 @@ export async function archiveVersion(
     .update(runs)
     .set({ result: { ...result, artifacts } })
     .where(eq(runs.id, runId));
-  return artifacts;
+  return archivedModelSchema.parse(artifacts);
 }
 
 /** Publish immutable photographs and attach them to the exact builder version. */
@@ -313,20 +340,21 @@ export async function archivePhotography(
   runId: string,
   builderRunId: string,
   directory: string,
-  artifacts: Record<string, any>,
+  artifacts: Record<string, unknown>,
   requiredViews: readonly string[] = ["front", "rear", "detail"],
 ) {
   const { createHash } = await import("node:crypto");
   const [run] = await db.select().from(runs).where(eq(runs.id, runId));
   if (!run) throw new Error("Photographer run not found");
-  const saved = (run.result as any)?.photography;
-  let photography = saved;
+  const saved = (run.result as Record<string, unknown>)?.photography;
+  const model = archivedModelSchema.parse(artifacts);
+  let photography = saved ? archivedPhotographySchema.parse(saved) : undefined;
   if (!photography) {
     const receipt = JSON.parse(
       await readFile(resolve(DATA, directory, "photography.json"), "utf8"),
     );
     const hash = createHash("sha256")
-      .update(await readFile(resolve(DATA, artifacts.glb)))
+      .update(await readFile(resolve(DATA, model.glb)))
       .digest("hex");
     if (receipt.glbSha256 !== hash)
       throw new Error("Photographs do not match the exported GLB");
@@ -364,7 +392,7 @@ export async function archivePhotography(
     photography = {
       runId,
       builderRunId,
-      glb: artifacts.glb,
+      glb: model.glb,
       glbSha256: hash,
       renders: requiredViews.map((v) => `${destination}/${v}.png`),
       manifest: `${destination}/photography.json`,

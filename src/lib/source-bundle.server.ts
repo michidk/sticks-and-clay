@@ -64,7 +64,15 @@ export async function bundleFiles(directory: string) {
       if (
         entry.isSymbolicLink() ||
         entry.name === "__pycache__" ||
-        entry.name === "source-bundle.zip"
+        [
+          "source-bundle.zip",
+          "source.zip",
+          "delivery.zip",
+          "build-manifest.json",
+          "bundle-stats.json",
+          "output.last",
+        ].includes(entry.name) ||
+        entry.name.startsWith(".candidate-")
       )
         continue;
       if (entry.isDirectory()) await visit(name);

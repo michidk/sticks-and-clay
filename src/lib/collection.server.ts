@@ -1,3 +1,4 @@
+import { runExportProcess } from "../modules/asset-builds/index.server";
 import { assertJobActive } from "./queue.server";
 import { eq } from "drizzle-orm";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -10,17 +11,16 @@ import { loadRuntimeSettings } from "./runtime-settings.server";
 export const COLLECTION_FRONT_AZIMUTH = -55;
 
 export function photographyFrontAzimuth(receipt: unknown) {
-  const value = (receipt as { settings?: { frontAzimuth?: unknown } })
-    ?.settings?.frontAzimuth;
+  const value = (receipt as { settings?: { frontAzimuth?: unknown } })?.settings
+    ?.frontAzimuth;
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : COLLECTION_FRONT_AZIMUTH;
 }
 
 async function assetFrontAzimuth(artifacts: Record<string, unknown>) {
-  const manifest = (
-    artifacts.photography as { manifest?: unknown } | undefined
-  )?.manifest;
+  const manifest = (artifacts.photography as { manifest?: unknown } | undefined)
+    ?.manifest;
   if (typeof manifest !== "string") return COLLECTION_FRONT_AZIMUTH;
   return photographyFrontAzimuth(
     JSON.parse(await readFile(await filePath(manifest), "utf8")),
@@ -67,9 +67,9 @@ export async function renderCollection(batchId: string) {
   };
   const configPath = resolve(output, "scene.json");
   await writeFile(configPath, JSON.stringify(config));
-  const proc = Bun.spawn(
+  await runExportProcess(
+    process.env.BLENDER_BIN || "blender",
     [
-      process.env.BLENDER_BIN || "blender",
       "-b",
       "--threads",
       "2",
@@ -80,44 +80,28 @@ export async function renderCollection(batchId: string) {
       "--",
       configPath,
     ],
-    { stdout: "pipe", stderr: "pipe" },
+    output,
+    settings.timeouts.collectionMs,
   );
-  const cancellation = setInterval(() => {
-    void assertJobActive().catch(() => proc.kill());
-  }, 1000);
-  const timer = setTimeout(() => proc.kill(), settings.timeouts.collectionMs);
-  try {
-    const [exit, out, err] = await Promise.all([
-      proc.exited,
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-    ]);
-    await writeFile(resolve(output, "render.log"), out + err);
-    if (exit !== 0)
-      throw new Error("Collection rendering failed: " + err.slice(-1000));
-    await assertJobActive();
-    await publishFiles(
-      ["lineup.png", "scene.png", "collection.blend"].map(
-        (file) => `${directory}/${file}`,
-      ),
-    );
-    await db
-      .update(batches)
-      .set({
-        status: assets.some(
-          (m) => m.status !== "done" || m.verdict === "limit_reached",
-        )
-          ? "completed_with_errors"
-          : "done",
-        preview: {
-          lineup: `${directory}/lineup.png`,
-          scene: `${directory}/scene.png`,
-          blend: `${directory}/collection.blend`,
-        },
-      })
-      .where(eq(batches.id, batchId));
-  } finally {
-    clearTimeout(timer);
-    clearInterval(cancellation);
-  }
+  await assertJobActive();
+  await publishFiles(
+    ["lineup.png", "scene.png", "collection.blend"].map(
+      (file) => `${directory}/${file}`,
+    ),
+  );
+  await db
+    .update(batches)
+    .set({
+      status: assets.some(
+        (m) => m.status !== "done" || m.verdict === "limit_reached",
+      )
+        ? "completed_with_errors"
+        : "done",
+      preview: {
+        lineup: `${directory}/lineup.png`,
+        scene: `${directory}/scene.png`,
+        blend: `${directory}/collection.blend`,
+      },
+    })
+    .where(eq(batches.id, batchId));
 }

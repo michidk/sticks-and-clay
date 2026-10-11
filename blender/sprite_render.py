@@ -3,10 +3,14 @@ import hashlib
 import json
 import pathlib
 import sys
+import math
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parent))
 import bpy
 from mathutils import Vector
 from assetkit.sprites import render_sheet, sample_frames
+from assetkit.timeline import select_clip
+from build_artifacts import receipt, publish
+import uuid
 
 
 def render(root):
@@ -20,23 +24,14 @@ def render(root):
     scene.render.engine='CYCLES'; scene.cycles.samples=8
     scene.world=bpy.data.worlds.new('Sprite world'); scene.world.use_nodes=True
     scene.world.node_tree.nodes.get('Background').inputs['Strength'].default_value=.35
-    owners=list(scene.objects)+[o.data.shape_keys for o in scene.objects if o.type=='MESH' and o.data.shape_keys]
-    clip=options.get('clip','')
-    if clip:
-        matched=False
-        for obj in owners:
-            data=obj.animation_data
-            if not data:continue
-            for track in data.nla_tracks:
-                active=track.name==clip or any(s.name==clip or (s.action and s.action.name==clip) for s in track.strips)
-                track.mute=not active; matched=matched or active
-                if active:data.action=None
-        if not matched:raise ValueError('Animation clip not found: '+clip)
-    frames=sample_frames(scene,options.get('frameCount',1))
+    raw=source.read_bytes()
+    document=json.loads(raw[20:20+int.from_bytes(raw[12:16],'little')])
+    select_clip(scene,options.get('clip',''),document)
+    frames=sample_frames(scene,options.get('frameCount',1),options.get('loop',False))
     meshes=[o for o in scene.objects if o.type=='MESH']
     points=[]
     for frame in frames:
-        scene.frame_set(frame); deps=bpy.context.evaluated_depsgraph_get()
+        scene.frame_set(math.floor(frame),subframe=frame-math.floor(frame)); deps=bpy.context.evaluated_depsgraph_get()
         for obj in meshes:
             evaluated=obj.evaluated_get(deps)
             points.extend(evaluated.matrix_world@Vector(c) for c in evaluated.bound_box)
@@ -54,12 +49,15 @@ def render(root):
     data=bpy.data.cameras.new('Sprite camera'); camera=bpy.data.objects.new(data.name,data)
     scene.collection.objects.link(camera); scene.camera=camera
     data.clip_start=max(span*.001,.001); data.clip_end=max(span*100,100)
-    scene.frame_start=min(frames); scene.frame_end=max(frames)
+    scene.frame_start=math.floor(min(frames)); scene.frame_end=math.ceil(max(frames))
+    options['anchorPoint']=list(Vector((center.x,center.y,lo.z)) if options.get('anchor','ground')=='ground' else center)
     options['frames']=frames
-    out=root/'output'; out.mkdir(exist_ok=True)
+    out=root/('.candidate-'+uuid.uuid4().hex); out.mkdir()
     render_sheet(scene,camera,center,span,str(out),options)
     if hashlib.sha256(source.read_bytes()).hexdigest()!=digest:raise ValueError('Source changed')
     (out/'receipt.json').write_text(json.dumps({'sourceSha256':digest,'frames':frames,'blender':bpy.app.version_string}),encoding='utf-8')
+    receipt(out,'sprite','final',hashlib.sha256(source.read_bytes()+(root/'params.json').read_bytes()).hexdigest(),{'blender':bpy.app.version_string})
+    publish(out,root/'output')
 
 
 if __name__=='__main__':render(pathlib.Path(__file__).parent)

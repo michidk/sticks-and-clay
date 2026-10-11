@@ -50,6 +50,8 @@ class WorkflowTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(draft['ok'],draft['log'])
                 dest=server.DATA/'model'
                 self.assertTrue((dest/'preview/front.png').exists())
+                self.assertTrue((dest/'preview/sprites.png').exists())
+                self.assertFalse((dest/'sprites.png').exists())
                 self.assertFalse((dest/'asset.glb').exists())
                 final=await server.asset_workspace({'capability':cap,'operation':'run','mode':'final'})
                 self.assertTrue(final['ok'],final['log'])

@@ -11,7 +11,7 @@
     "worker": "bun scripts/worker.ts",
     "db:generate": "drizzle-kit generate",
     "services": "bash scripts/services.sh",
-    "eve:build": "cd eve && ../node_modules/.bin/eve build",
+    "eve:build": "cd eve && bun ../node_modules/eve/bin/eve.js build",
     "eve:typecheck": "tsc --noEmit -p eve/tsconfig.json",
     "verify": "bun run typecheck && bun run test && bun run build && bun run eve:typecheck"
   },

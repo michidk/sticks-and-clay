@@ -42,7 +42,7 @@ class MaterialTests(unittest.TestCase):
     def test_png_precision_packing_manifest_and_offline_relocation(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=pathlib.Path(temporary)
-            for name in ('render.py','materialkit.py','requirements.txt'):
+            for name in ('render.py','materialkit.py','materialcore.py','materialcache.py','materialcalibration.py','calibration-targets.json','materialrecipes.py','materialoutput.py','requirements.txt'):
                 shutil.copy2(pathlib.Path(__file__).parent/'materials'/name,root/name)
             params=check({'size':64,'recipe':'brick'})
             (root/'params.json').write_text(json.dumps(params))

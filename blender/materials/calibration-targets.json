@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "preprocessing": "PNG 1K; sRGB albedo decoded to linear; roughness linear; population mean/std over all pixels; no crop or resize",
+  "targets": {
+    "wood": {
+      "asset": "wood_floor",
+      "source": "https://polyhaven.com/a/wood_floor",
+      "license": "CC0-1.0",
+      "dimensionsMillimetres": [
+        1699.9996900558472,
+        1699.9996900558472
+      ],
+      "maps": {
+        "albedo": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/wood_floor/wood_floor_diff_1k.png",
+          "sha256": "71050a1d2cccfbd50e7d18bbb443e51576ef50a28f4106770dc1553169e9184c",
+          "size": [
+            1024,
+            1024
+          ]
+        },
+        "roughness": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/wood_floor/wood_floor_rough_1k.png",
+          "sha256": "4a9f632f8ce6db0c80ee70a9bcfb8e4d7afa03f4ae9e1becf0b1fcfc95136747",
+          "size": [
+            1024,
+            1024
+          ]
+        }
+      },
+      "statistics": {
+        "albedo": {
+          "mean": [
+            0.21800814239123603,
+            0.11710536895844785,
+            0.05462790182679686
+          ],
+          "std": [
+            0.04334617050789487,
+            0.021822826329067,
+            0.008403837965778262
+          ]
+        },
+        "roughness": {
+          "mean": 1.0,
+          "std": 0.0
+        }
+      }
+    },
+    "brick": {
+      "asset": "brick_floor_003",
+      "source": "https://polyhaven.com/a/brick_floor_003",
+      "license": "CC0-1.0",
+      "dimensionsMillimetres": [
+        2000,
+        2000
+      ],
+      "maps": {
+        "albedo": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/brick_floor_003/brick_floor_003_diffuse_1k.png",
+          "sha256": "ad0a3597d7008e156e629f334a12189e210a6f11918ef448caded1f183990f7b",
+          "size": [
+            1024,
+            1024
+          ]
+        },
+        "roughness": {
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/1k/brick_floor_003/brick_floor_003_rough_1k.png",
+          "sha256": "5e00faaef05b24e3d1e0c08b11378f7d1c87022c6fb2b0f31b22b2aa8623abe5",
+          "size": [
+            1024,
+            1024
+          ]
+        }
+      },
+      "statistics": {
+        "albedo": {
+          "mean": [
+            0.11531984652501646,
+            0.0805785576759069,
+            0.05828525169477963
+          ],
+          "std": [
+            0.029949932460032126,
+            0.023994612941235335,
+            0.020547830065429148
+          ]
+        },
+        "roughness": {
+          "mean": 0.804904219683479,
+          "std": 0.03854455585868967
+        }
+      }
+    }
+  }
+}
