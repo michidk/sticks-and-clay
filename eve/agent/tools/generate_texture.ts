@@ -7,6 +7,7 @@ const tool = defineTool({
     capability: z.string().uuid(),
     name: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
     prompt: z.string().min(20).max(8000),
+    references: z.array(z.string()).max(4).default([]),
   }),
   async execute(input, options) {
     const response = await fetch(

@@ -4,6 +4,8 @@ import {
   projectState,
 } from "@/lib/project-summary";
 import { ProjectSetup } from "./-components/project-setup";
+import { WorkshopPanel } from "./-components/workshop";
+import { GraphicVariant } from "./-components/graphic-variant";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -437,6 +439,7 @@ function ProjectPage() {
               isGraphics ? ImageIcon : Boxes,
             ],
             ["design", "Design reference", FileText],
+            ["style", "Collection style", Boxes],
             ["history", "Activity & cost", Activity],
           ]
             .filter(([id]) => ready || id !== "models")
@@ -452,6 +455,23 @@ function ProjectPage() {
               </TabsTrigger>
             ))}
         </TabsList>
+        {activeTab === "style" && (
+          <WorkshopPanel
+            key={projectId}
+            project={p}
+            versions={[
+              ...(data.versions || []),
+              ...(data.runs || [])
+                .filter((r: any) => r.role === "graphic" && r.status === "done")
+                .map((r: any) => ({
+                  ...r,
+                  artifacts: { image: r.result?.key, renders: [r.result?.key] },
+                })),
+            ]}
+            models={data.models || []}
+            onSaved={load}
+          />
+        )}
         {activeTab === "design" && (
           <div className="design-layout">
             <Card className="panel">
@@ -843,7 +863,9 @@ function ProjectPage() {
                         </h3>
                         {m.branchKind && (
                           <span className="model-branch-label">
-                            {m.branchKind === "fork" ? "Forked variant" : "Prompt iteration"}
+                            {m.branchKind === "fork"
+                              ? "Forked variant"
+                              : "Prompt iteration"}
                           </span>
                         )}
                         <p>{m.changePrompt || m.prompt}</p>
@@ -935,6 +957,18 @@ function ProjectPage() {
                               <Download size={14} />
                               Download PNG
                             </a>
+                            <GraphicVariant
+                              model={m}
+                              sourceRunId={
+                                data.runs.find(
+                                  (r: any) =>
+                                    r.role === "graphic" &&
+                                    r.modelId === m.id &&
+                                    r.status === "done",
+                                )?.id
+                              }
+                              onSaved={load}
+                            />
                           </div>
                         ) : m.artifacts ? (
                           <div className="downloads">

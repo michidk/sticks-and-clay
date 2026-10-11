@@ -9,7 +9,18 @@ export default defineTool({
     "Visually inspect an exported Blender render. Sends actual image content to the vision model. Use this instead of reading image bytes or base64 as text.",
   inputSchema: z.object({
     capability: z.string().uuid(),
-    view: z.enum(["front", "rear", "detail", "left", "right", "top", "bottom"]),
+    view: z.enum([
+      "front",
+      "rear",
+      "detail",
+      "left",
+      "right",
+      "top",
+      "bottom",
+      "preview_front",
+      "preview_rear",
+      "preview_detail",
+    ]),
   }),
   async execute({ capability, view }) {
     const dataDir = dataDirectory();
@@ -20,7 +31,13 @@ export default defineTool({
       ),
     );
     const path = await realpath(
-      resolve(dataDir, authorization.directory, view + ".png"),
+      resolve(
+        dataDir,
+        authorization.directory,
+        view.startsWith("preview_")
+          ? "preview/" + view.slice(8) + ".png"
+          : view + ".png",
+      ),
     );
     if (!path.startsWith((await realpath(dataDir)) + sep))
       throw new Error("Invalid render path");
@@ -30,12 +47,29 @@ export default defineTool({
     await writeFile(resolve(dataDir, imageKey), bytes);
     // Persist a small immutable reference. Raw base64 makes Eve's context-size
     // estimator trigger compaction before the model can inspect the images.
-    return { view, imageKey };
+    const buildState = view.startsWith("preview_")
+      ? await readFile(
+          resolve(dataDir, authorization.directory, "build-state.json"),
+          "utf8",
+        )
+          .then(JSON.parse)
+          .catch(() => undefined)
+      : undefined;
+    return {
+      view,
+      imageKey,
+      ...(buildState && !buildState.ok
+        ? {
+            note: "Last successful preview retained; the latest build failed or is incomplete.",
+          }
+        : {}),
+    };
   },
   async toModelOutput(output: {
     view: string;
     imageKey?: string;
     image?: string;
+    note?: string;
   }) {
     // Historical sessions may still contain the original inline image output.
     let pixels = output.image;
@@ -47,7 +81,9 @@ export default defineTool({
     }
     if (!pixels) throw new Error("Render image is missing");
     return toolOutput.content([
-      toolOutputPart.text(`${output.view} view of the current asset`),
+      toolOutputPart.text(
+        `${output.view} view of the current asset${output.note ? `. ${output.note}` : ""}`,
+      ),
       toolOutputPart.file(pixels, { mediaType: "image/png" }),
     ]);
   },

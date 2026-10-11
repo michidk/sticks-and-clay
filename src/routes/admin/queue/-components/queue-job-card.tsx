@@ -38,6 +38,7 @@ const kindDetails: Record<string, { label: string; icon: typeof Box }> = {
   plan: { label: "Collection plan", icon: ListChecks },
   demo: { label: "Collection render", icon: Clapperboard },
   "project-photo": { label: "Project photography", icon: Camera },
+  presentation: { label: "Saved version render", icon: Camera },
 };
 
 function jobTime(job: QueueJob) {
@@ -66,7 +67,7 @@ export function QueueJobCard({
   const canCancel = ["queued", "running", "cancelling"].includes(job.status);
   const showProgress =
     ["running", "queued"].includes(job.status) &&
-    ["model", "project-photo"].includes(job.kind);
+    ["model", "project-photo", "presentation"].includes(job.kind);
 
   return (
     <Card className="queue-job">
@@ -154,9 +155,11 @@ export function QueueJobCard({
       </div>
 
       {(canCancel ||
-        (job.kind === "project-photo" && job.status === "failed")) && (
+        (["project-photo", "presentation"].includes(job.kind) &&
+          job.status === "failed")) && (
         <div className="queue-job-actions">
-          {job.kind === "project-photo" && job.status === "failed" ? (
+          {["project-photo", "presentation"].includes(job.kind) &&
+          job.status === "failed" ? (
             <Button
               variant="outline"
               size="sm"

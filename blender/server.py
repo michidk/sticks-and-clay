@@ -1,10 +1,11 @@
 """Loopback MCP adapter. Each capability owns an independent Blender process/workdir."""
-import asyncio,json,os,pathlib,re,uuid
+import asyncio,json,os,pathlib,re,uuid,shutil,hashlib
 from mcp.server.mcpserver import MCPServer
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 DATA=pathlib.Path(os.environ.get('STUDIO_DATA_DIR',ROOT/'data')).resolve()
 mcp=MCPServer('Asset Studio Blender')
 locks={}
+build_slots=asyncio.Semaphore(max(1,int(os.environ.get('BLENDER_CONCURRENCY','2'))))
 def build_timeout_seconds():
     path=DATA/'runtime-settings.json'
     if path.exists():
@@ -38,33 +39,80 @@ async def get_scene_info(capability:str)->dict:
     out,_=await proc.communicate()
     return {'version':out.decode().splitlines()[0],'directory':str(dest),'metrics':json.loads((dest/'metrics.json').read_text()) if (dest/'metrics.json').exists() else None,'clean_execution':True}
 @mcp.tool()
-async def execute_blender_code(capability:str,code:str)->dict:
-    """Execute a complete asset build in an independent Blender process. Call finish_asset() last. bpy, math, random, Vector and OUTPUT_DIR are provided. Outputs: asset.glb, source.blend, metrics.json, front.png, rear.png, detail.png. No shared scene state."""
+async def execute_blender_code(capability:str,code:str,preview:bool=False)->dict:
+    """Execute a reproducible asset script. assetkit and finish_asset() are provided. preview=True makes cheap draft views; finish with preview=False to publish GLB/source/metrics. Inspect drafts using view_render views preview_front/preview_rear/preview_detail. Final builds retain pivots/hierarchy. No shared scene state."""
     dest=workspace(capability)
     info=json.loads((DATA/'capabilities'/f'{capability}.json').read_text())
     if info.get('role')=='photographer':raise ValueError('Photographer capabilities cannot execute build code')
-    async with locks.setdefault(capability,asyncio.Lock()):
+    async with locks.setdefault(capability,asyncio.Lock()),build_slots:
         workspace(capability)
         dest.mkdir(parents=True,exist_ok=True)
-        helper=(ROOT/'blender'/'helpers.py').read_text()
-        script=dest/f'build-{uuid.uuid4()}.py'
-        script.write_text('OUTPUT_DIR = '+repr(str(dest))+'\n'+helper+'\n'+code)
+        (dest/'build-state.json').write_text(json.dumps({'ok':False,'preview':preview,'state':'building'}))
+        # Pin support code on first use so resumed sessions use the same helper API.
+        snapshot=dest/'build-support'
+        if not snapshot.exists():
+            temporary=dest/('support-'+str(uuid.uuid4()))
+            temporary.mkdir()
+            shutil.copytree(ROOT/'blender'/'assetkit',temporary/'assetkit',ignore=shutil.ignore_patterns('__pycache__'))
+            for name in ['helpers.py','rebuild.py']:shutil.copyfile(ROOT/'blender'/name,temporary/name)
+            temporary.rename(snapshot)
+        candidate=dest/('.candidate-'+str(uuid.uuid4()))
+        shutil.copytree(snapshot,candidate)
+        relocations={}
+        # Copy only explicitly authorized baselines and dependencies into the source bundle.
+        for index,path in enumerate(info.get('inputs',[])):
+            source=(DATA/path).resolve()
+            if not source.is_relative_to(DATA):raise ValueError('Invalid build input')
+            target=candidate/'inputs'/f'{index}{source.suffix}'
+            target.parent.mkdir(exist_ok=True)
+            shutil.copyfile(source,target)
+            relocations[str(source).replace('\\','/')]=str(target.relative_to(candidate)).replace('\\','/')
+            relocations[str(source)]=str(target.relative_to(candidate)).replace('\\','/')
+            relocations[str(source).replace('\\','\\\\')]=str(target.relative_to(candidate)).replace('\\','/')
+        if (dest/'textures').exists():shutil.copytree(dest/'textures',candidate/'textures')
+        (candidate/'asset.py').write_text(code,encoding='utf-8')
+        (candidate/'build-config.json').write_text(json.dumps({'version':1,'directory':str(dest).replace('\\','/'),'directories':[str(dest).replace('\\','/'),str(dest).replace('\\','\\\\'),str(dest)],'preview':preview,'params':{'seed':info.get('seed',1)},'relocations':relocations}),encoding='utf-8')
+        script=candidate/'rebuild.py'
         env={k:v for k,v in os.environ.items() if not any(s in k.upper() for s in ['TOKEN','SECRET','PASSWORD','API_KEY','CREDENTIAL'])}
-        proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'-b','--threads','2','--python-exit-code','1','--python',str(script),cwd=dest,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
+        proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'-b','--factory-startup','--threads','2','--python-exit-code','1','--python',str(script),cwd=candidate,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
         monitor=asyncio.create_task(watch_cancellation(capability,proc))
         timeout=build_timeout_seconds()
         try:out,_=await asyncio.wait_for(proc.communicate(),timeout)
         except asyncio.TimeoutError:
             if proc.returncode is None:proc.kill()
-            await proc.wait();return {'ok':False,'error':f'Blender exceeded {timeout} seconds'}
+            await proc.wait()
+            (dest/'build-state.json').write_text(json.dumps({'ok':False,'preview':preview,'error':'timeout'}))
+            shutil.rmtree(candidate)
+            return {'ok':False,'error':f'Blender exceeded {timeout} seconds'}
         except asyncio.CancelledError:
             if proc.returncode is None:proc.kill()
             await proc.wait()
+            shutil.rmtree(candidate)
             raise
         finally:
             monitor.cancel()
         (dest/'build.log').write_bytes(out)
-        return {'ok':proc.returncode==0,'log':out.decode(errors='replace')[-(1200 if proc.returncode==0 else 6000):],'metrics':json.loads((dest/'metrics.json').read_text()) if proc.returncode==0 and (dest/'metrics.json').exists() else None}
+        required=['metrics.json','front.png','rear.png','detail.png']+([] if preview else ['asset.glb','source.blend'])
+        ok=proc.returncode==0 and all((candidate/f).exists() for f in required)
+        state={'ok':ok,'preview':preview,'scriptSha256':hashlib.sha256(code.encode()).hexdigest()}
+        output=dest/'preview' if preview else dest
+        if ok:
+            output.mkdir(exist_ok=True)
+            names=required if preview else required+['asset.py','build-config.json','helpers.py','rebuild.py']
+            for name in names:shutil.copyfile(candidate/name,output/name)
+            if not preview:
+                for path in [dest/'sprites.png',dest/'sprites.json',dest/'lods.json',*dest.glob('asset-lod-*.glb')]:path.unlink(missing_ok=True)
+                for name in ['assetkit','inputs','textures']:
+                    if (candidate/name).exists():shutil.copytree(candidate/name,dest/name,dirs_exist_ok=True)
+                for name in ['sprites.png','sprites.json']:
+                    if (candidate/name).exists():shutil.copyfile(candidate/name,dest/name)
+                for path in candidate.glob('asset-lod-*.glb'):shutil.copyfile(path,dest/path.name)
+                if (candidate/'lods.json').exists():shutil.copyfile(candidate/'lods.json',dest/'lods.json')
+            (output/'state.json').write_text(json.dumps(state))
+        (dest/'build-state.json').write_text(json.dumps(state))
+        metrics=json.loads((candidate/'metrics.json').read_text()) if ok else None
+        shutil.rmtree(candidate)
+        return {'ok':ok,'preview':preview,'lastGoodRetained':not ok,'log':out.decode(errors='replace')[-(1200 if ok else 6000):],'metrics':metrics}
 @mcp.tool()
 def get_render(capability:str,view:str='front')->dict:
     """Inspect a rendered image from this builder's workspace. view: front, rear, detail."""

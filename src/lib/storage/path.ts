@@ -33,6 +33,7 @@ export function fileMimeType(path: string) {
     glb: "model/gltf-binary",
     json: "application/json",
     py: "text/plain",
+    zip: "application/zip",
   };
   return (
     types[path.split(".").pop()?.toLowerCase() || ""] ||

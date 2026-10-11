@@ -7,6 +7,7 @@ import {
   doublePrecision,
   index,
 } from "drizzle-orm/pg-core";
+import type { Workshop, WorkshopSnapshot } from "../lib/workshop";
 const created = () =>
   timestamp("created_at", { withTimezone: true }).defaultNow().notNull();
 export const projects = pgTable("projects", {
@@ -20,6 +21,7 @@ export const projects = pgTable("projects", {
   references: jsonb().$type<string[]>().default([]).notNull(),
   design: text().default("").notNull(),
   designVersion: integer().default(0).notNull(),
+  workshop: jsonb().$type<Workshop>(),
   status: text().default("queued").notNull(),
   phase: text().default("Waiting for designer").notNull(),
   progress: integer().default(0).notNull(),
@@ -50,6 +52,7 @@ export const batches = pgTable("batches", {
     .notNull(),
   design: text().notNull(),
   designVersion: integer().notNull(),
+  workshop: jsonb().$type<WorkshopSnapshot>(),
   status: text().default("queued").notNull(),
   error: text(),
   preview: jsonb().$type<{ lineup: string; scene: string; blend: string }>(),

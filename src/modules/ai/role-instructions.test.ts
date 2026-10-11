@@ -1,6 +1,20 @@
 import { expect, test } from "bun:test";
 import { roleInstructions } from "./internal/role-instructions.server";
 import { agentSettings } from "./index.server";
+test("conditional guides follow the asset and stage while saved bundles win", async () => {
+  const bundle = await roleInstructions("builder", undefined, {
+    request: "a tree",
+    stage: "geometry",
+  });
+  expect(bundle).toContain("Construction vocabulary");
+  expect(bundle).not.toContain("Architecture and hard-surface construction");
+  expect(
+    await roleInstructions("builder", "saved", {
+      request: "a tree",
+      stage: "geometry",
+    }),
+  ).toBe("saved");
+});
 
 test("builder and judge receive their focused references without cross-role instructions", async () => {
   const builder = await roleInstructions("builder");
@@ -8,15 +22,21 @@ test("builder and judge receive their focused references without cross-role inst
   expect(builder).toContain("Architecture and hard-surface construction");
   expect(builder).toContain("Organic forms and trees");
   expect(builder).toContain("Deliberate UV and texture placement");
-  expect(builder).not.toContain("## Diagnose construction and material failures");
+  expect(builder).not.toContain(
+    "## Diagnose construction and material failures",
+  );
   const judge = await roleInstructions("judge");
   expect(judge).toContain("## Diagnose construction and material failures");
   expect(judge).not.toContain("## Architecture and hard-surface construction");
-  expect(await roleInstructions("photographer")).not.toContain("## Reference-led construction");
+  expect(await roleInstructions("photographer")).not.toContain(
+    "## Reference-led construction",
+  );
 });
 
 test("saved instructions survive new reference bundles, including empty historical snapshots", async () => {
-  expect(await roleInstructions("builder", "original session instructions")).toBe("original session instructions");
+  expect(
+    await roleInstructions("builder", "original session instructions"),
+  ).toBe("original session instructions");
   expect(await roleInstructions("judge", "")).toBe("");
 });
 
@@ -29,6 +49,8 @@ test("agent settings include authored prompts and shared references", async () =
     "prompts/references/hard-surface.md",
     "prompts/references/organic-and-trees.md",
     "prompts/references/uv-and-materials.md",
+    "prompts/references/assetkit.md",
+    "prompts/references/game-interfaces.md",
     "prompts/builder-input.md",
   ]);
   expect(builder?.promptFiles[0]?.content).toContain(

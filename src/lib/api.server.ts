@@ -1,4 +1,7 @@
 import { recordedAnalysis } from "../modules/model-analysis/report";
+import { workshopSchema } from "./workshop";
+import { snapshotWorkshop } from "./workshop.server";
+import { workshopAction } from "./workshop-actions.server";
 import { collectionSummary } from "./project-summary";
 import { databaseErrorResponse } from "./database-error";
 import { eq, desc, and, inArray } from "drizzle-orm";
@@ -18,11 +21,7 @@ import { cancelJob } from "./queue.server";
 import { runRole, roleInput, agentSettings } from "../modules/ai/index.server";
 // Preserve the field-fill HTTP response shape while sharing the execution boundary.
 async function draftBrief<
-  R extends
-    | "project-name"
-    | "project-brief"
-    | "model-brief"
-    | "graphic-brief",
+  R extends "project-name" | "project-brief" | "model-brief" | "graphic-brief",
 >(args: import("../modules/ai/index.server").RunInput<R>) {
   const { result, runId } = await runRole(args);
   return { ...result, runId };
@@ -78,6 +77,8 @@ export async function api(request: Request) {
       )
         return reply({ error: "Invalid request origin" }, 403);
     }
+    const workshopResult = await workshopAction(request, path);
+    if (workshopResult) return workshopResult;
     if (path[0] === "queue") {
       if (request.method === "GET") {
         const [list, assets, collections, workspaces, settings, worker] =
@@ -86,7 +87,13 @@ export async function api(request: Request) {
               .select()
               .from(jobs)
               .where(
-                inArray(jobs.kind, ["model", "plan", "demo", "project-photo"]),
+                inArray(jobs.kind, [
+                  "model",
+                  "plan",
+                  "demo",
+                  "project-photo",
+                  "presentation",
+                ]),
               )
               .orderBy(desc(jobs.createdAt)),
             db.select().from(models),
@@ -120,7 +127,9 @@ export async function api(request: Request) {
               finishedAt: j.finishedAt,
               error: j.error,
               name:
-                model?.name ||
+                (j.kind === "presentation"
+                  ? `Render ${model?.name || "saved version"}`
+                  : model?.name) ||
                 (j.kind === "project-photo"
                   ? "Photograph project"
                   : j.kind === "plan"
@@ -130,12 +139,18 @@ export async function api(request: Request) {
               modelId: model?.id,
               projectName: project?.name,
               phase:
-                model?.phase ||
+                (j.kind === "presentation"
+                  ? "Rendering saved version"
+                  : model?.phase) ||
                 (j.kind === "project-photo"
                   ? "Photographing project collection"
                   : undefined),
               progress:
-                model?.progress ??
+                (j.kind === "presentation"
+                  ? j.status === "done"
+                    ? 100
+                    : 5
+                  : model?.progress) ??
                 (j.kind === "project-photo"
                   ? j.status === "done"
                     ? 100
@@ -154,7 +169,13 @@ export async function api(request: Request) {
           .where(
             and(
               eq(jobs.status, "queued"),
-              inArray(jobs.kind, ["model", "plan", "demo", "project-photo"]),
+              inArray(jobs.kind, [
+                "model",
+                "plan",
+                "demo",
+                "project-photo",
+                "presentation",
+              ]),
             ),
           );
         for (const j of pending) {
@@ -173,11 +194,11 @@ export async function api(request: Request) {
           .where(eq(jobs.id, uuid.parse(path[1])));
         if (
           !saved ||
-          saved.kind !== "project-photo" ||
+          !["project-photo", "presentation"].includes(saved.kind) ||
           saved.status !== "failed"
         )
           throw new Error(
-            "Only failed project photography can be resumed here",
+            "Only failed photography or presentation jobs can be resumed here",
           );
         await db
           .update(jobs)
@@ -238,8 +259,9 @@ export async function api(request: Request) {
       path[1] === "generate" &&
       request.method === "POST"
     ) {
-      const { generateTexture, textureRequest } =
-        await import("../modules/textures/index.server");
+      const { generateTexture, textureRequest } = await import(
+        "../modules/textures/index.server"
+      );
       return reply(
         await generateTexture(textureRequest.parse(await request.json())),
       );
@@ -756,6 +778,28 @@ export async function api(request: Request) {
         });
         return reply({ ok: true });
       }
+      if (path[2] === "workshop" && request.method === "PUT") {
+        const input = workshopSchema.parse(await request.json());
+        const previous = workshopSchema.parse(project.workshop || {});
+        if (input.version !== previous.version)
+          throw new Error("Collection settings changed; reload before saving");
+        await snapshotWorkshop(id, input);
+        const [updated] = await db
+          .update(projects)
+          .set({ workshop: { ...input, version: input.version + 1 } })
+          .where(
+            and(
+              eq(projects.id, id),
+              project.workshop
+                ? eq(projects.workshop, project.workshop)
+                : (await import("drizzle-orm")).isNull(projects.workshop),
+            ),
+          )
+          .returning();
+        if (!updated)
+          throw new Error("Collection settings changed; reload before saving");
+        return reply({ workshop: updated.workshop });
+      }
       if (path[2] === "generate" && request.method === "POST") {
         if (project.status !== "ready")
           throw new Error("Approve the design before generating assets");
@@ -774,6 +818,7 @@ export async function api(request: Request) {
         if (project.assetType === "model" && input.imageSize !== "1024x1024")
           throw new Error("Image size applies only to graphic projects");
         const batchId = crypto.randomUUID();
+        const workshop = await snapshotWorkshop(id, project.workshop);
         await db.transaction(async (tx) => {
           await tx.insert(batches).values({
             id: batchId,
@@ -781,6 +826,7 @@ export async function api(request: Request) {
             ...input,
             design: project.design,
             designVersion: project.designVersion,
+            workshop,
           });
           await tx.insert(jobs).values({
             id: crypto.randomUUID(),
@@ -827,6 +873,7 @@ export async function api(request: Request) {
       const input = z
         .object({
           kind: z.enum(["iterate", "fork"]),
+          useCurrentStyle: z.boolean().default(false),
           sourceRunId: uuid,
           prompt: z.string().trim().min(3).max(12000),
           name: z.string().trim().min(1).max(100).optional(),
@@ -842,13 +889,16 @@ export async function api(request: Request) {
           and(
             eq(runs.id, input.sourceRunId),
             eq(runs.modelId, id),
-            eq(runs.role, "builder"),
+            inArray(runs.role, ["builder", "graphic"]),
           ),
         );
       if (
         !source ||
         source.status !== "done" ||
-        !(source.result as any)?.artifacts?.blend
+        !(
+          (source.result as any)?.artifacts?.blend ||
+          (source.role === "graphic" && (source.result as any)?.key)
+        )
       )
         throw new Error("Choose a saved build version with a Blender source");
       const [parentBatch] = await db
@@ -859,13 +909,25 @@ export async function api(request: Request) {
         .select()
         .from(projects)
         .where(eq(projects.id, parent.projectId));
-      if (!parentBatch || !project || project.assetType !== "model")
-        throw new Error("Only 3D models can be iterated or forked");
+      if (!parentBatch || !project)
+        throw new Error("Source project is unavailable");
+      if (
+        project.assetType === "graphic" &&
+        (input.judgeIterations !== 0 || source.role !== "graphic")
+      )
+        throw new Error(
+          "Graphic variants need a saved graphic and zero judge rounds",
+        );
+      if (project.assetType === "model" && source.role !== "builder")
+        throw new Error("Choose a saved model version");
       const batchId = crypto.randomUUID();
       const modelId = crypto.randomUUID();
       const name = input.kind === "fork" ? input.name : parent.name;
       if (!name) throw new Error("Name the fork");
       const fullPrompt = `${parent.prompt}\n\nRequested change from saved version:\n${input.prompt}`;
+      const workshop = input.useCurrentStyle
+        ? await snapshotWorkshop(project.id, project.workshop)
+        : parentBatch.workshop;
       await db.transaction(async (tx) => {
         await tx.insert(batches).values({
           id: batchId,
@@ -875,6 +937,7 @@ export async function api(request: Request) {
           judgeIterations: input.judgeIterations,
           design: parentBatch.design,
           designVersion: parentBatch.designVersion,
+          workshop,
           status: "building",
         });
         await tx.insert(models).values({
@@ -893,7 +956,12 @@ export async function api(request: Request) {
           kind: "model",
           targetId: modelId,
           checkpoint: {
-            "branch-references": JSON.stringify(project.references),
+            "branch-references": JSON.stringify([
+              ...(source.role === "graphic"
+                ? [(source.result as any).key]
+                : []),
+              ...project.references,
+            ]),
           },
         });
       });

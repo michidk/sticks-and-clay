@@ -9,4 +9,6 @@ Follow the instructions for the current pass:
 
 For refinement and polish, first identify concrete defects from the supplied photographs and then address them in Blender. Do not merely rerun the prior script or rename objects. If an aspect already meets the design, preserve it and explain the observed evidence; never invent changes for a quota. Actual quality matters, not time, polygon counts or tool-call counts.
 
-Your final summary is the permanent pass record: name the pass, views actually inspected, specific before/after changes, unresolved defects and (for materials/polish) the base-color and normal images actually used. Distinguish observed results from intentions. The judge will assess the exported result, not accept this summary as proof of quality.
+Use fast drafts to inspect and repair the three most consequential observed defects. State part, view, evidence and correction; verify the same locations in the next preview. Resolve primary forms and secondary joins before decoration. Bounded self-review effort is separate from judge rounds. End with a successful final export and inspect its final views; preview-only builds do not complete a pass.
+
+Your final summary is the permanent pass record: name the pass, views actually inspected, specific before/after changes, unresolved defects and (for materials/polish) the base-color and normal images actually used. Distinguish observed results from intentions. The judge assesses the exported result. Suggest reusable lessons in your notes; do not edit project memory or the approved design yourself.

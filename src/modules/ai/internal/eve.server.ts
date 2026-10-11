@@ -53,8 +53,11 @@ export async function agent<T>(
     return { result: args.schema.parse(saved.result) as T, runId: saved.id };
   if (saved) args = { ...args, input: saved.input, images: saved.images };
   const id = saved?.id || crypto.randomUUID(),
-    systemPrompt =
-      await roleInstructions(args.role, saved?.systemPrompt),
+    systemPrompt = await roleInstructions(
+      args.role,
+      saved?.systemPrompt,
+      args.construction,
+    ),
     images = args.images || [];
   if (!saved)
     await recordRun(args, {
@@ -113,7 +116,10 @@ export async function agent<T>(
         outputTokens,
         cachedTokens,
         cacheWriteTokens,
-        estimatedCost: reportedSteps + estimatedSteps && costAvailable ? estimatedCost : null,
+        estimatedCost:
+          reportedSteps + estimatedSteps && costAvailable
+            ? estimatedCost
+            : null,
         usageSource: estimatedSteps
           ? reportedSteps
             ? "mixed"
@@ -173,8 +179,8 @@ export async function agent<T>(
       saved?.status === "failed" &&
         Boolean(
           saved.error?.startsWith("Artifact validation:") ||
-          saved.error?.startsWith("Result validation:") ||
-          saved.error?.includes("JSON"),
+            saved.error?.startsWith("Result validation:") ||
+            saved.error?.includes("JSON"),
         ),
     );
     const handle = client().sessions.attach(sessionId, {

@@ -1,4 +1,5 @@
 import { ModelChecks } from "./-components/checks";
+import { VersionActions } from "./-components/version-actions";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
@@ -357,6 +358,27 @@ function ModelPage() {
                     <span>Blender source</span>
                   )}
                 </Button>
+                {artifacts?.lods?.map((lod, index) => (
+                  <Button key={lod.key} variant="outline" asChild>
+                    <a href={fileUrl(lod.key)} download>
+                      LOD {index + 1}
+                    </a>
+                  </Button>
+                ))}
+                {artifacts?.sourceBundle && (
+                  <Button variant="outline" asChild>
+                    <a href={fileUrl(artifacts.sourceBundle)} download>
+                      <Download size={16} /> Source bundle
+                    </a>
+                  </Button>
+                )}
+                {artifacts?.sprites && (
+                  <Button variant="outline" asChild>
+                    <a href={fileUrl(artifacts.sprites.image)} download>
+                      Sprite sheet
+                    </a>
+                  </Button>
+                )}
                 <Button asChild={!!artifacts?.glb} disabled={!artifacts?.glb}>
                   {artifacts?.glb ? (
                     <a href={fileUrl(artifacts.glb)} download>
@@ -500,10 +522,19 @@ function ModelPage() {
                       />
                     )}
                     {search.section === "checks" && (
-                      <ModelChecks
-                        artifacts={artifacts}
-                        judges={checkedVersion?.judges}
-                      />
+                      <div className="space-y-5">
+                        <ModelChecks
+                          artifacts={artifacts}
+                          judges={checkedVersion?.judges}
+                        />
+                        <VersionActions
+                          projectId={projectId}
+                          modelId={modelId}
+                          sourceRunId={checkedVersion?.id}
+                          artifacts={artifacts}
+                          review={selected.feedback}
+                        />
+                      </div>
                     )}
                     {search.section === "brief" && (
                       <article className="model-detail-brief">

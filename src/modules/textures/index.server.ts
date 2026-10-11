@@ -12,9 +12,11 @@ export const textureRequest = z.object({
   capability: z.string().uuid(),
   name: z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/),
   prompt: z.string().min(20).max(8000),
+  references: z.array(z.string()).max(4).default([]),
 });
 const active = new Map<string, Promise<unknown>>();
-export async function generateTexture(args: z.infer<typeof textureRequest>) {
+export async function generateTexture(input: z.input<typeof textureRequest>) {
+  const args = textureRequest.parse(input);
   const key = JSON.stringify(args);
   const existing = active.get(key);
   if (existing) return existing;
@@ -26,6 +28,12 @@ async function createTexture(args: z.infer<typeof textureRequest>) {
   const marker = resolve(DATA, "capabilities", args.capability + ".json");
   const authorization = JSON.parse(await readFile(marker, "utf8"));
   if (authorization.cancelled) throw new Error("Build cancelled");
+  if (
+    args.references.some(
+      (key) => !authorization.textureReferences?.includes(key),
+    )
+  )
+    throw new Error("Texture references must be selected collection examples");
   const match = /^models\/([^/]+)\/([^/]+)\/iteration-(\d+)$/.exec(
     authorization.directory,
   );
@@ -44,6 +52,7 @@ async function createTexture(args: z.infer<typeof textureRequest>) {
     role: "texture",
     name: args.name,
     prompt: args.prompt,
+    images: args.references,
     directory: `${authorization.directory}/textures`,
     projectId: builder.projectId,
     batchId: builder.batchId,

@@ -12,6 +12,11 @@ export type Review = {
   }[];
 };
 export type Artifacts = {
+  script?: string;
+  buildManifest?: string;
+  sourceBundle?: string;
+  lods?: { key: string; ratio: number }[];
+  sprites?: { image: string; layout: string };
   handover?: {
     inputBytes: number;
     outputBytes: number;
@@ -25,7 +30,15 @@ export type Artifacts = {
   stage?: string;
   visualTarget?: string;
   textures?: { key: string; name: string; kind: string }[];
-  metrics: { triangles?: number; dimensions?: number[] };
+  metrics: {
+    triangles?: number;
+    dimensions?: number[];
+    readiness?: {
+      status: string;
+      findings: { code: string; object: string; message: string }[];
+    };
+    styleReview?: { warnings: string[] };
+  };
 };
 export type Model = {
   id: string;

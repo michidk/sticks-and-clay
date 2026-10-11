@@ -77,7 +77,28 @@ integration(
       ])
         await writeFile(resolve(DATA, directory, file), png);
       await writeFile(resolve(DATA, directory, "metrics.json"), "{}");
+      await writeFile(
+        resolve(DATA, directory, "asset.py"),
+        "# reproducible fixture script",
+      );
+      await writeFile(resolve(DATA, directory, "build-config.json"), "{}");
+      await mkdir(resolve(DATA, directory, "assetkit"));
+      await writeFile(
+        resolve(DATA, directory, "assetkit/__init__.py"),
+        "VERSION='fixture'",
+      );
       const first = await archiveVersion(runId, directory, false);
+      expect(first.script).toBe(`versions/${runId}/asset.py`);
+      expect(await getStorage().exists(first.sourceBundle)).toBe(true);
+      const buildManifest = JSON.parse(
+        await readFile(resolve(DATA, first.buildManifest), "utf8"),
+      );
+      expect(
+        buildManifest.files.some((f: any) => f.path === "assetkit/__init__.py"),
+      ).toBe(true);
+      expect(
+        await readFile(resolve(DATA, `versions/${runId}/textures/stone.png`)),
+      ).toEqual(png);
       expect(first.renders).toEqual([]);
       const delivered = await readFile(resolve(DATA, first.glb));
       const manifest = JSON.parse(

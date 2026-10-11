@@ -23,6 +23,31 @@ export function ModelChecks({
       className="space-y-6 min-w-0"
       aria-label="Analysis and cleanup results"
     >
+      {artifacts?.metrics.readiness && (
+        <div>
+          <h3>Source readiness · {artifacts.metrics.readiness.status}</h3>
+          <p className="muted">
+            Technical findings are separate from visual approval.
+          </p>
+          <ul className="list-disc pl-5">
+            {artifacts.metrics.readiness.findings.map((f, i) => (
+              <li key={i}>
+                <strong>{f.object}</strong>: {f.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {!!artifacts?.metrics.styleReview?.warnings.length && (
+        <div>
+          <h3>Collection style</h3>
+          <ul className="list-disc pl-5">
+            {artifacts.metrics.styleReview.warnings.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div>
         <h3>GLB cleanup</h3>
         {!cleanup ? (

@@ -10,6 +10,7 @@ The interface uses locally owned [shadcn components](https://ui.shadcn.com/) and
 - [Agent instructions](AGENTS.md): code boundaries, workflow invariants, development checks, and local service conventions.
 - [Prompt guide](prompts/README.md): authored agent instructions and input templates.
 - [Quality pipeline](docs/quality-pipeline.md): visual targets, geometry gates and recovery.
+- [Asset workshop](docs/asset-workshop.md): reusable construction helpers, collection memory, source bundles, imports and game exports.
 
 The application design guide describes Sticks & Clay itself. Each asset project's design reference is a separate, editable and versioned document in the database.
 
@@ -27,6 +28,10 @@ The application design guide describes Sticks & Clay itself. Each asset project'
 On a saved 3D model version, use the model conversation to prompt an iteration or fork a named variant. Each continuation is a linked model that starts from that version's archived Blender source, keeps the original history intact, snapshots its design and references, and uses a newly chosen review-round limit. The same panel can draft a new design reference from a selected model render. This creates a draft revision and adds the chosen view to project references; approve the revision before using it for later generation. Existing batches keep their original design snapshots.
 
 For a graphics project, choose a square, portrait, or landscape canvas for the batch. Each planned image goes directly through the audited one-shot Image API adapter using `gpt-image-2` at high quality. Reference images are sent as edit inputs when present. The returned PNG is validated, stored with the project, exposed for preview/download, and recorded as an `imagegen` run with reported token usage. Graphics do not start Blender, run 3D judges, or create collection scenes.
+
+Use **Collection style** to save shared construction lessons, style rules, variation and up to three finished examples. Future batches snapshot this guidance. A model's **Checks** tab can repair selected findings, revise it using current collection style, render its saved GLB again, or export a transparent sprite sheet. Graphic variants edit the selected saved image through the same audited Image API. Approved 3D projects can import a GLB or `.blend` as an editable baseline.
+
+New builder versions include a downloadable source bundle: the authored script, pinned construction helpers, copied inputs and textures, configuration, source/delivery GLBs, and a manifest with file hashes and saved instructions. Extract it and run `blender -b --python rebuild.py` without an AI request. Draft previews are separate from final exports, and failed executions retain the preceding successful files while reporting failure.
 
 Progress represents workflow milestones, not a predicted wall-clock percentage. New attempts apply the round limit per stage: two permits up to two geometry build/review pairs, then up to two surface pairs. Early passes skip unused rounds; geometry exhaustion withholds surface work. New v4 attempts require blockout → photography → shape refinement → photography → geometry judge, then materials → photography → polish → photography → surface judge. Additional review rounds repeat refinement or polish when needed. A first passing judge cannot skip these mandatory passes. Existing v1/v2/v3 attempts retain their original pipeline on resume. Resume reuses Eve sessions and completed step checkpoints. Every builder iteration retains an archived export and its judge feedback; collection thumbnails use only the latest version.
 
@@ -94,7 +99,7 @@ The configured gateway cannot retrieve non-persisted Responses item IDs. Eve exp
 
 Every build has a ground-centered origin, meters, an individual GLB and `.blend`, named materials, reported triangle counts, and three consistent product renders. Textured mode validates embedded base-color and tangent-space normal maps on exported materials. Explicit poly mode rejects image textures. Triangle counts are reported for information; there is no triangle-budget setting or enforcement. Architectural openings, material scale, believable silhouettes, and the earlier bark texture lessons are in the prompts.
 
-This version produces the primary asset and presentation scene. Engine-specific collision generation, LOD chains, animation, and exact modular assembly validation are future extensions. The collection demo is a staged presentation at shared scale, not automatic semantic level assembly.
+Requested assets can include meaningful part pivots, attachment sockets, modular grid declarations, collision/slot intent, named animation clips and timing events. Optional static LODs and transparent sprite sheets are local Blender outputs. Readiness checks report source topology, UV, transform and interface findings alongside artistic reviews; declarations do not establish engine physics, exact assembly fit or animation quality. The collection demo remains a staged presentation at shared scale. There is no PBR-map generation feature.
 
 ## Token accounting and cost
 

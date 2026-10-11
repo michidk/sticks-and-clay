@@ -46,6 +46,8 @@ export const roles = {
     "references/hard-surface",
     "references/organic-and-trees",
     "references/uv-and-materials",
+    "references/assetkit",
+    "references/game-interfaces",
   ]),
   photographer: role(
     "eve",
@@ -70,6 +72,7 @@ export type RunInput<R extends Role = Role> = {
   stepId?: string;
   input: string;
   images?: string[];
+  construction?: { request: string; stage: string };
   onActivity?: (tool: string) => Promise<void>;
 };
 

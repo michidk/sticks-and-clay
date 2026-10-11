@@ -524,6 +524,15 @@ textarea::placeholder {
   color: #a0a994;
   font-weight: 400;
 }
+.workshop-issue { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; }
+.workshop-checkbox {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  padding: 0;
+  margin-top: 3px;
+  accent-color: var(--primary);
+}
 .upload {
   border: 1px dashed #c6d2b9;
   padding: 24px;

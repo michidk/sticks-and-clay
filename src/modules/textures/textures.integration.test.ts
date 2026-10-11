@@ -107,6 +107,26 @@ integration(
       expect(calls[0]).toEndWith("/images/generations");
       expect(calls[1]).toEndWith("/images/edits");
       await expect(
+        generateTexture({ ...args, name: "invalid", references: [first.key] }),
+      ).rejects.toThrow("selected collection examples");
+      expect(calls).toHaveLength(2);
+      await writeFile(
+        marker,
+        JSON.stringify({ directory, textureReferences: [first.key] }),
+      );
+      const sibling = (await generateTexture({
+        ...args,
+        name: "sibling-stone",
+        references: [first.key],
+      })) as any;
+      const [siblingRun] = await db
+        .select()
+        .from(runs)
+        .where(eq(runs.id, sibling.runId));
+      expect(siblingRun.images).toEqual([first.key]);
+      expect(calls).toHaveLength(3);
+      expect(calls[2]).toEndWith("/images/edits");
+      await expect(
         runImageRole({
           ...targetArgs,
           assertActive: async () => {

@@ -1,5 +1,6 @@
 import {
   copyFile,
+  cp,
   mkdir,
   readFile,
   rename,
@@ -14,6 +15,9 @@ import { runs } from "../db/schema";
 import { cleanupGlb } from "../modules/glb/cleanup";
 import { handoverGlb } from "../modules/glb/handover";
 import { DATA, publishFiles } from "./storage.server";
+import { createHash } from "node:crypto";
+import { sourceZip, bundleFiles } from "./source-bundle.server";
+import { measureStyle } from "./asset-style";
 
 export async function archiveVersion(
   runId: string,
@@ -37,8 +41,49 @@ export async function archiveVersion(
     ]) {
       await copyFile(resolve(DATA, directory, file), resolve(temporary, file));
     }
+    const sourceFiles: string[] = [];
+    const lods = await readFile(resolve(DATA, directory, "lods.json"), "utf8")
+      .then(JSON.parse)
+      .catch((error) => {
+        if (error.code !== "ENOENT") throw error;
+        return [];
+      });
+    for (const lod of lods) {
+      if (!/^asset-lod-[1-3]\.glb$/.test(lod.file))
+        throw new Error("Invalid LOD output");
+      await copyFile(
+        resolve(DATA, directory, lod.file),
+        resolve(temporary, lod.file),
+      );
+    }
+    if (lods.length)
+      await writeFile(resolve(temporary, "lods.json"), JSON.stringify(lods));
+    for (const name of [
+      "asset.py",
+      "helpers.py",
+      "rebuild.py",
+      "build-config.json",
+      "build-request.json",
+      "sprites.png",
+      "sprites.json",
+    ]) {
+      await copyFile(resolve(DATA, directory, name), resolve(temporary, name))
+        .then(() => sourceFiles.push(name))
+        .catch((error) => {
+          if (error.code !== "ENOENT") throw error;
+        });
+    }
+    for (const name of ["assetkit", "inputs"])
+      await cp(resolve(DATA, directory, name), resolve(temporary, name), {
+        recursive: true,
+        filter: (path) => !path.includes("__pycache__"),
+      }).catch((error) => {
+        if (error.code !== "ENOENT") throw error;
+      });
     // Agent -> platform handover: pure local processing before immutable publication.
     const original = await readFile(resolve(temporary, "asset.glb"));
+    if (sourceFiles.includes("asset.py"))
+      await writeFile(resolve(temporary, "source.glb"), original);
     // Preserve existing structural validation before best-effort cleanup.
     const originalReceipt = handoverGlb(original).receipt;
     const cleaned = await cleanupGlb(original);
@@ -66,6 +111,15 @@ export async function archiveVersion(
             ? cleaned.cleanup.triangles.after
             : metrics.triangles,
         bytes: processed.bytes.length,
+        style: measureStyle(
+          JSON.parse(
+            processed.bytes.toString(
+              "utf8",
+              20,
+              20 + processed.bytes.readUInt32LE(12),
+            ),
+          ),
+        ),
       }),
     );
     await mkdir(resolve(temporary, "textures"), { recursive: true });
@@ -75,11 +129,24 @@ export async function archiveVersion(
       if (error.code === "ENOENT") return [];
       throw error;
     })) {
+      if (
+        sourceFiles.includes("asset.py") &&
+        /^[a-zA-Z0-9_.-]+\.png\.json$/.test(file)
+      )
+        await copyFile(
+          resolve(sourceTextures, file),
+          resolve(temporary, "textures", file),
+        );
       if (!/^[a-zA-Z0-9_.-]+\.(png|jpg|webp)$/.test(file)) continue;
       await copyFile(
         resolve(sourceTextures, file),
         resolve(temporary, "textures", "source-" + file),
       );
+      if (sourceFiles.includes("asset.py"))
+        await copyFile(
+          resolve(sourceTextures, file),
+          resolve(temporary, "textures", file),
+        );
       textures.push({
         key: `${destination}/textures/source-${file}`,
         name: file,
@@ -119,6 +186,34 @@ export async function archiveVersion(
       resolve(temporary, "textures.json"),
       JSON.stringify(textures),
     );
+    if (sourceFiles.includes("asset.py")) {
+      const files = await bundleFiles(temporary);
+      const manifest = {
+        version: 1,
+        runId,
+        toolchain: {
+          blender: metrics.blenderVersion || null,
+          helper: metrics.helperVersion || null,
+        },
+        designInput: run.input,
+        instructions: run.systemPrompt,
+        files: files.map((f) => ({
+          path: f.name,
+          sha256: createHash("sha256").update(f.bytes).digest("hex"),
+          bytes: f.bytes.length,
+        })),
+        sourceGlb: "source.glb",
+        deliveryGlb: "asset.glb",
+        rebuild: "blender -b --python rebuild.py",
+      };
+      const bytes = Buffer.from(JSON.stringify(manifest, null, 2));
+      await writeFile(resolve(temporary, "build-manifest.json"), bytes);
+      files.push({ name: "build-manifest.json", bytes });
+      await writeFile(
+        resolve(temporary, "source-bundle.zip"),
+        sourceZip(files),
+      );
+    }
     await rename(temporary, resolve(DATA, destination)).catch(async (error) => {
       if (!["EEXIST", "ENOTEMPTY"].includes(error.code)) throw error;
     });
@@ -136,6 +231,38 @@ export async function archiveVersion(
       throw error;
     });
   const artifacts = {
+    lods: await readFile(resolve(DATA, destination, "lods.json"), "utf8")
+      .then((text) =>
+        JSON.parse(text).map((lod: any) => ({
+          ...lod,
+          key: `${destination}/${lod.file}`,
+        })),
+      )
+      .catch((error) => {
+        if (error.code !== "ENOENT") throw error;
+        return [];
+      }),
+    ...(await readFile(resolve(DATA, destination, "build-manifest.json"))
+      .then(() => ({
+        script: `${destination}/asset.py`,
+        buildManifest: `${destination}/build-manifest.json`,
+        sourceBundle: `${destination}/source-bundle.zip`,
+      }))
+      .catch((error) => {
+        if (error.code !== "ENOENT") throw error;
+        return {};
+      })),
+    ...(await readFile(resolve(DATA, destination, "sprites.json"))
+      .then(() => ({
+        sprites: {
+          image: `${destination}/sprites.png`,
+          layout: `${destination}/sprites.json`,
+        },
+      }))
+      .catch((error) => {
+        if (error.code !== "ENOENT") throw error;
+        return {};
+      })),
     ...(handover
       ? { handover: { ...handover, manifest: `${destination}/handover.json` } }
       : {}),
@@ -154,6 +281,13 @@ export async function archiveVersion(
     ),
   };
   await publishFiles([
+    ...artifacts.lods.map((lod: any) => lod.key),
+    ...(artifacts.sourceBundle
+      ? [artifacts.sourceBundle, artifacts.script!, artifacts.buildManifest!]
+      : []),
+    ...(artifacts.sprites
+      ? [artifacts.sprites.image, artifacts.sprites.layout]
+      : []),
     ...(handover ? [`${destination}/handover.json`] : []),
     artifacts.glb,
     artifacts.blend,

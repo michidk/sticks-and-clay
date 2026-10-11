@@ -65,6 +65,7 @@ def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, e
     bg.inputs['Strength'].default_value = .45
     bpy.ops.mesh.primitive_plane_add(size=span * 200, location=(center.x, center.y, lo.z))
     floor = bpy.context.object
+    floor['studio_environment'] = True
     mat = bpy.data.materials.new('Neutral studio floor')
     mat.use_nodes = True
     bsdf = mat.node_tree.nodes.get('Principled BSDF')

@@ -20,6 +20,9 @@ import { photographProject } from "./project-photography.server";
 import { renderCollection } from "./collection.server";
 import { prompt } from "./prompts.server";
 import { DATA } from "./storage.server";
+import { workshopContext } from "./workshop";
+import { compareStyle } from "./asset-style";
+import { renderPresentation } from "./workshop-actions.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
 async function one<T>(rows: T[]) {
   if (!rows[0]) throw new Error("Record not found");
@@ -30,6 +33,10 @@ export async function executeJob(kind: string, targetId: string) {
   const job = jobContext.getStore();
   if (!job) throw new Error("Missing durable job context");
   if (job.checkpoint.applied === "yes") return;
+  if (kind === "presentation") {
+    await renderPresentation();
+    return;
+  }
   if (kind === "project-photo") {
     await photographProject(targetId);
     await checkpoint("applied", "yes");
@@ -176,12 +183,13 @@ export async function executeJob(kind: string, targetId: string) {
       projectId: batch.projectId,
       batchId: batch.id,
       role: plannerRole,
-      input: await roleInput(plannerRole, {
-        version: batch.designVersion,
-        design: batch.design,
-        request: batch.prompt,
-        count: batch.count,
-      }),
+      input:
+        (await roleInput(plannerRole, {
+          version: batch.designVersion,
+          design: batch.design,
+          request: batch.prompt,
+          count: batch.count,
+        })) + workshopContext(batch.workshop, false),
     });
     if (result.models.length !== batch.count) {
       const error = `Result validation: Planner returned ${result.models.length} models; expected ${batch.count}`;
@@ -242,13 +250,20 @@ export async function executeJob(kind: string, targetId: string) {
         batchId: batch.id,
         modelId: model.id,
         directory: `graphics/${model.id}/${attempt}`,
-        prompt: await prompt("graphic", {
-          design: batch.design,
-          name: model.name,
-          request: model.prompt,
-        }),
+        prompt:
+          (await prompt("graphic", {
+            design: batch.design,
+            name: model.name,
+            request: model.prompt,
+          })) + workshopContext(batch.workshop, false),
         size: batch.imageSize,
-        images: project.references,
+        images: [
+          ...(job.checkpoint["branch-references"]
+            ? JSON.parse(job.checkpoint["branch-references"])
+            : project.references),
+          ...(batch.workshop?.examples?.flatMap((e) => e.renders.slice(0, 1)) ||
+            []),
+        ],
         assertActive: assertJobActive,
       });
       await assertJobActive();
@@ -295,7 +310,9 @@ export async function executeJob(kind: string, targetId: string) {
         ? resolve(DATA, String(sourceArtifacts.blend))
         : model.artifacts?.blend
           ? resolve(DATA, String(model.artifacts.blend))
-          : "",
+          : job.checkpoint["import-baseline"]
+            ? resolve(DATA, job.checkpoint["import-baseline"])
+            : "",
       passed = false,
       artifacts: Record<string, unknown> = {};
     const legacy =
@@ -394,7 +411,23 @@ export async function executeJob(kind: string, targetId: string) {
           await mkdir(resolve(DATA, "capabilities"), { recursive: true });
           await writeFile(
             resolve(DATA, "capabilities", capability + ".json"),
-            JSON.stringify({ directory }),
+            JSON.stringify({
+              directory,
+              textureReferences:
+                batch.workshop?.examples?.flatMap((e) => e.textures) || [],
+              inputs: [
+                ...(previous
+                  ? [
+                      previous
+                        .slice(resolve(DATA).length + 1)
+                        .replaceAll("\\", "/"),
+                    ]
+                  : []),
+                ...(batch.workshop?.examples?.flatMap((e) =>
+                  [e.script, e.blend, ...e.textures].filter(Boolean),
+                ) || []),
+              ],
+            }),
           );
           await db
             .update(models)
@@ -412,8 +445,39 @@ export async function executeJob(kind: string, targetId: string) {
             })
             .where(eq(models.id, model.id));
           let buildProgress = modelProgress(iteration);
+          const exampleContext = await Promise.all(
+            (batch.workshop?.examples || []).map(async (e) => ({
+              name: e.name,
+              textureReferences: e.textures,
+              blend: e.blend
+                ? resolve(DATA, e.blend).replaceAll("\\", "/")
+                : undefined,
+              script: e.script
+                ? (await readFile(resolve(DATA, e.script), "utf8")).slice(
+                    0,
+                    12000,
+                  )
+                : undefined,
+            })),
+          );
+          await writeFile(
+            resolve(DATA, directory, "build-request.json"),
+            JSON.stringify(
+              {
+                design: batch.design,
+                designVersion: batch.designVersion,
+                request: model.prompt,
+                workshop: batch.workshop,
+                stage,
+                workPass,
+              },
+              null,
+              2,
+            ),
+          );
           const { runId: builderRunId } = await runRole({
             role: "builder",
+            construction: { request: model.prompt, stage: stage || "complete" },
             onActivity: async (tool) => {
               const phase = tool.includes("view_render")
                 ? "Inspecting rendered asset"
@@ -446,6 +510,9 @@ export async function executeJob(kind: string, targetId: string) {
             images: [
               ...(target ? [target] : []),
               ...visualReferences,
+              ...(batch.workshop?.examples?.flatMap((e) =>
+                e.renders.slice(0, 1),
+              ) || []),
               ...(workPass ? images : []),
             ],
             input:
@@ -472,10 +539,25 @@ export async function executeJob(kind: string, targetId: string) {
                     pass: workPass,
                     photographs: images.length,
                   }))
-                : ""),
+                : "") +
+              workshopContext(batch.workshop) +
+              `\n\nAPPROVED EXAMPLE SOURCE DATA\n${JSON.stringify(exampleContext)}`,
           });
           currentBuilderRunId = builderRunId;
           try {
+            const state = await readFile(
+              resolve(DATA, directory, "build-state.json"),
+              "utf8",
+            )
+              .then(JSON.parse)
+              .catch((error) => {
+                if (error.code !== "ENOENT") throw error;
+                return null;
+              });
+            if (state && (!state.ok || state.preview))
+              throw new Error(
+                "The most recent build did not finish a successful final export",
+              );
             metrics = JSON.parse(
               await readFile(resolve(DATA, directory, "metrics.json"), "utf8"),
             );
@@ -549,6 +631,12 @@ export async function executeJob(kind: string, targetId: string) {
             .set({ result: { ...(builtRun.result as object), artifacts } })
             .where(eq(runs.id, builderRunId));
           metrics = artifacts.metrics;
+          if (batch.workshop && metrics?.style)
+            metrics.styleReview = compareStyle(
+              metrics.style,
+              batch.workshop.examples?.map((e) => e.metrics) || [],
+              batch.workshop.variation,
+            );
           images = artifacts.renders as string[];
           previous = resolve(DATA, String(artifacts.blend));
           if (photography) return;
@@ -684,7 +772,8 @@ export async function executeJob(kind: string, targetId: string) {
                     pass: workPass,
                     summary: buildSummary,
                   }))
-                : ""),
+                : "") +
+              workshopContext(batch.workshop, false),
           });
           await assertJobActive();
           feedback = result;

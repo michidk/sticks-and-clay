@@ -1,14 +1,22 @@
 import { readFile } from "node:fs/promises";
 import { roles, type Role } from "../roles";
+import { constructionGuides } from "../../../lib/workshop";
 
 /** Snapshot the complete instruction bundle; resumed sessions keep the saved text. */
-export async function roleInstructions(role: Role, saved?: string | null) {
+export async function roleInstructions(
+  role: Role,
+  saved?: string | null,
+  construction?: { request: string; stage: string },
+) {
   if (saved != null) return saved;
   const definition = roles[role];
   const sections = await Promise.all(
-    [definition.prompt, ...definition.references].map((name) =>
-      readFile(`prompts/${name}.md`, "utf8"),
-    ),
+    [
+      definition.prompt,
+      ...(role === "builder" && construction
+        ? constructionGuides(construction.request, construction.stage)
+        : definition.references),
+    ].map((name) => readFile(`prompts/${name}.md`, "utf8")),
   );
   return sections.join("\n\n");
 }
