@@ -1,6 +1,11 @@
 """Loopback MCP adapter. Each capability owns an independent Blender process/workdir."""
 import asyncio,json,os,pathlib,re,uuid,shutil,hashlib
 from mcp.server.mcpserver import MCPServer
+from starlette.responses import JSONResponse
+try:
+    from .workspace import prepare, save_script
+except ImportError:
+    from workspace import prepare, save_script
 ROOT=pathlib.Path(__file__).resolve().parent.parent
 DATA=pathlib.Path(os.environ.get('STUDIO_DATA_DIR',ROOT/'data')).resolve()
 mcp=MCPServer('Asset Studio Blender')
@@ -41,26 +46,31 @@ async def get_scene_info(capability:str)->dict:
 @mcp.tool()
 async def execute_blender_code(capability:str,code:str,preview:bool=False)->dict:
     """Execute a reproducible asset script. assetkit and finish_asset() are provided. preview=True makes cheap draft views; finish with preview=False to publish GLB/source/metrics. Inspect drafts using view_render views preview_front/preview_rear/preview_detail. Final builds retain pivots/hierarchy. No shared scene state."""
+    return await run_saved_asset(capability,preview,code)
+
+
+async def run_saved_asset(capability,preview=False,code=None):
     dest=workspace(capability)
     info=json.loads((DATA/'capabilities'/f'{capability}.json').read_text())
     if info.get('role')=='photographer':raise ValueError('Photographer capabilities cannot execute build code')
     async with locks.setdefault(capability,asyncio.Lock()),build_slots:
         workspace(capability)
-        dest.mkdir(parents=True,exist_ok=True)
+        prepare(ROOT,DATA,dest,info)
+        if code is None:
+            if not (dest/'asset.py').exists():raise ValueError('Write asset.py before running it')
+            code=(dest/'asset.py').read_text(encoding='utf-8')
+        else:
+            save_script(dest,code)
+            code=(dest/'asset.py').read_text(encoding='utf-8')
         (dest/'build-state.json').write_text(json.dumps({'ok':False,'preview':preview,'state':'building'}))
         # Pin support code on first use so resumed sessions use the same helper API.
         snapshot=dest/'build-support'
-        if not snapshot.exists():
-            temporary=dest/('support-'+str(uuid.uuid4()))
-            temporary.mkdir()
-            shutil.copytree(ROOT/'blender'/'assetkit',temporary/'assetkit',ignore=shutil.ignore_patterns('__pycache__'))
-            for name in ['helpers.py','rebuild.py']:shutil.copyfile(ROOT/'blender'/name,temporary/name)
-            temporary.rename(snapshot)
         candidate=dest/('.candidate-'+str(uuid.uuid4()))
         shutil.copytree(snapshot,candidate)
         relocations={}
         # Copy only explicitly authorized baselines and dependencies into the source bundle.
-        for index,path in enumerate(info.get('inputs',[])):
+        dependencies=json.loads((dest/'work-source.json').read_text()).get('dependencies',[])
+        for index,path in enumerate(dict.fromkeys(info.get('inputs',[])+dependencies)):
             source=(DATA/path).resolve()
             if not source.is_relative_to(DATA):raise ValueError('Invalid build input')
             target=candidate/'inputs'/f'{index}{source.suffix}'
@@ -70,9 +80,11 @@ async def execute_blender_code(capability:str,code:str,preview:bool=False)->dict
             relocations[str(source)]=str(target.relative_to(candidate)).replace('\\','/')
             relocations[str(source).replace('\\','\\\\')]=str(target.relative_to(candidate)).replace('\\','/')
         if (dest/'textures').exists():shutil.copytree(dest/'textures',candidate/'textures')
-        (candidate/'asset.py').write_text(code,encoding='utf-8')
-        (candidate/'build-config.json').write_text(json.dumps({'version':1,'directory':str(dest).replace('\\','/'),'directories':[str(dest).replace('\\','/'),str(dest).replace('\\','\\\\'),str(dest)],'preview':preview,'params':{'seed':info.get('seed',1)},'relocations':relocations}),encoding='utf-8')
-        script=candidate/'rebuild.py'
+        (candidate/'asset.py').write_bytes(code.encode('utf-8'))
+        params=json.loads((dest/'params.json').read_text())
+        shutil.copyfile(dest/'params.json',candidate/'params.json')
+        (candidate/'build-config.json').write_text(json.dumps({'version':1,'directory':str(dest).replace('\\','/'),'directories':[str(dest).replace('\\','/'),str(dest).replace('\\','\\\\'),str(dest)],'preview':preview,'params':params,'relocations':relocations}),encoding='utf-8')
+        script=candidate/'render.py'
         env={k:v for k,v in os.environ.items() if not any(s in k.upper() for s in ['TOKEN','SECRET','PASSWORD','API_KEY','CREDENTIAL'])}
         proc=await asyncio.create_subprocess_exec(os.environ.get('BLENDER_BIN','blender'),'-b','--factory-startup','--threads','2','--python-exit-code','1','--python',str(script),cwd=candidate,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
         monitor=asyncio.create_task(watch_cancellation(capability,proc))
@@ -98,7 +110,7 @@ async def execute_blender_code(capability:str,code:str,preview:bool=False)->dict
         output=dest/'preview' if preview else dest
         if ok:
             output.mkdir(exist_ok=True)
-            names=required if preview else required+['asset.py','build-config.json','helpers.py','rebuild.py']
+            names=required if preview else required+['asset.py','build-config.json','helpers.py','rebuild.py','render.py','params.json']
             for name in names:shutil.copyfile(candidate/name,output/name)
             if not preview:
                 for path in [dest/'sprites.png',dest/'sprites.json',dest/'lods.json',*dest.glob('asset-lod-*.glb')]:path.unlink(missing_ok=True)
@@ -112,7 +124,55 @@ async def execute_blender_code(capability:str,code:str,preview:bool=False)->dict
         (dest/'build-state.json').write_text(json.dumps(state))
         metrics=json.loads((candidate/'metrics.json').read_text()) if ok else None
         shutil.rmtree(candidate)
-        return {'ok':ok,'preview':preview,'lastGoodRetained':not ok,'log':out.decode(errors='replace')[-(1200 if ok else 6000):],'metrics':metrics}
+        return {'ok':ok,'preview':preview,'scriptSha256':state['scriptSha256'],'lastGoodRetained':not ok,'log':out.decode(errors='replace')[-(1200 if ok else 6000):],'metrics':metrics}
+
+
+async def asset_workspace(input):
+    capability=input.get('capability','')
+    if not isinstance(capability,str):raise ValueError('Invalid capability')
+    dest=workspace(capability)
+    info=json.loads((DATA/'capabilities'/f'{capability}.json').read_text())
+    if info.get('role')!='builder':raise ValueError('Builder workspace required')
+    operation=input.get('operation')
+    if operation=='run':
+        mode=input.get('mode','quick')
+        if mode not in ['quick','final']:raise ValueError('Unknown render mode')
+        return await run_saved_asset(capability,mode=='quick')
+    async with locks.setdefault(capability,asyncio.Lock()):
+        workspace(capability)
+        prepare(ROOT,DATA,dest,info)
+        current=(dest/'asset.py').read_text(encoding='utf-8') if (dest/'asset.py').exists() else ''
+        digest=hashlib.sha256(current.encode()).hexdigest()
+        if operation=='read':
+            offset,limit=input.get('offset',1),input.get('limit',120)
+            if type(offset)!=int or type(limit)!=int or offset<1 or not 1<=limit<=200:raise ValueError('Invalid source line range')
+            lines=current.splitlines()
+            return {'file':'asset.py','sha256':digest,'totalLines':len(lines),'offset':offset,'content':'\n'.join(f'{i+offset}: {line}' for i,line in enumerate(lines[offset-1:offset-1+limit]))[:16000],'params':json.loads((dest/'params.json').read_text()),'state':json.loads((dest/'build-state.json').read_text()) if (dest/'build-state.json').exists() else None}
+        if input.get('expectedSha256') and input['expectedSha256']!=digest:raise ValueError('Script changed; read the current source before editing')
+        if operation=='write':
+            code=input.get('code')
+        elif operation=='edit':
+            old,new=input.get('oldText'),input.get('newText')
+            if not isinstance(old,str) or not old or not isinstance(new,str) or current.count(old)!=1:raise ValueError('Edit must match exactly one source occurrence')
+            code=current.replace(old,new,1)
+        else:raise ValueError('Unknown workspace operation')
+        if not isinstance(code,str) or not code.strip() or len(code.encode())>200000:raise ValueError('Asset script must contain at most 200 KB of Python')
+        return {'file':'asset.py','sha256':save_script(dest,code),'saved':True,'needsBuild':True}
+
+
+@mcp.custom_route('/workspace',methods=['POST'])
+async def workspace_http(request):
+    # Native Eve tools call this fixed runner directly, outside the MCP protocol.
+    if request.headers.get('origin') or not request.headers.get('content-type','').startswith('application/json'):
+        return JSONResponse({'error':'Use the authorized workspace tools'},status_code=403)
+    try:
+        body=await request.body()
+        if len(body)>1000000:raise ValueError('Workspace request is too large')
+        input=json.loads(body)
+        if not isinstance(input,dict):raise ValueError('Invalid workspace request')
+        return JSONResponse(await asset_workspace(input))
+    except (ValueError,FileNotFoundError) as error:
+        return JSONResponse({'error':str(error)},status_code=400)
 @mcp.tool()
 def get_render(capability:str,view:str='front')->dict:
     """Inspect a rendered image from this builder's workspace. view: front, rear, detail."""

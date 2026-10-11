@@ -19,6 +19,9 @@ test("conditional guides follow the asset and stage while saved bundles win", as
 test("builder and judge receive their focused references without cross-role instructions", async () => {
   const builder = await roleInstructions("builder");
   expect(builder).toContain("Reference-led construction");
+  expect(builder).toContain('asset_workspace(operation="run", mode="quick")');
+  expect(builder).toContain("saved asset.py script");
+  expect(builder).toContain("Pass the returned sha256 as expectedSha256");
   expect(builder).toContain("Architecture and hard-surface construction");
   expect(builder).toContain("Organic forms and trees");
   expect(builder).toContain("Deliberate UV and texture placement");

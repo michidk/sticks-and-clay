@@ -6,7 +6,11 @@ The workshop adds reusable construction and visual correction to the existing v4
 
 New builders receive relevant construction guides selected by the request and stage. `assetkit` supplies developed geometry (extrusions, lathes, lofts, tubes, seeded rocks and supported trees), materials/UV helpers, named roots and meaningful pivots. Guides emphasize primary shape relationships before detail, actual openings and thickness, thumbnail readability, and observed defects tied to specific parts and views.
 
-`execute_blender_code(preview=True)` runs the complete script in a clean process and produces three small draft views. `view_render` exposes those through the existing vision transport. The prompt requests a bounded correction loop: quick allows up to one, standard three, thorough five. This is instruction-level guidance, independent of judge rounds, with no imposed polygon budget. Every completed modeling pass still needs a successful final execution with `preview=False`.
+New builders author a persistent `asset.py` using the native `asset_workspace` tool: bounded reads, complete writes and exact block edits with optional SHA-256 checks against stale source. Each changed script is retained under `script-revisions/<hash>.py`. The workspace starts with the preceding archived program when available, its fixed `params.json` (including seed), pinned geometry helpers, textures and authorized dependencies. Builders can change the asset program; parameters and runner support remain read-only through the tool.
+
+`asset_workspace(operation="run", mode="quick")` runs the saved program with the fixed `render.py` runner in a clean Blender process and produces three small draft views. `view_render` exposes those through the existing vision transport. The prompt requests a bounded correction loop: quick allows up to one, standard three, thorough five. This is instruction-level guidance, independent of judge rounds, with no imposed polygon budget. Every completed modeling pass needs a successful execution with `mode="final"`; subsequent script edits invalidate that result.
+
+Native authoring calls the capability-scoped loopback `/workspace` endpoint directly, outside the MCP protocol. The same service retains MCP for the independent photographer and historical builder sessions that still call `execute_blender_code`. New builder prompts need no MCP discovery or arbitrary shell execution. Standalone bundles need neither Eve nor MCP.
 
 Builds use both per-capability locking and a shared concurrency limit (`BLENDER_CONCURRENCY`, default two). They execute in fresh candidate directories with pinned support code. A successful candidate is published to its workspace; failed scripts do not replace prior successful files. `build-state.json` prevents a failed final execution from handing stale files to the next pipeline step. Drafts are stored separately under `preview/` and cannot become a final delivery. Last-good draft images carry a failure note when appropriate.
 
@@ -20,19 +24,23 @@ Measured style comparisons are advisory: GLB material factors, base-color factor
 
 ## Reproducible versions
 
-New source bundles contain `asset.py`, `helpers.py`, `assetkit/`, `rebuild.py`, `build-config.json`, `build-request.json`, source `.blend`, original `source.glb`, cleaned delivery `asset.glb`, textures, copied authorized inputs, metrics, optional sprites/LODs and `build-manifest.json`. The manifest records file hashes, saved run input and instructions. The source and cleaned delivery are distinct because platform cleanup can alter delivery geometry.
+New source bundles contain `asset.py`, `render.py`, `params.json`, `helpers.py`, `assetkit/`, `rebuild.py`, script revisions, `build-config.json`, `build-request.json`, source `.blend`, original `source.glb`, cleaned delivery `asset.glb`, textures, copied authorized inputs, metrics, optional sprites/LODs and `build-manifest.json`. The manifest records file hashes, saved run input, instructions and Blender/helper versions. The source and cleaned delivery are distinct because platform cleanup can alter delivery geometry.
 
 Extract the ZIP to a new directory and run:
 
 ```sh
-blender -b --python rebuild.py
+python render.py --mode final
+# Cheap visual iteration after editing asset.py:
+python render.py --mode quick
+# Explicit Blender installation (also accepts BLENDER_BIN):
+python render.py --mode final --blender "/path/to/blender"
 ```
 
-The runner remaps original workspace and authorized input paths into the extracted bundle. Seed parameters and original texture filenames are preserved. Rebuilding makes no API requests. Blender and its supported Python modules are required; scripts relying on additional unbundled dependencies are not made portable automatically. Use a compatible Blender version for the best reproducibility. Existing pre-upgrade archives remain immutable and may have no bundle.
+The ordinary Python launcher starts Blender headlessly with a clean scene and a timeout. It remaps original workspace and authorized input paths into the extracted bundle. Seed parameters and original texture filenames are preserved; the runner seeds Python and NumPy randomness before executing the program. Rebuilding makes no API requests. Python 3 and Blender with its supported Python modules are required; scripts relying on additional unbundled dependencies are not made portable automatically. Match the recorded Blender version for reproducibility; image bytes are not guaranteed identical across render devices or versions. The runner regenerates source exports; Studio's later delivery cleanup is recorded separately. Older bundles without `render.py` use `blender -b --python rebuild.py`. Existing pre-upgrade archives remain immutable and may have no bundle.
 
 ## Optional game outputs
 
-Small authored starting scripts live in [`blender/examples/`](../blender/examples): a lofted scout hull, a supported seeded tree and a passage module. Submit their complete code through the builder tool or adapt it into a source bundle's `asset.py`. They demonstrate the helper vocabulary and require development against the actual brief.
+Small authored starting scripts live in [`blender/examples/`](../blender/examples): a lofted scout hull, a supported seeded tree and a passage module. Save their complete code as `asset.py` through `asset_workspace`, or adapt it inside a source bundle. They demonstrate the helper vocabulary and require development against the actual brief.
 
 `kit.root`, `pivot` and `socket` preserve part hierarchy and local attachment intent. Blender uses Z-up metres and -Y front; exported sockets use local +Z forward after glTF conversion. `grid_piece`, `collider`, `slot`, `allow_overlap` and `open_surface` declare explicit intent. `clip` creates named NLA tracks from authored animation; `event` records timing against real nodes. Readiness reports source boundary/non-manifold/degenerate faces, UVs, finite transforms, grid dimensions, hierarchy, sockets, slots and events. It does not prove exported collision fit, self-intersection freedom, engine attachment behavior or animation quality.
 
@@ -56,8 +64,8 @@ bun test src
 bun run build
 bun run eve:typecheck
 TEST_DATABASE=1 bun test src/lib/workshop.integration.test.ts src/lib/versions.integration.test.ts
-BLENDER_BIN=blender .venv/bin/python -m unittest blender.test_build_workflow
+BLENDER_BIN=blender .venv/bin/python -m unittest blender.test_build_workflow blender.test_workspace blender.test_cancellation
 blender -b --factory-startup --python-exit-code 1 --python blender/test_assetkit_shapes.py
 ```
 
-Integration tests need an isolated PostgreSQL database. The Blender workflow test executes real draft/final builds, animated socket/sprite output, last-good preservation and a relocated offline rebuild. Shape tests inspect manifold geometry, deterministic rocks and static LOD socket preservation. These tests validate workflow and artifact mechanics; they do not establish the artistic quality of a paid agent generation.
+Integration tests need an isolated PostgreSQL database. The Blender workflow test executes native draft/final builds, animated socket/sprite output, last-good preservation and a relocated offline ZIP rebuild after the original input changes. Workspace tests cover stale edits, saved revisions, fixed seed inheritance, role scoping and the actual HTTP route. Shape tests inspect manifold geometry, deterministic rocks and static LOD socket preservation. These tests validate workflow and artifact mechanics; they do not establish the artistic quality of a paid agent generation.

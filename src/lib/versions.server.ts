@@ -62,6 +62,8 @@ export async function archiveVersion(
       "asset.py",
       "helpers.py",
       "rebuild.py",
+      "render.py",
+      "params.json",
       "build-config.json",
       "build-request.json",
       "sprites.png",
@@ -73,7 +75,7 @@ export async function archiveVersion(
           if (error.code !== "ENOENT") throw error;
         });
     }
-    for (const name of ["assetkit", "inputs"])
+    for (const name of ["assetkit", "inputs", "script-revisions"])
       await cp(resolve(DATA, directory, name), resolve(temporary, name), {
         recursive: true,
         filter: (path) => !path.includes("__pycache__"),
@@ -204,7 +206,10 @@ export async function archiveVersion(
         })),
         sourceGlb: "source.glb",
         deliveryGlb: "asset.glb",
-        rebuild: "blender -b --python rebuild.py",
+        rebuild: sourceFiles.includes("render.py")
+          ? "python render.py --mode final"
+          : "blender -b --python rebuild.py",
+        legacyRebuild: "blender -b --python rebuild.py",
       };
       const bytes = Buffer.from(JSON.stringify(manifest, null, 2));
       await writeFile(resolve(temporary, "build-manifest.json"), bytes);

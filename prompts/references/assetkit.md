@@ -21,11 +21,11 @@ Prefer expressive authored shapes to a heap of unchanged primitives. Inspect tra
 
 ## Preview, critique, correction
 
-Use `execute_blender_code(capability, code, preview=True)` for cheap drafts. Code still calls finish_asset last. Inspect actual pixels with `view_render` views `preview_front`, `preview_rear`, `preview_detail`. Never read PNG bytes as text. Inspect at thumbnail scale and close range. A preview is not a delivery export.
+Write or edit the saved `asset.py` with `asset_workspace`, then use `asset_workspace(capability, operation="run", mode="quick")` for cheap drafts. Code still calls finish_asset last. Inspect actual pixels with `view_render` views `preview_front`, `preview_rear`, `preview_detail`. Never read PNG bytes as text. Inspect at thumbnail scale and close range. A preview is not a delivery export.
 
 Rank at most three observed defects: primary silhouette/proportion/negative space; secondary construction/joins/support; stage-appropriate material placement/shading. For each identify the view, named part, visible relationship and correction. Make related edits together, render again and verify the same locations. Do not spend the loop on tiny ornament while a primary form is wrong. Use the bounded effort in the task. Stop when evidence supports the design; never invent changes for a quota.
 
-Finish with `preview=False`, inspect final `front`, `rear`, `detail` and metrics. Failed drafts retain the last good preview: that image is historical evidence, not proof of a successful new script. A failed final call or preview-only call cannot be handed off as a successful asset.
+Finish with `asset_workspace(operation="run", mode="final")`, inspect final `front`, `rear`, `detail` and metrics. Any script edit invalidates the prior build until rendered. Failed drafts retain the last good preview: that image is historical evidence, not proof of a successful new script. A failed final call or preview-only call cannot be handed off as a successful asset. Each saved source revision is retained by its hash; the bundle rebuilds through `python render.py --mode final` without an agent or MCP service.
 
 Permanent notes name views actually inspected, important before/after corrections, verified features and unresolved limitations. Distinguish planned fixes from observed corrections. The independent photographer imports the archived GLB; the judge need not accept your claims.
 

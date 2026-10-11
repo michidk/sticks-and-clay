@@ -2,6 +2,7 @@ import { analyzeModel } from "../modules/model-analysis/index.server";
 import { and, eq } from "drizzle-orm";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { db } from "../db/client";
 import { projects, revisions, batches, models, jobs, runs } from "../db/schema";
 import { assertJobActive } from "./queue.server";
@@ -313,6 +314,7 @@ export async function executeJob(kind: string, targetId: string) {
           : job.checkpoint["import-baseline"]
             ? resolve(DATA, job.checkpoint["import-baseline"])
             : "",
+      previousScript = sourceArtifacts?.script || model.artifacts?.script,
       passed = false,
       artifacts: Record<string, unknown> = {};
     const legacy =
@@ -413,6 +415,8 @@ export async function executeJob(kind: string, targetId: string) {
             resolve(DATA, "capabilities", capability + ".json"),
             JSON.stringify({
               directory,
+              role: "builder",
+              sourceScript: previousScript,
               textureReferences:
                 batch.workshop?.examples?.flatMap((e) => e.textures) || [],
               inputs: [
@@ -481,7 +485,8 @@ export async function executeJob(kind: string, targetId: string) {
             onActivity: async (tool) => {
               const phase = tool.includes("view_render")
                 ? "Inspecting rendered asset"
-                : tool.includes("execute_blender_code")
+                : tool.includes("execute_blender_code") ||
+                    tool.includes("asset_workspace")
                   ? "Building geometry, exporting and rendering"
                   : tool.includes("get_scene_info")
                     ? "Inspecting Blender workspace"
@@ -489,7 +494,8 @@ export async function executeJob(kind: string, targetId: string) {
               if (!phase) return;
               const fraction = tool.includes("view_render")
                 ? 0.45
-                : tool.includes("execute_blender_code")
+                : tool.includes("execute_blender_code") ||
+                    tool.includes("asset_workspace")
                   ? 0.15
                   : 0.05;
               await db
@@ -558,6 +564,20 @@ export async function executeJob(kind: string, targetId: string) {
               throw new Error(
                 "The most recent build did not finish a successful final export",
               );
+            if (state?.scriptSha256) {
+              const source = (
+                await readFile(resolve(DATA, directory, "asset.py"), "utf8")
+              )
+                .replaceAll("\r\n", "\n")
+                .replaceAll("\r", "\n");
+              if (
+                createHash("sha256").update(source).digest("hex") !==
+                state.scriptSha256
+              )
+                throw new Error(
+                  "The saved script changed after its final render; run it again before handoff",
+                );
+            }
             metrics = JSON.parse(
               await readFile(resolve(DATA, directory, "metrics.json"), "utf8"),
             );
@@ -639,6 +659,7 @@ export async function executeJob(kind: string, targetId: string) {
             );
           images = artifacts.renders as string[];
           previous = resolve(DATA, String(artifacts.blend));
+          previousScript = artifacts.script;
           if (photography) return;
           await db
             .update(models)

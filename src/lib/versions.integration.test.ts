@@ -82,6 +82,16 @@ integration(
         "# reproducible fixture script",
       );
       await writeFile(resolve(DATA, directory, "build-config.json"), "{}");
+      await writeFile(resolve(DATA, directory, "render.py"), "# fixed runner");
+      await writeFile(resolve(DATA, directory, "params.json"), '{"seed":17}');
+      await mkdir(resolve(DATA, directory, "script-revisions"));
+      const scriptHash = createHash("sha256")
+        .update("# reproducible fixture script")
+        .digest("hex");
+      await writeFile(
+        resolve(DATA, directory, `script-revisions/${scriptHash}.py`),
+        "# reproducible fixture script",
+      );
       await mkdir(resolve(DATA, directory, "assetkit"));
       await writeFile(
         resolve(DATA, directory, "assetkit/__init__.py"),
@@ -96,6 +106,24 @@ integration(
       expect(
         buildManifest.files.some((f: any) => f.path === "assetkit/__init__.py"),
       ).toBe(true);
+      expect(buildManifest.rebuild).toBe("python render.py --mode final");
+      for (const name of [
+        "render.py",
+        "params.json",
+        `script-revisions/${scriptHash}.py`,
+      ]) {
+        const file = buildManifest.files.find((f: any) => f.path === name);
+        expect(file.sha256).toBe(
+          createHash("sha256")
+            .update(await readFile(resolve(DATA, `versions/${runId}`, name)))
+            .digest("hex"),
+        );
+        expect(
+          (await readFile(resolve(DATA, first.sourceBundle))).includes(
+            Buffer.from(name),
+          ),
+        ).toBe(true);
+      }
       expect(
         await readFile(resolve(DATA, `versions/${runId}/textures/stone.png`)),
       ).toEqual(png);
@@ -125,6 +153,9 @@ integration(
         "changed",
       );
       const replay = await archiveVersion(runId, directory);
+      expect(
+        await readFile(resolve(DATA, `versions/${runId}/params.json`), "utf8"),
+      ).toBe('{"seed":17}');
       expect(await readFile(resolve(DATA, replay.textures[0].key))).toEqual(
         png,
       );

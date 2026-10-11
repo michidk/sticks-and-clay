@@ -1,6 +1,6 @@
 # Sticks & Clay
 
-A visual asset studio for cohesive **3D asset and graphic collections**, built alongside CodeTend with the same core stack: **Bun, React 19, TanStack Start/Router, Vite, Tailwind 4, Drizzle/PostgreSQL, and Eve**. React Three Fiber provides the interactive GLB viewer; Blender runs locally through an isolated MCP adapter; graphic agents use the Codex-configured OpenAI-compatible Image API.
+A visual asset studio for cohesive **3D asset and graphic collections**, built alongside CodeTend with the same core stack: **Bun, React 19, TanStack Start/Router, Vite, Tailwind 4, Drizzle/PostgreSQL, and Eve**. React Three Fiber provides the interactive GLB viewer; builders author saved Python scripts through native Eve tools and run isolated Blender processes; graphic agents use the Codex-configured OpenAI-compatible Image API. The independent photographer and historical builder sessions retain Blender MCP.
 
 The interface uses locally owned [shadcn components](https://ui.shadcn.com/) and a custom ivory, forest-green, and sage theme in `src/styles.css`. Configure/add primitives through `components.json` and keep app-specific layout in the routes. Skeletons cover initial page, image, and viewer loading; polling retains already loaded content.
 
@@ -31,7 +31,7 @@ For a graphics project, choose a square, portrait, or landscape canvas for the b
 
 Use **Collection style** to save shared construction lessons, style rules, variation and up to three finished examples. Future batches snapshot this guidance. A model's **Checks** tab can repair selected findings, revise it using current collection style, render its saved GLB again, or export a transparent sprite sheet. Graphic variants edit the selected saved image through the same audited Image API. Approved 3D projects can import a GLB or `.blend` as an editable baseline.
 
-New builder versions include a downloadable source bundle: the authored script, pinned construction helpers, copied inputs and textures, configuration, source/delivery GLBs, and a manifest with file hashes and saved instructions. Extract it and run `blender -b --python rebuild.py` without an AI request. Draft previews are separate from final exports, and failed executions retain the preceding successful files while reporting failure.
+New builders edit persistent `asset.py`, run fixed `render.py`, inspect draft views and correct the script before final export. Versions include a downloadable source bundle: scripts and revisions, fixed parameters/seeds, pinned construction helpers, copied inputs and textures, source/delivery GLBs, and a manifest with hashes, toolchain versions and saved instructions. Extract it and run `python render.py --mode final` without an AI request, Eve or MCP. Use `--mode quick` for drafts and `--blender PATH` for a specific Blender installation. Draft previews are separate from final exports, and failed executions retain the preceding successful files while reporting failure. See [asset workshop](docs/asset-workshop.md) for reproducibility limits and older bundle commands.
 
 Progress represents workflow milestones, not a predicted wall-clock percentage. New attempts apply the round limit per stage: two permits up to two geometry build/review pairs, then up to two surface pairs. Early passes skip unused rounds; geometry exhaustion withholds surface work. New v4 attempts require blockout → photography → shape refinement → photography → geometry judge, then materials → photography → polish → photography → surface judge. Additional review rounds repeat refinement or polish when needed. A first passing judge cannot skip these mandatory passes. Existing v1/v2/v3 attempts retain their original pipeline on resume. Resume reuses Eve sessions and completed step checkpoints. Every builder iteration retains an archived export and its judge feedback; collection thumbnails use only the latest version.
 
@@ -82,8 +82,8 @@ The full viewer's camera menu captures the current scene as a PNG (all four pane
 - `src/modules/ai/internal/image.server.ts`: Codex-configured Image API calls for graphics, visual targets, and textures, with durable receipts and usage accounting.
 - `scripts/worker.ts`: PostgreSQL job claiming (`SKIP LOCKED`), bounded concurrency, coordinator lock and restart recovery.
 - `src/db/schema.ts`, `drizzle/`: projects, immutable design revisions, batches, models, agent runs, events and jobs.
-- `eve/agent/`: model configuration, authenticated local channel, Blender MCP connection and authored vision tool.
-- `blender/`: isolated MCP service, export/render helpers and collection renderer.
+- `eve/agent/`: model configuration, authenticated local channel, native asset workspace and vision tools, plus the photography/legacy MCP connection.
+- `blender/`: scoped script workspace, fixed offline runner, isolated Blender service, export helpers and collection renderer.
 - `prompts/`: all system prompts, role prompts and input templates. Eve loads its shared instructions from this folder at build time.
 - `data/`: immutable upload keys, per-attempt/per-iteration assets, collection renders, runtime logs and temporary build capabilities. Back up this directory together with PostgreSQL.
 

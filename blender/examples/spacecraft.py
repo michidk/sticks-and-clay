@@ -1,4 +1,4 @@
-"""Poly starting structure; pass to execute_blender_code and develop to the brief."""
+"""Poly starting structure; save as asset.py and develop to the brief."""
 import assetkit as kit
 root = kit.root('Scout')
 paint = kit.color_material('Sage paint', (.24,.38,.3,1))

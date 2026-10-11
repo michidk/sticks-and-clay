@@ -16,7 +16,7 @@ All authored agent instructions and input templates live here.
 - `resume.md`: continues a failed Eve turn in the same session.
 - `pipeline.md`: the reusable asset-pack pipeline reference.
 
-Each run stores the rendered inputs and role instructions in the database. Resumed runs retain their original instructions; edits apply to new runs. The shared Eve system prompt requires an Eve rebuild/restart after edits.
+Each run stores the rendered inputs and role instructions in the database. Resumed runs retain their original instructions; edits apply to new runs. New builders edit persistent `asset.py` through native `asset_workspace` tools and run fixed `render.py` for quick/final exports. The photographer and historical sessions retain MCP tools. The shared Eve system prompt requires an Eve rebuild/restart after edits.
 
 Model and effort settings are configured in `src/modules/ai/roles.ts` and shown at `/admin/agents`. Builder/judge instructions require developed geometry rather than unmodified primitive assemblies. Builders can use `generate_texture`, the TypeScript image-generation API integration, and must connect the generated images to UV-mapped materials. Triangle counts are informational metrics, with no budget configuration or enforcement.
 

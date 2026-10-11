@@ -7,6 +7,9 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import sys
+import zipfile
+import hashlib
 from PIL import Image
 from blender import server
 
@@ -36,15 +39,22 @@ class WorkflowTests(unittest.IsolatedAsyncioTestCase):
             server.DATA=pathlib.Path(directory)
             cap='12345678-1234-1234-1234-123456789abc'
             (server.DATA/'capabilities').mkdir()
-            (server.DATA/'capabilities'/f'{cap}.json').write_text(json.dumps({'directory':'model'}))
+            baseline=server.DATA/'baseline/shape.json'
+            baseline.parent.mkdir()
+            baseline.write_text(json.dumps({'width':1}))
+            code=f"import json, random\nimport numpy as np\nwidth=json.load(open({baseline.as_posix()!r}))['width'] * (1 + random.random() * .1 + np.random.random() * .1)\n"+CODE.replace('"Body",(1,1,1)', '"Body",(width,1,1)')
+            (server.DATA/'capabilities'/f'{cap}.json').write_text(json.dumps({'directory':'model','role':'builder','seed':17,'inputs':['baseline/shape.json']}))
             try:
-                draft=await server.execute_blender_code(cap,CODE,preview=True)
+                await server.asset_workspace({'capability':cap,'operation':'write','code':code})
+                draft=await server.asset_workspace({'capability':cap,'operation':'run','mode':'quick'})
                 self.assertTrue(draft['ok'],draft['log'])
                 dest=server.DATA/'model'
                 self.assertTrue((dest/'preview/front.png').exists())
                 self.assertFalse((dest/'asset.glb').exists())
-                final=await server.execute_blender_code(cap,CODE)
+                final=await server.asset_workspace({'capability':cap,'operation':'run','mode':'final'})
                 self.assertTrue(final['ok'],final['log'])
+                self.assertEqual(final['scriptSha256'],hashlib.sha256((dest/'asset.py').read_bytes()).hexdigest())
+                self.assertEqual(json.loads((dest/'params.json').read_text()),{'seed':17})
                 original=(dest/'asset.glb').read_bytes()
                 doc=json.loads(original[20:20+int.from_bytes(original[12:16],'little')])
                 nodes={n['name']:n for n in doc['nodes']}
@@ -58,13 +68,20 @@ class WorkflowTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(sheet.size,(64,64))
                     self.assertIn('A',sheet.getbands())
                     self.assertEqual(sheet.getchannel('A').getextrema(),(0,255))
+                # Freeze the successful version before a later failed edit.
+                package=server.DATA/'source.zip'
+                with zipfile.ZipFile(package,'w') as bundle:
+                    for path in dest.rglob('*'):
+                        if path.is_file() and not any(p in ['build-support','preview','script-revisions','__pycache__'] for p in path.relative_to(dest).parts):
+                            bundle.write(path,path.relative_to(dest).as_posix())
                 failure=await server.execute_blender_code(cap,'raise RuntimeError("intentional failure")')
                 self.assertFalse(failure['ok'])
                 self.assertEqual(original,(dest/'asset.glb').read_bytes())
                 self.assertFalse(json.loads((dest/'build-state.json').read_text())['ok'])
+                baseline.write_text(json.dumps({'width':99}))
                 other=server.DATA/'relocated'
-                shutil.copytree(dest,other)
-                proc=await asyncio.create_subprocess_exec(os.environ['BLENDER_BIN'],'-b','--factory-startup','--threads','2','--python-exit-code','1','--python',str(other/'rebuild.py'),stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
+                with zipfile.ZipFile(package) as bundle:bundle.extractall(other)
+                proc=await asyncio.create_subprocess_exec(sys.executable,str(other/'render.py'),'--mode','final','--blender',os.environ['BLENDER_BIN'],stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
                 output,_=await proc.communicate()
                 self.assertEqual(proc.returncode,0,output.decode()[-2000:])
                 rebuilt=json.loads((other/'metrics.json').read_text())
