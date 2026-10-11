@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { materialPlanResult } from "../../lib/materials";
 import {
   projectNameResult,
   briefResult,
@@ -29,6 +30,7 @@ function role<S extends z.ZodType>(
 
 /** Authored instructions stay in /prompts; execution policy and contracts live here. */
 export const roles = {
+  "material-planner": role("tanstack", "material-planner", materialPlanResult),
   "project-name": role("tanstack", "project-name", projectNameResult),
   "project-brief": role("tanstack", "project-brief", briefResult),
   "model-brief": role("tanstack", "model-brief", briefResult),

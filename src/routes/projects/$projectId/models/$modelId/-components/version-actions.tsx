@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { request, json, fileUrl } from "@/lib/client";
 import type { Artifacts, Review } from "../-lib/model";
+import { SpriteExport } from "./sprite-export";
 
 export function VersionActions({
   projectId,
@@ -125,13 +126,7 @@ export function VersionActions({
         >
           Render again
         </Button>
-        <Button
-          variant="outline"
-          disabled={!sourceRunId || busy || rendering}
-          onClick={() => void render(true)}
-        >
-          Export sprite sheet
-        </Button>
+        <SpriteExport modelId={modelId} sourceRunId={sourceRunId} />
         <Button
           variant="outline"
           disabled={!sourceRunId || busy}

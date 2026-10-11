@@ -24,6 +24,7 @@ import { DATA } from "./storage.server";
 import { workshopContext } from "./workshop";
 import { compareStyle } from "./asset-style";
 import { renderPresentation } from "./workshop-actions.server";
+import { renderMaterial } from "./materials.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
 async function one<T>(rows: T[]) {
   if (!rows[0]) throw new Error("Record not found");
@@ -34,6 +35,10 @@ export async function executeJob(kind: string, targetId: string) {
   const job = jobContext.getStore();
   if (!job) throw new Error("Missing durable job context");
   if (job.checkpoint.applied === "yes") return;
+  if (kind === "material") {
+    await renderMaterial(targetId);
+    return;
+  }
   if (kind === "presentation") {
     await renderPresentation();
     return;

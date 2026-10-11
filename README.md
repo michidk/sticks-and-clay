@@ -10,7 +10,7 @@ The interface uses locally owned [shadcn components](https://ui.shadcn.com/) and
 - [Agent instructions](AGENTS.md): code boundaries, workflow invariants, development checks, and local service conventions.
 - [Prompt guide](prompts/README.md): authored agent instructions and input templates.
 - [Quality pipeline](docs/quality-pipeline.md): visual targets, geometry gates and recovery.
-- [Asset workshop](docs/asset-workshop.md): reusable construction helpers, collection memory, source bundles, imports and game exports.
+- [Asset workshop](docs/asset-workshop.md): reusable construction helpers, collection memory, source bundles, imports, PBR materials and 3D sprite exports.
 
 The application design guide describes Sticks & Clay itself. Each asset project's design reference is a separate, editable and versioned document in the database.
 

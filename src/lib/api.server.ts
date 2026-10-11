@@ -2,6 +2,7 @@ import { recordedAnalysis } from "../modules/model-analysis/report";
 import { workshopSchema } from "./workshop";
 import { snapshotWorkshop } from "./workshop.server";
 import { workshopAction } from "./workshop-actions.server";
+import { materialAction } from "./materials.server";
 import { collectionSummary } from "./project-summary";
 import { databaseErrorResponse } from "./database-error";
 import { eq, desc, and, inArray } from "drizzle-orm";
@@ -77,6 +78,8 @@ export async function api(request: Request) {
       )
         return reply({ error: "Invalid request origin" }, 403);
     }
+    const materialResult = await materialAction(request, path);
+    if (materialResult) return materialResult;
     const workshopResult = await workshopAction(request, path);
     if (workshopResult) return workshopResult;
     if (path[0] === "queue") {
@@ -93,6 +96,7 @@ export async function api(request: Request) {
                   "demo",
                   "project-photo",
                   "presentation",
+                  "material",
                 ]),
               )
               .orderBy(desc(jobs.createdAt)),
@@ -116,7 +120,9 @@ export async function api(request: Request) {
             const project = workspaces.find(
               (p) =>
                 p.id ===
-                (j.kind === "project-photo" ? j.targetId : batch?.projectId),
+                (["project-photo", "material"].includes(j.kind)
+                  ? j.targetId
+                  : batch?.projectId),
             );
             return {
               id: j.id,
@@ -127,9 +133,11 @@ export async function api(request: Request) {
               finishedAt: j.finishedAt,
               error: j.error,
               name:
-                (j.kind === "presentation"
-                  ? `Render ${model?.name || "saved version"}`
-                  : model?.name) ||
+                (j.kind === "material"
+                  ? "PBR material"
+                  : j.kind === "presentation"
+                    ? `Render ${model?.name || "saved version"}`
+                    : model?.name) ||
                 (j.kind === "project-photo"
                   ? "Photograph project"
                   : j.kind === "plan"
@@ -139,14 +147,16 @@ export async function api(request: Request) {
               modelId: model?.id,
               projectName: project?.name,
               phase:
-                (j.kind === "presentation"
-                  ? "Rendering saved version"
-                  : model?.phase) ||
+                (j.kind === "material"
+                  ? "Generating material maps"
+                  : j.kind === "presentation"
+                    ? "Rendering saved version"
+                    : model?.phase) ||
                 (j.kind === "project-photo"
                   ? "Photographing project collection"
                   : undefined),
               progress:
-                (j.kind === "presentation"
+                (["presentation", "material"].includes(j.kind)
                   ? j.status === "done"
                     ? 100
                     : 5
@@ -175,6 +185,7 @@ export async function api(request: Request) {
                 "demo",
                 "project-photo",
                 "presentation",
+                "material",
               ]),
             ),
           );
@@ -194,11 +205,11 @@ export async function api(request: Request) {
           .where(eq(jobs.id, uuid.parse(path[1])));
         if (
           !saved ||
-          !["project-photo", "presentation"].includes(saved.kind) ||
+          !["project-photo", "presentation", "material"].includes(saved.kind) ||
           saved.status !== "failed"
         )
           throw new Error(
-            "Only failed photography or presentation jobs can be resumed here",
+            "Only failed photography, presentation or material jobs can be resumed here",
           );
         await db
           .update(jobs)

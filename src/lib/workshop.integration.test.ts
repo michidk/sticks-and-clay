@@ -112,6 +112,7 @@ integration(
       const presentation = await send(`models/${modelId}/presentation`, {
         sourceRunId: runId,
         sprites: true,
+        spriteOptions: { pixel: true, colors: 4, directions: 1, size: 32, frameCount: 2 },
       });
       expect(presentation.status).toBe(201);
       const renderId = (await presentation.json()).id;
@@ -142,6 +143,7 @@ integration(
         .where(eq(jobs.id, renderId));
       expect(resumed.checkpoint.sourceRunId).toBe(runId);
       expect(resumed.checkpoint.sprites).toBe("true");
+      expect(JSON.parse(resumed.checkpoint.spriteOptions).pixel).toBe(true);
 
       const bytes = Buffer.alloc(24);
       bytes.write("glTF");

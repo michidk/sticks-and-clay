@@ -44,7 +44,7 @@ Small authored starting scripts live in [`blender/examples/`](../blender/example
 
 `kit.root`, `pivot` and `socket` preserve part hierarchy and local attachment intent. Blender uses Z-up metres and -Y front; exported sockets use local +Z forward after glTF conversion. `grid_piece`, `collider`, `slot`, `allow_overlap` and `open_surface` declare explicit intent. `clip` creates named NLA tracks from authored animation; `event` records timing against real nodes. Readiness reports source boundary/non-manifold/degenerate faces, UVs, finite transforms, grid dimensions, hierarchy, sockets, slots and events. It does not prove exported collision fit, self-intersection freedom, engine attachment behavior or animation quality.
 
-`finish_asset(..., sprites={"directions":8,"frames":[1,8,16],"size":128})` renders the actual model with transparency and a JSON frame layout. `finish_asset(..., lod_ratios=[0.5,0.25])` exports up to three separate static LOD GLBs without changing source geometry. LOD generation rejects animated, rigged and morph assets. These outputs are requested explicitly; there is no automatic polygon budget or PBR generator.
+`finish_asset(..., sprites={"directions":8,"frames":[1,8,16],"size":128})` renders the actual model with transparency and a JSON frame layout. `finish_asset(..., lod_ratios=[0.5,0.25])` exports up to three separate static LOD GLBs without changing source geometry. LOD generation rejects animated, rigged and morph assets. These outputs are requested explicitly; there is no automatic polygon budget.
 
 ## Version actions and imports
 
@@ -54,18 +54,40 @@ Render again and sprite export use queued local Blender presentation jobs agains
 
 Approved 3D projects can import a GLB v2 or Blender source up to 200 MB. Imports preserve the original file and start an ordinary reviewed model job with an immutable design/style snapshot. Builders receive explicit instructions to open `.blend` or import `.glb`, inspect it and preserve applicable interfaces while revising it. Like generated scripts, imported Blender content belongs in this trusted local workshop.
 
+## PBR material mode
+
+Approved 3D collections include a **PBR materials** tab. Choose sand, gravel, stone, wood, brick or painted metal, resolution (128-1024), seed, tile width in metres, feature size and relief in millimetres, intrinsic base color, roughness, coverage and wear. Generate maps queues a local Python/NumPy build. Generate from brief optionally calls the recorded `material-planner` role through the public AI module to choose supported recipe parameters; resolution and seed remain user-owned. The job freezes the approved design and collection guidance. It retains the chosen parameters and notes across recovery. It does not use an image-generation API.
+
+The original toolkit constructs periodic Fourier fields, wrapped particle footprints or periodic material layouts. Gravel has rounded particles with individual color regions; sand has periodic ripples; stone has level-set cracks; wood has grain bands; brick has alternating rows/mortar; painted metal has dielectric paint and exposed metallic regions. Feature scale and coverage have recipe-specific meanings. These are procedural starter materials, not photoscans, scan-calibrated physical measurements or a full simulation catalog. Unsupported custom structures need an edited offline script or a future toolkit extension.
+
+Height, normals and occlusion share one height field. Base color is generated in linear space and exported as sRGB without directional lighting or AO. The other maps are linear: roughness, metallic, tangent normal (OpenGL +Y), 16-bit height and occlusion. Height is centered at 0.5; `material.json` records its physical millimetre window. `orm.png` packs occlusion, roughness and metallic into R/G/B. Review shows a lit 2x2 repetition, 1:1 albedo crop, sphere and the channels. Reports expose channel ranges, mean roughness, finite-value checks and wrap-edge ratios relative to adjacent pixel differences; warnings ask for inspection rather than claiming artistic approval or seam perfection.
+
+Each completed material retains immutable maps under its own job key, saved history, the recipe, approved context, pinned `materialkit.py`, `asset.py`, `render.py`, exact dependency versions and SHA-256 manifests. Download `source.zip`, extract, run `python -m pip install -r requirements.txt`, then `python render.py --mode final`. `--mode quick` writes a separate preview without replacing final outputs. Builds need Python 3.11+, NumPy and Pillow; the app uses its `.venv` by default or `STUDIO_PYTHON`. Existing queues expose cancellation and resume. A new seed or edited recipe creates another saved export. Maps are downloads; automatic assignment to model materials is not implemented.
+
+## Pixel sprites from 3D
+
+Version tools include **Export 3D sprites**. Choose pixel mode, 1/4/8 directions, 32/64/128/256-pixel cells, up to 16 animation samples, playback FPS, a shared 2-32-color palette or explicit hex colors, and an optional outline. A clip name can select an imported NLA track; blank uses the imported active animation. Invalid clip names fail visibly. Static assets produce one distinct pose even if more frames are requested.
+
+The separate local Blender renderer imports the exact archived GLB and fits bounds across sampled poses. Orthographic camera directions start at the model's -Y front. Pixel mode rotates lights with the camera, renders at four times the cell size, filters premultiplied RGBA, thresholds alpha, quantizes one palette across the entire sheet and draws a cell-contained outline. Smooth mode retains rendered color and transparency. Rows are animation frames, columns directions; `sprites.json` records cells, frame numbers, direction angles, FPS, palette settings and rendering conventions. An outline color can add one color beyond an automatically reduced palette. With a strict palette, include the outline color in that palette.
+
+The saved source GLB remains byte-for-byte unchanged. Outputs, receipt and source ZIP live under a separate job key, and history survives reloads. Download the bundle and run `python render.py --blender /path/to/blender`; it includes the GLB, parameters, runner, pixel helpers and file hashes, with no agent or service dependency. Match the recorded Blender version; image bytes can vary by device/version. Native authored builds can request the same processing through `finish_asset(..., sprites={...})`; agents can inspect `view_render(view="sprites")`. The prompt asks for native-size silhouette and animation review. This feature renders 3D assets; no separate 2D pixel drawing mode is added.
+
 ## Upgrade and verification
 
-Apply migration `0011` (`bun run db:migrate`), rebuild/restart Eve for tool changes, and restart Blender MCP for new build behavior. Resumed runs retain saved prompt instructions; support files are pinned on a workspace's first toolkit execution. A standard Eve build also prewarms its Docker sandbox. When registry access is unavailable, `eve build --skip-sandbox-prewarm` verifies compilation only.
+Install the updated `blender/requirements.txt` (including material dependencies). Apply migration `0011` (`bun run db:migrate`), rebuild/restart Eve for tool changes, and restart Blender MCP for new build behavior. Resumed runs retain saved prompt instructions; support files are pinned on a workspace's first toolkit execution. A standard Eve build also prewarms its Docker sandbox. When registry access is unavailable, `eve build --skip-sandbox-prewarm` verifies compilation only.
 
 ```sh
 bun run typecheck
 bun test src
 bun run build
 bun run eve:typecheck
-TEST_DATABASE=1 bun test src/lib/workshop.integration.test.ts src/lib/versions.integration.test.ts
+TEST_DATABASE=1 bun test src/lib/workshop.integration.test.ts src/lib/versions.integration.test.ts src/lib/materials.integration.test.ts
 BLENDER_BIN=blender .venv/bin/python -m unittest blender.test_build_workflow blender.test_workspace blender.test_cancellation
+python -m unittest blender.test_materials
 blender -b --factory-startup --python-exit-code 1 --python blender/test_assetkit_shapes.py
+blender -b --factory-startup --python-exit-code 1 --python blender/test_sprite_render.py
 ```
 
 Integration tests need an isolated PostgreSQL database. The Blender workflow test executes native draft/final builds, animated socket/sprite output, last-good preservation and a relocated offline ZIP rebuild after the original input changes. Workspace tests cover stale edits, saved revisions, fixed seed inheritance, role scoping and the actual HTTP route. Shape tests inspect manifold geometry, deterministic rocks and static LOD socket preservation. These tests validate workflow and artifact mechanics; they do not establish the artistic quality of a paid agent generation.
+
+Material tests check every recipe, seed determinism, physical normal derivatives, range validation, 16-bit PNG encoding, packed channels, hashes and offline execution. Database tests verify frozen context, real maps, source ZIPs, saved history and checkpoint resume. Sprite tests use an actual animated GLB, check sampled frames, source preservation, shared palettes, binary alpha and cell-local outlines.

@@ -5,6 +5,7 @@ import {
 } from "@/lib/project-summary";
 import { ProjectSetup } from "./-components/project-setup";
 import { WorkshopPanel } from "./-components/workshop";
+import { MaterialPanel } from "./-components/materials";
 import { GraphicVariant } from "./-components/graphic-variant";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -440,6 +441,7 @@ function ProjectPage() {
             ],
             ["design", "Design reference", FileText],
             ["style", "Collection style", Boxes],
+            ...(!isGraphics && ready ? [["materials", "PBR materials", Boxes]] : []),
             ["history", "Activity & cost", Activity],
           ]
             .filter(([id]) => ready || id !== "models")
@@ -455,6 +457,7 @@ function ProjectPage() {
               </TabsTrigger>
             ))}
         </TabsList>
+        {activeTab === "materials" && <MaterialPanel key={projectId} projectId={projectId} />}
         {activeTab === "style" && (
           <WorkshopPanel
             key={projectId}

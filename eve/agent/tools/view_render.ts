@@ -20,6 +20,7 @@ export default defineTool({
       "preview_front",
       "preview_rear",
       "preview_detail",
+      "sprites",
     ]),
   }),
   async execute({ capability, view }) {

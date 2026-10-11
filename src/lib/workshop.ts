@@ -33,7 +33,7 @@ export function constructionGuides(request: string, stage = "complete") {
   else names.push("references/hard-surface");
   if (stage !== "geometry") names.push("references/uv-and-materials");
   if (
-    /modular|grid|socket|grip|equipment|hinge|articulat|rig|animat|morph|collider/i.test(
+    /modular|grid|socket|grip|equipment|hinge|articulat|rig|animat|morph|collider|sprite|pixel/i.test(
       request,
     )
   )

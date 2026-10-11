@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -11,27 +11,49 @@ import { snapshotWorkshop } from "./workshop.server";
 import { jobContext, checkpoint } from "./checkpoint.server";
 import { assertJobActive } from "./queue.server";
 import { REVIEW_VIEWS } from "./photo-views";
+import { spriteOptionsSchema } from "./materials";
+import {
+  savedExport,
+  exportBundle,
+  runExportProcess,
+} from "./materials.server";
+import { copyFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 
 const uuid = z.string().uuid();
 export async function workshopAction(
   request: Request,
   path: string[],
 ): Promise<Response | null> {
+  if (
+    path[0] === "models" &&
+    path[2] === "workshop-jobs" &&
+    request.method === "GET"
+  ) {
+    const saved = await db
+      .select()
+      .from(jobs)
+      .where(
+        and(
+          eq(jobs.targetId, uuid.parse(path[1])),
+          eq(jobs.kind, "presentation"),
+        ),
+      )
+      .orderBy(desc(jobs.createdAt))
+      .limit(40);
+    return Response.json(saved.map(savedExport));
+  }
   if (path[0] === "workshop-jobs" && path[1] && request.method === "GET") {
     const [job] = await db
       .select()
       .from(jobs)
       .where(eq(jobs.id, uuid.parse(path[1])));
-    if (!job || job.kind !== "presentation")
+    if (!job || !["presentation", "material"].includes(job.kind))
       return Response.json(
         { error: "Presentation not found" },
         { status: 404 },
       );
-    return Response.json({
-      status: job.status,
-      error: job.error,
-      files: job.checkpoint.files ? JSON.parse(job.checkpoint.files) : [],
-    });
+    return Response.json(savedExport(job));
   }
   if (
     path[0] === "projects" &&
@@ -98,7 +120,11 @@ export async function workshopAction(
     request.method === "POST"
   ) {
     const input = z
-      .object({ sourceRunId: uuid, sprites: z.boolean().default(false) })
+      .object({
+        sourceRunId: uuid,
+        sprites: z.boolean().default(false),
+        spriteOptions: spriteOptionsSchema.optional(),
+      })
       .parse(await request.json());
     const [source] = await db
       .select()
@@ -118,7 +144,13 @@ export async function workshopAction(
       id,
       kind: "presentation",
       targetId: path[1],
-      checkpoint: { sourceRunId: source!.id, sprites: String(input.sprites) },
+      checkpoint: {
+        sourceRunId: source!.id,
+        sprites: String(input.sprites),
+        ...(input.spriteOptions
+          ? { spriteOptions: JSON.stringify(input.spriteOptions) }
+          : {}),
+      },
     });
     return Response.json({ id }, { status: 201 });
   }
@@ -129,6 +161,7 @@ export async function workshopAction(
 export async function renderPresentation() {
   const job = jobContext.getStore();
   if (!job) throw new Error("Missing presentation job");
+  if (job.checkpoint.applied === "yes") return;
   const [source] = await db
     .select()
     .from(runs)
@@ -138,26 +171,87 @@ export async function renderPresentation() {
   const directory = `presentations/${job.id}`,
     destination = resolve(DATA, directory);
   await mkdir(destination, { recursive: true });
+  if (job.checkpoint.sprites === "true") {
+    if (job.checkpoint.prepared !== "yes") {
+      await copyFile(
+        resolve(DATA, artifacts.glb),
+        resolve(destination, "source.glb"),
+      );
+      await mkdir(resolve(destination, "assetkit"), { recursive: true });
+      for (const name of ["sprites.py", "pixel.py"])
+        await copyFile(
+          resolve("blender/assetkit", name),
+          resolve(destination, "assetkit", name),
+        );
+      await writeFile(resolve(destination, "assetkit/__init__.py"), "");
+      await copyFile(
+        resolve("blender/sprite_render.py"),
+        resolve(destination, "sprite_render.py"),
+      );
+      await copyFile(
+        resolve("blender/sprite_launcher.py"),
+        resolve(destination, "render.py"),
+      );
+      const options = job.checkpoint.spriteOptions
+        ? spriteOptionsSchema.parse(JSON.parse(job.checkpoint.spriteOptions))
+        : {
+            ...spriteOptionsSchema.parse({}),
+            pixel: false,
+            size: 128,
+            frameCount: 3,
+          };
+      await writeFile(
+        resolve(destination, "params.json"),
+        JSON.stringify(options, null, 2),
+      );
+      await writeFile(
+        resolve(destination, "README.txt"),
+        "Install Python 3 and Blender. Run python render.py --blender PATH.\nThe bundled source GLB is unchanged. Edit params.json for directions, size, frames, clip, palette and outline.\nSprite rows are frames and columns are directions. Match recorded Blender version for reproducibility.\n",
+      );
+      await checkpoint("prepared", "yes");
+    }
+    await runExportProcess(
+      process.env.BLENDER_BIN || "blender",
+      [
+        "-b",
+        "--factory-startup",
+        "--threads",
+        "2",
+        "--python-exit-code",
+        "1",
+        "--python",
+        resolve(destination, "sprite_render.py"),
+      ],
+      destination,
+      900000,
+    );
+    const receipt = JSON.parse(
+      await readFile(resolve(destination, "output/receipt.json"), "utf8"),
+    );
+    const original = await readFile(resolve(DATA, artifacts.glb));
+    if (
+      receipt.sourceSha256 !==
+      createHash("sha256").update(original).digest("hex")
+    )
+      throw new Error("Sprite source differs from the selected version");
+    await exportBundle(directory);
+    const files = [
+      "output/sprites.png",
+      "output/sprites.json",
+      "output/receipt.json",
+      "source.zip",
+      "build-manifest.json",
+    ].map((name) => `${directory}/${name}`);
+    await assertJobActive();
+    await publishFiles(files);
+    await checkpoint("files", JSON.stringify(files));
+    await checkpoint("applied", "yes");
+    return;
+  }
   const script = resolve(destination, "render.py"),
     literal = (value: unknown) => JSON.stringify(value);
   let code = await readFile("blender/photograph.py", "utf8");
   code += `\nphotograph(${literal(resolve(DATA, artifacts.glb))},${literal(destination)},coverage=${literal(REVIEW_VIEWS)})\n`;
-  if (job.checkpoint.sprites === "true") {
-    code += `
-import sys
-sys.path.insert(0,${literal(resolve("blender"))})
-from assetkit.sprites import render_sheet, sample_frames
-scene=bpy.context.scene
-frames=sample_frames(scene)
-scene.frame_start=min(frames)
-scene.frame_end=max(frames)
-meshes=[o for o in scene.objects if o.type=='MESH' and not o.get('studio_environment')]
-points=[o.matrix_world@Vector(c) for o in meshes for c in o.bound_box]
-lo=Vector([min(p[i] for p in points) for i in range(3)])
-hi=Vector([max(p[i] for p in points) for i in range(3)])
-render_sheet(scene,scene.camera,(lo+hi)/2,max(hi-lo),${literal(destination)},{"directions":8,"size":128,"frames":frames})
-`;
-  }
   await writeFile(script, code);
   await assertJobActive();
   const controller = new AbortController();
@@ -191,9 +285,6 @@ render_sheet(scene,scene.camera,(lo+hi)/2,max(hi-lo),${literal(destination)},{"d
   const files = [
     ...REVIEW_VIEWS.map((v) => `${directory}/${v}.png`),
     `${directory}/photography.json`,
-    ...(job.checkpoint.sprites === "true"
-      ? [`${directory}/sprites.png`, `${directory}/sprites.json`]
-      : []),
   ];
   await publishFiles(files);
   await checkpoint("files", JSON.stringify(files));

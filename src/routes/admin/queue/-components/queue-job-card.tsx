@@ -38,6 +38,7 @@ const kindDetails: Record<string, { label: string; icon: typeof Box }> = {
   plan: { label: "Collection plan", icon: ListChecks },
   demo: { label: "Collection render", icon: Clapperboard },
   "project-photo": { label: "Project photography", icon: Camera },
+  material: { label: "PBR material", icon: Box },
   presentation: { label: "Saved version render", icon: Camera },
 };
 
@@ -67,7 +68,7 @@ export function QueueJobCard({
   const canCancel = ["queued", "running", "cancelling"].includes(job.status);
   const showProgress =
     ["running", "queued"].includes(job.status) &&
-    ["model", "project-photo", "presentation"].includes(job.kind);
+    ["model", "project-photo", "presentation", "material"].includes(job.kind);
 
   return (
     <Card className="queue-job">
@@ -80,7 +81,7 @@ export function QueueJobCard({
             <h3>{job.name}</h3>
             <div className="queue-job-meta">
               <span>{kind.label}</span>
-              <span aria-hidden="true">·</span>
+              <span aria-hidden="true">Â·</span>
               <time dateTime={time.value}>
                 {time.label} {new Date(time.value).toLocaleString()}
               </time>
@@ -155,10 +156,10 @@ export function QueueJobCard({
       </div>
 
       {(canCancel ||
-        (["project-photo", "presentation"].includes(job.kind) &&
+        (["project-photo", "presentation", "material"].includes(job.kind) &&
           job.status === "failed")) && (
         <div className="queue-job-actions">
-          {["project-photo", "presentation"].includes(job.kind) &&
+          {["project-photo", "presentation", "material"].includes(job.kind) &&
           job.status === "failed" ? (
             <Button
               variant="outline"
