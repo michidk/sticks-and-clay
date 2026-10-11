@@ -83,7 +83,16 @@ export async function photographProject(projectId: string) {
         const temporary = resolve(DATA, folder, `${crypto.randomUUID()}.tmp`);
         try {
           await writeFile(temporary, bytes);
-          await rename(temporary, resolve(DATA, renderGlb));
+          await rename(temporary, resolve(DATA, renderGlb)).catch(
+            async (error) => {
+              // Identical assets share a content-addressed snapshot. Concurrent
+              // publishers can race on Windows, where replacing the file fails.
+              const existing = await readFile(resolve(DATA, renderGlb)).catch(
+                () => null,
+              );
+              if (!existing?.equals(bytes)) throw error;
+            },
+          );
         } finally {
           await rm(temporary, { force: true });
         }
