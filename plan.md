@@ -8,36 +8,36 @@ Detailed requirements, concrete prompt wording, and reference implementation fin
 
 ## Delivery order and dependencies
 
-1. **M0 â€” baseline and evidence fixes.** Establish compatibility and correct current inspection mistakes.
-2. **M1 â€” shared contracts and neutral services.** Separate materials, sprites, subprocesses, and bundles.
-3. **M2 â€” reliable execution and publication.** Coordinate render resources and recover artifact sets consistently.
-4. **M3 â€” shared review definitions and prompt assembly.** Enable new reviewed workflows without changing historical runs.
-5. **M4 â€” material toolkit refactor and richer recipes.** Deliver better manual materials.
-6. **M5 â€” reviewed material generation and continuation.** Add scripted construction, visual repair, and version history.
-7. **M6 â€” sprite renderer refactor and better controls.** Deliver timing, framing, palettes, clips, playback, and diagnostic evidence.
-8. **M7 â€” model handler extraction and sprite-first generation.** Target final pixels during construction and review.
-9. **M8 â€” interactive material preview and model assignment.** Inspect and export explicit derived versions.
-10. **M9 â€” material reuse and delivery packages.** Cache stable builds and package runtime assets.
-11. **M10 â€” measured calibration.** Add evidence-backed calibration after construction and evaluation are stable.
+1. **M0 — baseline and evidence fixes.** Establish compatibility and correct current inspection mistakes.
+2. **M1 — shared contracts and neutral services.** Separate materials, sprites, subprocesses, and bundles.
+3. **M2 — reliable execution and publication.** Coordinate render resources and recover artifact sets consistently.
+4. **M3 — shared review definitions and prompt assembly.** Enable new reviewed workflows without changing historical runs.
+5. **M4 — material toolkit refactor and richer recipes.** Deliver better manual materials.
+6. **M5 — reviewed material generation and continuation.** Add scripted construction, visual repair, and version history.
+7. **M6 — sprite renderer refactor and better controls.** Deliver timing, framing, palettes, clips, playback, and diagnostic evidence.
+8. **M7 — model handler extraction and sprite-first generation.** Target final pixels during construction and review.
+9. **M8 — interactive material preview and model assignment.** Inspect and export explicit derived versions.
+10. **M9 — material reuse and delivery packages.** Cache stable builds and package runtime assets.
+11. **M10 — measured calibration.** Add evidence-backed calibration after construction and evaluation are stable.
 
-Dependencies: M1 follows M0. M2, M3, and M4 each follow M1. M5 requires M2â€“M4. M6 requires M2 and can ship independently of M4â€“M5. M7 requires M3 and M6. M8 requires M4â€“M5. M9 follows M5, M6, and M8. M10 requires M4â€“M5 and M8. These are dependency relationships, not a requirement to run concurrent agents.
+Dependencies: M1 follows M0. M2, M3, and M4 each follow M1. M5 requires M2–M4. M6 requires M2 and can ship independently of M4–M5. M7 requires M3 and M6. M8 requires M4–M5. M9 follows M5, M6, and M8. M10 requires M4–M5 and M8. These are dependency relationships, not a requirement to run concurrent agents.
 
 Each milestone is a reviewable change or a small sequence of PRs. Keep behavior-preserving extractions separate from feature changes where practical. Schedule estimates should follow the first live evaluation of render and repair costs.
 
-## M0 â€” establish the baseline and fix evidence mistakes
+## M0 — establish the baseline and fix evidence mistakes
 
 **When:** before shared runtime or prompt changes. **Refactor:** minimal; do not move modules yet.
 
 Evidence: quick model builds publish only front/rear/detail/metrics, while `view_render("sprites")` reads the final location. Final views lack the same stale-build warning as previews. The material planner is told to inspect images it never receives.
 
-- [x] Reuse existing fixtures to characterize model pipeline versions 1â€“4, disabled judging, early pass, exhaustion, final export, resume, and failure after a successful preview.
+- [x] Reuse existing fixtures to characterize model pipeline versions 1–4, disabled judging, early pass, exhaustion, final export, resume, and failure after a successful preview.
 - [x] Make quick sprite inspection select the actual quick build; label retained historical and stale final images correctly.
 - [x] Remove unsupported rendered-review instructions from the planner and resolve contradictory sprite examples in `prompts/references/game-interfaces.md`.
 - [x] Record representative renders for six recipes and static/animated sprites as the visual baseline.
 
 **Exit:** correct evidence labels and reproducible baseline fixtures; ordinary model generation and archived versions keep their existing behavior.
 
-## M1 â€” shared contracts and misplaced responsibilities
+## M1 — shared contracts and misplaced responsibilities
 
 **When:** before material iteration, more sprite options, shared history UI, or a new build result format.
 
@@ -53,7 +53,7 @@ Evidence: `materials.server.ts` mixes HTTP actions, job serialization, subproces
 
 **Exit:** sprite jobs no longer depend on the material feature for generic runtime services; new APIs/UI consume validated results instead of unchecked casts and filename guesses.
 
-## M2 â€” execution, resource limits, and publication
+## M2 — execution, resource limits, and publication
 
 **When:** after M1; before iterative material builds, expanded sprite rendering, and final-artifact review.
 
@@ -69,7 +69,7 @@ Evidence: `blender/server.py` mixes authorization, subprocesses, candidate works
 
 **Exit:** different entry points obey the same render limit; waiting work cancels; orphan cleanup leaves unrelated processes alone; partial builds never become completed artifacts; failed builds retain labelled historical previews; relocated bundles run independently.
 
-## M3 â€” review definitions and prompt assembly
+## M3 — review definitions and prompt assembly
 
 **When:** after M1; before M5 and M7. Splitting every job handler is not a prerequisite.
 
@@ -84,7 +84,7 @@ Evidence: `runPipeline` already provides generic traversal, but node metadata is
 
 **Exit:** both adapters receive relevant guides, material review can use shared traversal, and legacy model gates, mandatory passes, recovery, and usage totals remain unchanged.
 
-## M4 â€” material toolkit refactor and better manual recipes
+## M4 — material toolkit refactor and better manual recipes
 
 **When:** after M1; before agents author composition scripts in M5 or calibration modifies results in M10.
 
@@ -99,9 +99,9 @@ Evidence: `blender/materials/materialkit.py` combines defaults, random fields, e
 
 **Exit:** manual generation improves visibly and physically; feature/channel relationships remain coherent across resolutions; older bundles rebuild with their pinned toolkit.
 
-## M5 â€” reviewed materials and continuation
+## M5 — reviewed materials and continuation
 
-**When:** after M2â€“M4. **Refactor now:** persistent material identity, not the whole database schema.
+**When:** after M2–M4. **Refactor now:** persistent material identity, not the whole database schema.
 
 Evidence: materials are currently jobs plus JSON strings in checkpoints; history returns the latest 40 jobs. This lacks an independent material/revision identity and parent/review relationships. Collection examples currently resolve only builder/graphic runs.
 
@@ -114,7 +114,7 @@ Evidence: materials are currently jobs plus JSON strings in checkpoints; history
 
 **Exit:** a multi-feature material can be visually repaired, resumed without duplicate completed paid steps, continued from a saved version, and rebuilt offline. Live examples substantiate quality claims.
 
-## M6 â€” sprite rendering, controls, and playback
+## M6 — sprite rendering, controls, and playback
 
 **When:** after M2, independently of material expansion/calibration. **Refactor first:** the sprite renderer's stages.
 
@@ -129,7 +129,7 @@ Evidence: `blender/assetkit/sprites.py` mixes sampling, camera/lights, render lo
 
 **Exit:** correct clip/timing, stable framing, strict palettes, responsive playback, and unchanged source GLB, verified with real animated exports.
 
-## M7 â€” model workflow extraction and sprite-first generation
+## M7 — model workflow extraction and sprite-first generation
 
 **When:** after M3 and M6. This is the point to refactor the large model handler.
 
@@ -143,9 +143,9 @@ Evidence: `pipeline.server.ts` combines design, planning, graphics, and an exten
 
 **Exit:** sprite briefs affect construction and judging; ordinary model generation and saved versions preserve semantics. Verify the extraction before adding new behavior.
 
-## M8 â€” material preview and model assignment
+## M8 — material preview and model assignment
 
-**When:** after M4â€“M5. **Refactor before assignment:** viewer resource ownership, not every viewer feature.
+**When:** after M4–M5. **Refactor before assignment:** viewer resource ownership, not every viewer feature.
 
 Evidence: `src/components/model-viewer/index.tsx` combines toolbar, scene, cameras, model loading, and navigation. GLBs loaded with `useGLTF` may be shared; overrides must not mutate another viewer's cached materials.
 
@@ -157,7 +157,7 @@ Evidence: `src/components/model-viewer/index.tsx` combines toolbar, scene, camer
 
 **Exit:** multiple viewers show independent assignments, UV limitations are explicit, and derived exports retain dependencies/provenance.
 
-## M9 â€” reuse and delivery packages
+## M9 — reuse and delivery packages
 
 **When:** after M5, M6, M8. Cache only after the input/result contracts stabilize.
 
@@ -169,15 +169,15 @@ Evidence: `src/components/model-viewer/index.tsx` combines toolbar, scene, camer
 
 **Exit:** correct reuse/invalidation, corruption recovery, cache-free relocated rebuilds, and documented delivery contents.
 
-## M10 â€” measured calibration and quality evaluation
+## M10 — measured calibration and quality evaluation
 
-**When:** after M4â€“M5 and M8. Keep it independent of basic generation usability.
+**When:** after M4–M5 and M8. Keep it independent of basic generation usability.
 
 - [x] Isolate measurements/calibration as pure stages separate from construction/export; report before/after statistics and version identity.
 - [x] Build a small licensed reference corpus with source hashes, known physical scale, material class, preprocessing, and reproducible measurements.
 - [x] Calibrate supported classes only, preserve region boundaries, and disable calibration by default for stylized workflows. Mark unsupported classes uncalibrated.
 - [x] Bundle exact targets. Compare visually and numerically without presenting statistical similarity as proof of photorealism.
-- [ ] Evaluate current/proposed prompts on fixed briefs with matched seeds/references/budgets and recorded model/toolkit versions; measure feature coverage, regressions, repair cost, runtime, and uncertainty.
+- [x] Evaluate current/proposed prompts on fixed briefs with matched seeds/references/budgets and recorded model/toolkit versions; measure feature coverage, regressions, repair cost, runtime, and uncertainty.
 
 **Exit:** optional, evidence-backed calibration and recorded examples supporting the material/sprite quality claims.
 
@@ -202,8 +202,9 @@ Evidence: `src/components/model-viewer/index.tsx` combines toolbar, scene, camer
 
 ## Remaining acceptance and consolidation
 
-1. **M10 live prompt evaluation:** fixed-seed recipe evaluation is recorded. A provider is now available for matched-budget prompt trials; those trials and their quality/repair-cost report remain outstanding.
-2. **Eve sandbox acceptance:** compilation succeeds, but full sandbox prewarming still needs access to its container image registry.
+The six matched-budget material prompt trials are recorded in [the evaluation report](docs/material-prompt-evaluation.md). They identified API-contract ambiguity, insufficient channel evidence and a revision regression; they do not establish that the full prompt is superior.
+
+**Eve sandbox acceptance:** compilation succeeds, but full sandbox prewarming still needs access to its container image registry.
 
 Publication consolidation is delivered: current builds use immutable generations and an atomic pointer, with recoverable compatibility filenames. Inspection/archive readers resolve one committed generation. Runtime and publication recovery tests pass on both Windows and Linux, including cancelling a slot waiter without stopping the slot owner. Offline model rebuilds stage outputs and retain the previous successful GLB after a failed edit.
 

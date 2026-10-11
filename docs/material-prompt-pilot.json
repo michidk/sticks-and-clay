@@ -1,0 +1,1196 @@
+{
+  "version": 1,
+  "revision": "44b91effcbd29f96094df35e27e9b08cd8d345d7",
+  "limits": "Three paired briefs, one construction seed per brief, no external reference images. Experimental ablated control, not a historical production baseline. Same model configuration, toolkit, final resolution and upper call budgets; early passing stops naturally. Small pilot, no statistical significance claim.",
+  "seed": 17,
+  "size": 256,
+  "reviewRounds": 2,
+  "maxRuntimeRepairsPerBuild": 2,
+  "cases": [
+    {
+      "id": "gravel",
+      "recipe": "gravel",
+      "features": [
+        "F1",
+        "F2",
+        "F3"
+      ],
+      "brief": "Stylized gray gravel. F1: visibly larger partially buried stones over fine grains. F2: sparse darker dirt in the gaps, with coherent roughness and relief. F3: a quiet gray palette with no decorative stripes."
+    },
+    {
+      "id": "wood",
+      "recipe": "wood",
+      "features": [
+        "F1",
+        "F2",
+        "F3"
+      ],
+      "brief": "Warm brown wooden boards. F1: distinct board boundaries. F2: knots that bend surrounding grain. F3: restrained darker dirt along board gaps without a global color wash."
+    },
+    {
+      "id": "paint",
+      "recipe": "painted_metal",
+      "features": [
+        "F1",
+        "F2",
+        "F3"
+      ],
+      "brief": "Quiet sage painted steel. F1: sparse chips exposing metallic substrate. F2: a few thin scratches that expose the same substrate. F3: intact paint stays dielectric, with no extra ornament."
+    }
+  ],
+  "variants": {
+    "control": {
+      "promptSha256": "abd40f9e9228544a47f8db8d59b64d2af60bb15327189154b7e1162c84e7e010",
+      "guideSha256": "cab5c74636343a047acd3368749cd80d5bd7723bccc6b6c5d6c88851e3d82b28",
+      "judgeSha256": "df999dd85472c23ee67e202856764a6d500e5df5e6449d79bf3c9a330e083623"
+    },
+    "full": {
+      "promptSha256": "1d8ea540a632795c9098d92b01fdb6774305fee010d5866e2e289e0f8852dc1a",
+      "guideSha256": "cab5c74636343a047acd3368749cd80d5bd7723bccc6b6c5d6c88851e3d82b28",
+      "judgeSha256": "df999dd85472c23ee67e202856764a6d500e5df5e6449d79bf3c9a330e083623"
+    }
+  },
+  "runtimeSourceHashes": {},
+  "trials": [
+    {
+      "case": "gravel",
+      "variant": "control",
+      "outcome": "issues",
+      "seconds": 200.4,
+      "callCount": 5,
+      "runtimeRepairs": 1,
+      "estimatedUSD": 0.133153,
+      "unknownUsageRuns": 0,
+      "failedRuns": 0,
+      "inputTokens": 17213,
+      "outputTokens": 10057,
+      "models": [
+        "gpt-6-sol"
+      ],
+      "efforts": [
+        "high"
+      ],
+      "usageSources": [
+        "reported"
+      ],
+      "promptVersions": [
+        "0b2d00d3",
+        "df999dd8"
+      ],
+      "coverageByRound": [
+        {
+          "F1": "present",
+          "F2": "uncertain",
+          "F3": "present"
+        },
+        {
+          "F1": "present",
+          "F2": "uncertain",
+          "F3": "present"
+        }
+      ],
+      "coverageRegressions": [],
+      "reviews": [
+        {
+          "iteration": 0,
+          "passed": false,
+          "assessment": "The current 256 px maps and review sheet show a quiet, plausible stylized gravel tile at approximately the requested scale. Larger stones, fine grains, and a subdued gray palette are visible. Sparse dark patches appear in gaps, but their requested relief and roughness relationship is not clear enough to approve F2. The repeated lit tile also makes a distinctive bright stone cluster easy to recognize.",
+          "coverage": [
+            {
+              "feature": "F1: Larger partially buried stones over fine grains",
+              "state": "present",
+              "evidence": "The full-resolution albedo and opposing-light views show rounded stones roughly 10–25 px across above smaller grains, with softened edges and raised shading. At 256 px per metre, the larger stones are approximately 40–100 mm across."
+            },
+            {
+              "feature": "F2: Sparse darker dirt in gaps, with coherent roughness and relief",
+              "state": "uncertain",
+              "evidence": "Sparse dark patches are visible in gaps near (70, 205) and (180, 230) of the 256 px albedo. The roughness, height, and normal previews show broadly coherent gravel structure, but the dirt patches are too subtle to trace confidently across those channels at final resolution."
+            },
+            {
+              "feature": "F3: Quiet gray palette with no decorative stripes",
+              "state": "present",
+              "evidence": "The unlit albedo is subdued warm gray throughout, with localized stone and gap variation and no visible directional stripes."
+            },
+            {
+              "feature": "Physical scale and PBR channel coherence",
+              "state": "present",
+              "evidence": "The report specifies a 1 m, 256 px tile and a 13.34 mm height window. Bright raised stones in the height preview correspond broadly to normal detail; roughness varies between stones and gaps, and metallic is black as expected for gravel."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "F2: Dirt roughness and relief",
+              "evidence": "The dark albedo patches near (70, 205) and (180, 230) cannot be confidently identified as corresponding features in the small exported-channel previews. Visible dark color alone does not establish the requested coherent relief and roughness.",
+              "correction": "Keep the dirt sparse and gap-bound, but make its shared mask produce a legible, restrained roughness and height response at 256 px. Provide aligned, native-resolution crops of the dark patches across albedo, roughness, height, and normal for verification."
+            },
+            {
+              "severity": "minor",
+              "feature": "Repeated-tile variation",
+              "evidence": "In the review sheet’s repeated tiles, the pale clustered stones recur conspicuously near (40, 250) and (295, 250), making the one-metre repeat recognizable. No strong seam is apparent.",
+              "correction": "Reduce the contrast or distinctive grouping of the brightest cluster while preserving the quiet palette and larger-stone size range."
+            },
+            {
+              "severity": "minor",
+              "feature": "Build-source traceability",
+              "evidence": "The supplied builder script still calls float(base[\"heightWindowMm\"]), while the report presents heightWindowMm as a two-element list. That matches the previous runtime failure despite the current receipt reporting a completed build.",
+              "correction": "Supply the corrected script corresponding to the completed build, with height conversion based on the window span, so the dirt-relief construction can be reproduced."
+            }
+          ]
+        },
+        {
+          "iteration": 1,
+          "passed": false,
+          "assessment": "The current review sheet is identified as build 2c81a96257264645908e80d025ec5e1a and matches the reported 256 px maps. It shows quiet stylized gravel at a plausible 1 m scale. F2 remains unverified: dark gap patches are visible, but the supplied roughness and height views are reduced previews, so their specific response cannot be traced at native resolution. Approval requires that evidence. Compared with the previous sheet, the pale stone cluster is subdued, though the tile repeat remains recognizable.",
+          "coverage": [
+            {
+              "feature": "F1: visibly larger partially buried stones over fine grains",
+              "state": "present",
+              "evidence": "The 256 px unlit albedo and opposing-light views show softened stones roughly 10–25 px across among much smaller grains. At 256 px per metre, those stones span roughly 40–100 mm, consistent with the requested 80 mm feature scale."
+            },
+            {
+              "feature": "F2: sparse darker dirt in the gaps, with coherent roughness and relief",
+              "state": "uncertain",
+              "evidence": "The unlit albedo shows sparse dark patches in interstices, including around (78, 198) and (237, 193). The sheet's roughness and height panels are reduced previews; they do not resolve whether those same patches have a distinct, coherent roughness and shallow-fill relief response."
+            },
+            {
+              "feature": "F3: a quiet gray palette with no decorative stripes",
+              "state": "present",
+              "evidence": "The 256 px unlit albedo is subdued warm gray with localized stone and gap variation. No decorative or directional stripes are visible."
+            },
+            {
+              "feature": "Physical scale and PBR channel coherence",
+              "state": "present",
+              "evidence": "The report specifies a 1 m tile, 256 px maps and a height window of about 13 mm. The native-resolution normal and lit views broadly follow the raised stones; the metallic preview is black, appropriate for gravel. This broad coherence does not establish F2's patch-level response."
+            },
+            {
+              "feature": "Repeated lit tiles and seams",
+              "state": "present",
+              "evidence": "The review sheet's repeated lit tiles show no conspicuous edge seam. A distinctive arrangement of stones and dark gaps recurs at 256 px intervals, making the repeat recognizable."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "F2: dirt roughness and relief",
+              "evidence": "Dark dirt-like gaps are visible in the native-resolution albedo near (78, 198) and (237, 193), but roughness and height are shown only as reduced channel panels. The corresponding changes cannot be confidently identified there; color alone does not verify the requested PBR relationship.",
+              "correction": "Provide aligned, native-resolution albedo, roughness, height and normal crops through those patches. If the shared dirt response is not legible at 256 px, adjust its gap-bound mask and restrained roughness and shallow-fill height effects so the same sparse patches can be traced across channels."
+            },
+            {
+              "severity": "minor",
+              "feature": "Repeated-tile variation",
+              "evidence": "The repeated lit area still exposes the same recognizable stone and dark-gap arrangement at 256 px intervals. Compared with the previous sheet, the pale cluster is less prominent, but the repeat remains apparent; no strong seam is visible.",
+              "correction": "Reduce the contrast of the most distinctive recurring clusters or redistribute their grouping while retaining the stone-size range and quiet palette."
+            }
+          ]
+        }
+      ],
+      "inputs": {
+        "scriptSha256": "97861d28a0b74d5559945c8c8e8f28ba167618dbfb7d4ffa517837420cf1207a",
+        "parametersSha256": "5758d9a708edb117c84ff7e11f4a1ff2a443f638092b29105816e2ff9fa60686",
+        "toolkitSha256": "2e82afd12769ebe9b3569205647c82d112905d65709ff2d9b21077aa9ff0a485"
+      },
+      "toolchain": {
+        "python": "3.13.13"
+      },
+      "artifacts": [
+        {
+          "id": "albedo",
+          "sha256": "d74190ab652abf8a0ae6e8357040ce5e9efb264502de1b5ba00c66394d026952"
+        },
+        {
+          "id": "ao",
+          "sha256": "f38158f68434cc3ebe9514c0c4c69635615cbce172233603240af54642324a51"
+        },
+        {
+          "id": "calibration",
+          "sha256": "d457f22c1f9ee719985a8b97ec7dba201107d96c37532ad9a0107dfc9fbef45f"
+        },
+        {
+          "id": "height",
+          "sha256": "10ac635a2ff9cadfb69a0247606e459738a16bb09f2d148e9195ba2d6325a6cf"
+        },
+        {
+          "id": "lighting",
+          "sha256": "96b38572f0b028894bb8b3d736cc7aa592efc93f2d83c0b0aa1e65df1232f00c"
+        },
+        {
+          "id": "manifest",
+          "sha256": "b3a5762ed593b5c345a98deb677cb496d1ce85801e8f901c65401f973a84fa6d"
+        },
+        {
+          "id": "material",
+          "sha256": "162d9470d4550805b70f1990122a578202f580ae0d8766355c7a7de1bbcebcae"
+        },
+        {
+          "id": "metallic",
+          "sha256": "5933d4c44ed2bc2f431e2698b41923a18d056b24b450540bb109e7592a547060"
+        },
+        {
+          "id": "normal",
+          "sha256": "91d748577cd0ad102b4583f9edc69fb2c89c05065d79f4ea7dae4aeb0378b869"
+        },
+        {
+          "id": "orm",
+          "sha256": "4dd13760ec85a95f17be21e5161959e7342feb8e5ae83566eed082dff000389f"
+        },
+        {
+          "id": "review",
+          "sha256": "e2d5533ababc1ee35ddbd1ff2d8cb4419abbf5ab51e5e5adddb7d770add113dc"
+        },
+        {
+          "id": "roughness",
+          "sha256": "d35cfd5c486db98f66c51cf2b0acca852fbc44cfeef83794487eab2e846861a6"
+        }
+      ]
+    },
+    {
+      "case": "gravel",
+      "variant": "full",
+      "outcome": "issues",
+      "seconds": 183.05,
+      "callCount": 4,
+      "runtimeRepairs": 0,
+      "estimatedUSD": 0.116464,
+      "unknownUsageRuns": 0,
+      "failedRuns": 0,
+      "inputTokens": 15127,
+      "outputTokens": 8621,
+      "models": [
+        "gpt-6-sol"
+      ],
+      "efforts": [
+        "high"
+      ],
+      "usageSources": [
+        "reported"
+      ],
+      "promptVersions": [
+        "32dde954",
+        "df999dd8"
+      ],
+      "coverageByRound": [
+        {
+          "F1": "present",
+          "F2": "uncertain",
+          "F3": "present"
+        },
+        {
+          "F1": "present",
+          "F2": "uncertain",
+          "F3": "present"
+        }
+      ],
+      "coverageRegressions": [],
+      "reviews": [
+        {
+          "iteration": 0,
+          "passed": false,
+          "assessment": "The sheet is labeled with the reported build ID, and the supplied unlit albedo and normal images are 256 px, matching the reported map resolution. The material reads as quiet gray gravel with larger stones and smaller grains. Dark material appears in gaps, but the images do not establish that it forms the requested sparse dirt deposits with coherent roughness and relief. No clear tile seam is visible; distinctive stones repeat across the tiled preview.",
+          "coverage": [
+            {
+              "feature": "F1 — larger, partially buried stones over fine grains",
+              "state": "present",
+              "evidence": "In the native-resolution albedo, roughly 20-pixel stones coexist with much smaller grains. The normal image and review-sheet height thumbnail show rounded stone relief rather than uniformly raised outlines, consistent with partial burial at the stated 1 m tile scale."
+            },
+            {
+              "feature": "F2 — sparse darker dirt in gaps, with coherent roughness and relief",
+              "state": "uncertain",
+              "evidence": "The unlit albedo shows dark, mostly hairline gaps, but distinct sparse dirt pockets cannot be reliably separated from cracks and shadowing. The roughness and height views on the review sheet are too small to confirm their correspondence at those gaps."
+            },
+            {
+              "feature": "F3 — quiet gray palette with no decorative stripes",
+              "state": "present",
+              "evidence": "The native-resolution unlit albedo and repeated preview remain subdued gray, without visible decorative bands or directional stripes."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "F2 — dirt in gaps",
+              "evidence": "Dark marks in the unlit albedo read chiefly as narrow fracture lines. The channel thumbnails do not resolve whether selected gaps contain darker, rougher, lower-relief sediment rather than simply dark lines.",
+              "correction": "Make a few selected exposed gaps read as localized dirt deposits, not continuous outlines; carry those deposits consistently into height and roughness. Supply native-resolution aligned albedo, height, and roughness crops so that correspondence can be checked."
+            },
+            {
+              "severity": "minor",
+              "feature": "Repeated-tile variation",
+              "evidence": "The pale stone cluster and angular dark mark near the upper-right of each tile recur conspicuously in the 2×2 review preview, although no clear boundary seam is visible.",
+              "correction": "Reduce the most distinctive recurring clusters or provide placement-level tile variation while preserving seamless edges and the quiet design."
+            }
+          ]
+        },
+        {
+          "iteration": 1,
+          "passed": false,
+          "assessment": "The labeled current sheet includes a 256 px unlit albedo crop and normal map, matching the reported map resolution; its height and roughness views are smaller thumbnails. The material meets the quiet gray gravel design and shows no clear seam in the repeated lit tiles. Sparse dirt deposits and their channel correspondence remain unverified. Compared with the previous sheet, the intended wider pockets are not visibly established.",
+          "coverage": [
+            {
+              "feature": "F1 — larger, partially buried stones over fine grains",
+              "state": "present",
+              "evidence": "The 256 px unlit albedo shows larger, roughly 15–25 px stones among much smaller grains, plausible for approximately 80 mm features on a 1 m tile. Rounded forms appear in the normal map and height thumbnail, with grains visible between them."
+            },
+            {
+              "feature": "F2 — sparse darker dirt in gaps, with coherent roughness and relief",
+              "state": "uncertain",
+              "evidence": "In the unlit albedo, most dark gap marks still read as narrow lines; localized sediment pockets cannot be confidently distinguished. The sheet’s roughness and height thumbnails are too small to verify that the same locations are rougher and lower."
+            },
+            {
+              "feature": "F3 — quiet gray palette with no decorative stripes",
+              "state": "present",
+              "evidence": "The unlit albedo and repeated lit tiles are subdued gray, without visible decorative stripes. The metallic thumbnail is uniformly black, appropriate for gravel and dirt."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "F2 — sparse dirt deposits and coherent PBR channels",
+              "evidence": "Dark marks in the 256 px albedo remain predominantly hairline gaps. No clearly wider, intermittent dirt pockets can be matched to roughness and relief changes in the small channel thumbnails; the proposed improvement over the previous sheet is not visually established.",
+              "correction": "Make selected exposed gaps visibly wider as localized dark sediment deposits, rather than continuous outlines, and carry their masks into lower height and higher roughness. Provide aligned native-resolution albedo, height, and roughness crops to verify correspondence."
+            },
+            {
+              "severity": "minor",
+              "feature": "Repeated-tile variation",
+              "evidence": "The pale stone cluster and dark angular mark near the upper-right of each tile recur conspicuously in the 2×2 lit preview, although no clear boundary seam is visible.",
+              "correction": "Reduce those distinctive marks or vary stone placement across tile instances while preserving seamless edges and the quiet palette."
+            }
+          ]
+        }
+      ],
+      "inputs": {
+        "scriptSha256": "346e8e5ef037e319c6d6c139403e41a226e3605b6167796fa335a53bc75c1e15",
+        "parametersSha256": "5758d9a708edb117c84ff7e11f4a1ff2a443f638092b29105816e2ff9fa60686",
+        "toolkitSha256": "2e82afd12769ebe9b3569205647c82d112905d65709ff2d9b21077aa9ff0a485"
+      },
+      "toolchain": {
+        "python": "3.13.13"
+      },
+      "artifacts": [
+        {
+          "id": "albedo",
+          "sha256": "8ae44fdcba35cf82244365a40d181362bd7c557a85bc271a6c4d0253ac4173bf"
+        },
+        {
+          "id": "ao",
+          "sha256": "ab0c45fd17faf786a7858174f80a15fe696237bad865481b0c76be8c0100c30f"
+        },
+        {
+          "id": "calibration",
+          "sha256": "0908ac35920ee2201c8eed4d382319d708497565e4a0d2066dc3c65032552fab"
+        },
+        {
+          "id": "height",
+          "sha256": "04ea554102a76edb10df508d6bc37d3364fd167c1434ea2ee6036b86d95d5eda"
+        },
+        {
+          "id": "lighting",
+          "sha256": "4729f0078404bf1f1242f16d24b8cb5eb9127252126c7de184bda0e989cf278c"
+        },
+        {
+          "id": "manifest",
+          "sha256": "db2e2bdce374e3f18633b2d47ef6ea07aa823cde460e471b45a29e3900f256db"
+        },
+        {
+          "id": "material",
+          "sha256": "a5c5fee7ba73fbf9c542ff23f98b7d1b96ac69c7ca2e366273503dd29d6bf0c2"
+        },
+        {
+          "id": "metallic",
+          "sha256": "5933d4c44ed2bc2f431e2698b41923a18d056b24b450540bb109e7592a547060"
+        },
+        {
+          "id": "normal",
+          "sha256": "eec3462fa700c9ba3de251b47baccad21aa166033e87cb176b252696fb386a56"
+        },
+        {
+          "id": "orm",
+          "sha256": "77f926933f0f347a74aca7678f08a1cbb0e9c075cf6a0813723328d83274184f"
+        },
+        {
+          "id": "review",
+          "sha256": "f67e9908df9e84ba152c74f407470d98a30c8d691cb03249ed2d61ed604eda69"
+        },
+        {
+          "id": "roughness",
+          "sha256": "00e52678118f1f57322e4fa6e480f0396117699f37d5f8103bf00fb8de59b6ef"
+        }
+      ]
+    },
+    {
+      "case": "wood",
+      "variant": "control",
+      "outcome": "approved",
+      "seconds": 216.27,
+      "callCount": 4,
+      "runtimeRepairs": 0,
+      "estimatedUSD": 0.141038,
+      "unknownUsageRuns": 0,
+      "failedRuns": 0,
+      "inputTokens": 17864,
+      "outputTokens": 10531,
+      "models": [
+        "gpt-6-sol"
+      ],
+      "efforts": [
+        "high"
+      ],
+      "usageSources": [
+        "reported"
+      ],
+      "promptVersions": [
+        "0b2d00d3",
+        "df999dd8"
+      ],
+      "coverageByRound": [
+        {
+          "F1": "present",
+          "F2": "missing",
+          "F3": "present"
+        },
+        {
+          "F1": "present",
+          "F2": "present",
+          "F3": "present"
+        }
+      ],
+      "coverageRegressions": [],
+      "reviews": [
+        {
+          "iteration": 0,
+          "passed": false,
+          "assessment": "The supplied images are labeled as the current build and show 256 px maps, consistent with the receipt. The material reads as quiet, warm-brown boards with localized dark gaps. The required grain bending around knots is not discernible at final resolution, so the brief is not yet met.",
+          "coverage": [
+            {
+              "feature": "Warm brown wooden boards",
+              "state": "present",
+              "evidence": "The full-resolution unlit albedo shows warm brown, lengthwise wood boards without an overall dirt wash."
+            },
+            {
+              "feature": "F1: distinct board boundaries",
+              "state": "present",
+              "evidence": "Narrow, continuous board boundaries are visible in the unlit albedo, normal map, and repeated lit preview."
+            },
+            {
+              "feature": "F2: knots that bend surrounding grain",
+              "state": "missing",
+              "evidence": "The unlit albedo contains faint oval knot-like marks, but the adjacent lengthwise grain appears essentially straight at 256 px. A surrounding bend is not discernible in the albedo or lit views."
+            },
+            {
+              "feature": "F3: restrained darker dirt along board gaps without a global color wash",
+              "state": "present",
+              "evidence": "Darkening is concentrated in the narrow gap lines of the unlit albedo; board interiors remain comparatively clean."
+            },
+            {
+              "feature": "Physical scale and coherent PBR channels",
+              "state": "present",
+              "evidence": "The receipt specifies a 1 m, 256 px tile with approximately ten boards, consistent with the visible layout. Exported previews show gap features aligned across color, height, normal, roughness, and AO; metallic is black. The repeated lit views show no obvious wrap break, despite seam warnings in the report."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "F2: knots that bend surrounding grain",
+              "evidence": "At final resolution, the faint knot-like ovals in the unlit crop do not visibly redirect nearby grain lines; the corresponding lit regions do not clarify the bend.",
+              "correction": "Increase the knot-local grain displacement or make a few continuous grain lines trace visibly around each knot, while retaining the restrained contrast. Verify the bend in a new unlit 256 px crop and repeated lit preview."
+            }
+          ]
+        },
+        {
+          "iteration": 1,
+          "passed": true,
+          "assessment": "The current review sheet and separately supplied unlit albedo and normal are labeled for build 6407fb9e5ada4c6dafde1e15ad23bab4. The maps are presented at their reported final 256 px resolution. Compared with the previous sheet, the knots now show subtle but discernible grain curvature. The quiet stylized material meets the brief; the repeated lit views show no obvious wrap break.",
+          "coverage": [
+            {
+              "feature": "Warm brown wooden boards",
+              "state": "present",
+              "evidence": "The 256 px unlit albedo shows warm-brown, lengthwise boards with restrained tonal variation."
+            },
+            {
+              "feature": "F1: distinct board boundaries",
+              "state": "present",
+              "evidence": "Narrow continuous boundaries are visible in the unlit albedo, height and normal previews, and repeated lit views."
+            },
+            {
+              "feature": "F2: knots that bend surrounding grain",
+              "state": "present",
+              "evidence": "In the current unlit albedo, eye-shaped grain contours curve around several knot centers, notably near x≈115, y≈175 and x≈165, y≈105. This is more discernible than in the previous sheet, though intentionally subtle."
+            },
+            {
+              "feature": "F3: restrained darker dirt along board gaps without a global color wash",
+              "state": "present",
+              "evidence": "Darker color is concentrated along the narrow board gaps in the unlit albedo; board interiors retain their warm brown color."
+            },
+            {
+              "feature": "Physical scale and coherent PBR channels",
+              "state": "present",
+              "evidence": "The reported 1 m tile and 256 px maps show approximately ten boards, a plausible scale for the visible board and knot sizes. Gap troughs in the height preview align with normal and AO changes; roughness remains high and metallic is black. Repeated lit tiles show no obvious seam despite the report’s seam warnings."
+            }
+          ],
+          "findings": []
+        }
+      ],
+      "inputs": {
+        "scriptSha256": "ab5180966d26b58ecec844c11f5e14856bb3360ac910ca5c0925c356ceeceaf5",
+        "parametersSha256": "1e514bf557da9be44fcf5707b8e3545837fd0ea0fec5e0ad606ea0278b386f6f",
+        "toolkitSha256": "2e82afd12769ebe9b3569205647c82d112905d65709ff2d9b21077aa9ff0a485"
+      },
+      "toolchain": {
+        "python": "3.13.13"
+      },
+      "artifacts": [
+        {
+          "id": "albedo",
+          "sha256": "dbb4518a6650e3648fcee424a63f88759c58129ec3e21ac1fc8c473592cd1834"
+        },
+        {
+          "id": "ao",
+          "sha256": "ce00c809d9a5fb8fbfae48bb682a2b8b8a6dc6ada5421f52094eb457b8a14a73"
+        },
+        {
+          "id": "calibration",
+          "sha256": "3119a021b18b879568667fa3ab4a56e2bf0bae7f8ac2204d81075486961e79a7"
+        },
+        {
+          "id": "height",
+          "sha256": "929b029c5ab51afb4311d04cec55e2447543163cadbc83c2d431fa7ebf54b6bf"
+        },
+        {
+          "id": "lighting",
+          "sha256": "0c01125b4f09edc0260a961b6d9961cb02bd187ea4554761c9447042e53583b1"
+        },
+        {
+          "id": "manifest",
+          "sha256": "33eb118c9da4181c4ce27d39224a08eafd7cca36bd911457519808b23eafd4f4"
+        },
+        {
+          "id": "material",
+          "sha256": "7a9be3546ce46899ef5a482acf3bb4ff616bd1b4ef623c7d10e34758422027a7"
+        },
+        {
+          "id": "metallic",
+          "sha256": "5933d4c44ed2bc2f431e2698b41923a18d056b24b450540bb109e7592a547060"
+        },
+        {
+          "id": "normal",
+          "sha256": "a1a260ec9fd7eb3370667cb16f1822e499c1f75c5399fdd9020304195fb78700"
+        },
+        {
+          "id": "orm",
+          "sha256": "1afffcf31cfb32e1fab43e3f9ada2049df4bc73eaa4719c049db2c2c314d9032"
+        },
+        {
+          "id": "review",
+          "sha256": "403d239a8b0fda2e7145504046af399574ab3045511dff7a803af5fa6fd69f3f"
+        },
+        {
+          "id": "roughness",
+          "sha256": "7cf3b03ec2c957b895a93aa54eb1d26b188ba2decd365170b98ed881225eb063"
+        }
+      ]
+    },
+    {
+      "case": "wood",
+      "variant": "full",
+      "outcome": "issues",
+      "seconds": 306.48,
+      "callCount": 5,
+      "runtimeRepairs": 1,
+      "estimatedUSD": 0.185698,
+      "unknownUsageRuns": 0,
+      "failedRuns": 0,
+      "inputTokens": 21659,
+      "outputTokens": 14238,
+      "models": [
+        "gpt-6-sol"
+      ],
+      "efforts": [
+        "high"
+      ],
+      "usageSources": [
+        "reported"
+      ],
+      "promptVersions": [
+        "32dde954",
+        "df999dd8"
+      ],
+      "coverageByRound": [
+        {
+          "F1": "present",
+          "F2": "present",
+          "F3": "present"
+        },
+        {
+          "F1": "present",
+          "F2": "uncertain",
+          "F3": "present"
+        }
+      ],
+      "coverageRegressions": [
+        "F2"
+      ],
+      "reviews": [
+        {
+          "iteration": 0,
+          "passed": false,
+          "assessment": "The final-resolution images show a muted warm-brown wood material with distinct board joints, sparse knots that bend nearby grain, and darker dirt confined to the gaps. The material is not ready to approve because the repeated preview shows a visible vertical tile boundary. The pronounced lengthwise relief also warrants adjustment for the approved quiet design.",
+          "coverage": [
+            {
+              "feature": "Evidence identity and resolution",
+              "state": "present",
+              "evidence": "The supplied images are labeled as the current build; the unlit albedo and normal are shown at the reported 256×256 map resolution. The receipt reports a completed final build. The earlier runtime failure is not evidence of a defect in this completed output."
+            },
+            {
+              "feature": "Warm brown wooden substrate",
+              "state": "present",
+              "evidence": "The full-resolution unlit albedo is muted brown, with lengthwise grain visible on the board faces."
+            },
+            {
+              "feature": "F1: distinct board boundaries",
+              "state": "present",
+              "evidence": "Narrow horizontal joints are visible across the unlit albedo and repeated lit preview, separating approximately six boards per 1 m tile."
+            },
+            {
+              "feature": "F2: knots that bend surrounding grain",
+              "state": "present",
+              "evidence": "Small dark knot shapes in the unlit albedo, including near the upper middle, visibly deflect adjacent grain rather than merely sitting over straight lines."
+            },
+            {
+              "feature": "F3: restrained darker dirt along board gaps without a global color wash",
+              "state": "present",
+              "evidence": "The joints are darker than the neighboring board faces in the unlit crop; the faces retain their brown color without an apparent tile-wide dirt overlay."
+            },
+            {
+              "feature": "Physical scale and coherent PBR channels",
+              "state": "uncertain",
+              "evidence": "The reported 1 m tile gives plausible board and knot dimensions, and the height, normal, and lit views share the joint and grain directions. However, strong repeating ridges in the height map and opposing-light views make the effective relief difficult to judge as quiet wood at this resolution."
+            },
+            {
+              "feature": "Seamless tiling and unobtrusive repetition",
+              "state": "missing",
+              "evidence": "In the review sheet's repeated material preview, a vertical tonal/grain discontinuity is visible at the x≈256 tile join. The same knot placements recur at regular tile intervals."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "Seamless tiling and unobtrusive repetition",
+              "evidence": "The repeated review preview exposes a vertical join near x≈256, where the grain and board-face tone change abruptly. The report's elevated albedo seam ratio supports investigating that visible join but is not the sole basis for the finding.",
+              "correction": "Make the final albedo and grain modulation periodic across the left and right edges, including any inherited wood variation; then recheck the full-resolution unlit crop and repeated lit tiles for the join."
+            },
+            {
+              "severity": "minor",
+              "feature": "Physical scale and quiet PBR relief",
+              "evidence": "The height panel has high-contrast, closely repeated ridges, and both opposing-light views emphasize ribbing across the board faces more than the subtler knots and joints.",
+              "correction": "Reduce or broaden the board-face height variation and regenerate normals from the adjusted height, while keeping the board gaps recessed and the knot deformation legible. Verify the result under both lights at the stated 1 m scale."
+            }
+          ]
+        },
+        {
+          "iteration": 1,
+          "passed": false,
+          "assessment": "The current final-resolution sheet shows quiet warm-brown boards with distinct, darker joints. Compared with the previous sheet, the strong ribbing and conspicuous vertical join are no longer apparent. Approval is blocked because the knots appear as small dark spots, but their required effect on the surrounding grain is not readable at 256 px.",
+          "coverage": [
+            {
+              "feature": "Evidence identity and resolution",
+              "state": "present",
+              "evidence": "The current review sheet is labeled build 030d3316e4ad4522923f764851b16fb4. The supplied unlit albedo and normal are 256×256, matching the final map dimensions in the receipt; the previous sheet is separately identified."
+            },
+            {
+              "feature": "Warm brown wooden boards",
+              "state": "present",
+              "evidence": "The full-resolution unlit albedo shows muted warm-brown board faces with restrained lengthwise grain."
+            },
+            {
+              "feature": "F1: distinct board boundaries",
+              "state": "present",
+              "evidence": "Approximately six narrow horizontal joints divide the 256×256 albedo crop; the boundaries remain visible in the repeated lit preview."
+            },
+            {
+              "feature": "F2: knots that bend surrounding grain",
+              "state": "uncertain",
+              "evidence": "Small dark ovals are visible on several boards in the full-resolution albedo, but the adjacent grain is too faint to verify a bend around them. The previous review sheet showed more legible curved grain near its knots."
+            },
+            {
+              "feature": "F3: restrained darker dirt along board gaps without a global color wash",
+              "state": "present",
+              "evidence": "The unlit albedo shows localized darkening on the horizontal joints while the board faces retain a consistent brown tone."
+            },
+            {
+              "feature": "Physical scale and PBR-channel coherence",
+              "state": "present",
+              "evidence": "At the reported 1 m tile width, roughly six boards and narrow joints have plausible stylized scale. The exported height, normal, and AO panels place their strongest joint features at the albedo boundaries; roughness is high and metallic is black, consistent with dry wood. Knot-channel detail is too subtle to establish F2 independently."
+            },
+            {
+              "feature": "Quiet relief, seams, and repeated tiles",
+              "state": "present",
+              "evidence": "The current opposing-light sheet is substantially less ribbed than the previous one. No conspicuous vertical join is visible at the repeated preview's x≈256 or x≈512 boundaries. The report flags seam ratios for investigation, but the preview does not substantiate a seam defect."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "F2: knots that bend surrounding grain",
+              "evidence": "In the current 256×256 unlit albedo, the knots read as soft dark spots near the upper and middle boards; surrounding grain does not visibly curve around them. The corresponding effect is not resolved by the normal or height panels.",
+              "correction": "Increase the legibility of localized grain deflection around the knots in the final 256 px albedo, with matching subtle height and normal structure. Keep the board-face relief quiet, then verify the bends in a new native-resolution unlit crop and repeated lit sheet."
+            }
+          ]
+        }
+      ],
+      "inputs": {
+        "scriptSha256": "dc392d655a0eb659fdbc64ba7b6bec7018a64dba95b1ac2842987ec79a2966e0",
+        "parametersSha256": "1e514bf557da9be44fcf5707b8e3545837fd0ea0fec5e0ad606ea0278b386f6f",
+        "toolkitSha256": "2e82afd12769ebe9b3569205647c82d112905d65709ff2d9b21077aa9ff0a485"
+      },
+      "toolchain": {
+        "python": "3.13.13"
+      },
+      "artifacts": [
+        {
+          "id": "albedo",
+          "sha256": "77342a447dafedc09d098beaa735524c006ede8a1524bc1500deeee0898d6300"
+        },
+        {
+          "id": "ao",
+          "sha256": "a878a8c9e5de1f3149c39e574371c12aa439fc46d4b6eef43d192ca4b6e3ede6"
+        },
+        {
+          "id": "calibration",
+          "sha256": "5a86926775d4a1d9c5cef7133920f3c9f6bde3e6ce0c0a7e75e1ccdf702e8450"
+        },
+        {
+          "id": "height",
+          "sha256": "21ad2cf76a914768248645a103c4bab534cfe1152a081308712920c979b81291"
+        },
+        {
+          "id": "lighting",
+          "sha256": "69dd70427532426c073f05601c18eed910606033d8e3802d1414f173a571a60e"
+        },
+        {
+          "id": "manifest",
+          "sha256": "8a51c05ac481e47afead7254257211ae1eccfa0c24b7a5b46e954d13df9eea1e"
+        },
+        {
+          "id": "material",
+          "sha256": "98507b5d89eb1d5dfbef97f14a6634164c89f9e75dd0984162e2a928a0f8a741"
+        },
+        {
+          "id": "metallic",
+          "sha256": "5933d4c44ed2bc2f431e2698b41923a18d056b24b450540bb109e7592a547060"
+        },
+        {
+          "id": "normal",
+          "sha256": "ee0fca26b60d2f0bb63f9f1c588e1dfd384c245d051b9d6e9621884becab3f1a"
+        },
+        {
+          "id": "orm",
+          "sha256": "e3765593db79ce963b9fd07bf44255b1dfb1fa791c9c32f4f9763157b191b6bb"
+        },
+        {
+          "id": "review",
+          "sha256": "9f8679514f2bf446d6224612246fe6563e0b129a682a5e0a5737ca1be2e01944"
+        },
+        {
+          "id": "roughness",
+          "sha256": "d1fdc8804bed47a89430fdc033c75090c3e4006210090dd2107bdd76a00b8f47"
+        }
+      ]
+    },
+    {
+      "case": "paint",
+      "variant": "control",
+      "outcome": "approved",
+      "seconds": 202.68,
+      "callCount": 4,
+      "runtimeRepairs": 0,
+      "estimatedUSD": 0.139214,
+      "unknownUsageRuns": 0,
+      "failedRuns": 0,
+      "inputTokens": 17862,
+      "outputTokens": 10349,
+      "models": [
+        "gpt-6-sol"
+      ],
+      "efforts": [
+        "high"
+      ],
+      "usageSources": [
+        "reported"
+      ],
+      "promptVersions": [
+        "0b2d00d3",
+        "df999dd8"
+      ],
+      "coverageByRound": [
+        {
+          "F1": "missing",
+          "F2": "uncertain",
+          "F3": "missing"
+        },
+        {
+          "F1": "present",
+          "F2": "present",
+          "F3": "present"
+        }
+      ],
+      "coverageRegressions": [],
+      "reviews": [
+        {
+          "iteration": 0,
+          "passed": false,
+          "assessment": "The attached sheet shows 256px map crops consistent with the reported output dimensions, plus repeated lit tiles; the reported file hashes cannot be verified visually. The material reads as heavily pitted, speckled grey-brown steel rather than quiet sage painted steel with sparse, deliberate wear. No obvious tile-edge seam appears, but distinctive marks repeat conspicuously.",
+          "coverage": [
+            {
+              "feature": "F1: sparse chips exposing metallic substrate",
+              "state": "missing",
+              "evidence": "The unlit albedo and metallic crops show numerous light, metallic spots and flakes across the tile, not sparse chips."
+            },
+            {
+              "feature": "F2: a few thin scratches exposing the same substrate",
+              "state": "uncertain",
+              "evidence": "Thin, broken marks appear in the albedo crop, but they are numerous and hard to distinguish from the pervasive pitting at 256px. A few discrete substrate-exposing scratches cannot be confirmed."
+            },
+            {
+              "feature": "F3: intact paint stays dielectric, with no extra ornament",
+              "state": "missing",
+              "evidence": "Most of the metallic crop is black, supporting dielectric paint where intact, but the unlit crop and lit tiles have widespread flecks, grooves and relief outside a few wear marks."
+            },
+            {
+              "feature": "Quiet sage painted steel",
+              "state": "missing",
+              "evidence": "The unlit albedo reads grey-brown rather than sage; the sphere and both lit panels emphasize a rough, pitted surface."
+            },
+            {
+              "feature": "Physical scale and coherent PBR channels",
+              "state": "uncertain",
+              "evidence": "Light albedo marks broadly coincide with white metallic marks, dark height depressions and normal detail. However, the dominant small pits and blanket normal texture do not visibly support the requested sparse wear at the stated 1m tile scale. The reported height span alone does not establish appropriate paint relief."
+            },
+            {
+              "feature": "Seamless, non-distracting repeated tiles",
+              "state": "missing",
+              "evidence": "No clear edge discontinuity is visible in the 2×2 lit view, but distinctive bright chips and grooves recur identically in each quadrant."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "F1: sparse metallic chips",
+              "evidence": "The albedo and metallic crops contain widespread matching light and white flecks; the lit sphere looks extensively chipped.",
+              "correction": "Remove or sharply reduce the underlying recipe's broad wear. Limit exposed-metal albedo and metallic masks to a small number of intentional chips, with corresponding localized height, normal and roughness changes."
+            },
+            {
+              "severity": "major",
+              "feature": "F3: quiet intact paint",
+              "evidence": "Fine grooves and pits cover the nominally intact regions in the normal crop and remain prominent under both lights.",
+              "correction": "Flatten or greatly attenuate background height and normal variation outside the wear masks. Keep intact paint dielectric and comparatively even, without decorative pitting."
+            },
+            {
+              "severity": "major",
+              "feature": "Quiet sage color",
+              "evidence": "The unlit albedo crop is grey-brown, so the color mismatch is not merely a lighting effect.",
+              "correction": "Set the intact paint's unlit base color to a muted sage and evaluate that color separately from the exposed steel."
+            },
+            {
+              "severity": "major",
+              "feature": "F2: a few thin substrate scratches",
+              "evidence": "The 256px albedo crop shows many broken thin marks among the pits; three distinct short scratches exposing the chip substrate are not reliably identifiable.",
+              "correction": "Suppress incidental scratch-like recipe detail, then make a few legible, thin scratch masks that share the chips' substrate albedo and metallic response. Check them at native 256px resolution."
+            },
+            {
+              "severity": "minor",
+              "feature": "Repeated-tile appearance",
+              "evidence": "Identical bright marks recur at 256px intervals in the review sheet's 2×2 lit area, although no obvious seam is visible.",
+              "correction": "After reducing the conspicuous marks, inspect repeated lit tiles again; avoid a single highly recognizable mark arrangement if repetition remains distracting."
+            }
+          ]
+        },
+        {
+          "iteration": 1,
+          "passed": true,
+          "assessment": "The current 256px evidence shows a quiet, muted sage-painted surface with a few discrete chips and thin scratches. The unlit albedo, exported channel previews and opposing-light views support the intended material; the earlier pervasive pitting is gone. No tile-edge seam is apparent. Repetition remains noticeable but is a minor issue for this restrained stylized design. The receipt reports native 256px maps, consistent with the attached full-resolution albedo and normal images; file hashes cannot be verified visually.",
+          "coverage": [
+            {
+              "feature": "F1: sparse chips exposing metallic substrate",
+              "state": "present",
+              "evidence": "A few small dark chips are visible in the native unlit albedo; corresponding light marks appear in the review sheet’s metallic crop, with localized roughness and height changes."
+            },
+            {
+              "feature": "F2: a few thin scratches exposing the same substrate",
+              "state": "present",
+              "evidence": "The native albedo shows three short, narrow linear marks. Their positions correspond to bright lines in the metallic crop and darker marks in roughness and height."
+            },
+            {
+              "feature": "F3: intact paint stays dielectric, with no extra ornament",
+              "state": "present",
+              "evidence": "The paint between wear marks is even in the unlit albedo and repeated lit views; the metallic crop is black outside the localized marks. The previous widespread pits and flecks are absent."
+            },
+            {
+              "feature": "Quiet sage painted steel at coherent physical scale",
+              "state": "present",
+              "evidence": "The unlit albedo reads as muted grey-sage. On the reported 1m, 256px tile, the visible wear is small and localized; the nearly flat native normal is consistent with shallow paint loss rather than broad 12mm plate relief. Exact millimetre depths cannot be established from the images alone."
+            },
+            {
+              "feature": "Repeating tile",
+              "state": "present",
+              "evidence": "The 2×2 review view and opposing-light sheet show no apparent edge discontinuity, though the same sparse marks are readily recognizable in adjacent tiles."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "minor",
+              "feature": "Repeated-tile appearance",
+              "evidence": "In the review sheet’s 2×2 lit area, the two upper scratches and other sparse marks recur at identical positions, making the tile pattern easy to spot despite the absence of a visible seam.",
+              "correction": "If this material will cover large uninterrupted areas, inspect a larger tiled preview and vary mark placement across tile variants or make the most recognizable scratches less conspicuous while preserving sparse wear."
+            }
+          ]
+        }
+      ],
+      "inputs": {
+        "scriptSha256": "e9b2015f586f2fd92d6452f63735ece874046940500628a078ca6eb290eae3e4",
+        "parametersSha256": "9c28ef8c1046e97f45539d15a9e1c8f25e41b241270cbd25a356416a9a633e54",
+        "toolkitSha256": "2e82afd12769ebe9b3569205647c82d112905d65709ff2d9b21077aa9ff0a485"
+      },
+      "toolchain": {
+        "python": "3.13.13"
+      },
+      "artifacts": [
+        {
+          "id": "albedo",
+          "sha256": "ef60272df70d5bc04b3c36c45eb67f08ca3f5cbfcdf8fcaccfe2325b215bb398"
+        },
+        {
+          "id": "ao",
+          "sha256": "9892149c54862711384e294ab5fd1253f939d764abebd004408b0b979ab30254"
+        },
+        {
+          "id": "calibration",
+          "sha256": "8f9fdff326864ccce9de9611d4db299f22e9be3d1499e036db1ac2b059581562"
+        },
+        {
+          "id": "height",
+          "sha256": "935cedc6ddb7516cedcaf95f9be1e6e7a1e66f83f9899353a3b1460fa671854d"
+        },
+        {
+          "id": "lighting",
+          "sha256": "0dd87eb7bb14aeb4f87945195bad71fcb368a756edccb193f41faf1875d0db91"
+        },
+        {
+          "id": "manifest",
+          "sha256": "95e00e4657d92cf3165fe86e547f58f336687ddbfaba2fd73b97d5531f43fbcb"
+        },
+        {
+          "id": "material",
+          "sha256": "a24610808813108b5fcef0615a46bc270928ffa1979997ec8911b188db393bf5"
+        },
+        {
+          "id": "metallic",
+          "sha256": "0c2e9029cd741d0e30077fe8a0d7fc2ef30f29c51a4676f544622d71525310ba"
+        },
+        {
+          "id": "normal",
+          "sha256": "c1d137e47409185ba75cb52b9353667e2cb31e63b063a7961707e882f240055f"
+        },
+        {
+          "id": "orm",
+          "sha256": "23c34600a05df02416beb13b0c7c2a33d9c049cf55b77a3f027f3c3163789856"
+        },
+        {
+          "id": "review",
+          "sha256": "35a240545455896ffe04230862388f703d79158a202c07d9b4834dc1b343a908"
+        },
+        {
+          "id": "roughness",
+          "sha256": "37f37e4401650ea30578b2431b6de4352d599b6d755360071a11fb0470a8960e"
+        }
+      ]
+    },
+    {
+      "case": "paint",
+      "variant": "full",
+      "outcome": "issues",
+      "seconds": 226.05,
+      "callCount": 4,
+      "runtimeRepairs": 0,
+      "estimatedUSD": 0.141856,
+      "unknownUsageRuns": 0,
+      "failedRuns": 0,
+      "inputTokens": 17323,
+      "outputTokens": 10721,
+      "models": [
+        "gpt-6-sol"
+      ],
+      "efforts": [
+        "high"
+      ],
+      "usageSources": [
+        "reported"
+      ],
+      "promptVersions": [
+        "32dde954",
+        "df999dd8"
+      ],
+      "coverageByRound": [
+        {
+          "F1": "present",
+          "F2": "present",
+          "F3": "present"
+        },
+        {
+          "F1": "present",
+          "F2": "present",
+          "F3": "present"
+        }
+      ],
+      "coverageRegressions": [],
+      "reviews": [
+        {
+          "iteration": 0,
+          "passed": false,
+          "assessment": "The review sheet is labeled with the reported build ID, and the supplied albedo and normal images are 256×256, matching the final map resolution. The sage paint, sparse chips, thin scratches, and corresponding metallic and roughness changes are visible. Approval is blocked by the strongly pebbled lit finish and conspicuous repetition of the wear pattern across the 1 m tiles.",
+          "coverage": [
+            {
+              "feature": "Quiet sage painted steel",
+              "state": "missing",
+              "evidence": "The unlit albedo is muted sage, but both lit tiles and the sphere show dense, high-contrast pebbled relief across otherwise intact paint; the surface does not read as quiet painted steel."
+            },
+            {
+              "feature": "F1: sparse chips exposing metallic substrate",
+              "state": "present",
+              "evidence": "The 256×256 albedo shows a handful of separated dark chips. The review-sheet metallic strip places white exposed-metal marks at those locations, with corresponding lower roughness."
+            },
+            {
+              "feature": "F2: a few thin scratches exposing the same substrate",
+              "state": "present",
+              "evidence": "Several short, narrow dark lines are visible in the full-resolution albedo; matching thin marks appear in the metallic and roughness strips."
+            },
+            {
+              "feature": "F3: intact paint stays dielectric, with no extra ornament",
+              "state": "present",
+              "evidence": "The metallic strip is black outside the chips and scratches. The unlit paint has no additional decorative shapes, although its lit relief is too prominent for the quiet design."
+            },
+            {
+              "feature": "Physical scale and coherent PBR channels",
+              "state": "present",
+              "evidence": "The reported maps are 256×256 for a 1 m tile; visible chip and scratch widths are broadly consistent with the stated millimetre-scale marks. Albedo, metallic, and roughness marks align. The height and normal views chiefly show pervasive background relief rather than clearly resolved chip-edge depth."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "Quiet painted-steel finish",
+              "evidence": "Fine, strongly contrasted bumps cover both opposing-light tiles, and the review-sheet sphere has pronounced pebbled shading. This relief dominates the sparse wear despite the quiet, nearly flat unlit albedo.",
+              "correction": "Reduce the intact-paint height variation and derived normal strength while retaining the specified physical tile scale; keep the chips and scratches as the primary visible surface interruptions."
+            },
+            {
+              "severity": "major",
+              "feature": "Repeated lit tiles",
+              "evidence": "Distinctive chips and scratches recur at exactly the same positions in adjacent lit tiles—for example, the chip near (117,140) reappears near (373,140) on the review sheet. The sparse wear makes the 1 m repeat readily recognizable, though no hard seam is evident.",
+              "correction": "Use a larger non-repeating wear layout or several tileable wear variants, then check the repeated lit preview for recognizable copies and edge continuity."
+            }
+          ]
+        },
+        {
+          "iteration": 1,
+          "passed": false,
+          "assessment": "The attached review sheet and separately supplied 256×256 albedo and normal images are consistent with the reported final-resolution build. Compared with the previous sheet, the pronounced pebbling is gone: the paint now reads as quiet, muted sage. Sparse chips and two thin scratches expose matching steel channels, and intact paint remains dielectric. Approval is still blocked by the readily recognizable wear pattern repeated across the lit 1 m tiles. The reported roughness and metallic seam warnings warrant inspection, but no hard seam is apparent in the preview.",
+          "coverage": [
+            {
+              "feature": "Quiet sage painted steel",
+              "state": "present",
+              "evidence": "The full-resolution unlit albedo is muted sage without decorative patterning; the current lit tiles and sphere are substantially smoother than the supplied previous review sheet."
+            },
+            {
+              "feature": "F1: sparse chips exposing metallic substrate",
+              "state": "present",
+              "evidence": "Separated dark chips in the 256×256 albedo coincide with white marks in the review-sheet metallic strip, darker roughness marks, and recessed height marks."
+            },
+            {
+              "feature": "F2: a few thin scratches exposing the same substrate",
+              "state": "present",
+              "evidence": "Two short, narrow dark lines in the albedo coincide with thin metallic and roughness marks. They appear approximately 1–2 pixels wide at the 1 m, 256-pixel scale."
+            },
+            {
+              "feature": "F3: intact paint stays dielectric, with no extra ornament",
+              "state": "present",
+              "evidence": "The metallic strip is black over the broad intact paint areas; the unlit albedo shows only sparse chips and scratches."
+            },
+            {
+              "feature": "Physical scale and coherent PBR channels",
+              "state": "present",
+              "evidence": "The receipt reports 256×256 maps for a 1 m tile. Visible chips span only a few pixels and scratches are short and thin, consistent with the stated millimetre-scale construction. Albedo, roughness, metallic, and height marks align; the full-resolution normal is nearly flat over intact paint."
+            },
+            {
+              "feature": "Repeated lit tiles and edge continuity",
+              "state": "missing",
+              "evidence": "The same distinctive chip near review-sheet (117,140) recurs near (373,140), with the rest of the wear layout repeating in adjacent tiles. No hard boundary is apparent, but the 1 m repeat is obvious."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "Repeated lit tiles and edge continuity",
+              "evidence": "Identical chips and scratches recur at corresponding positions across the review sheet’s adjacent lit tiles, including the chips near (117,140) and (373,140). The smaller marks reduce their prominence relative to the previous sheet but do not remove the recognizable repeat.",
+              "correction": "Provide several tileable wear variants or a larger wear-layout tile, then review adjacent lit tiles for recognizable copies while preserving edge continuity."
+            }
+          ]
+        }
+      ],
+      "inputs": {
+        "scriptSha256": "6be16558a169e669373569af674cc9bffdc682e38ab0d7e1c3649fe69e23ea57",
+        "parametersSha256": "9c28ef8c1046e97f45539d15a9e1c8f25e41b241270cbd25a356416a9a633e54",
+        "toolkitSha256": "2e82afd12769ebe9b3569205647c82d112905d65709ff2d9b21077aa9ff0a485"
+      },
+      "toolchain": {
+        "python": "3.13.13"
+      },
+      "artifacts": [
+        {
+          "id": "albedo",
+          "sha256": "091cd3b7a08eeea5b80f2c39938e5ca1a0764a55010c0d25944212b808aef811"
+        },
+        {
+          "id": "ao",
+          "sha256": "1a3216e794b88f1edb24d64a0499d933c6870c4f54a39c7471c8e5f8de75f32a"
+        },
+        {
+          "id": "calibration",
+          "sha256": "dcc804fa9a161d14502a631956312b0f91cdf204c0d135495313c1ec60ecdc33"
+        },
+        {
+          "id": "height",
+          "sha256": "08b8e521675894e2d35143434de4c647dcdc6cb1ff1f3a1d92ba586abf005df7"
+        },
+        {
+          "id": "lighting",
+          "sha256": "309ee1a573bf0a01d471eec0df669dadd914b9849dc55893fe57921d33cf4e7a"
+        },
+        {
+          "id": "manifest",
+          "sha256": "ce467a450c3f9bede1068ed85399e768183b0084443a6b6e0c02cf4c3d2c64e1"
+        },
+        {
+          "id": "material",
+          "sha256": "8f2ceb3eb2ea4c7db6647676cb726af9af4c8e942ccc65025b401eca5364eb7e"
+        },
+        {
+          "id": "metallic",
+          "sha256": "01c828913733eb6561739155d146dbf94261de2912f8d9a9cd6920bcd35d5070"
+        },
+        {
+          "id": "normal",
+          "sha256": "d27a2aedbfdf40e07c81a2cbaf5e099a747e2e8e0a831b045d910068da010de9"
+        },
+        {
+          "id": "orm",
+          "sha256": "e9d05101b4b773d46d9498f809c83419d1df9f338559b827d13bcc34ecf9da11"
+        },
+        {
+          "id": "review",
+          "sha256": "88b41b153bd489c9e89fe554c57cefcdca959447bf5b27c3343679577e05acd1"
+        },
+        {
+          "id": "roughness",
+          "sha256": "4e26eff3979637390681773065c9adad6b29b16a8e998319fd1d49a7a1b5beba"
+        }
+      ]
+    }
+  ]
+}

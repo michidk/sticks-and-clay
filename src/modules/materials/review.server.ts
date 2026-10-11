@@ -51,7 +51,7 @@ export async function reviewMaterial(
       guidance: job.checkpoint.guidance,
       parameters: JSON.stringify(parameters),
       capabilities:
-        "materialkit 2: build_material(params), check(params), noise(size, seed, scale), linear(rgb), fracture_mask(size, seed, cells, width=.05), layer(base, coating, mask, tile_metres), derive_surface(height_mm, tile_metres). Recipes: sand, gravel, stone, wood, brick, painted_metal. Parameters include moisture, dirt, burial, sizeSpread (0..1). Result arrays: albedo linear RGB, roughness/metallic/height/ao [0,1], normal encoded RGB, heightWindowMm, particles, warnings. Import numpy as np for periodic layer masks; changing height requires recomputing normal/AO coherently. Do not invent helper functions.",
+        "materialkit 2: build_material(params), check(params), noise(size, seed, scale), linear(rgb), fracture_mask(size, seed, cells, width=.05), layer(base, coating, mask, tile_metres), derive_surface(height_mm, tile_metres) returns (normal, ao). Recipes: sand, gravel, stone, wood, brick, painted_metal. Parameters include moisture, dirt, burial, sizeSpread (0..1). Result arrays: albedo linear RGB, roughness/metallic/height/ao [0,1], normal encoded RGB, heightWindowMm [minimum_mm, maximum_mm], particles, warnings. Import numpy as np for periodic layer masks; changing height requires recomputing normal/AO coherently. Do not invent helper functions.",
       script,
       feedback,
       evidence,
@@ -170,7 +170,14 @@ export async function reviewMaterial(
         const image = `materials/${job.id}/iterations/${iteration}/output/review.png`;
         const currentImages = [
           image,
-          ...["albedo.png", "normal.png", "lighting.png"].map(
+          ...[
+            "albedo.png",
+            "normal.png",
+            "lighting.png",
+            "roughness.png",
+            "height.png",
+            "metallic.png",
+          ].map(
             (name) =>
               `materials/${job.id}/iterations/${iteration}/output/${name}`,
           ),
@@ -190,6 +197,9 @@ export async function reviewMaterial(
               "full-resolution unlit albedo",
               "full-resolution OpenGL normal",
               "opposing-light sheet",
+              "full-resolution roughness",
+              "full-resolution normalized height (physical window in report)",
+              "full-resolution metallic",
             ][index],
           })),
           previous: previousImage
@@ -225,7 +235,9 @@ export async function reviewMaterial(
               })
             ).result;
         const passed =
-          result.passed && !result.findings.some((f) => f.severity !== "minor");
+          result.passed &&
+          !result.findings.some((f) => f.severity !== "minor") &&
+          result.coverage.every((feature) => feature.state === "present");
         const review = {
           ...result,
           passed,

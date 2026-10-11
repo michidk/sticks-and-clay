@@ -1,0 +1,229 @@
+{
+  "version": 1,
+  "revision": "44b91effcbd29f96094df35e27e9b08cd8d345d7",
+  "limits": "Up to three paired briefs (see cases/variants for selected scope), one construction seed per brief, no external reference images. Experimental ablated control, not a historical production baseline. Same model configuration, toolkit, final resolution and upper call budgets; early passing stops naturally. Small pilot, no statistical significance claim.",
+  "seed": 17,
+  "size": 256,
+  "reviewRounds": 2,
+  "maxRuntimeRepairsPerBuild": 2,
+  "cases": [
+    {
+      "id": "gravel",
+      "recipe": "gravel",
+      "features": [
+        "F1",
+        "F2",
+        "F3"
+      ],
+      "brief": "Stylized gray gravel. F1: visibly larger partially buried stones over fine grains. F2: sparse darker dirt in the gaps, with coherent roughness and relief. F3: a quiet gray palette with no decorative stripes."
+    }
+  ],
+  "variants": {
+    "full": {
+      "promptSha256": "e44d97e2b6bea426eeb3aa883841681ea76e81ec8810bb4b2093f622ce302f83",
+      "guideSha256": "179a2c58672942952bd481a4244fe7307ffd76f4376618046cfd365daeb5a68b",
+      "judgeSha256": "55b12465f78528f4c1b2202552081ddacc9d861778554bb2d8b5d11973399b65"
+    }
+  },
+  "runtimeSourceHashes": {
+    "scripts/evaluate-material-prompts.ts": "2e6f6c83d972426dbebd671322f7ca7678f3273db5a42405a46965480d89376c",
+    "src/lib/materials.ts": "0ed025b34b7d4cc3ed48e4b2b72847d8af22eee74a973a7d8e11c1a09817c325",
+    "src/modules/materials/review.server.ts": "a80db36e9f336aae6e891d2717b5913c3198372282b2b7db43dda84c2803ab43",
+    "src/modules/ai/internal/tanstack.server.ts": "bb8a13318253220036de1e9c9db3708a63ae98f64933c7bf311abb7f2db97ff4",
+    "src/modules/ai/internal/role-instructions.server.ts": "a7f742a6c74908d00e10f86afebc49a2b63b235ebfdc75e3c7395c3eccdb1008"
+  },
+  "trials": [
+    {
+      "case": "gravel",
+      "variant": "full",
+      "outcome": "issues",
+      "seconds": 172.34,
+      "callCount": 5,
+      "runtimeRepairs": 0,
+      "estimatedUSD": 0.11151,
+      "unknownUsageRuns": 1,
+      "failedRuns": 1,
+      "inputTokens": 17263,
+      "outputTokens": 8044,
+      "models": [
+        "gpt-6-sol"
+      ],
+      "efforts": [
+        "high"
+      ],
+      "usageSources": [
+        "pending",
+        "reported"
+      ],
+      "promptVersions": [
+        "55b12465",
+        "62cf4e9a"
+      ],
+      "coverageByRound": [
+        {
+          "F1": "present",
+          "F2": "present",
+          "F3": "present"
+        },
+        {
+          "F1": "present",
+          "F2": "present",
+          "F3": "present"
+        }
+      ],
+      "coverageRegressions": [],
+      "reviews": [
+        {
+          "iteration": 0,
+          "passed": false,
+          "assessment": "The supplied sheet and 256 px maps show the requested quiet gravel, with larger stones over fine grains and darker material in some gaps. The channels appear broadly coherent, and no obvious seam appears under either light. Approval is blocked by conspicuous repetition of distinctive stone clusters across the lit tiles.",
+          "coverage": [
+            {
+              "feature": "F1 — larger, partially buried stones over fine grains",
+              "state": "present",
+              "evidence": "The unlit albedo and height crops show larger rounded stone tops among small specks; their edges soften into the lower substrate. At 1 m per 256 px, an 80 mm stone is about 20 px wide, consistent with many visible stones."
+            },
+            {
+              "feature": "F2 — sparse darker dirt in gaps, with coherent roughness and relief",
+              "state": "present",
+              "evidence": "Occasional dark patches appear between stones in the unlit crop, notably near its right-center. The corresponding roughness is high and the height remains low; the normal and opposing-light views do not suggest raised dirt painted across stone tops."
+            },
+            {
+              "feature": "F3 — quiet gray palette with no decorative stripes",
+              "state": "present",
+              "evidence": "The unlit crop is restrained warm gray, with no directional bands or decorative stripes."
+            },
+            {
+              "feature": "Physical scale and PBR channels",
+              "state": "present",
+              "evidence": "The report identifies a 1 m tile and 256 px maps. Larger forms are on the order of the requested stone scale, while fine grains are only a few pixels across. Bright height forms align with normal-map relief, stones are less rough than the pale gap areas, and metallic is uniformly black."
+            },
+            {
+              "feature": "Repeated lit tiles",
+              "state": "missing",
+              "evidence": "No clear boundary seam is visible, but the same distinctive pale, multi-lobed stone cluster recurs at matching positions in each tile of the review sheet, making the 1 m repeat easy to recognize."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "Repeated lit tiles — obvious repetition",
+              "evidence": "The pale clustered stone near the upper-right of the first tile reappears immediately to its right and below in the 2×2 lit review; other large shapes repeat alongside it.",
+              "correction": "Reduce the contrast or distinctiveness of signature clusters and introduce several seamless 1 m tile variants, or non-repeating placement variation at the material-use stage, while preserving stone scale and channel alignment."
+            },
+            {
+              "severity": "minor",
+              "feature": "F1 — fine-grain readability",
+              "evidence": "In the full-resolution unlit crop, many gaps read as relatively smooth gray with only faint, few-pixel grains; several adjacent large stones merge into broad lobes.",
+              "correction": "Give the fine-gravel layer slightly clearer individual grain boundaries and separate a few merged large-stone silhouettes, without adding noisy detail or changing the quiet style."
+            }
+          ]
+        },
+        {
+          "iteration": 1,
+          "passed": false,
+          "assessment": "The final-resolution maps support a quiet, coherent stylized gravel material, but distinctive stone clusters remain conspicuously repeated in the lit tiles. The current and previous review sheets look substantially alike; the proposed reduction in cluster prominence is not visibly established.",
+          "coverage": [
+            {
+              "feature": "F1 — larger, partially buried stones over fine grains",
+              "state": "present",
+              "evidence": "In the 256 px unlit albedo, larger rounded forms sit among faint small grains, with softened edges. The height and normal maps show corresponding raised stone tops. On the reported 1 m tile, 80 mm corresponds to about 20 px, consistent with several visible stones."
+            },
+            {
+              "feature": "F2 — sparse darker dirt in gaps, with coherent roughness and relief",
+              "state": "present",
+              "evidence": "Occasional darker areas lie between stone forms in the unlit albedo, including near the right-center. They do not read as raised stone tops in the height and normal maps; the roughness map remains high in the gaps."
+            },
+            {
+              "feature": "F3 — quiet gray palette with no decorative stripes",
+              "state": "present",
+              "evidence": "The unlit albedo has restrained warm-gray variation without directional bands or decorative stripes; the metallic map is uniformly black."
+            },
+            {
+              "feature": "Physical scale and PBR-channel relationships",
+              "state": "present",
+              "evidence": "The receipt identifies final 256 px maps and a 1 m tile. Large and fine forms are broadly consistent with the requested scales. Bright height forms correspond to normal-map relief, the roughness variation follows the gravel forms, and metallic remains nonmetallic."
+            },
+            {
+              "feature": "Repeated lit tiles — seams and repetition",
+              "state": "missing",
+              "evidence": "No clear boundary seam appears, but the pale multi-lobed cluster near the lower-left of one tile recurs at the same position in adjacent tiles. The opposing-light sheet preserves the same recognizable arrangement."
+            }
+          ],
+          "findings": [
+            {
+              "severity": "major",
+              "feature": "Repeated lit tiles — obvious repetition",
+              "evidence": "The same distinctive pale stone clusters recur across the current review sheet’s repeated tiles, much as they do in the supplied previous sheet. The attempted softening has not visibly removed this signature.",
+              "correction": "Reduce the distinctiveness of the clustered forms across their shared albedo, height, normal and roughness construction, and supply seamless tile variants or non-repeating placement variation for material use. Recheck a repeated lit view."
+            },
+            {
+              "severity": "minor",
+              "feature": "F1 — fine-grain readability",
+              "evidence": "Fine grains are visible but faint in several relatively smooth-looking gaps of the 256 px unlit albedo; adjacent large forms also merge into broad lobes.",
+              "correction": "Clarify a modest number of fine-grain boundaries and separate some merged large-stone silhouettes in the shared material construction, without adding overall noise or disrupting the quiet style."
+            }
+          ]
+        }
+      ],
+      "inputs": {
+        "scriptSha256": "7f926167fe62130d3b7b208fb12eec84312d562041cf26a87b839b8eb4cbb27c",
+        "parametersSha256": "5758d9a708edb117c84ff7e11f4a1ff2a443f638092b29105816e2ff9fa60686",
+        "toolkitSha256": "2e82afd12769ebe9b3569205647c82d112905d65709ff2d9b21077aa9ff0a485"
+      },
+      "toolchain": {
+        "python": "3.13.13"
+      },
+      "artifacts": [
+        {
+          "id": "albedo",
+          "sha256": "57ec1284bf1a47c93333828b77657f7f6296ce00f0446283bf55a6aa4b36478c"
+        },
+        {
+          "id": "ao",
+          "sha256": "5013a1e349def1fe0fc42a73e81da2ecf6f302e03023fb987bdabd3dc0c2e917"
+        },
+        {
+          "id": "calibration",
+          "sha256": "e68965570b21d6db10bb7283188f32d491a30219482b0b334161444454e33a70"
+        },
+        {
+          "id": "height",
+          "sha256": "e22a6c77c87e8d649e267806edede76456f81b7f8c7edeefeb8dccbf402c1f1d"
+        },
+        {
+          "id": "lighting",
+          "sha256": "f7f0f80f14c884648190fd33d03c8d22e27435e51cb76979cfc239c37aa39f36"
+        },
+        {
+          "id": "manifest",
+          "sha256": "dff9f9fd33dda73f000cf777eca22ad856e1bdaa6e5c11dc2044cf0d1b913ca7"
+        },
+        {
+          "id": "material",
+          "sha256": "45cc25328bb13ff165b9a8598c17ffdd2eafd6e876241b1754dcf1c0bfe50c6c"
+        },
+        {
+          "id": "metallic",
+          "sha256": "5933d4c44ed2bc2f431e2698b41923a18d056b24b450540bb109e7592a547060"
+        },
+        {
+          "id": "normal",
+          "sha256": "1d2001de40bb2ec3ab91f5ed8cd0fb0633b7c4ac0672967e2b7147a34ec262e8"
+        },
+        {
+          "id": "orm",
+          "sha256": "c60cbef27816537cdb39848b5793ee62809314fe699b6df48ea4737faaa9f076"
+        },
+        {
+          "id": "review",
+          "sha256": "cea0517bd055f14085dfa4503f9ac16ad119204403122704d93d6a2e486870e9"
+        },
+        {
+          "id": "roughness",
+          "sha256": "a9bb129f3d9c12d458952e64258844516752caa9fc9aac4149df5fe1f3a65bc2"
+        }
+      ]
+    }
+  ]
+}

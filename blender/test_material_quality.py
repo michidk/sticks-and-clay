@@ -6,11 +6,29 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import re
 import numpy as np
 from blender.materials.materialkit import build_material, layer, noise
 from blender.materials.materialcalibration import calibrate
 
 class MaterialQualityTests(unittest.TestCase):
+    def test_prompt_composition_examples_execute_against_pinned_facade(self):
+        guide=(pathlib.Path(__file__).parent.parent/'prompts/references/material-construction.md').read_text(encoding='utf-8')
+        examples=re.findall(r'```python\n(.*?)```',guide,re.S)
+        self.assertEqual(len(examples),2)
+        from blender.materials import materialkit
+        from unittest.mock import patch
+        for code,recipe in zip(examples,['gravel','painted_metal']):
+            scope={}
+            with patch.dict(sys.modules,{'materialkit':materialkit}):exec(compile(code,'prompt-example','exec'),scope)
+            params={'size':64,'recipe':recipe,'seed':17}
+            result=scope['build'](params)
+            self.assertEqual(params,{'size':64,'recipe':recipe,'seed':17})
+            for channel in ('albedo','normal','height','roughness','metallic','ao'):
+                self.assertTrue(np.isfinite(result[channel]).all())
+                self.assertGreaterEqual(float(result[channel].min()),0)
+                self.assertLessEqual(float(result[channel].max()),1)
+
     def test_paint_and_layer_channel_coupling(self):
         params={'size':64,'recipe':'painted_metal','wear':0}
         base=build_material(params)

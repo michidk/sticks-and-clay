@@ -189,7 +189,7 @@ def get_render(capability:str,view:str='front')->dict:
     return {'view':view,'exists':path.exists(),'instruction':'Use the view_render vision tool with the same capability to inspect the pixels. Never encode image bytes as text.'}
 @mcp.tool()
 async def photograph_asset(capability:str,front_azimuth:float=-55,elevation:float=25,framing:float=1.2,exposure:float=0)->dict:
-    """Render the exact authorized GLB in an isolated studio. No asset editing. Produces front/rear/detail and, for model review capabilities, left/right/top/bottom PNGs for view_render. Angles are degrees; framing 1.05â€“1.8; exposure -1â€“1."""
+    """Render the exact authorized GLB in an isolated studio. No asset editing. Produces front/rear/detail and, for model review capabilities, left/right/top/bottom PNGs for view_render. Angles are degrees; framing 1.05–1.8; exposure -1–1."""
     import math
     dest=workspace(capability)
     info=json.loads((DATA/'capabilities'/f'{capability}.json').read_text())

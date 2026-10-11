@@ -58,6 +58,16 @@ export const materialReviewResult = z.object({
   passed: z.boolean(),
   score: z.number().min(0).max(100),
   assessment: z.string(),
+  coverage: z
+    .array(
+      z.object({
+        feature: z.string(),
+        state: z.enum(["present", "missing", "uncertain"]),
+        evidence: z.string(),
+      }),
+    )
+    .max(20)
+    .default([]),
   findings: z
     .array(
       z.object({

@@ -40,7 +40,7 @@ Calibration targets record source URLs, license, physical scale, file hashes, pr
 
 ## Remaining acceptance
 
-The first live builder/judge attempt had no configured API credential. A provider is now available; matched-budget trials remain to be run. Cached paid-step replay and real local render/repair tests verify orchestration, not model quality. Matched-budget prompt A/B results, repair costs and feature coverage remain unmeasured.
+The configured provider completed six matched-budget builder/judge trials. [The prompt evaluation](material-prompt-evaluation.md) records feature coverage, regressions, runtime, repairs and estimated costs. The abbreviated control received two approvals; the full policy received none. This small ablation does not establish a generally better prompt. Follow-up changes clarify toolkit contracts, provide native-resolution PBR channels and preserve successful feature layers during revisions. Full Eve sandbox startup remains unverified because its container registry denies image access.
 
 The runtime and publication suites pass on Windows and Linux Docker (eight tests per platform), including waiting cancellation, owned descendants, failed commit rollback, interrupted alias recovery and corrupt-candidate rejection. Bundle telemetry records before/after RSS, not peak memory; no streaming rewrite is justified by this small fixture workload. The remaining roadmap items are listed explicitly in `plan.md`.
 
@@ -51,3 +51,7 @@ Apply the additive migrations with `bun run db:migrate`, then rebuild/restart Ev
 ## Publication follow-up verification
 
 The database-enabled suite passes 118 tests with seven environment-dependent skips. The new supervised publication integration verifies the Python/TypeScript boundary and source-bundle exclusions. Vision tests verify that partial compatibility-file writes cannot change the committed evidence, and reject tampered artifacts. Actual Blender assignment, sprites and photographer publication pass. The model workflow additionally verifies a relocated offline rebuild followed by a failing edit that retains the successful GLB. Application verification and Eve compilation pass after the publication changes.
+
+## Prompt follow-up verification
+
+The database-enabled suite passes 119 tests with seven environment-dependent skips. Both major findings and uncertain feature coverage prevent approval during saved-step replay. Five material-quality tests pass, including executing both documented composition examples against the actual toolkit. Application verification, final typechecking and Eve compilation pass. The texture integration test uses a dummy credential with mocked transport; the live pilot uses the configured provider independently.
