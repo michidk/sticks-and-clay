@@ -25,6 +25,7 @@ jobs:
           docker run --rm "ghcr.io/michidk/sticks-and-clay:sha-${GITHUB_SHA}" sh -ec '
             test ! -e .env
             test ! -e eve/.eve/.workflow-data
+            bun test src/lib/sandbox.test.ts
             /opt/blender/blender --background --factory-startup --python-exit-code 1 --python-expr "import bpy; s=bpy.context.scene; s.render.engine=\"CYCLES\"; s.cycles.samples=1; s.render.resolution_x=64; s.render.resolution_y=64; s.render.resolution_percentage=100; s.render.filepath=\"/tmp/smoke.png\"; bpy.ops.render.render(write_still=True)"
             test -s /tmp/smoke.png
           '

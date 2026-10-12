@@ -70,7 +70,7 @@ For schema changes, run `bun run db:generate`, inspect the generated SQL, then r
 ```sh
 bun run verify
 bun run eve:build
-bun audit
+bun run audit
 .venv/bin/python -m pip install -r scripts/requirements-dev.txt
 .venv/bin/ruff check blender scripts
 ```
@@ -111,3 +111,18 @@ The CI workflow uses an isolated PostgreSQL service, mocked AI responses, Python
 ## Repository contents
 
 Keep `.env`, credentials, generated assets, evaluation output, build output, Python environments, dependency caches, logs, and local agent state out of Git. Commit authored source, tests, prompts, migrations, dependency lockfiles, and current product artwork. The tracked-file test guards this boundary; a secret scanner must also inspect content and history before publication.
+
+### Dependency audit exception
+
+`bun run audit` ignores only `GHSA-hp3w-g68c-fv3c`, the unbounded floating-point
+precision advisory in `sprintf-js`, which has no patched release. The pinned
+`just-bash` 3.6.0 dependency validates precision before calling that formatter.
+`src/lib/sandbox.test.ts` sends the advisory's oversized precision inputs through
+the real shell and checks that it rejects them while the next command still
+works. The app also disables Eve's default shell tools. Remove this exception
+when the dependency publishes a fix or drops the affected package. Other
+advisories still fail CI.
+
+`guarded-fetch` pins an affected Undici release; the dependency override replaces
+only `undici@7.29.0` with patched 7.30.0, leaving Eve's separate Undici 8 dependency
+on its supported major version.

@@ -45,7 +45,7 @@ jobs:
       - run: bun run db:migrate
       - run: bun run verify
       - run: bun run eve:build
-      - run: bun audit
+      - run: bun run audit
       - run: .venv/bin/ruff check blender scripts
       - run: |
           PYTHONPATH=blender .venv/bin/python -m unittest \
