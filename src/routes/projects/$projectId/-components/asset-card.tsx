@@ -99,6 +99,17 @@ export function AssetCard({
           </Link>
         )}
         <StatusBadge status={m.status} verdict={m.verdict} />
+        {!isGraphics && m.artifacts && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="cover-toggle"
+            onClick={() => onPreview(previewing ? null : m.id)}
+            aria-pressed={previewing}
+          >
+            {previewing ? "Show render" : "Preview in 3D"}
+          </Button>
+        )}
       </div>
       <div className="project-body">
         <h3>
@@ -146,15 +157,6 @@ export function AssetCard({
               <Link {...modelLink} search={{ view: "3d", section: "review" }}>
                 Open model
               </Link>
-            </Button>
-          )}
-          {!isGraphics && m.artifacts && (
-            <Button
-              variant="ghost"
-              onClick={() => onPreview(previewing ? null : m.id)}
-              aria-pressed={previewing}
-            >
-              {previewing ? "Show render" : "Preview in 3D"}
             </Button>
           )}
           {isGraphics && m.artifacts?.image && (
