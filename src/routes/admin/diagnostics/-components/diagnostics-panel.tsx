@@ -48,15 +48,15 @@ export function DiagnosticsPanel() {
       </div>
       <div className="diagnostics-details">
         <Card className="panel diagnostics-detail-card">
-          <span className="eyebrow">Capacity</span><h2>Storage</h2>
+          <h2>Storage</h2>
           <dl><div><dt>Tracked usage</dt><dd>{bytes(data.services.storage.usedBytes)}</dd></div><div><dt>Available locally</dt><dd>{bytes(data.services.storage.availableBytes)}</dd></div></dl>
         </Card>
         <Card className="panel diagnostics-detail-card">
-          <span className="eyebrow">Recent activity</span><h2>Failed jobs</h2>
+          <h2>Recent failed jobs</h2>
           {data.recentFailures.length ? <ul>{data.recentFailures.map((failure, index) => <li key={`${failure.kind}-${index}`}><strong>{failure.kind}</strong><span>{failure.finishedAt ? new Date(failure.finishedAt).toLocaleString() : "Time unavailable"}</span></li>)}</ul> : <p className="note">No recent failed jobs.</p>}
         </Card>
         <Card className="panel diagnostics-detail-card">
-          <span className="eyebrow">Effective now</span><h2>Runtime summary</h2>
+          <h2>Runtime summary</h2>
           <dl><div><dt>Queue</dt><dd>{data.effectiveSettings.queue.paused ? "Paused" : `${data.effectiveSettings.queue.concurrency} lanes`}</dd></div><div><dt>Agent timeout</dt><dd>{data.effectiveSettings.timeouts.agentMs / 60_000} min</dd></div><div><dt>Default batch</dt><dd>{data.effectiveSettings.generationDefaults.count} assets</dd></div><div><dt>Restart required</dt><dd>{data.restartRequired.length ? data.restartRequired.join(", ") : "None"}</dd></div></dl>
         </Card>
       </div>

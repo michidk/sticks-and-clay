@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -54,16 +56,16 @@ export function GraphicVariant({
         disabled={!sourceRunId}
         onClick={() => setOpen(true)}
       >
-        Create variant
+        New variant
       </Button>
       {!open && error && <p role="status">{error}</p>}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Graphic variant</DialogTitle>
+            <DialogTitle>New variant</DialogTitle>
             <DialogDescription>
-              The selected graphic becomes an image-edit reference. A new
-              variant preserves the original.
+              Edits this graphic into a new one. The original is kept. Paid
+              image request.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-4">
@@ -91,9 +93,16 @@ export function GraphicVariant({
               minLength={3}
               maxLength={12000}
             />
-            <Button disabled={busy}>
-              {busy ? "Queuing…" : "Generate variant"}
-            </Button>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="outline" type="button" disabled={busy}>
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button disabled={busy}>
+                {busy ? "Queuing…" : "Generate variant"}
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

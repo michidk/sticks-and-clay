@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock3,
-  Info,
   Pause,
   Play,
   XCircle,
@@ -108,8 +107,8 @@ function QueuePage() {
         <div>
           <h1>Generation queue</h1>
           <p className="lede">
-            Model builders, photography, reviews, planning, and collection
-            renders.
+            Builds, photography, reviews, planning, mockups and collection
+            renders. Brief drafting runs immediately and is not listed.
           </p>
         </div>
         <Button
@@ -169,23 +168,16 @@ function QueuePage() {
           ))}
         </div>
       )}
-      <p className="queue-guidance">
-        <Info aria-hidden="true" />
-        <span>
-          Brief generation runs immediately and does not appear here. Stop
-          requests can take a moment while an active Blender operation exits.
-        </span>
-      </p>
       {!loading && (
         <>
-          {!!attention.length && <QueueSection title="Needs attention" description="Inspect failed work and choose how to recover it." jobs={attention} busy={busy} onAction={cancel} empty="No failed jobs." />}
+          {!!attention.length && <QueueSection title="Needs attention" description="Open the project or model to resume or retry." jobs={attention} busy={busy} onAction={cancel} empty="No failed jobs." />}
           <QueueSection
             title="Active queue"
-            description={`${active.length} ${active.length === 1 ? "job" : "jobs"} in progress or waiting`}
+            description={`${active.length} in progress or waiting. Stopping can take a moment while Blender exits.`}
             jobs={active}
             busy={busy}
             onAction={cancel}
-            empty="The queue is clear. New generation work will appear here."
+            empty="Nothing queued."
           />
           <QueueSection
             title="Recent history"

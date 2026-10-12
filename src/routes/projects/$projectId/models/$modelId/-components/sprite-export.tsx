@@ -10,10 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -269,9 +271,16 @@ export function SpriteExport({
             bundle include cell positions, direction angles and timing. Export
             makes no agent request.
           </p>
-          <Button disabled={busy} onClick={() => void generate()}>
-            {busy ? "Saving…" : "Render sprites"}
-          </Button>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" type="button" disabled={busy}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button disabled={busy} onClick={() => void generate()}>
+              {busy ? "Queuing…" : "Render sprites"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       {!!saved.length && (

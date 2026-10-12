@@ -73,7 +73,7 @@ export function SettingsForm() {
       {settings && <>
         <Card className="panel settings-section">
           <div className="settings-section-heading">
-            <div><span className="eyebrow">Execution</span><h2>Timeout coverage</h2></div>
+            <h2>Timeouts</h2>
             <p>New operations use these limits. Running work keeps the limit it started with.</p>
           </div>
           <div className="settings-grid">
@@ -95,7 +95,7 @@ export function SettingsForm() {
         </Card>
         <Card className="panel settings-section">
           <div className="settings-section-heading">
-            <div><span className="eyebrow">New batches</span><h2>Generation defaults</h2></div>
+            <h2>Generation defaults</h2>
             <p>Pre-filled values only. Product limits remain 1–20 assets and 0–5 judge rounds.</p>
           </div>
           <div className="settings-grid">

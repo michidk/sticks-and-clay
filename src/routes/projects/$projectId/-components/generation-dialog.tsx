@@ -6,8 +6,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MarkdownTextarea } from "@/components/markdown-textarea";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -18,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, LoaderCircle, Plus } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { request, json } from "@/lib/client";
 import type { RuntimeSettings } from "@/lib/contracts";
 
@@ -28,9 +30,7 @@ type GenerationDialogProps = {
   ready: boolean;
   isGraphics: boolean;
   open: boolean;
-  error: string;
   onOpenChange: (open: boolean) => void;
-  onError: (error: string) => void;
   onRefresh: () => Promise<unknown>;
   onSaved: () => Promise<void>;
 };
@@ -41,22 +41,20 @@ export function GenerationDialog({
   ready,
   isGraphics,
   open,
-  error,
   onOpenChange,
-  onError,
   onRefresh,
   onSaved,
 }: GenerationDialogProps) {
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [modelBrief, setModelBrief] = useState("");
   const [modelCount, setModelCount] = useState(1);
   const [spriteEnabled, setSpriteEnabled] = useState(false);
   const [judgeIterations, setJudgeIterations] = useState(2);
   const [imageSize, setImageSize] =
     useState<RuntimeSettings["generationDefaults"]["imageSize"]>("1024x1024");
-  const [briefSubmitting, setBriefSubmitting] = useState(false);
+  const [briefing, setBriefing] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
-  const briefing = briefSubmitting;
   const assetPlural = isGraphics ? "graphics" : "models";
   useEffect(() => {
     setModelBrief("");
@@ -72,35 +70,32 @@ export function GenerationDialog({
         setImageSize(settings.generationDefaults.imageSize);
       })
       .catch((error) => {
-        if (active) onError(error.message);
+        if (active) setError(error.message);
       });
     return () => {
       active = false;
     };
-  }, [onError]);
+  }, []);
   async function generateBrief() {
-    setBriefSubmitting(true);
-    onError("");
+    setBriefing(true);
+    setError("");
     try {
       const result = await request<{ brief: string }>(
         `projects/${projectId}/model-brief`,
-        json({
-          count: modelCount,
-          hint: modelBrief,
-        }),
+        json({ count: modelCount, hint: modelBrief }),
       );
       setModelBrief(result.brief);
       await onRefresh();
     } catch (e) {
-      onError((e as Error).message);
+      setError((e as Error).message);
     } finally {
-      setBriefSubmitting(false);
+      setBriefing(false);
     }
   }
   async function saveIdea(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
-    onError("");
+    setError("");
     try {
       const f = new FormData(e.currentTarget);
       await request(
@@ -126,21 +121,22 @@ export function GenerationDialog({
       onOpenChange(false);
       await onSaved();
     } catch (e) {
-      onError((e as Error).message);
+      setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
+  const locked = busy || briefing;
   return (
     <Dialog
       open={open}
       onOpenChange={(open) => {
-        if (!open && !busy && !briefing) onOpenChange(false);
+        if (!open && !locked) onOpenChange(false);
       }}
     >
       <DialogContent
         className="setup-dialog idea-dialog"
-        showCloseButton={!busy && !briefing}
+        showCloseButton={!locked}
         onOpenAutoFocus={(event) => {
           opener.current =
             document.activeElement instanceof HTMLElement
@@ -157,29 +153,31 @@ export function GenerationDialog({
         }}
       >
         <DialogHeader>
-          <div className="eyebrow">EXPAND YOUR COLLECTION</div>
           <DialogTitle>Add {isGraphics ? "graphic" : "model"} ideas</DialogTitle>
           <DialogDescription>
-            Capture a brief now. Generate from approved design v{designVersion}{" "}
-            when you're ready.
+            Saved to Ideas. Generation starts from there and uses design v
+            {designVersion}.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={saveIdea} className="setup-form">
           <div className="setup-fields">
             <div className="brief-field">
               <div className="field-heading flex-wrap">
-                <Label htmlFor="model-brief">
-                  {isGraphics ? "Graphic" : "Model"} brief (optional)
-                </Label>
+                <Label htmlFor="model-brief">Brief (optional)</Label>
                 <Button
                   variant="outline"
                   size="sm"
                   type="button"
-                  disabled={busy || briefing || !ready ||
-                    !Number.isInteger(modelCount) || modelCount < 1 || modelCount > 20}
+                  disabled={
+                    locked ||
+                    !ready ||
+                    !Number.isInteger(modelCount) ||
+                    modelCount < 1 ||
+                    modelCount > 20
+                  }
                   onClick={() => generateBrief()}
                 >
-                  {briefing ? <LoaderCircle className="spin" size={16} /> : <FileText size={16} />}
+                  {briefing && <LoaderCircle className="spin" size={16} />}
                   {briefing ? "Writing brief…" : "Draft brief with AI"}
                 </Button>
               </div>
@@ -188,83 +186,159 @@ export function GenerationDialog({
                 name="prompt"
                 value={modelBrief}
                 onChange={(e) => setModelBrief(e.target.value)}
-                disabled={busy || briefing}
+                disabled={locked}
                 maxLength={12000}
                 rows={5}
-                placeholder={`Describe the ${assetPlural} you have in mind, or leave blank to let AI propose a set.`}
+                placeholder={`Describe the ${assetPlural} you want. Leave blank to let AI propose a set from the design.`}
               />
-              <p className="m-0 text-xs text-muted-foreground" role={briefing ? "status" : undefined}>
-                {briefing ? "Writing a brief from your approved design…" : "AI brief drafting is paid and recorded in Activity & cost."}
+              <p
+                className="m-0 text-xs text-muted-foreground"
+                role={briefing ? "status" : undefined}
+              >
+                {briefing
+                  ? "Writing a brief from the approved design…"
+                  : "Drafting with AI is a paid request recorded in Activity."}
               </p>
             </div>
-            <fieldset disabled={busy || briefing} className="idea-settings">
+            <fieldset disabled={locked} className="idea-settings">
               <legend>Generation settings</legend>
               <div className="idea-settings-grid">
                 <div className="space-y-2">
                   <Label htmlFor="idea-count">Number of {assetPlural}</Label>
-                  <Input id="idea-count" name="count" type="number" min={1} max={20}
-                    value={modelCount} onChange={(event) => setModelCount(event.target.valueAsNumber)} required />
+                  <Input
+                    id="idea-count"
+                    name="count"
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={modelCount}
+                    onChange={(event) =>
+                      setModelCount(event.target.valueAsNumber)
+                    }
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
-                  {isGraphics ? <>
-                    <Label htmlFor="idea-canvas">Canvas</Label>
-                    <Select name="imageSize" value={imageSize}
-                      onValueChange={(value: typeof imageSize) => setImageSize(value)}>
-                      <SelectTrigger id="idea-canvas" className="w-full"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1024x1024">Square</SelectItem>
-                        <SelectItem value="1024x1536">Portrait</SelectItem>
-                        <SelectItem value="1536x1024">Landscape</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </> : <>
-                    <Label htmlFor="idea-rounds">Review rounds per stage</Label>
-                    <Input id="idea-rounds" name="iterations" type="number" min={0} max={5}
-                      value={judgeIterations} onChange={(event) => setJudgeIterations(event.target.valueAsNumber)} required />
-                  </>}
+                  {isGraphics ? (
+                    <>
+                      <Label htmlFor="idea-canvas">Canvas</Label>
+                      <Select
+                        name="imageSize"
+                        value={imageSize}
+                        onValueChange={(value: typeof imageSize) =>
+                          setImageSize(value)
+                        }
+                      >
+                        <SelectTrigger id="idea-canvas" className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1024x1024">Square</SelectItem>
+                          <SelectItem value="1024x1536">Portrait</SelectItem>
+                          <SelectItem value="1536x1024">Landscape</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </>
+                  ) : (
+                    <>
+                      <Label htmlFor="idea-rounds">Review rounds per stage</Label>
+                      <Input
+                        id="idea-rounds"
+                        name="iterations"
+                        type="number"
+                        min={0}
+                        max={5}
+                        value={judgeIterations}
+                        onChange={(event) =>
+                          setJudgeIterations(event.target.valueAsNumber)
+                        }
+                        required
+                      />
+                    </>
+                  )}
                 </div>
               </div>
               <p className="idea-settings-note">
                 {isGraphics
                   ? "Each graphic is saved as a PNG on the chosen canvas."
                   : judgeIterations === 0
-                    ? "Four modeling passes with photographs, without judging or a review score."
-                    : `Up to ${judgeIterations} review round${judgeIterations === 1 ? "" : "s"} each for geometry and materials. Geometry must pass first; passing ends review early. More rounds add time and cost.`}
+                    ? "Four modeling passes with photographs, no judge review or score."
+                    : `Up to ${judgeIterations} review round${judgeIterations === 1 ? "" : "s"} each for geometry and materials. Geometry must pass first; a pass ends review early. More rounds add time and cost.`}
               </p>
-              {!isGraphics && <div className="idea-sprite">
-                <div className="idea-sprite-toggle">
-                  <input id="idea-sprite" type="checkbox" name="spriteTarget" className="workshop-checkbox"
-                    checked={spriteEnabled} onChange={(event) => setSpriteEnabled(event.target.checked)} />
-                  <Label htmlFor="idea-sprite">Generate for sprite delivery</Label>
-                  <span>Optional</span>
+              {!isGraphics && (
+                <div className="idea-sprite">
+                  <div className="idea-sprite-toggle">
+                    <input
+                      id="idea-sprite"
+                      type="checkbox"
+                      name="spriteTarget"
+                      className="workshop-checkbox"
+                      checked={spriteEnabled}
+                      onChange={(event) =>
+                        setSpriteEnabled(event.target.checked)
+                      }
+                    />
+                    <Label htmlFor="idea-sprite">Build for sprite delivery</Label>
+                  </div>
+                  {spriteEnabled && (
+                    <div className="idea-settings-grid mt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="idea-sprite-size">Sprite cell size</Label>
+                        <Select name="spriteSize" defaultValue="64">
+                          <SelectTrigger id="idea-sprite-size" className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[32, 64, 128, 256].map((n) => (
+                              <SelectItem key={n} value={String(n)}>
+                                {n}px
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="idea-sprite-frames">
+                          Animation frames
+                        </Label>
+                        <Input
+                          id="idea-sprite-frames"
+                          type="number"
+                          name="spriteFrames"
+                          min={1}
+                          max={16}
+                          defaultValue={1}
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {spriteEnabled && <div className="idea-settings-grid mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="idea-sprite-size">Sprite cell size</Label>
-                    <Select name="spriteSize" defaultValue="64">
-                      <SelectTrigger id="idea-sprite-size" className="w-full"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {[32, 64, 128, 256].map((n) => <SelectItem key={n} value={String(n)}>{n}px</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="idea-sprite-frames">Animation frames</Label>
-                    <Input id="idea-sprite-frames" type="number" name="spriteFrames" min={1} max={16} defaultValue={1} required />
-                  </div>
-                </div>}
-              </div>}
+              )}
             </fieldset>
-            {!ready && <p className="note">Approve the design before drafting a brief with AI or starting generation.</p>}
-            {error && <Alert variant="destructive" className="error"><AlertDescription>{error}</AlertDescription></Alert>}
+            {!ready && (
+              <p className="note">
+                The design must be approved before drafting with AI or starting
+                generation.
+              </p>
+            )}
+            {error && (
+              <Alert variant="destructive" className="error">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
           </div>
-          <div className="setup-footer idea-footer">
-            <p>Saved to {isGraphics ? "Graphic" : "Model"} ideas. Generation starts later.</p>
-            <Button disabled={busy || briefing}>
-              {busy ? <LoaderCircle size={17} className="spin" /> : <Plus size={17} />}
-              {busy ? "Saving idea…" : "Save idea"}
+          <DialogFooter className="setup-footer">
+            <DialogClose asChild>
+              <Button variant="outline" type="button" disabled={locked}>
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button disabled={locked}>
+              {busy && <LoaderCircle size={17} className="spin" />}
+              {busy ? "Saving…" : "Save idea"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

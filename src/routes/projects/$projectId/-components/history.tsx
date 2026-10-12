@@ -8,11 +8,7 @@ import {
 } from "@/components/ui/select";
 import { Empty } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  AgentStateBadge,
-  agentStateFromStatus,
-} from "@/components/agent-state";
+import { StatusBadge } from "@/components/status";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -80,12 +76,12 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
   return (
     <div className="history">
       <div className="section-title">
-        <h2>The process, in full</h2>
+        <h2>Activity</h2>
         <span>{runs.length} AI requests</span>
       </div>
       <p className="muted">
-        Browse requests by asset. Costs include all attempts and are estimates.
-        Bars show input (green) and output (gold) tokens.
+        Every AI request, grouped by asset. Costs are estimates and include
+        failed attempts. Bars show input (green) and output (gold) tokens.
       </p>
       {!!runs.length && (
         <div className="history-filters">
@@ -157,7 +153,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
       )}
       {!runs.length && (
         <Empty className="empty">
-          Request history will appear when you use AI.
+          No AI requests yet.
         </Empty>
       )}
       {groups.map((group) => (
@@ -207,17 +203,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                       </strong>
                       <small>{new Date(r.createdAt).toLocaleString()}</small>
                     </span>
-                    <span className="run-state-badges">
-                      <AgentStateBadge state={agentStateFromStatus(r.status)} />
-                      {["failed", "cancelled"].includes(r.status) && (
-                        <Badge
-                          variant="secondary"
-                          className={"badge " + r.status}
-                        >
-                          {r.status}
-                        </Badge>
-                      )}
-                    </span>
+                    <StatusBadge status={r.status} />
                     <span className="run-cost">
                       {r.estimatedCost === null
                         ? r.finishedAt

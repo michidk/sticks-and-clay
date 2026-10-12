@@ -13,8 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/progress";
-import { agentStateFromStatus } from "@/components/agent-state";
+import { Progress } from "@/components/status";
 import { money } from "@/lib/client";
 import {
   modelStatus,
@@ -137,7 +136,7 @@ export function ModelPipeline({
           <Progress
             value={model.progress}
             label={model.phase}
-            agentState={agentStateFromStatus(model.status)}
+            status={model.status}
           />
         </div>
       )}
@@ -147,7 +146,7 @@ export function ModelPipeline({
             <Progress
               value={model.progress}
               label={active ? model.phase : modelStatus(model)}
-              agentState={agentStateFromStatus(model.status)}
+              status={model.status}
             />
             <p>
               Recorded stages, left to right. Select a step to inspect its
@@ -239,7 +238,7 @@ export function ModelPipeline({
               </span>
               <strong>{active ? model.phase : modelStatus(model)}</strong>
               <small>
-                {active ? "Updates automatically" : "Current outcome"}
+                {active ? "In progress" : "Outcome"}
               </small>
             </li>
           </ol>
@@ -281,7 +280,7 @@ export function ModelPipeline({
                   variant="ghost"
                   onClick={() => onInspect(undefined, "3d", "activity")}
                 >
-                  Activity & cost <ArrowRight size={14} />
+                  Activity <ArrowRight size={14} />
                 </Button>
               </div>
               {selected.run.error && (

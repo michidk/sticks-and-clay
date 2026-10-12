@@ -1,11 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/progress";
-import {
-  AgentStateBadge,
-  agentStateFromStatus,
-} from "@/components/agent-state";
+import { Progress, StatusBadge } from "@/components/status";
 import { Link } from "@tanstack/react-router";
 import {
   Box,
@@ -82,19 +77,14 @@ export function QueueJobCard({
             <h3>{job.name}</h3>
             <div className="queue-job-meta">
               <span>{kind.label}</span>
-              <span aria-hidden="true">Â·</span>
+              <span aria-hidden="true">·</span>
               <time dateTime={time.value}>
                 {time.label} {new Date(time.value).toLocaleString()}
               </time>
             </div>
           </div>
           <div className="queue-job-badges">
-            <AgentStateBadge state={agentStateFromStatus(job.status)} />
-            {["failed", "cancelled", "cancelling"].includes(job.status) && (
-              <Badge variant="secondary" className={"badge " + job.status}>
-                {job.status}
-              </Badge>
-            )}
+            <StatusBadge status={job.status} />
           </div>
         </div>
 
@@ -113,7 +103,7 @@ export function QueueJobCard({
             <Progress
               value={job.progress || 0}
               label={job.phase || job.status}
-              agentState={agentStateFromStatus(job.status)}
+              status={job.status}
             />
           </div>
         )}
@@ -133,7 +123,7 @@ export function QueueJobCard({
                     params={{ projectId: job.projectId, modelId: job.modelId }}
                     search={{ view: "3d", section: "activity" }}
                   >
-                    Inspect model & recovery
+                    Open model
                   </Link>
                 </Button>
               ) : (
@@ -142,7 +132,7 @@ export function QueueJobCard({
                     to="/projects/$projectId"
                     params={{ projectId: job.projectId }}
                   >
-                    Open project & recovery
+                    Open project
                   </Link>
                 </Button>
               ))}

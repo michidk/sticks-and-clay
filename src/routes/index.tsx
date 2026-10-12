@@ -14,8 +14,10 @@ import {
 import { MarkdownTextarea } from "@/components/markdown-textarea";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -28,18 +30,10 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import {
-  Plus,
-  ArrowUpRight,
-  Layers,
-  LoaderCircle,
-  Image as ImageIcon,
-  Sparkles,
-} from "lucide-react";
+import { Plus, Layers, LoaderCircle, Image as ImageIcon } from "lucide-react";
 import { projectState } from "@/lib/project-summary";
 import { request, costSummary, fileUrl } from "../lib/client";
-import { Progress } from "../components/progress";
-import { agentStateFromStatus } from "../components/agent-state";
+import { Progress, StatusBadge } from "../components/status";
 export const Route = createFileRoute("/")({ component: ProjectsPage });
 function ProjectsPage() {
   const uploader = useImageUpload();
@@ -59,6 +53,7 @@ function ProjectsPage() {
     [draftId, setDraftId] = useState<string | null>(null),
     [naming, setNaming] = useState(false),
     [briefing, setBriefing] = useState(false);
+  const dialogBusy = busy || naming || briefing || uploader.isBusy;
   function newProject(event: React.MouseEvent<HTMLElement>) {
     dialogOpener.current = event.currentTarget;
     setError("");
@@ -145,7 +140,7 @@ function ProjectsPage() {
   }, []);
   async function create(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (busy || naming || briefing || uploader.isBusy) return;
+    if (dialogBusy) return;
     setBusy(true);
     setError("");
     try {
@@ -183,47 +178,34 @@ function ProjectsPage() {
         : +new Date(b.createdAt) - +new Date(a.createdAt),
     );
   return (
-    <main
-      className={
-        projects.length ? "projects-page has-projects" : "projects-page"
-      }
-    >
-      <div className="eyebrow">YOUR CREATIVE WORKSPACE</div>
-      <section className="page-heading">
+    <main className="projects-page">
+      <section className="page-header">
         <div>
           <h1>
-            Build a vision.
-            <br />
-            <em>Shape every detail.</em>
+            Projects
+            {!loading && (
+              <Badge variant="secondary" className="count">
+                {projects.length}
+              </Badge>
+            )}
           </h1>
-          <p className="lede">
-            Turn references into a shared visual language. <br />
-            Generate cohesive 3D assets and graphics with your agents.
-          </p>
+          {!loading && !projects.length && (
+            <p className="lede">
+              A project turns a name, brief and reference images into a design
+              reference, then generates 3D models or graphics that follow it.
+            </p>
+          )}
         </div>
-        <Button variant="default" className="" onClick={newProject}>
+        <Button variant="default" onClick={newProject}>
           <Plus size={18} />
           New project
         </Button>
       </section>
-      <div className="section-title">
-        <h2>
-          Projects{" "}
-          <Badge variant="secondary" className="count">
-            {projects.length}
-          </Badge>
-        </h2>
-        <span>
-          {projects.length
-            ? "Your collections, at a glance."
-            : "Every collection starts with a direction."}
-        </span>
-      </div>
       {!!projects.length && (
         <div className="project-list-tools">
           <Input
             aria-label="Search projects"
-            placeholder="Find a project…"
+            placeholder="Search projects"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -274,6 +256,7 @@ function ProjectsPage() {
                 attention: 0,
               },
             );
+            const cover = p.thumbnail || p.references[0];
             return (
               <Card key={p.id} asChild className="project-card">
                 <Link
@@ -298,31 +281,25 @@ function ProjectsPage() {
                     className="project-cover"
                     style={{ aspectRatio: "16 / 9", height: "auto" }}
                   >
-                    {p.thumbnail || p.references[0] ? (
+                    {cover ? (
                       <AssetImage
-                        src={fileUrl(p.thumbnail || p.references[0])}
-                        alt={`${p.name} ${p.thumbnail ? "asset collection" : "reference"}`}
+                        src={fileUrl(cover)}
+                        alt={`${p.name} ${p.thumbnail ? "collection render" : "reference image"}`}
                         style={
                           p.thumbnail ? { objectFit: "contain" } : undefined
                         }
                       />
                     ) : (
                       <div className="abstract">
-                        <Layers size={68} strokeWidth={0.8} />
-                        <span>STYLE STARTS HERE</span>
+                        <Layers size={48} strokeWidth={0.9} />
                       </div>
                     )}
-                    <Badge
-                      variant="secondary"
-                      className={"badge " + state.tone}
-                    >
+                    <StatusBadge tone={state.tone as any}>
                       {state.label}
-                    </Badge>
-                    {(p.thumbnail || p.references[0]) && (
+                    </StatusBadge>
+                    {cover && (
                       <span className="cover-provenance">
-                        {p.thumbnail
-                          ? "Generated collection"
-                          : "Reference image"}
+                        {p.thumbnail ? "Collection render" : "Reference image"}
                       </span>
                     )}
                     <Badge
@@ -338,25 +315,21 @@ function ProjectsPage() {
                     </Badge>
                   </div>
                   <div className="project-body">
-                    <h3>
-                      {p.name}
-                      <ArrowUpRight size={19} />
-                    </h3>
+                    <h3>{p.name}</h3>
                     <div className="project-card-brief">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         allowedElements={["p", "strong", "em", "del"]}
                         unwrapDisallowed
                       >
-                        {p.description ||
-                          "A collection inspired by its name and references."}
+                        {p.description || "No brief."}
                       </ReactMarkdown>
                     </div>
                     {["queued", "designing"].includes(p.status) && (
                       <Progress
                         value={p.progress}
                         label={p.phase}
-                        agentState={agentStateFromStatus(p.status)}
+                        status={p.status}
                       />
                     )}
                     <div className="project-card-status">
@@ -419,17 +392,15 @@ function ProjectsPage() {
             <span className="circle">
               <Plus size={24} />
             </span>
-            <strong>A new collection starts here</strong>
-            <span>
-              Name your project, then optionally add a brief or references.
-            </span>
+            <strong>New project</strong>
+            <span>Name it, then add a brief or reference images.</span>
           </Button>
         </div>
       )}
       <Dialog
         open={creating}
         onOpenChange={(open) => {
-          if (!open && !busy && !naming && !briefing && !uploader.isBusy) {
+          if (!open && !dialogBusy) {
             setCreating(false);
             uploader.reset();
           }
@@ -437,20 +408,18 @@ function ProjectsPage() {
       >
         <DialogContent
           className="setup-dialog"
-          showCloseButton={!busy && !naming && !briefing && !uploader.isBusy}
+          showCloseButton={!dialogBusy}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             dialogOpener.current?.focus();
           }}
         >
           <DialogHeader>
-            <div className="eyebrow">START A COLLECTION</div>
-            <DialogTitle className="text-[27px]">
-              Give your collection a direction.
-            </DialogTitle>
-            <DialogDescription className="muted">
-              Start with a name. Add an optional brief or reference images to
-              guide your design.
+            <DialogTitle>New project</DialogTitle>
+            <DialogDescription>
+              Creating the project starts design generation from the name,
+              brief and references. You review the design before anything else
+              is generated.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={create} className="setup-form">
@@ -460,7 +429,7 @@ function ProjectsPage() {
                 className="asset-type-choice"
                 disabled={busy || naming || briefing || Boolean(draftId)}
               >
-                <legend>What are you creating?</legend>
+                <legend>Asset type</legend>
                 <div>
                   {(["model", "graphic"] as const).map((type) => (
                     <label key={type}>
@@ -482,8 +451,8 @@ function ProjectsPage() {
                         </strong>
                         <small>
                           {type === "model"
-                            ? "Models & Blender source"
-                            : "Images & illustrations"}
+                            ? "GLB models and Blender source"
+                            : "PNG images"}
                         </small>
                       </span>
                     </label>
@@ -491,7 +460,7 @@ function ProjectsPage() {
                 </div>
               </fieldset>
               <div className="grid gap-2">
-                <Label htmlFor="project-name">Project name</Label>
+                <Label htmlFor="project-name">Name</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="project-name"
@@ -502,34 +471,23 @@ function ProjectsPage() {
                     disabled={naming || briefing}
                     required
                     maxLength={100}
-                    placeholder="e.g. Stonehaven village"
+                    placeholder="Stonehaven village"
                   />
                   <Button
                     variant="outline"
-                    size="icon"
                     type="button"
-                    className="shrink-0 max-sm:!size-11"
-                    disabled={
-                      busy ||
-                      naming ||
-                      briefing ||
-                      uploader.isBusy ||
-                      !description.trim()
-                    }
+                    className="shrink-0"
+                    disabled={dialogBusy || !description.trim()}
                     onClick={generateName}
-                    aria-label="Generate project name from brief"
-                    title="Generate project name from brief"
+                    title="Suggest a name from the brief (paid AI request)"
                   >
-                    {naming ? (
-                      <LoaderCircle className="spin" size={16} />
-                    ) : (
-                      <Sparkles size={16} />
-                    )}
+                    {naming && <LoaderCircle className="spin" size={16} />}
+                    Suggest name
                   </Button>
                 </div>
               </div>
               <div className="brief-field">
-                <Label htmlFor="project-brief">The brief (optional)</Label>
+                <Label htmlFor="project-brief">Brief (optional)</Label>
                 <MarkdownTextarea
                   id="project-brief"
                   name="description"
@@ -538,7 +496,7 @@ function ProjectsPage() {
                   disabled={naming || briefing}
                   maxLength={12000}
                   rows={4}
-                  placeholder="Add any direction you have, or leave this empty to use the project name and references."
+                  placeholder="Direction, materials, mood. Leave empty to work from the name and references."
                 />
               </div>
               <PictureUploader
@@ -553,9 +511,7 @@ function ProjectsPage() {
                 variant="outline"
                 type="button"
                 className="w-full whitespace-normal h-auto min-h-9"
-                disabled={
-                  busy || naming || briefing || uploader.isBusy || !name.trim()
-                }
+                disabled={dialogBusy || !name.trim()}
                 onClick={generateBrief}
               >
                 {briefing && (
@@ -569,8 +525,8 @@ function ProjectsPage() {
               </Button>
               <p className="note">
                 {name.trim()
-                  ? `Uses your name${uploader.images.length ? `, ${uploader.images.length} reference image${uploader.images.length === 1 ? "" : "s"}` : ""} and any notes. Review and edit the result before continuing.`
-                  : "Enter a project name to draft a brief. References and notes are optional."}
+                  ? `Paid request using the name${uploader.images.length ? `, ${uploader.images.length} reference image${uploader.images.length === 1 ? "" : "s"}` : ""} and any notes. Edit the result before creating the project.`
+                  : "Enter a name to draft a brief with AI."}
               </p>
               {error && (
                 <Alert variant="destructive" className="error">
@@ -578,22 +534,17 @@ function ProjectsPage() {
                 </Alert>
               )}
             </div>
-            <div className="setup-footer">
-              <Button
-                variant="default"
-                className="wide"
-                disabled={busy || naming || briefing || uploader.isBusy}
-              >
-                {busy ? (
-                  <LoaderCircle className="spin" size={18} />
-                ) : (
-                  <Plus size={18} />
-                )}{" "}
-                {busy
-                  ? "Creating project…"
-                  : "Create project & generate design"}
+            <DialogFooter className="setup-footer">
+              <DialogClose asChild>
+                <Button variant="outline" type="button" disabled={dialogBusy}>
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button variant="default" disabled={dialogBusy}>
+                {busy && <LoaderCircle className="spin" size={18} />}
+                {busy ? "Creating project…" : "Create project"}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

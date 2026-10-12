@@ -12,10 +12,10 @@ import {
   History as HistoryIcon,
   Layers,
   Image,
-  ChevronRight,
   LoaderCircle,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { StatusBadge } from "@/components/status";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,7 +37,6 @@ import { ModelConversation } from "./-components/model-conversation";
 import { ModelMedia } from "./-components/media";
 import { ReviewNotes } from "./-components/review";
 import {
-  modelStatus,
   resolveVersion,
   versionLabel,
   type Workspace,
@@ -88,13 +87,16 @@ function ModelPage() {
   const updateSearch = (change: Partial<typeof search>) =>
     navigate({ search: { ...search, ...change }, resetScroll: false });
   const back = (
-    <Link
-      to="/projects/$projectId"
-      params={{ projectId }}
-      className="model-detail-back"
-    >
-      <ArrowLeft size={16} /> Back to collection
-    </Link>
+    <Breadcrumbs
+      items={[
+        { label: "Projects", link: { to: "/" } },
+        {
+          label: data?.project.name || "Project",
+          link: { to: "/projects/$projectId", params: { projectId } },
+        },
+        { label: data ? "Model" : "Loading" },
+      ]}
+    />
   );
   if (!data)
     return (
@@ -142,8 +144,6 @@ function ModelPage() {
   const cost = runs.reduce((sum, run) => sum + (run.estimatedCost || 0), 0);
   const unpriced = runs.filter((run) => run.estimatedCost === null).length;
   const position = data.models.findIndex((item) => item.id === modelId);
-  const statusClass =
-    model.verdict === "limit_reached" ? "warning" : model.status;
   const stage = artifacts?.stage;
   const stageLabel =
     stage === "geometry"
@@ -201,7 +201,16 @@ function ModelPage() {
         <aside className="studio-chat" aria-label="Model conversation">
           <header className="studio-chat-head">
             <div className="model-detail-topline">
-              {back}
+              <Breadcrumbs
+                items={[
+                  { label: "Projects", link: { to: "/" } },
+                  {
+                    label: data.project.name,
+                    link: { to: "/projects/$projectId", params: { projectId } },
+                  },
+                  { label: model.name.replaceAll("_", " ") },
+                ]}
+              />
               <nav
                 aria-label="Models in collection"
                 className="model-detail-pagination"
@@ -245,19 +254,9 @@ function ModelPage() {
                 )}
               </nav>
             </div>
-            <Link
-              className="model-project-link"
-              to="/projects/$projectId"
-              params={{ projectId }}
-            >
-              {data.project.name}
-              <ChevronRight size={14} />
-            </Link>
             <h1>{model.name.replaceAll("_", " ")}</h1>
             <div className="model-detail-meta">
-              <Badge variant="secondary" className={"badge " + statusClass}>
-                {modelStatus(model)}
-              </Badge>
+              <StatusBadge status={model.status} verdict={model.verdict} />
               <span className="model-detail-filename">{model.name}</span>
             </div>
           </header>
@@ -543,8 +542,7 @@ function ModelPage() {
                     )}
                     {search.section === "brief" && (
                       <article className="model-detail-brief">
-                        <div className="eyebrow">THE BUILD REQUEST</div>
-                        <h2>A direction for every detail.</h2>
+                        <h2>Brief</h2>
                         <p>{model.prompt}</p>
                       </article>
                     )}
@@ -565,9 +563,7 @@ function ModelPage() {
                             >
                               <div className="model-version-title">
                                 <h3>{versionLabel(version)}</h3>
-                                <Badge variant="outline">
-                                  {version.status}
-                                </Badge>
+                                <StatusBadge status={version.status} />
                               </div>
                               <time dateTime={version.createdAt}>
                                 {savedAt(version.createdAt)}
@@ -627,7 +623,7 @@ function ModelPage() {
                           <HistoryIcon size={30} />
                           <h3>No build history yet</h3>
                           <p>
-                            Each attempt will appear here as the model is built.
+                            Attempts appear here as the model is built.
                           </p>
                         </div>
                       ))}

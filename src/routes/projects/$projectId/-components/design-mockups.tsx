@@ -1,16 +1,14 @@
 import { useState, type FormEvent } from "react";
-import { ArrowRight, Download, ImagePlus, LoaderCircle } from "lucide-react";
+import { Download, ImagePlus, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { AssetImage } from "@/components/asset-image";
 import { useLightbox } from "@/components/image-lightbox";
-import { Progress } from "@/components/progress";
-import { agentStateFromStatus } from "@/components/agent-state";
+import { Progress, StatusBadge } from "@/components/status";
 import { fileUrl, json, request } from "@/lib/client";
 import type { DesignMockups } from "@/lib/design-mockups";
 
@@ -28,7 +26,6 @@ export function DesignMockupStep({
   const [error, setError] = useState("");
   const openLightbox = useLightbox();
   const active = mockups.some((job) => ["queued", "running", "cancelling"].includes(job.status));
-  const hasImages = mockups.some((job) => job.images.length > 0);
   async function generate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || active) return;
@@ -64,18 +61,14 @@ export function DesignMockupStep({
     <div className="space-y-6">
       <Card className="panel">
         <div className="section-title flex-wrap gap-4">
-          <div>
-            <div className="eyebrow">STEP 2 · OPTIONAL</div>
-            <h2>Preview your design with mockups</h2>
-          </div>
+          <h2>Mockups (optional)</h2>
           <Button variant="outline" onClick={onGenerate}>
-            {hasImages ? "Continue to ideas" : "Skip and add ideas"}
-            <ArrowRight size={16} />
+            Add {isGraphics ? "graphic" : "model"} ideas
           </Button>
         </div>
         <p className="muted">
-          Generate concept images from approved design v{version} and its visual references
-          with the ChatGPT Image API. You can start generating {isGraphics ? "graphics" : "3D assets"} at any time.
+          Concept images from approved design v{version} and its references. They
+          do not change the design and are not final assets.
         </p>
         <form onSubmit={generate} className="mt-6 space-y-4">
           <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
@@ -91,10 +84,7 @@ export function DesignMockupStep({
                 disabled={busy || active} />
             </div>
           </div>
-          <p className="note">
-            Mockups are concept previews. They do not change the approved design or
-            reference images. Image generation is paid; usage is recorded in Activity &amp; cost.
-          </p>
+          <p className="note">Paid image requests, recorded in Activity.</p>
           <Button disabled={busy || active}>
             {busy || active ? <LoaderCircle size={16} className="spin" /> : <ImagePlus size={16} />}
             {busy ? "Queueing mockups…" : active ? "Mockups in progress" : "Generate mockups"}
@@ -114,16 +104,12 @@ export function DesignMockupStep({
         return <Card key={job.id} className="panel">
           <div className="section-title flex-wrap gap-3">
             <h3>Design v{job.version} · {job.images.length} / {job.count} mockups</h3>
-            <div>
-              <Badge variant="secondary" className={`badge ${job.status}`}>
-                {job.status === "done" ? "Completed" : job.status}
-              </Badge>
-            </div>
+            <StatusBadge status={job.status} />
           </div>
           {job.version !== version && <p className="note">From an earlier approved design.</p>}
           {running && <Progress value={Math.round(job.images.length / job.count * 100)}
             label={job.status === "queued" ? "Waiting to generate mockups" : job.status === "cancelling" ? "Stopping mockups" : `Generating mockup ${Math.min(job.images.length + 1, job.count)} of ${job.count}`}
-            agentState={agentStateFromStatus(job.status)} />}
+            status={job.status} />}
           {job.error && <Alert variant="destructive" className="my-4">
             <AlertDescription>{job.error}</AlertDescription>
           </Alert>}

@@ -6,7 +6,7 @@ This is the application's UI design reference, based on the existing theme in `s
 
 Sticks & Clay feels like a calm creative workshop: warm ivory surfaces, forest-green typography, sage accents, generous space, and restrained outlines. The assets and reference images provide the visual variety. Keep the interface quiet enough to compare 3D models or graphics and read detailed design feedback.
 
-The home headline pairs a plain sans-serif statement (“Build a world.”) with a softer italic serif line (“Keep it consistent.”). Use that editorial contrast sparingly. The brand combines a shaded forest-green stick overlapping a softly rounded terracotta cube with a rounded, solid-green Sticks & Clay wordmark. The transparent header lockup lives at `public/brand/sticks-and-clay-lockup-v2.png`; the standalone emblem and favicon use `sticks-and-clay-mark-v2.png` and `sticks-and-clay-favicon-v2.png`. Render the lockup at 220px wide on desktop and 200px on phones, with descriptive alternative text and an accessible home link. Reserve terracotta for the brand so forest green remains the action color.
+Page copy is plain and task-oriented: headings name the thing on the page (“Projects”, the project name, “Design reference · v3”), and there are no eyebrows, taglines, slogans or arrow glyphs. The brand combines a shaded forest-green stick overlapping a softly rounded terracotta cube with a rounded, solid-green Sticks & Clay wordmark. The transparent header lockup lives at `public/brand/sticks-and-clay-lockup-v2.png`; the standalone emblem and favicon use `sticks-and-clay-mark-v2.png` and `sticks-and-clay-favicon-v2.png`. Render the lockup at 220px wide on desktop and 200px on phones, with descriptive alternative text and an accessible home link. Reserve terracotta for the brand so forest green remains the action color.
 
 ## Palette
 
@@ -38,16 +38,13 @@ Status badges pair text with color:
 | Failed | `#f6e5df` | `#9a5142` | `#e9d1c9` |
 | Warning / review | `#f8efd6` | `#967126` | `#eadcb9` |
 
-Agent lifecycle labels use the same badge language everywhere progress or an
-individual agent run is shown: neutral sage for **Agent: queued**, blue for
-**Agent: working**, and green for **Agent: completed**. Keep technical workflow
-phases and failure outcomes visible separately from this three-state lifecycle.
+One shared `StatusBadge` (`src/components/status.tsx`) maps every workflow status and verdict to a tone and label: neutral for queued or cancelled, blue with a spinner for anything in progress, green for complete or approved, amber for review or completed with issues, red for failed. The shared `Progress` shows the phase label, a percentage and the bar. There is no separate agent-lifecycle badge.
 
 ## Typography and spacing
 
 - The font stack starts with Inter, then system sans-serif fonts; the app does not currently load a bundled Inter font. Base text is 14px. Georgia supplies the italic headline accent; code, transcripts, and the design editor use system monospace.
-- Desktop home headlines are 56px with 1.1 line height and −2.8px tracking. Project titles are 40px. Section headings are 20px; card headings are 17px. Most headings use moderate weights around 530–570.
-- Eyebrows are 10px, widely tracked, and uppercase. Supporting text is generally 12–14px with relaxed line height. Small labels and metadata use 9–11px; preserve readability when introducing new information.
+- Page titles use the shared `.page-header` (clamp 26–38px) with a breadcrumb trail above them. Admin pages keep the larger `.page-heading`. Section headings are 20px; card headings are 17px. Most headings use moderate weights around 530–570.
+- Supporting text is generally 12–14px with relaxed line height. Small labels and metadata use 9–11px; preserve readability when introducing new information.
 - Main content is centered at a maximum width of 1330px, with desktop padding of 48px 40px 65px. The header is 82px tall on desktop, with its contents aligned to the main content. Grids use 23px gaps; panels use 26px padding.
 - Use 7px corners for controls, 10px for panels, 12px for cards, and 16px for dialogs. Separation comes primarily from spacing and 1px borders. Card hover shadows are subtle; dialogs use a stronger shadow.
 
@@ -55,15 +52,15 @@ phases and failure outcomes visible separately from this three-state lifecycle.
 
 Place alert text in the shadcn AlertDescription component so it uses the content column and wraps within the panel on phones. Project-list polling errors clear after a successful refresh; creation-dialog errors remain visible until the next form action.
 
-- **Project list:** preserve the full editorial introduction for an empty workspace, and use a compact introduction for returning users. Search, active/attention filters, and newest/name sorting sit above the three-column card grid. Setup offers visible 3D assets / Graphics radio choices. Cards show their collection type.
+- **Project list:** “Projects” with a count and a New project button; an empty workspace gets one sentence explaining the flow. Search, active/attention filters, and newest/name sorting sit above the three-column card grid. Setup offers visible 3D assets / Graphics radio choices. Cards show their collection type.
 - **Project cards:** a 16:9 cover showing the newest completed project photograph (reference image fallback), with an explicit Generated collection / Reference image label. Status describes queued, active, attention or completed work, separately from design approval. Show asset/completion counts, name, two-line description, date and a rounded estimated cost. When no reference exists, use the existing soft sage gradient, thin Layers icon, and STYLE STARTS HERE caption.
-- **Project workspace:** compact identity, Add ideas action, expandable brief and four statistics, then underlined tabs for assets, Model ideas or Graphic ideas, Design reference, and Activity & cost. Keep the first asset visible early; references remain accessible in the design tab on phones.
+- **Project workspace:** breadcrumb, project name, a meta row (status badge, asset type, design version and approval, estimated cost; the last two jump to their tabs), a collapsed brief and one primary action (Add ideas, or Review design before approval). Underlined tabs Models/Graphics, Ideas, Design, Mockups, Style, Materials and Activity carry counts and live in the URL as `?tab=`, so other pages can link straight to a view. Keep the first asset visible early; references remain accessible in the design tab on phones.
 - **Models:** 240px cover images with an opt-in inline 3D quick preview, readable status, asset name, brief, triangle/cost metadata, and separate GLB/source downloads. Only one card preview is active at a time; collection renders sit in a collapsed Collection studio section below model cards when available.
 - **Graphics:** preserve the full square, portrait, or landscape image with contain sizing rather than cropping it into the model-card ratio. Generation asks for a canvas per batch. Cards expose the PNG download, generation status, brief, cost, and a link to activity. Do not show Blender, triangle, judge-round, 3D preview, or collection-scene controls for graphic projects.
 - **Design reference:** readable Markdown, section links, revision/approval status and comparisons; a main document column with a 280px reference sidebar. The editable source is monospace. Editing/preview preserves unsaved text. Save as draft, approve, discard edits and revision restoration stay distinct, with persistent editing actions. Explain that saved drafts need approval and existing batches retain their snapshots.
 - **Activity:** requests grouped by asset with asset, action and outcome filters. Expandable rows prioritize action, timestamp, outcome and estimated cost; technical model/engine details, exact cost and transcripts live inside. Mobile rows stack without hiding status. Label missing prices as not yet priced, distinct from unfinished jobs.
 - **Forms:** shadcn Label, Input, Textarea, and Button with stacked labels, ivory surfaces, generous padding, and dashed upload areas. Use Alert for errors.
-- **Dialogs:** shadcn Dialog with focus management and Escape behavior; centered on a translucent green overlay with blur. Standard dialogs are 570px wide, constrained by the viewport and a 92vh maximum height. Model inspection uses a dedicated page.
+- **Dialogs:** shadcn Dialog with focus management and Escape behavior; centered on a translucent green overlay with blur. Every dialog ends in a `DialogFooter` with a Cancel button (DialogClose) and one primary action; forms scroll inside while the footer stays visible. Standard dialogs are 570px wide, constrained by the viewport and a 92vh maximum height. Model inspection uses a dedicated page.
 - **3D preview:** neutral lighting and background, orbit/zoom controls, loading/error text, and a short interaction hint. Let the asset's material colors remain the focus.
 - **Icons and motion:** use `lucide-react` line icons. Existing hover transitions last 0.15–0.2s; activity spinners rotate over 1.4s. Avoid decorative motion that competes with work in progress.
 
@@ -101,7 +98,7 @@ The design reference sidebar uses the same uploader during review and editing. S
 
 ## Optional design mockups
 
-Show the collection creation sequence as Design reference, Mockups (optional), and final assets. Approval opens the Mockups step. New approved collections start there; existing collections retain their asset overview. The owner can skip mockups and open the idea dialog at any time after approval.
+Mockups are an optional tab. Approval opens the Models tab, whose empty state offers Add ideas and a link to generate mockups first.
 
 Mockups use the configured ChatGPT Image API to generate 1–4 landscape concept images from a frozen approved design and its visual references. Offer an optional description, honest queued/running states, partial results, cancellation and failed-job resume. Preserve earlier design versions in the gallery. Open images in the shared lightbox with downloads. Keep concept previews separate from final assets and uploaded references, and explain that image requests are paid and recorded in Activity & cost.
 
@@ -119,7 +116,7 @@ The build story is the left conversation column; it presents the same recorded s
 
 ## Project overview
 
-The project overview pairs its brief and primary generation action with a compact reference-image panel. A slim metrics row summarizes collection size, active work, items needing attention and estimated cost. Collection search and status filters operate on models and pending requests. Queued or planning batches occupy ordinary model cards, one per outstanding model; replace those placeholders as model rows are created. Keep failed-batch recovery available even if its model rows already exist. Placeholder cards show honest queue/planning states and must not link to nonexistent models. The collection grid, reference panel and filters adapt to phone widths.
+The project overview puts the brief and the primary generation action in the page header; references live in the Design tab. Collection filter chips (All, In progress, Needs attention, Completed) carry counts and sit beside the collection search. Queued or planning batches occupy ordinary model cards, one per outstanding model; replace those placeholders as model rows are created. Keep failed-batch recovery available even if its model rows already exist. Placeholder cards show honest queue/planning states and must not link to nonexistent models. The collection grid, reference panel and filters adapt to phone widths.
 
 The project setup brief is optional. Use one Draft brief with AI / Refine brief with AI action below the uploader; it needs a name and includes any references and notes. Explain which inputs it uses. The setup fields scroll within the dialog while its creation footer stays visible. Blank briefs proceed to design generation from the name and references.
 

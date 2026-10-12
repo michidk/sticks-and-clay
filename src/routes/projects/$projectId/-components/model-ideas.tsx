@@ -45,17 +45,16 @@ export function ModelIdeas({ projectId, ideas, isGraphics, ready, onAdd, onRefre
   return <section className="space-y-5" aria-label={`${plural} ideas`}>
     <div className="section-title flex-wrap gap-3">
       <div>
-        <h2>{plural} ideas</h2>
-        <p className="muted">Save briefs now, start generation when you're ready.</p>
+        <h2>Ideas</h2>
+        <p className="muted">Saved briefs. Starting one queues paid generation from the approved design at that time.</p>
       </div>
       <Button onClick={onAdd}><Plus size={17} /> Add ideas</Button>
     </div>
-    <p className="note">Starting an idea uses the approved design at that time and queues paid generation.</p>
     {!ready && <p className="note">Approve the design reference before starting generation.</p>}
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     {!ideas.length ? <Empty>
       <h3>No ideas saved yet</h3>
-      <p>Add a brief or draft one with AI, then keep it here until you're ready.</p>
+      <p>Add a brief, or draft one with AI, and start it when ready.</p>
       <Button variant="outline" onClick={onAdd}><Plus size={17} /> Add ideas</Button>
     </Empty> : <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
       {ideas.map((idea) => <Card key={idea.id} className="min-w-0 gap-4 p-5">
@@ -65,7 +64,7 @@ export function ModelIdeas({ projectId, ideas, isGraphics, ready, onAdd, onRefre
         </div>
         <div className="markdown max-h-72 overflow-auto break-words text-sm">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {idea.input.prompt || "Let AI propose assets from the approved design."}
+            {idea.input.prompt || "AI proposes assets from the approved design."}
           </ReactMarkdown>
         </div>
         <p className="muted text-xs">

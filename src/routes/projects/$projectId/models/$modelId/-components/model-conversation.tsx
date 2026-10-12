@@ -10,7 +10,7 @@ import {
   LoaderCircle,
   ScanEye,
   Send,
-  Sparkles,
+  Bot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -168,7 +168,7 @@ export function ModelConversation({
         </details>
         {steps.map((step) => {
           const Icon =
-            roleIcons[step.run.role as keyof typeof roleIcons] || Sparkles;
+            roleIcons[step.run.role as keyof typeof roleIcons] || Bot;
           const tone =
             step.state === "Running"
               ? "is-running"
@@ -200,7 +200,7 @@ export function ModelConversation({
                   step.run.error ||
                   (step.state === "Running"
                     ? model.phase
-                    : "Result recorded in activity history.")}
+                    : "Recorded in Activity.")}
               </p>
               {step.review && (
                 <div className="chat-review-summary">
@@ -238,7 +238,7 @@ export function ModelConversation({
         })}
         {!steps.length && (
           <p className="conversation-empty">
-            The queued build will appear here as steps are recorded.
+            Steps appear here as the build runs.
           </p>
         )}
         {children.map((child) => (
@@ -263,7 +263,7 @@ export function ModelConversation({
         <p className="studio-compose-source">
           {source
             ? `${kind === "fork" ? "Forking" : "Continuing"} from ${versionLabel(source)} · Ctrl or ⌘ + Enter sends`
-            : "A saved Blender version is needed before continuing."}
+            : "Needs a saved Blender version to continue from."}
         </p>
         {kind === "fork" && (
           <div className="studio-compose-field">

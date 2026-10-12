@@ -34,8 +34,7 @@ export function AdminSidebar() {
   return (
     <aside className="admin-sidebar">
       <div className="admin-sidebar-heading">
-        <span className="eyebrow">Administration</span>
-        <p>Manage production and the tools behind it.</p>
+        <h2>Admin</h2>
       </div>
       <nav className="admin-subnav" aria-label="Administration navigation">
         {sections.map(({ to, label, description, icon: Icon }) => {

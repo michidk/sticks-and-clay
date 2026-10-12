@@ -1,10 +1,9 @@
-import { Link } from "@tanstack/react-router";
-import { ArrowLeft, LoaderCircle } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/progress";
-import { agentStateFromStatus } from "@/components/agent-state";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { Progress, StatusBadge } from "@/components/status";
 
 export function ProjectSetup({
   project,
@@ -26,31 +25,39 @@ export function ProjectSetup({
   onRetry: () => void;
 }) {
   const failed = project.status === "failed" || Boolean(project.error);
-  const graphic = project.assetType === "graphic";
   return (
     <main className="project-overview">
-      <Link to="/" className="back">
-        <ArrowLeft size={15} />
-        All projects
-      </Link>
-      <div className="eyebrow">PROJECT SETUP</div>
-      <h1>{project.name}</h1>
-      <Card className="panel mx-auto my-8 w-full max-w-3xl" aria-live="polite">
+      <Breadcrumbs
+        items={[
+          { label: "Projects", link: { to: "/" } },
+          { label: project.name },
+        ]}
+      />
+      <section className="page-header">
+        <div>
+          <h1>{project.name}</h1>
+          <div className="page-meta">
+            <StatusBadge status={failed ? "failed" : project.status} />
+            <span>
+              {project.assetType === "graphic" ? "Graphics" : "3D assets"}
+            </span>
+          </div>
+        </div>
+      </section>
+      <Card className="panel max-w-3xl" aria-live="polite">
         <h2>
-          {failed
-            ? "Design setup needs attention"
-            : "Creating your design specs"}
+          {failed ? "Design generation failed" : "Generating the design reference"}
         </h2>
         <p className="muted">
           {failed
-            ? "Your brief is saved. Retry to finish creating your design specs."
-            : `We’re turning your brief and references into a shared visual direction. You’ll review and edit the specs before generating ${graphic ? "graphics" : "3D assets"}.`}
+            ? "The brief is saved. Retry to generate the design reference."
+            : "The design reference is written from the brief and references. Review and approve it before generating assets."}
         </p>
         {!failed && (
           <Progress
             value={project.progress}
-            label={project.phase || "Preparing design specs"}
-            agentState={agentStateFromStatus(project.status)}
+            label={project.phase || "Preparing"}
+            status={project.status}
           />
         )}
         {(error || project.error) && (
@@ -61,13 +68,15 @@ export function ProjectSetup({
         {failed && (
           <Button variant="outline" disabled={retrying} onClick={onRetry}>
             {retrying && <LoaderCircle size={16} className="spin" />}
-            {retrying ? "Restarting…" : "Retry design setup"}
+            {retrying ? "Retrying…" : "Retry"}
           </Button>
         )}
-        <div className="mt-8 border-t pt-6">
-          <h3>Your brief</h3>
-          <p className="whitespace-pre-wrap">{project.description}</p>
-        </div>
+        {project.description && (
+          <div className="mt-8 border-t pt-6">
+            <h3>Brief</h3>
+            <p className="whitespace-pre-wrap">{project.description}</p>
+          </div>
+        )}
       </Card>
     </main>
   );

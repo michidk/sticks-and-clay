@@ -20,11 +20,8 @@
   border-bottom: 1px solid var(--border);
 }
 
-.admin-sidebar-heading p {
-  margin: 9px 0 0;
-  color: var(--muted-foreground);
-  font-size: 11px;
-  line-height: 1.55;
+.admin-sidebar-heading h2 {
+  font-size: 15px;
 }
 
 .admin-subnav {
@@ -171,7 +168,6 @@
     padding: 16px;
   }
 
-  .admin-sidebar-heading p,
   .admin-subnav-link small {
     display: none;
   }
