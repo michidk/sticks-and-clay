@@ -21,7 +21,7 @@ const empty = z.object({});
 const read: McpScope = "sticks-and-clay:read";
 const write: McpScope = "sticks-and-clay:write";
 const admin: McpScope = "sticks-and-clay:admin";
-const projectSections = ["overview", "models", "versions", "runs", "revisions", "batches", "photographs", "designUpdates"] as const;
+const projectSections = ["overview", "models", "ideas", "versions", "runs", "revisions", "batches", "photographs", "designUpdates"] as const;
 
 export function createStudioMcpServer(options: {
   scopes: readonly string[];

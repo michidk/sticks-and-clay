@@ -18,32 +18,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { FileText, LoaderCircle, Play } from "lucide-react";
+import { FileText, LoaderCircle, Plus } from "lucide-react";
 import { request, json } from "@/lib/client";
 import type { RuntimeSettings } from "@/lib/contracts";
 
 type GenerationDialogProps = {
   projectId: string;
   designVersion: number;
+  ready: boolean;
   isGraphics: boolean;
   open: boolean;
   error: string;
   onOpenChange: (open: boolean) => void;
   onError: (error: string) => void;
   onRefresh: () => Promise<unknown>;
-  onGenerated: () => Promise<void>;
+  onSaved: () => Promise<void>;
 };
 
 export function GenerationDialog({
   projectId,
   designVersion,
+  ready,
   isGraphics,
   open,
   error,
   onOpenChange,
   onError,
   onRefresh,
-  onGenerated,
+  onSaved,
 }: GenerationDialogProps) {
   const [busy, setBusy] = useState(false);
   const [modelBrief, setModelBrief] = useState("");
@@ -93,14 +95,14 @@ export function GenerationDialog({
       setBriefSubmitting(false);
     }
   }
-  async function build(e: FormEvent<HTMLFormElement>) {
+  async function saveIdea(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     onError("");
     try {
       const f = new FormData(e.currentTarget);
       await request(
-        `projects/${projectId}/generate`,
+        `projects/${projectId}/ideas`,
         json({
           prompt: f.get("prompt"),
           spriteTarget:
@@ -118,8 +120,9 @@ export function GenerationDialog({
           imageSize: isGraphics ? f.get("imageSize") : "1024x1024",
         }),
       );
+      setModelBrief("");
       onOpenChange(false);
-      await onGenerated();
+      await onSaved();
     } catch (e) {
       onError((e as Error).message);
     } finally {
@@ -151,14 +154,14 @@ export function GenerationDialog({
         <DialogHeader>
           <div className="eyebrow">EXPAND YOUR COLLECTION</div>
           <DialogTitle className="text-[27px]">
-            What should we create?
+            Add {isGraphics ? "graphic" : "model"} ideas
           </DialogTitle>
           <DialogDescription className="muted">
-            Agents will follow design v{designVersion}. Give them specifics, or
-            let them propose the set.
+            Save a brief for later. Start generation from your ideas when you're
+            ready, using the approved design. Current design: v{designVersion}.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={build}>
+        <form onSubmit={saveIdea}>
           <div className="form-row">
             <Label>
               Number of {assetPlural}
@@ -255,6 +258,7 @@ export function GenerationDialog({
                 disabled={
                   busy ||
                   briefing ||
+                  !ready ||
                   !Number.isInteger(modelCount) ||
                   modelCount < 1 ||
                   modelCount > 20
@@ -286,6 +290,11 @@ export function GenerationDialog({
             </p>
           )}
           <p className="note">
+            Saving an idea does not start generation. Drafting a brief with AI
+            uses paid AI and is recorded in Activity & cost.
+          </p>
+          {!ready && <p className="note">Approve the design before drafting a brief with AI or starting generation.</p>}
+          <p className="note">
             {isGraphics
               ? "Each graphic is generated on your chosen canvas and saved as a PNG. Usage is recorded in Activity & cost."
               : judgeIterations === 0
@@ -302,8 +311,8 @@ export function GenerationDialog({
             className="wide"
             disabled={busy || briefing}
           >
-            <Play size={17} />
-            {busy ? "Queueing artists…" : "Start generation"}
+            <Plus size={17} />
+            {busy ? "Saving idea…" : "Save idea"}
           </Button>
         </form>
       </DialogContent>

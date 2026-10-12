@@ -69,7 +69,7 @@ export function DesignMockupStep({
             <h2>Preview your design with mockups</h2>
           </div>
           <Button variant="outline" onClick={onGenerate}>
-            {hasImages ? "Continue to generation" : "Skip and generate"}
+            {hasImages ? "Continue to ideas" : "Skip and add ideas"}
             <ArrowRight size={16} />
           </Button>
         </div>

@@ -40,6 +40,8 @@ import { prepareReferences } from "./reference-images.server";
 import { downloadImage } from "./remote-image.server";
 import { mockupInput } from "./design-mockups";
 import { designMockups, queueDesignMockups } from "./design-mockups.server";
+import { queueGeneration } from "./generation.server";
+import { discardModelIdea, listModelIdeas, saveModelIdea, startModelIdea } from "./model-ideas.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   kinds: string[],
@@ -484,6 +486,7 @@ export async function api(request: Request) {
           project,
           photographs: await projectPhotographs(id),
           mockups: await designMockups(id),
+          ideas: await listModelIdeas(id),
           models: assets,
           versions: history
             .filter((r) => r.role === "builder" && r.modelId)
@@ -538,6 +541,18 @@ export async function api(request: Request) {
             }),
           ),
         });
+      }
+      if (path[2] === "ideas") {
+        if (path.length === 3 && request.method === "POST") {
+          const input = generationInput.parse(await request.json());
+          return reply({ id: await saveModelIdea(project, input) }, 201);
+        }
+        if (path.length === 4 && request.method === "DELETE") {
+          await discardModelIdea(id, uuid.parse(path[3]));
+          return reply({ ok: true });
+        }
+        if (path.length === 5 && path[4] === "generate" && request.method === "POST")
+          return reply({ id: await startModelIdea(id, uuid.parse(path[3])) }, 201);
       }
       if (path[2] === "mockups" && request.method === "POST") {
         const input = mockupInput.parse(await request.json());
@@ -650,33 +665,8 @@ export async function api(request: Request) {
         return reply({ workshop: updated.workshop });
       }
       if (path[2] === "generate" && request.method === "POST") {
-        if (project.status !== "ready")
-          throw new Error("Approve the design before generating assets");
         const input = generationInput.parse(await request.json());
-        if (project.assetType === "graphic" && input.spriteTarget)
-          throw new Error("Sprite targets require a 3D collection");
-        if (project.assetType === "graphic" && input.judgeIterations !== 0)
-          throw new Error("Graphic generation does not use 3D judge rounds");
-        if (project.assetType === "model" && input.imageSize !== "1024x1024")
-          throw new Error("Image size applies only to graphic projects");
-        const batchId = crypto.randomUUID();
-        const workshop = await snapshotWorkshop(id, project.workshop);
-        await db.transaction(async (tx) => {
-          await tx.insert(batches).values({
-            id: batchId,
-            projectId: id,
-            ...input,
-            design: project.design,
-            designVersion: project.designVersion,
-            workshop,
-          });
-          await tx.insert(jobs).values({
-            id: crypto.randomUUID(),
-            kind: "plan",
-            targetId: batchId,
-          });
-        });
-        return reply({ id: batchId }, 201);
+        return reply({ id: await queueGeneration(id, input) }, 201);
       }
       if (path[2] === "retry-design" && request.method === "POST") {
         if (project.status !== "failed")

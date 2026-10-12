@@ -23,6 +23,7 @@ export const generationInput = z.object({
   spriteTarget: spriteOptionsSchema.optional(),
   imageSize: imageSizeSchema.default("1024x1024"),
 });
+export type GenerationInput = z.infer<typeof generationInput>;
 
 export const branchInput = z.object({
   kind: z.enum(["iterate", "fork"]),

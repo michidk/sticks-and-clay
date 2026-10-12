@@ -9,6 +9,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { Workshop, WorkshopSnapshot } from "../lib/workshop";
 import type { SpriteOptions } from "../lib/sprites";
+import type { GenerationInput } from "../lib/api-inputs";
 const created = () =>
   timestamp("created_at", { withTimezone: true }).defaultNow().notNull();
 export const materialVersions = pgTable("material_versions", {
@@ -52,6 +53,13 @@ export const revisions = pgTable("design_revisions", {
   author: text().notNull(),
   createdAt: created(),
 });
+export const modelIdeas = pgTable("model_ideas", {
+  id: text().primaryKey(),
+  projectId: text().notNull().references(() => projects.id, { onDelete: "cascade" }),
+  input: jsonb().$type<GenerationInput>().notNull(),
+  batchId: text().references(() => batches.id),
+  createdAt: created(),
+}, (table) => [index("model_ideas_project_id_idx").on(table.projectId)]);
 export const batches = pgTable("batches", {
   id: text().primaryKey(),
   projectId: text()

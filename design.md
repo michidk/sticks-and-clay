@@ -55,7 +55,7 @@ phases and failure outcomes visible separately from this three-state lifecycle.
 
 - **Project list:** preserve the full editorial introduction for an empty workspace, and use a compact introduction for returning users. Search, active/attention filters, and newest/name sorting sit above the three-column card grid. Setup offers visible 3D assets / Graphics radio choices. Cards show their collection type.
 - **Project cards:** a 16:9 cover showing the newest completed project photograph (reference image fallback), with an explicit Generated collection / Reference image label. Status describes queued, active, attention or completed work, separately from design approval. Show asset/completion counts, name, two-line description, date and a rounded estimated cost. When no reference exists, use the existing soft sage gradient, thin Layers icon, and STYLE STARTS HERE caption.
-- **Project workspace:** compact identity, generation action, expandable brief and four statistics, then underlined tabs for assets, Design reference, and Activity & cost. Keep the first asset visible early; references remain accessible in the design tab on phones.
+- **Project workspace:** compact identity, Add ideas action, expandable brief and four statistics, then underlined tabs for assets, Model ideas or Graphic ideas, Design reference, and Activity & cost. Keep the first asset visible early; references remain accessible in the design tab on phones.
 - **Models:** 240px cover images with an opt-in inline 3D quick preview, readable status, asset name, brief, triangle/cost metadata, and separate GLB/source downloads. Only one card preview is active at a time; collection renders sit in a collapsed Collection studio section below model cards when available.
 - **Graphics:** preserve the full square, portrait, or landscape image with contain sizing rather than cropping it into the model-card ratio. Generation asks for a canvas per batch. Cards expose the PNG download, generation status, brief, cost, and a link to activity. Do not show Blender, triangle, judge-round, 3D preview, or collection-scene controls for graphic projects.
 - **Design reference:** readable Markdown, section links, revision/approval status and comparisons; a main document column with a 280px reference sidebar. The editable source is monospace. Editing/preview preserves unsaved text. Save as draft, approve, discard edits and revision restoration stay distinct, with persistent editing actions. Explain that saved drafts need approval and existing batches retain their snapshots.
@@ -99,9 +99,13 @@ The design reference sidebar uses the same uploader during review and editing. S
 
 ## Optional design mockups
 
-Show the collection creation sequence as Design reference, Mockups (optional), and final assets. Approval opens the Mockups step. New approved collections start there; existing collections retain their asset overview. The owner can skip mockups and open final generation at any time after approval.
+Show the collection creation sequence as Design reference, Mockups (optional), and final assets. Approval opens the Mockups step. New approved collections start there; existing collections retain their asset overview. The owner can skip mockups and open the idea dialog at any time after approval.
 
 Mockups use the configured ChatGPT Image API to generate 1–4 landscape concept images from a frozen approved design and its visual references. Offer an optional description, honest queued/running states, partial results, cancellation and failed-job resume. Preserve earlier design versions in the gallery. Open images in the shared lightbox with downloads. Keep concept previews separate from final assets and uploaded references, and explain that image requests are paid and recorded in Activity & cost.
+
+## Model and graphic ideas
+
+The collection's Add ideas dialog saves the brief, requested count, review rounds and sprite or canvas settings without queueing generation. AI brief drafting remains optional and paid. Ideas can be saved while the design awaits approval. Show each saved request in the Model ideas or Graphic ideas view with its brief and settings, Start generation and Discard actions, empty and error states. Starting requires an approved design and snapshots the design and collection guidance at that time. A started idea moves into the asset collection as a queued batch; repeated starts reuse that batch. Discard removes only an unstarted idea.
 
 ## Model pipeline graph
 

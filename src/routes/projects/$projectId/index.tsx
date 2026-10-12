@@ -1,4 +1,5 @@
 import { GenerationDialog } from "./-components/generation-dialog";
+import { ModelIdeas } from "./-components/model-ideas";
 import { DesignMockupStep } from "./-components/design-mockups";
 import {
   collectionAssetGroups,
@@ -49,6 +50,7 @@ import {
   Activity,
   FileText,
   Image as ImageIcon,
+  Lightbulb,
 } from "lucide-react";
 import {
   request,
@@ -280,8 +282,8 @@ function ProjectPage() {
             </div>
           </details>
           <div className="overview-actions">
-            <Button disabled={!ready} onClick={() => setGenerate(true)}>
-              <Plus size={17} /> Generate {assetPlural}
+            <Button onClick={() => setGenerate(true)}>
+              <Plus size={17} /> Add {assetSingular} ideas
             </Button>
             <Button variant="outline" onClick={() => setTab("design")}>
               <FileText size={16} />{" "}
@@ -388,6 +390,7 @@ function ProjectPage() {
               isGraphics ? ImageIcon : Boxes,
             ],
             ["design", "Design reference", FileText],
+            ["ideas", isGraphics ? "Graphic ideas" : "Model ideas", Lightbulb],
             ...(ready ? [["mockups", "Mockups", ImageIcon]] : []),
             ["style", "Collection style", Boxes],
             ...(!isGraphics && ready
@@ -408,6 +411,11 @@ function ProjectPage() {
               </TabsTrigger>
             ))}
         </TabsList>
+        {activeTab === "ideas" && (
+          <ModelIdeas key={projectId} projectId={projectId} ideas={data.ideas || []}
+            isGraphics={isGraphics} ready={ready} onAdd={() => setGenerate(true)}
+            onRefresh={load} onGenerated={() => setTab("models")} />
+        )}
         {activeTab === "materials" && (
           <MaterialPanel key={projectId} projectId={projectId} />
         )}
@@ -416,7 +424,7 @@ function ProjectPage() {
             <DesignMockupStep key={projectId} projectId={projectId}
               version={p.designVersion} mockups={data.mockups || []}
               isGraphics={isGraphics} onRefresh={load}
-              onGenerate={() => { setTab("models"); setGenerate(true); }} />
+              onGenerate={() => { setTab("ideas"); setGenerate(true); }} />
           </LightboxProvider>
         )}
         {activeTab === "style" && (
@@ -694,7 +702,7 @@ function ProjectPage() {
                   onClick={() => (ready ? setGenerate(true) : setTab("design"))}
                 >
                   {ready
-                    ? `Create your first ${assetPlural}`
+                    ? `Add your first ${assetSingular} idea`
                     : "Open design reference"}
                   <ArrowLeft
                     style={{ transform: "rotate(180deg)" }}
@@ -1008,13 +1016,14 @@ function ProjectPage() {
       <GenerationDialog
         projectId={projectId}
         designVersion={p.designVersion}
+        ready={ready}
         isGraphics={isGraphics}
         open={generate}
         error={error}
         onOpenChange={setGenerate}
         onError={setError}
         onRefresh={load}
-        onGenerated={async () => { setTab("models"); await load(); }}
+        onSaved={async () => { setTab("ideas"); await load(); }}
       />
     </main>
   );
