@@ -200,12 +200,15 @@ function ProjectPage() {
     ...(!isGraphics && ready
       ? [["materials", "Materials"] as [ProjectTab, string]]
       : []),
-    ["history", "Activity", rs.length],
   ];
   return (
     <main className="project-overview">
       <Breadcrumbs
-        items={[{ label: "Projects", link: { to: "/" } }, { label: p.name }]}
+        items={[
+          { label: "Projects", link: { to: "/" } },
+          { label: p.name, link: { to: ".", search: {} } },
+          ...(activeTab === "history" ? [{ label: "Activity" }] : []),
+        ]}
       />
       <section className="page-header">
         <div>
@@ -217,8 +220,8 @@ function ProjectPage() {
               Design v{p.designVersion} {ready ? "approved" : "awaiting approval"}
             </button>
             <button type="button" onClick={() => setTab("history")}>
-              Est. {costSummary(total.cost)}
-              {total.unpriced ? ` · ${total.unpriced} not yet priced` : ""}
+              {costSummary(total.cost)} spent · {rs.length} requests
+              {total.unpriced ? ` (${total.unpriced} unpriced)` : ""}
             </button>
           </div>
           {p.description && (
@@ -264,7 +267,7 @@ function ProjectPage() {
           {tabList.map(([id, title, count]) => (
             <TabsTrigger value={id} key={id}>
               {title}
-              {count !== undefined && (
+              {!!count && (
                 <Badge variant="secondary" className="count">
                   {count}
                 </Badge>
@@ -294,9 +297,7 @@ function ProjectPage() {
               projectId={projectId}
               version={p.designVersion}
               mockups={data.mockups || []}
-              isGraphics={isGraphics}
               onRefresh={load}
-              onGenerate={() => setGenerate(true)}
             />
           </LightboxProvider>
         )}

@@ -77,24 +77,15 @@ export function CardsSkeleton({
 export function WorkspaceSkeleton() {
   return (
     <LoadingRegion label="Opening project">
-      <div className="space-y-8">
-        <Skeleton className="h-4 w-24" />
+      <div className="space-y-8 pt-5">
+        <Skeleton className="h-3 w-40" />
         <div className="space-y-4">
-          <Skeleton className="h-3 w-40" />
           <Skeleton className="h-10 w-3/4 max-w-xl" />
-          <Skeleton className="h-4 w-full max-w-2xl" />
+          <Skeleton className="h-4 w-80" />
         </div>
-        <Card className="grid grid-cols-2 gap-6 border-[#dce1d5] p-6 sm:grid-cols-4">
-          {Array.from({ length: 4 }, (_, i) => (
-            <div key={i} className="space-y-4">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="h-7 w-20" />
-            </div>
-          ))}
-        </Card>
-        <div className="flex gap-4 border-b pb-4">
-          {Array.from({ length: 3 }, (_, i) => (
-            <Skeleton key={i} className="h-6 w-28" />
+        <div className="flex gap-6 border-b border-[#dce3d3] pb-4">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Skeleton key={i} className="h-4 w-16" />
           ))}
         </div>
         <div className="project-grid">

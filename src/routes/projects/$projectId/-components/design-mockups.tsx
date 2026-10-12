@@ -13,14 +13,12 @@ import { fileUrl, json, request } from "@/lib/client";
 import type { DesignMockups } from "@/lib/design-mockups";
 
 export function DesignMockupStep({
-  projectId, version, mockups, isGraphics, onRefresh, onGenerate,
+  projectId, version, mockups, onRefresh,
 }: {
   projectId: string;
   version: number;
   mockups: DesignMockups[];
-  isGraphics: boolean;
   onRefresh: () => Promise<unknown>;
-  onGenerate: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -60,15 +58,9 @@ export function DesignMockupStep({
   return (
     <div className="space-y-6">
       <Card className="panel">
-        <div className="section-title flex-wrap gap-4">
-          <h2>Mockups (optional)</h2>
-          <Button variant="outline" onClick={onGenerate}>
-            Add {isGraphics ? "graphic" : "model"} ideas
-          </Button>
-        </div>
+        <h2>Mockups</h2>
         <p className="muted">
-          Concept images from approved design v{version} and its references. They
-          do not change the design and are not final assets.
+          Concept images from design v{version}. They are not final assets.
         </p>
         <form onSubmit={generate} className="mt-6 space-y-4">
           <div className="grid gap-4 sm:grid-cols-[160px_1fr]">

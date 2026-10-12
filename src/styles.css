@@ -626,17 +626,10 @@ textarea::placeholder {
   position: relative;
   gap: 8px;
 }
-.tabs button.active {
-  color: #35543b;
-}
-.tabs button.active:after {
-  content: "";
-  height: 2px;
-  background: #42684a;
-  position: absolute;
+/* Active underline sits on the list border for every line tab list. */
+[data-slot="tabs-list"][data-variant="line"] [data-slot="tabs-trigger"]::after {
   bottom: -1px;
-  left: 0;
-  right: 0;
+  background: var(--primary);
 }
 .panel {
   background: #fbfcf6;

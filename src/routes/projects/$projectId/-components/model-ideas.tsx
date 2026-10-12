@@ -46,11 +46,10 @@ export function ModelIdeas({ projectId, ideas, isGraphics, ready, onAdd, onRefre
     <div className="section-title flex-wrap gap-3">
       <div>
         <h2>Ideas</h2>
-        <p className="muted">Saved briefs. Starting one queues paid generation from the approved design at that time.</p>
+        <p className="muted">Start an idea to queue paid generation from the current approved design.</p>
       </div>
       <Button onClick={onAdd}><Plus size={17} /> Add ideas</Button>
     </div>
-    {!ready && <p className="note">Approve the design reference before starting generation.</p>}
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     {!ideas.length ? <Empty>
       <h3>No ideas saved yet</h3>
