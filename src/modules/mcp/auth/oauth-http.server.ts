@@ -128,7 +128,8 @@ function consentPage(
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
         "X-Frame-Options": "DENY",
-        "Referrer-Policy": "no-referrer",
+        // Preserve Origin on consent POSTs without sending referrers to callbacks.
+        "Referrer-Policy": "same-origin",
         "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; form-action 'self' ${new URL(redirectUri).origin}; frame-ancestors 'none'; base-uri 'none'`,
       },
     },

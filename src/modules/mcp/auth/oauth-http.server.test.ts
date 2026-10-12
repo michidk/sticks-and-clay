@@ -205,6 +205,7 @@ async function session(ownerAuth: "password" | "hodor" = "password") {
   async function consent() {
     const page = await send(url);
     expect(page.status).toBe(200);
+    expect(page.headers.get("Referrer-Policy")).toBe("same-origin");
     const html = await page.text();
     const csrf = /name="csrf" value="([^"]+)"/.exec(html)?.[1];
     const cookie = page.headers.get("set-cookie")?.split(";")[0];
@@ -310,6 +311,7 @@ describe("MCP OAuth", () => {
     const binding = await s.consent();
     expect((await s.approve(binding, { csrf: "forged" })).status).toBe(403);
     expect((await s.approve(binding, {}, s.url, "https://evil.example")).status).toBe(403);
+    expect((await s.approve(binding, {}, s.url, "null")).status).toBe(403);
   });
 
   test("configuration uses canonical HTTPS or loopback URL and strong owner credentials", () => {
