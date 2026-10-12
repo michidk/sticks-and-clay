@@ -1,4 +1,4 @@
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,7 +37,7 @@ export function DiagnosticsPanel() {
   }, []);
   if (!data && !error) return <div className="diagnostics-grid">{Array.from({ length: 5 }, (_, index) => <Skeleton key={index} className="h-40 rounded-xl" />)}</div>;
   return <>
-    {error && <Alert variant="destructive" className="error">{error}</Alert>}
+    {error && <Alert variant="destructive" className="error"><AlertDescription>{error}</AlertDescription></Alert>}
     {data && <>
       <div className="diagnostics-grid">
         <ServiceCard name="Database" icon={Database} health={data.services.database} detail="Application persistence" />

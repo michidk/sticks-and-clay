@@ -53,6 +53,8 @@ phases and failure outcomes visible separately from this three-state lifecycle.
 
 ## Components and layout
 
+Place alert text in the shadcn AlertDescription component so it uses the content column and wraps within the panel on phones. Project-list polling errors clear after a successful refresh; creation-dialog errors remain visible until the next form action.
+
 - **Project list:** preserve the full editorial introduction for an empty workspace, and use a compact introduction for returning users. Search, active/attention filters, and newest/name sorting sit above the three-column card grid. Setup offers visible 3D assets / Graphics radio choices. Cards show their collection type.
 - **Project cards:** a 16:9 cover showing the newest completed project photograph (reference image fallback), with an explicit Generated collection / Reference image label. Status describes queued, active, attention or completed work, separately from design approval. Show asset/completion counts, name, two-line description, date and a rounded estimated cost. When no reference exists, use the existing soft sage gradient, thin Layers icon, and STYLE STARTS HERE caption.
 - **Project workspace:** compact identity, Add ideas action, expandable brief and four statistics, then underlined tabs for assets, Model ideas or Graphic ideas, Design reference, and Activity & cost. Keep the first asset visible early; references remain accessible in the design tab on phones.

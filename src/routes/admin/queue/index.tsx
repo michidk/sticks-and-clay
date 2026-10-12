@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createFileRoute } from "@tanstack/react-router";
@@ -123,7 +123,7 @@ function QueuePage() {
       </section>
       {error && (
         <Alert variant="destructive" role="alert" className="error">
-          {error}
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
       {control && (

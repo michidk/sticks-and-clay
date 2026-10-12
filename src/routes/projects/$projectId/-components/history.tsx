@@ -14,7 +14,7 @@ import {
   agentStateFromStatus,
 } from "@/components/agent-state";
 import { Card } from "@/components/ui/card";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Accordion,
   AccordionItem,
@@ -289,7 +289,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                     </p>
                     {r.error && (
                       <Alert variant="destructive" className="error">
-                        {r.error}
+                        <AlertDescription>{r.error}</AlertDescription>
                       </Alert>
                     )}
                     {(
@@ -364,7 +364,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                         <AccordionContent>
                           {error && (
                             <Alert variant="destructive" className="error">
-                              {error}
+                              <AlertDescription>{error}</AlertDescription>
                             </Alert>
                           )}
                           {events.length ? (

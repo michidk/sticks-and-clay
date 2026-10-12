@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,7 @@ function ProjectsPage() {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("recent");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [loadError, setLoadError] = useState("");
   const dialogOpener = useRef<HTMLElement | null>(null);
   const [projects, setProjects] = useState<any[]>([]),
     [loading, setLoading] = useState(true),
@@ -125,12 +126,13 @@ function ProjectsPage() {
         .then((d) => {
           if (active) {
             setProjects(d.projects);
+            setLoadError("");
             setLoading(false);
           }
         })
         .catch((e) => {
           if (active) {
-            setError(e.message);
+            setLoadError(e.message);
             setLoading(false);
           }
         });
@@ -252,9 +254,9 @@ function ProjectsPage() {
           </Label>
         </div>
       )}
-      {error && !creating && (
+      {loadError && !creating && (
         <Alert variant="destructive" role="alert" className="error">
-          {error}
+          <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       )}
       {loading ? (
@@ -572,7 +574,7 @@ function ProjectsPage() {
               </p>
               {error && (
                 <Alert variant="destructive" className="error">
-                  {error}
+                  <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
             </div>

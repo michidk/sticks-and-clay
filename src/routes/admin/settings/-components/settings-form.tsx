@@ -1,4 +1,4 @@
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -68,8 +68,8 @@ export function SettingsForm() {
 
   return (
     <form className="settings-stack" onSubmit={submit}>
-      {error && <Alert variant="destructive" className="error">{error}</Alert>}
-      {saved && <Alert className="border-[#d3e0bd] bg-[#e5efcf] text-[#466630]">Runtime settings saved.</Alert>}
+      {error && <Alert variant="destructive" className="error"><AlertDescription>{error}</AlertDescription></Alert>}
+      {saved && <Alert className="border-[#d3e0bd] bg-[#e5efcf] text-[#466630]"><AlertDescription className="text-inherit">Runtime settings saved.</AlertDescription></Alert>}
       {settings && <>
         <Card className="panel settings-section">
           <div className="settings-section-heading">

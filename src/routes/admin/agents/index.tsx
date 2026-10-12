@@ -1,4 +1,4 @@
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -121,7 +121,7 @@ function AgentsPage() {
       </Card>
       {error && (
         <Alert variant="destructive" role="alert" className="error">
-          {error}
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
       {!agents && !error && (
