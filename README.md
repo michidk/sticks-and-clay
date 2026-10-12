@@ -42,9 +42,10 @@ On Windows, use WSL for the service launcher. See [development and operations](d
 
 1. Choose 3D assets or graphics. Enter a name, an optional brief, and up to six reference images. AI can draft the name and brief.
 2. Review the generated design. Edit and approve it before generating assets.
-3. Request 1–20 deliverables, or let the planner propose a set. Each batch snapshots its approved design and collection guidance.
-4. Inspect generated assets, technical checks, archived versions, transcripts, and costs. Models support refinement, forks, material assignment, new renders, and sprite exports.
-5. Download GLB/Blender files, images, or source bundles. Source bundles include pinned helpers and rebuild without an agent or database.
+3. Optionally generate 1–4 concept mockups through the ChatGPT Image API to preview the approved direction. Skip this step to go straight to generation. Mockups retain their design version and do not alter the approved design or uploaded references.
+4. Request 1–20 deliverables, or let the planner propose a set. Each batch snapshots its approved design and collection guidance.
+5. Inspect generated assets, technical checks, archived versions, transcripts, and costs. Models support refinement, forks, material assignment, new renders, and sprite exports.
+6. Download GLB/Blender files, images, or source bundles. Source bundles include pinned helpers and rebuild without an agent or database.
 
 New 3D jobs retain blockout, shape refinement, materials, and polish passes. Zero review rounds disables judging while retaining those passes and photography. With judging enabled, geometry must pass before material work. Exhausted reviews finish with issues; technical failures remain separately recoverable. Graphics use a one-shot image request and skip Blender and 3D judging.
 

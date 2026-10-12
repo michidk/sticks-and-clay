@@ -11,6 +11,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../../../db/client";
 import { runs, events } from "../../../db/schema";
 import { imageRoleProfile } from "../config.server";
+import type { imageRoles } from "../roles";
 import { imagePrice, imagePricingSnapshot } from "./accounting.server";
 import {
   DATA,
@@ -20,7 +21,7 @@ import {
 } from "../../../lib/storage.server";
 
 export type ImageInput = {
-  role: "graphic" | "texture" | "visual-target";
+  role: keyof typeof imageRoles;
   name: string;
   prompt: string;
   size?: ImageSize;
@@ -42,7 +43,7 @@ export async function imageRequest(
     /^models\/[0-9a-f-]+\/[0-9a-f-]+\/(concept|iteration-\d+\/textures)$/.test(
       args.directory,
     ) ||
-    /^graphics\/[0-9a-f-]+\/[0-9a-f-]+$/.test(args.directory)
+    /^(graphics|mockups)\/[0-9a-f-]+\/[0-9a-f-]+$/.test(args.directory)
   ))
     throw new Error("Invalid image workspace");
   await mkdir(resolve(DATA, args.directory), { recursive: true });

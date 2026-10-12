@@ -38,6 +38,8 @@ import { readStoredFile } from "./storage.server";
 import { fileMimeType } from "./storage/path";
 import { prepareReferences } from "./reference-images.server";
 import { downloadImage } from "./remote-image.server";
+import { mockupInput } from "./design-mockups";
+import { designMockups, queueDesignMockups } from "./design-mockups.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   kinds: string[],
@@ -481,6 +483,7 @@ export async function api(request: Request) {
         return reply({
           project,
           photographs: await projectPhotographs(id),
+          mockups: await designMockups(id),
           models: assets,
           versions: history
             .filter((r) => r.role === "builder" && r.modelId)
@@ -535,6 +538,10 @@ export async function api(request: Request) {
             }),
           ),
         });
+      }
+      if (path[2] === "mockups" && request.method === "POST") {
+        const input = mockupInput.parse(await request.json());
+        return reply({ id: await queueDesignMockups(id, input) }, 201);
       }
       if (path[2] === "model-brief" && request.method === "POST") {
         if (project.status !== "ready")

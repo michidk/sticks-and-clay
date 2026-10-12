@@ -10,6 +10,7 @@ All authored agent instructions and input templates live here.
 - `planner.md`: turns a submitted model brief into individual builder tasks.
 - `graphic-brief.md`, `graphic-designer.md`, `graphic-planner.md`: the parallel brief, visual-system, and planning roles for 2D graphic collections.
 - `graphic.md`: the final prompt sent to the configured Image API for each planned graphic.
+- `design-mockup.md`: optional collection concept images from an approved design and its visual references, before final asset generation.
 - `builder.md`, `photographer.md`, `judge.md`: build, photograph the exported GLB, and visually review assets.
 - `*-input.md`: task-specific input templates, with `{{placeholders}}` populated by the app.
 - `modeling-pass.md`, `modeling-review.md`: required v4 modeling passes and review of their recorded changes.

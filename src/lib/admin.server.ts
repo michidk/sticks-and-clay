@@ -30,6 +30,7 @@ export async function adminAction(request: Request, path: string[]) {
                 "plan",
                 "demo",
                 "project-photo",
+                "design-mockups",
                 "presentation",
                 "material-assignment",
                 "material",
@@ -56,7 +57,7 @@ export async function adminAction(request: Request, path: string[]) {
           const project = workspaces.find(
             (p) =>
               p.id ===
-              (["project-photo", "material"].includes(j.kind)
+              (["project-photo", "material", "design-mockups"].includes(j.kind)
                 ? j.targetId
                 : batch?.projectId),
           );
@@ -69,7 +70,9 @@ export async function adminAction(request: Request, path: string[]) {
             finishedAt: j.finishedAt,
             error: j.error,
             name:
-              (j.kind === "material"
+              (j.kind === "design-mockups"
+                ? "Design mockups"
+                : j.kind === "material"
                 ? "PBR material"
                 : j.kind === "presentation"
                   ? `Render ${model?.name || "saved version"}`
@@ -122,6 +125,7 @@ export async function adminAction(request: Request, path: string[]) {
               "plan",
               "demo",
               "project-photo",
+              "design-mockups",
               "presentation",
               "material-assignment",
               "material",
@@ -146,6 +150,7 @@ export async function adminAction(request: Request, path: string[]) {
         !saved ||
         ![
           "project-photo",
+          "design-mockups",
           "presentation",
           "material",
           "material-assignment",
@@ -153,8 +158,22 @@ export async function adminAction(request: Request, path: string[]) {
         saved.status !== "failed"
       )
         throw new Error(
-          "Only failed photography, presentation or material jobs can be resumed here",
+          "Only failed mockup, photography, presentation or material jobs can be resumed here",
         );
+      if (saved.kind === "design-mockups") {
+        await db.transaction(async (tx) => {
+          await tx.select().from(projects)
+            .where(eq(projects.id, saved.targetId)).for("update");
+          const [active] = await tx.select().from(jobs).where(and(
+            eq(jobs.kind, "design-mockups"), eq(jobs.targetId, saved.targetId),
+            inArray(jobs.status, ["queued", "running", "cancelling"]),
+          ));
+          if (active) throw new Error("Mockups are already in progress for this project");
+          await tx.update(jobs).set({ status: "queued", error: null, finishedAt: null })
+            .where(and(eq(jobs.id, saved.id), eq(jobs.status, "failed")));
+        });
+        return reply({ ok: true });
+      }
       await db
         .update(jobs)
         .set({ status: "queued", error: null, finishedAt: null })

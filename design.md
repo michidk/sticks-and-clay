@@ -97,6 +97,12 @@ The project setup dialog uses Uppy’s inline Dashboard for local reference-imag
 
 The design reference sidebar uses the same uploader during review and editing. Save reference changes with the document through Save as draft or Save and approve. Discard edits restores both text and saved references. Polling and toggling the document preview preserve selections. Adding an image does not automatically rewrite the generated design.
 
+## Optional design mockups
+
+Show the collection creation sequence as Design reference, Mockups (optional), and final assets. Approval opens the Mockups step. New approved collections start there; existing collections retain their asset overview. The owner can skip mockups and open final generation at any time after approval.
+
+Mockups use the configured ChatGPT Image API to generate 1–4 landscape concept images from a frozen approved design and its visual references. Offer an optional description, honest queued/running states, partial results, cancellation and failed-job resume. Preserve earlier design versions in the gallery. Open images in the shared lightbox with downloads. Keep concept previews separate from final assets and uploaded references, and explain that image requests are paid and recorded in Activity & cost.
+
 ## Model pipeline graph
 
 The model page puts the viewer first. Below the workbench, a compact pipeline strip shows every recorded step as a chip (running, failed, changes requested and passed states keep their badge colors, judge chips carry the score); selecting a chip expands the recorded left-to-right pipeline graph on that step. Visual target, build, photography and judge nodes come from actual model runs; revisions extend the path, and judge nodes show their score and outcome. Do not invent photography or judge stages for older or unreviewed builds. Running, failed, interrupted, changes requested and passed states include text and icons. The model's milestone progress and final outcome remain separate from judge approval. Selecting a node expands its result and feedback, with links to the exact archived build and activity history. On phones, scroll the graph horizontally inside its panel; the page itself must not overflow.

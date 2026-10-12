@@ -34,6 +34,7 @@ export type QueueJob = {
 };
 
 const kindDetails: Record<string, { label: string; icon: typeof Box }> = {
+  "design-mockups": { label: "Design mockups", icon: Camera },
   model: { label: "Model build", icon: Box },
   plan: { label: "Collection plan", icon: ListChecks },
   demo: { label: "Collection render", icon: Clapperboard },
@@ -156,10 +157,10 @@ export function QueueJobCard({
       </div>
 
       {(canCancel ||
-        (["project-photo", "presentation", "material"].includes(job.kind) &&
+        (["project-photo", "presentation", "material", "design-mockups"].includes(job.kind) &&
           job.status === "failed")) && (
         <div className="queue-job-actions">
-          {["project-photo", "presentation", "material"].includes(job.kind) &&
+          {["project-photo", "presentation", "material", "design-mockups"].includes(job.kind) &&
           job.status === "failed" ? (
             <Button
               variant="outline"

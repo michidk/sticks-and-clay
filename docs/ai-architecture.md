@@ -25,11 +25,13 @@ returns `{ result, runId }`. The result type and runtime validation come from th
 |---|---|---|
 | Project/graphic names, briefs, designs, and material roles | TanStack AI | Completed result reuse; interrupted request is a new attempt |
 | Collection planners, builder, photographer, judge | Eve | Attach/replay/continue the saved session |
-| visual-target, texture, graphic | Image API | Completed receipt/run reuse; interrupted request retries separately |
+| visual-target, texture, graphic, design-mockup | Image API | Completed receipt/run reuse; interrupted request retries separately |
 
 Legacy designer jobs with Eve checkpoints retain Eve execution. New Eve work requires a durable job context. The execution module never enqueues work. Brief buttons call it immediately; design generation uses a background job for UI responsiveness and result application. Saving request history does not make an API conversation resumable.
 
 The internal accounting module owns run creation and pricing snapshots. Adapters own usage collection because TanStack response usage and Eve event replay have different semantics. Both persist to the historical `agent_runs` table, now with explicit `engine` and `step_id`. Provider cost fields remain ignored. Unknown failed usage stays unknown; Eve event replay does not add the same costs twice.
+
+Optional `design-mockups` jobs snapshot the approved design's rendered prompts and reference keys when queued. Each completed image is checkpointed independently; resume reuses completed image runs and retains the original inputs. Mockups do not change project approval, collection assets or uploaded references. Their gallery is read from job checkpoints, with costs in the ordinary run history.
 
 ## Pipeline interface
 

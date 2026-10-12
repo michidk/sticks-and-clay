@@ -88,6 +88,7 @@ export async function cancelJob(id: string, queuedOnly = false) {
     )
     .returning();
   if (!active) throw new Error("This job is no longer active");
+  if (active.kind === "design-mockups") return "cancelling";
   if (active.kind === "plan") {
     const children = await db
       .select({ id: models.id })

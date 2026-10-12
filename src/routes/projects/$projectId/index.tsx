@@ -1,4 +1,5 @@
 import { GenerationDialog } from "./-components/generation-dialog";
+import { DesignMockupStep } from "./-components/design-mockups";
 import {
   collectionAssetGroups,
   collectionSummary,
@@ -28,6 +29,7 @@ import {
   TextSkeleton,
 } from "@/components/loading";
 import { AssetImage } from "@/components/asset-image";
+import { LightboxProvider } from "@/components/image-lightbox";
 import { PictureUploader } from "@/components/picture-uploader";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { appendReferenceImages } from "@/lib/image-file";
@@ -71,7 +73,7 @@ function ProjectPage() {
   const { projectId } = Route.useParams();
   const uploader = useImageUpload();
   const [data, setData] = useState<any>(),
-    [tab, setTab] = useState("models"),
+    [tab, setTab] = useState(""),
     [filter, setFilter] = useState("all"),
     [query, setQuery] = useState(""),
     [error, setError] = useState(""),
@@ -88,6 +90,7 @@ function ProjectPage() {
   }
   useEffect(() => {
     setData(undefined);
+    setTab("");
     setVersion(-1);
     setDesign("");
     setEditing(false);
@@ -137,6 +140,7 @@ function ProjectPage() {
       setDesign(d.project.design);
       uploader.reset(d.project.references);
       setEditing(false);
+      if (approve) setTab("mockups");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -250,7 +254,9 @@ function ProjectPage() {
       />
     );
   }
-  const activeTab = !ready && tab === "models" ? "design" : tab;
+  const activeTab = !ready && ["", "models", "mockups"].includes(tab)
+    ? "design"
+    : tab || (!data.models.length && !data.batches.length ? "mockups" : "models");
   return (
     <main className="project-overview">
       <Link to="/" className="back">
@@ -364,6 +370,19 @@ function ProjectPage() {
           </Button>
         </div>
       )}
+      <nav aria-label="Collection creation steps" className="mb-5 grid grid-cols-3 gap-2">
+        {[
+          { id: "design", label: "1. Design reference" },
+          { id: "mockups", label: "2. Mockups (optional)" },
+          { id: "models", label: `3. ${isGraphics ? "Graphics" : "3D assets"}` },
+        ].map((step) => <Button key={step.id} variant="outline"
+          className="h-auto min-h-11 whitespace-normal text-center text-xs sm:text-sm"
+          disabled={step.id !== "design" && !ready}
+          aria-current={activeTab === step.id ? "step" : undefined}
+          onClick={() => setTab(step.id)}>
+          {step.label}
+        </Button>)}
+      </nav>
       <Tabs value={activeTab} onValueChange={setTab} className="workspace-tabs">
         <TabsList variant="line" className="tabs" aria-label="Project views">
           {[
@@ -373,6 +392,7 @@ function ProjectPage() {
               isGraphics ? ImageIcon : Boxes,
             ],
             ["design", "Design reference", FileText],
+            ...(ready ? [["mockups", "Mockups", ImageIcon]] : []),
             ["style", "Collection style", Boxes],
             ...(!isGraphics && ready
               ? [["materials", "PBR materials", Boxes]]
@@ -394,6 +414,14 @@ function ProjectPage() {
         </TabsList>
         {activeTab === "materials" && (
           <MaterialPanel key={projectId} projectId={projectId} />
+        )}
+        {activeTab === "mockups" && ready && (
+          <LightboxProvider>
+            <DesignMockupStep key={projectId} projectId={projectId}
+              version={p.designVersion} mockups={data.mockups || []}
+              isGraphics={isGraphics} onRefresh={load}
+              onGenerate={() => { setTab("models"); setGenerate(true); }} />
+          </LightboxProvider>
         )}
         {activeTab === "style" && (
           <WorkshopPanel

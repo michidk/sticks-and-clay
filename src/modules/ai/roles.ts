@@ -109,6 +109,13 @@ export function executionPolicy(role: Role, legacyDesigner = false) {
 
 /** Image roles are one-shot requests, not resumable Eve sessions. */
 export const imageRoles = {
+  "design-mockup": {
+    engine: "imagegen",
+    model: "gpt-image-2",
+    quality: "medium",
+    prompt: "design-mockup",
+    inputTemplate: "design-mockup",
+  },
   graphic: {
     engine: "imagegen",
     model: "gpt-image-2",
