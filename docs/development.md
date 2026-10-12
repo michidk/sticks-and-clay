@@ -35,7 +35,19 @@ Photography applies the configured Blender execution budget to each of its three
 
 The web production build is `.output/server/index.mjs`. Run it with `PORT=3000 bun .output/server/index.mjs`. Bind internal services to loopback. Blender scripts run with the service user's permissions; generated code is not an operating-system sandbox.
 
-In VibePod, reuse the registered `asset-studio` preview. Run `vibepod-preview list` before starting a server, use `vibepod-preview run asset-studio -- bun .output/server/index.mjs` when it is missing, and run `vibepod-preview doctor asset-studio` before reporting it healthy. The managed preview supplies its port and public URL.
+In VibePod, reuse the registered `asset-studio` preview. Its managed command must start PostgreSQL and the backend services as well as the web server. VibePod restores that command after pod replacement; Docker containers and separate tmux sessions do not survive, even though the workspace and database files do.
+
+After building the web app, stop any separately launched `bun run services` supervisor, then register the complete startup command:
+
+```sh
+vibepod-preview list
+# Stop an existing web-only preview before replacing its command.
+vibepod-preview stop asset-studio
+vibepod-preview run --ready-timeout 5m asset-studio -- bash scripts/services.sh --preview bun .output/server/index.mjs
+vibepod-preview doctor asset-studio
+```
+
+The managed preview supplies its port and public URL. `--preview` re-creates the local Compose database container using `data/postgres/`, waits for database readiness, provisions Eve, starts the backend services, and then starts the web command. It leaves PostgreSQL data intact when stopped and terminates the web process and backend services together. The web log is `data/logs/web.log`; startup failures appear in `vibepod-preview logs asset-studio`. Use an absolute path to an isolated build's `server/index.mjs` when other tasks may rebuild `.output` concurrently. Subsequent starts use `vibepod-preview restart asset-studio`.
 
 ## Persistence and migrations
 

@@ -1,7 +1,20 @@
 """Supervise local runtime services with shared .env settings."""
 
-import os, pathlib, signal, subprocess, sys, time, urllib.request
+import argparse, os, pathlib, signal, subprocess, sys, time, urllib.request
 from dotenv import load_dotenv
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument(
+    "--preview",
+    nargs=argparse.REMAINDER,
+    metavar="COMMAND",
+    help="restore local PostgreSQL and supervise a web command alongside the services",
+)
+args = parser.parse_args()
+if args.preview == []:
+    parser.error(
+        "--preview requires a web command, for example bun .output/server/index.mjs"
+    )
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 os.chdir(ROOT)
@@ -31,6 +44,12 @@ def stop(_sig, _frame):
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
 try:
+    # VibePod restores the preview command after pod replacement, but Docker containers are ephemeral.
+    if args.preview is not None:
+        subprocess.run(
+            ["docker", "compose", "-p", "studio", "up", "-d", "--wait"],
+            check=True,
+        )
     # HTTP health does not check sandbox images lost when Docker is restarted.
     subprocess.run(
         ["bun", "../node_modules/eve/bin/eve.js", "build"],
@@ -70,6 +89,8 @@ try:
     if not ready:
         raise RuntimeError("Eve did not become ready; inspect data/logs/eve.log")
     launch("worker", ["bun", "scripts/worker.ts"])
+    if args.preview is not None:
+        launch("web", args.preview)
     while not stopping:
         if any(p.poll() is not None for p in children):
             raise RuntimeError("A runtime service exited; inspect data/logs")
