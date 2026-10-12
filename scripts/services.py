@@ -4,11 +4,17 @@ import argparse, os, pathlib, signal, subprocess, sys, time, urllib.request
 from dotenv import load_dotenv
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument(
+modes = parser.add_mutually_exclusive_group()
+modes.add_argument(
     "--preview",
     nargs=argparse.REMAINDER,
     metavar="COMMAND",
     help="restore local PostgreSQL and supervise a web command alongside the services",
+)
+modes.add_argument(
+    "--production",
+    action="store_true",
+    help="migrate an external database and serve the production web build",
 )
 args = parser.parse_args()
 if args.preview == []:
@@ -29,8 +35,10 @@ stopping = False
 
 
 def launch(name, command, cwd=ROOT):
-    log = open(logs / (name + ".log"), "a")
-    handles.append(log)
+    log = None
+    if not args.production:
+        log = open(logs / (name + ".log"), "a")
+        handles.append(log)
     child = subprocess.Popen(command, cwd=cwd, stdout=log, stderr=subprocess.STDOUT)
     children.append(child)
     return child
@@ -44,6 +52,8 @@ def stop(_sig, _frame):
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
 try:
+    if args.production:
+        subprocess.run(["bun", "scripts/migrate.ts"], check=True)
     # VibePod restores the preview command after pod replacement, but Docker containers are ephemeral.
     if args.preview is not None:
         subprocess.run(
@@ -91,6 +101,8 @@ try:
     launch("worker", ["bun", "scripts/worker.ts"])
     if args.preview is not None:
         launch("web", args.preview)
+    elif args.production:
+        launch("web", ["bun", ".output/server/index.mjs"])
     while not stopping:
         if any(p.poll() is not None for p in children):
             raise RuntimeError("A runtime service exited; inspect data/logs")

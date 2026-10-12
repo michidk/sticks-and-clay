@@ -14,12 +14,13 @@ export function recoveryAction(events: readonly Event[], failedResult = false) {
       ].includes(e.type),
     );
   const index = boundary ? events.indexOf(boundary) : -1;
+  const failure = boundary?.type === "turn.failed" ? JSON.stringify(boundary.data) ?? "" : "";
   if (
     index >= start &&
     (boundary?.type === "session.failed" ||
       (boundary?.type === "turn.failed" &&
-        JSON.stringify(boundary.data)?.includes("Docker sandbox session container") &&
-        JSON.stringify(boundary.data)?.includes("no longer exists")))
+        ((failure.includes("Docker sandbox session container") && failure.includes("no longer exists")) ||
+          failure.includes("Sandbox session state belongs to provider"))))
   )
     return "restart";
   if (

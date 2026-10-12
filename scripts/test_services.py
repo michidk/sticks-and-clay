@@ -159,6 +159,65 @@ class ServicesTests(unittest.TestCase):
             self.assertEqual(error.exception.code, 2)
             run.assert_not_called()
 
+    def test_production_migrates_before_starting_and_does_not_require_docker(self):
+        handlers = {
+            sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)
+        }
+        calls = []
+        web = ["bun", ".output/server/index.mjs"]
+
+        def launch(command, **_kwargs):
+            calls.append(command)
+            child = MagicMock()
+            child.poll.return_value = 0 if command == web else None
+            return child
+
+        try:
+            with (
+                patch.object(sys, "argv", ["services.py", "--production"]),
+                patch(
+                    "subprocess.run",
+                    side_effect=lambda command, **_kwargs: calls.append(command),
+                ),
+                patch("subprocess.Popen", side_effect=launch),
+                patch("urllib.request.urlopen") as health,
+            ):
+                health.return_value.__enter__.return_value.status = 200
+                with self.assertRaisesRegex(RuntimeError, "A runtime service exited"):
+                    runpy.run_path(str(pathlib.Path(__file__).with_name("services.py")))
+            self.assertEqual(
+                calls[:2],
+                [
+                    ["bun", "scripts/migrate.ts"],
+                    ["bun", "../node_modules/eve/bin/eve.js", "build"],
+                ],
+            )
+            self.assertEqual(calls[-2:], [["bun", "scripts/worker.ts"], web])
+            self.assertFalse(any(command[0] == "docker" for command in calls))
+        finally:
+            for sig, handler in handlers.items():
+                signal.signal(sig, handler)
+
+    def test_failed_production_migration_never_starts_services(self):
+        handlers = {
+            sig: signal.getsignal(sig) for sig in (signal.SIGTERM, signal.SIGINT)
+        }
+        try:
+            with (
+                patch.object(sys, "argv", ["services.py", "--production"]),
+                patch(
+                    "subprocess.run",
+                    side_effect=subprocess.CalledProcessError(1, "migrate"),
+                ),
+                patch("subprocess.Popen") as launch,
+            ):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    runpy.run_path(str(pathlib.Path(__file__).with_name("services.py")))
+                launch.assert_not_called()
+        finally:
+            for sig, handler in handlers.items():
+                signal.signal(sig, handler)
+
 
 if __name__ == "__main__":
     unittest.main()

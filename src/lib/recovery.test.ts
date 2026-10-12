@@ -39,3 +39,9 @@ test("dead workflows and lost sandbox state need a new run, ordinary failures re
     { type: "turn.started" },
   ])).toBe("attach");
 });
+
+test("a changed sandbox provider starts a fresh run while retaining prior history", () => {
+  const failed = { type: "turn.failed", data: { error: { message: 'Sandbox session state belongs to provider "docker", not "just-bash".' } } };
+  expect(recoveryAction([{ type: "turn.started" }, failed])).toBe("restart");
+  expect(recoveryAction([failed, { type: "turn.started" }])).toBe("attach");
+});

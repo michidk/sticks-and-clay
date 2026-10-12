@@ -49,6 +49,14 @@ vibepod-preview doctor asset-studio
 
 The managed preview supplies its port and public URL. `--preview` re-creates the local Compose database container using `data/postgres/`, waits for database readiness, provisions Eve, starts the backend services, and then starts the web command. It leaves PostgreSQL data intact when stopped and terminates the web process and backend services together. The web log is `data/logs/web.log`; startup failures appear in `vibepod-preview logs asset-studio`. Use an absolute path to an isolated build's `server/index.mjs` when other tasks may rebuild `.output` concurrently. Subsequent starts use `vibepod-preview restart asset-studio`.
 
+## Container deployment
+
+`docker build -t sticks-and-clay .` builds the Linux x64 runtime with Bun, Node, Python dependencies, and checksum-verified Blender 4.5.4. The build context excludes local credentials, assets, Eve sessions, and tool state. `scripts/services.sh --production` applies migrations to `DATABASE_URL`, builds the bundled Eve agent, then supervises Blender, Eve, the worker, and the web server. Service output goes to container logs. Kubernetes restarts the container if a supervised service exits.
+
+Mount persistent volumes at `/home/vibepod/workspaces/sticks-and-clay/data` plus the `.workflow-data` and `sandbox-cache` subdirectories of `/home/vibepod/workspaces/sticks-and-clay/eve/.eve`. Keep `.eve/builds` and `eve/.output` on the container filesystem so Eve can rename its compiled output atomically. Use UID/GID 1000. Keeping the original workspace path preserves saved Blender scripts and Eve checkpoint paths. PostgreSQL runs separately with its own persistent volume. Pass provider credentials directly through environment variables. The Eve sandbox uses `just-bash`; native Blender execution stays in the capability-scoped service and requires no Docker daemon.
+
+The image workflow publishes commit-tagged images to `ghcr.io/michidk/sticks-and-clay`. Deploy the resulting digest through the infrastructure repository. The permanent cluster manifests, authentication boundary, migration, and recovery procedures are owned by `michidk/k8s` under `apps/sticks-and-clay/` and `docs/sticks-and-clay.md`.
+
 ## Persistence and migrations
 
 PostgreSQL holds projects, immutable revisions, attempts, jobs, checkpoints, OAuth records, and usage history. `data/` holds assets, workspace scripts, receipts, runtime settings, and logs. Eve retains sessions in `eve/.eve/`. Back up database and file/session storage together while services are stopped or through a coordinated snapshot.

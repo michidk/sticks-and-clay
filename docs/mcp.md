@@ -8,7 +8,7 @@ Use your deployed workshop URL, for example:
 https://your-workshop.example/api/mcp
 ```
 
-The client discovers the authorization server, registers its callback, and opens a browser consent page. Enter the workshop's dedicated `MCP_OWNER_PASSWORD`, select the permissions, and authorize. This password is separate from the VibePod preview password and stays in the owner's browser. Retrieve it privately from your gitignored `.env`; never paste it into agent conversations or commit it.
+The client discovers the authorization server, registers its callback, and opens a browser consent page. On the permanent deployment, log in through Hodor, select the permissions, and authorize. This is the same flow as CodeTend; no separate MCP password is needed. Standalone deployments can instead require a dedicated `MCP_OWNER_PASSWORD` on the consent form. Never paste credentials into a chat or repository file.
 
 ## Codex and Claude Code
 
@@ -49,6 +49,12 @@ bun .output/server/index.mjs
 ```
 
 For remote connections, route the MCP and OAuth paths to the app without a separate browser login gate. The VibePod deployment routes only these paths directly to its preview gateway; other workshop paths retain Hodor. Use application OAuth authentication on MCP paths. Preserve `Authorization`, `Host`, `Origin`, `MCP-Protocol-Version`, `MCP-Method`, and `MCP-Name` headers. Allow request bodies up to 280 MiB if model imports are needed.
+
+## Hodor deployment
+
+Set `MCP_OWNER_AUTH=hodor` and provide a separate `MCP_SECRET` of at least 32 characters. Omit `MCP_OWNER_PASSWORD`. Hodor must proxy **every** request to the app and overwrite `X-Hodor-Auth`; expose only Hodor through the Service and ingress. Block direct access to the app port with a NetworkPolicy. The app accepts Hodor's `password` and `bypass` admission methods for owner consent.
+
+Keep `/oauth/authorize` behind the login gate. Allow machine clients through Hodor's `BYPASS_PATHS` for `/api/mcp`, `/api/mcp/files`, `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource/api/mcp`, `/oauth/register`, `/oauth/token`, and `/oauth/revoke`. These routes enforce OAuth themselves. Set `PRESERVE_HOST=true`. Consent retains request binding, one-use CSRF tokens, and origin validation after login.
 
 ## Permissions
 

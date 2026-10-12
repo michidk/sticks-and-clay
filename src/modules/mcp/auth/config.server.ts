@@ -4,7 +4,7 @@ export type McpConfig = {
   serverUrl: URL;
   issuer: URL;
   signingSecret: string;
-  ownerPassword: string;
+  ownerAuth: { kind: "password"; password: string } | { kind: "hodor" };
   allowedHostnames: string[];
   allowedOrigins: string[];
   dangerouslyAllowInsecureUrls: boolean;
@@ -15,6 +15,7 @@ type McpEnvironment = Partial<
     NodeJS.ProcessEnv,
     | "MCP_PUBLIC_URL"
     | "MCP_OWNER_PASSWORD"
+    | "MCP_OWNER_AUTH"
     | "MCP_SECRET"
     | "MCP_ALLOWED_ORIGINS"
   >
@@ -42,10 +43,13 @@ export function resolveMcpConfig(environment: McpEnvironment): McpConfig {
     throw new Error(
       "MCP_PUBLIC_URL must identify /api/mcp without credentials, query or fragment",
     );
-  const ownerPassword = environment.MCP_OWNER_PASSWORD;
-  if (!ownerPassword || ownerPassword.length < 32)
+  const ownerMode = environment.MCP_OWNER_AUTH ?? "password";
+  if (ownerMode !== "password" && ownerMode !== "hodor")
+    throw new Error("MCP_OWNER_AUTH must be password or hodor");
+  const ownerPassword = environment.MCP_OWNER_PASSWORD ?? "";
+  if (ownerMode === "password" && ownerPassword.length < 32)
     throw new Error("MCP_OWNER_PASSWORD must contain at least 32 characters");
-  const signingSecret = environment.MCP_SECRET ?? ownerPassword;
+  const signingSecret = environment.MCP_SECRET ?? (ownerMode === "password" ? ownerPassword : "");
   if (signingSecret.length < 32)
     throw new Error("MCP_SECRET must contain at least 32 characters");
   const allowedOrigins = (environment.MCP_ALLOWED_ORIGINS ?? "")
@@ -68,7 +72,7 @@ export function resolveMcpConfig(environment: McpEnvironment): McpConfig {
     serverUrl,
     issuer: new URL("/", serverUrl),
     signingSecret,
-    ownerPassword,
+    ownerAuth: ownerMode === "hodor" ? { kind: "hodor" } : { kind: "password", password: ownerPassword },
     // The managed preview gateway forwards to a fixed loopback Host.
     allowedHostnames: [...new Set([serverUrl.hostname, "localhost", "127.0.0.1", "[::1]"])],
     allowedOrigins,
@@ -80,6 +84,7 @@ export function getMcpConfig() {
   return resolveMcpConfig({
     MCP_PUBLIC_URL: process.env.MCP_PUBLIC_URL,
     MCP_OWNER_PASSWORD: process.env.MCP_OWNER_PASSWORD,
+    MCP_OWNER_AUTH: process.env.MCP_OWNER_AUTH,
     MCP_SECRET: process.env.MCP_SECRET,
     MCP_ALLOWED_ORIGINS: process.env.MCP_ALLOWED_ORIGINS,
   });

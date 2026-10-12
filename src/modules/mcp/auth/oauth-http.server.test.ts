@@ -138,9 +138,10 @@ class MemoryOAuthStore implements OAuthStore {
   }
 }
 
+const ownerPassword = "owner-secret-".repeat(4);
 const config = resolveMcpConfig({
   MCP_PUBLIC_URL: "https://studio.example.com/api/mcp",
-  MCP_OWNER_PASSWORD: "owner-secret-".repeat(4),
+  MCP_OWNER_PASSWORD: ownerPassword,
 });
 const tokenOutput = (value: unknown) => {
   if (
@@ -155,7 +156,13 @@ const tokenOutput = (value: unknown) => {
   return { access: value.access_token, refresh: value.refresh_token };
 };
 
-async function session() {
+async function session(ownerAuth: "password" | "hodor" = "password") {
+  const config = resolveMcpConfig({
+    MCP_PUBLIC_URL: "https://studio.example.com/api/mcp",
+    MCP_OWNER_AUTH: ownerAuth,
+    MCP_OWNER_PASSWORD: ownerPassword,
+    MCP_SECRET: ownerPassword,
+  });
   const store = new MemoryOAuthStore();
   const handler = createOAuthHttpHandler(config, store);
   async function send(path: string | URL, options: RequestInit = {}) {
@@ -164,6 +171,7 @@ async function session() {
         ...options,
         headers: {
           Host: config.serverUrl.host,
+          ...(ownerAuth === "hodor" ? { "x-hodor-auth": "password" } : {}),
           ...Object.fromEntries(new Headers(options.headers)),
         },
       }),
@@ -218,7 +226,7 @@ async function session() {
       },
       body: new URLSearchParams({
         csrf: binding.csrf,
-        owner_password: config.ownerPassword,
+        owner_password: ownerPassword,
         decision: "approve",
         [scopeInputName("sticks-and-clay:write")]: "on",
         ...fields,
@@ -265,12 +273,51 @@ async function session() {
 }
 
 describe("MCP OAuth", () => {
+  test("Hodor consent uses the workshop login without another password", async () => {
+    const s = await session("hodor");
+    const binding = await s.consent();
+    expect(binding.html).not.toContain('name="owner_password"');
+    const response = await s.approve(binding, { owner_password: "" });
+    expect(response.status).toBe(302);
+    expect(new URL(response.headers.get("location")!).searchParams.has("code")).toBe(true);
+  });
+
+  test("Hodor consent rejects anonymous and public-path requests on GET and POST", async () => {
+    const s = await session("hodor");
+    for (const method of ["GET", "POST"]) {
+      for (const admission of ["", "public", "path", "true", "Password"]) {
+        const response = await s.send(s.url, {
+          method,
+          headers: { "x-hodor-auth": admission },
+        });
+        expect(response.status).toBe(401);
+      }
+    }
+    expect((await s.send(s.url, { headers: { "x-hodor-auth": "bypass" } })).status).toBe(200);
+  });
+
+  test("Hodor still requires request-bound consent and a strong signing secret", async () => {
+    expect(() => resolveMcpConfig({
+      MCP_PUBLIC_URL: "https://studio.example.com/api/mcp",
+      MCP_OWNER_AUTH: "hodor",
+    })).toThrow("MCP_SECRET");
+    expect(() => resolveMcpConfig({
+      MCP_PUBLIC_URL: "https://studio.example.com/api/mcp",
+      MCP_OWNER_AUTH: "invalid",
+      MCP_SECRET: ownerPassword,
+    })).toThrow("MCP_OWNER_AUTH");
+    const s = await session("hodor");
+    const binding = await s.consent();
+    expect((await s.approve(binding, { csrf: "forged" })).status).toBe(403);
+    expect((await s.approve(binding, {}, s.url, "https://evil.example")).status).toBe(403);
+  });
+
   test("configuration uses canonical HTTPS or loopback URL and strong owner credentials", () => {
-    expect(config.signingSecret).toBe(config.ownerPassword);
+    expect(config.signingSecret).toBe(ownerPassword);
     expect(() =>
       resolveMcpConfig({
         MCP_PUBLIC_URL: "http://public.example.com/api/mcp",
-        MCP_OWNER_PASSWORD: config.ownerPassword,
+        MCP_OWNER_PASSWORD: ownerPassword,
       }),
     ).toThrow("HTTPS");
     expect(() =>
@@ -282,13 +329,13 @@ describe("MCP OAuth", () => {
     expect(() =>
       resolveMcpConfig({
         MCP_PUBLIC_URL: "https://user:pass@studio.example.com/api/mcp",
-        MCP_OWNER_PASSWORD: config.ownerPassword,
+        MCP_OWNER_PASSWORD: ownerPassword,
       }),
     ).toThrow("credentials");
     expect(
       resolveMcpConfig({
         MCP_PUBLIC_URL: "http://127.0.0.1:3000/api/mcp",
-        MCP_OWNER_PASSWORD: config.ownerPassword,
+        MCP_OWNER_PASSWORD: ownerPassword,
       }).dangerouslyAllowInsecureUrls,
     ).toBe(true);
   });
@@ -356,7 +403,7 @@ describe("MCP OAuth", () => {
     const s = await session();
     const binding = await s.consent();
     expect(binding.html).toContain('type="password"');
-    expect(binding.html).not.toContain(config.ownerPassword);
+    expect(binding.html).not.toContain(ownerPassword);
     expect(binding.html).not.toContain(
       `${scopeInputName("sticks-and-clay:admin")}" checked`,
     );
@@ -375,7 +422,7 @@ describe("MCP OAuth", () => {
     expect((await s.approve(binding)).status).toBe(302);
     expect((await s.approve(binding)).status).toBe(403);
     expect(s.store.codes.size).toBe(1);
-    expect(JSON.stringify(s.store.audits)).not.toContain(config.ownerPassword);
+    expect(JSON.stringify(s.store.audits)).not.toContain(ownerPassword);
   });
 
   test("PKCE and resource binding guard exchange; selected scopes and audience guard access", async () => {

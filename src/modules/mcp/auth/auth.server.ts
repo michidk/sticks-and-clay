@@ -15,11 +15,18 @@ export function getOAuthSigningKey(secret: string) {
     .digest();
 }
 
+export function hasValidOwnerSession(request: Request) {
+  // Hodor strips client-supplied copies; only enable this behind its private upstream.
+  const method = request.headers.get("x-hodor-auth");
+  return method === "password" || method === "bypass";
+}
+
 export function validOwnerPassword(value: unknown, config: McpConfig) {
+  if (config.ownerAuth.kind !== "password") return false;
   const supplied = createHash("sha256")
     .update(typeof value === "string" ? value : "")
     .digest();
-  const expected = createHash("sha256").update(config.ownerPassword).digest();
+  const expected = createHash("sha256").update(config.ownerAuth.password).digest();
   return timingSafeEqual(supplied, expected);
 }
 

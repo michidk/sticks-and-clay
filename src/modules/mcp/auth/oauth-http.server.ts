@@ -9,7 +9,7 @@ import { hostHeaderValidationResponse } from "@modelcontextprotocol/server";
 import { SignJWT, jwtVerify } from "jose";
 import { z } from "zod";
 import { MCP_SCOPE_VALUES, MCP_SCOPE_DETAILS, type McpScope } from "../catalog";
-import { getOAuthSigningKey, validOwnerPassword } from "./auth.server";
+import { getOAuthSigningKey, hasValidOwnerSession, validOwnerPassword } from "./auth.server";
 import { MCP_READ_SCOPE, type McpConfig } from "./config.server";
 import { createOAuthServer } from "./oauth.server";
 import { hashOAuthSecret, type OAuthStore } from "./oauth-store.server";
@@ -109,7 +109,11 @@ function consentPage(
   requested: McpScope[],
   redirectUri: string,
   csrf: string,
+  ownerAuth: McpConfig["ownerAuth"],
 ) {
+  const passwordControl = ownerAuth.kind === "password"
+    ? '<label for="owner-password">Workshop owner password</label><input id="owner-password" name="owner_password" type="password" autocomplete="current-password" required maxlength="1024">'
+    : "";
   const controls = requested
     .map((scope) => {
       const details = MCP_SCOPE_DETAILS[scope];
@@ -118,7 +122,7 @@ function consentPage(
     })
     .join("");
   return new Response(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Authorize Sticks &amp; Clay</title><style>body{font:16px system-ui;max-width:42rem;margin:8vh auto;padding:1.5rem;color:#213b2d;background:#f8f5ed}main{border:1px solid #dedfd2;border-radius:12px;padding:2rem;background:#fffdf7}h1{margin-top:0}p{line-height:1.5}.scope{display:flex;gap:.75rem;padding:1rem 0;border-top:1px solid #dedfd2}.scope span{display:grid;gap:.25rem}small{color:#586555;line-height:1.4}input[type=password]{box-sizing:border-box;display:block;width:100%;padding:.7rem;margin:.5rem 0 1rem;border:1px solid #899681;border-radius:6px;font:inherit}button{font:inherit;padding:.7rem 1rem;margin:.75rem .5rem 0 0;border-radius:6px;border:1px solid #38553e;background:#fffdf7}.approve{background:#294a34;color:#fffdf7}</style></head><body><main><h1>Authorize Sticks &amp; Clay access?</h1><p><strong>${escapeHtml(clientName)}</strong> wants access to this workshop. Select the permissions you want to grant. Generating assets can spend the configured AI budget.</p><form method="post" action="${escapeHtml(url.pathname + url.search)}"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}">${controls}<label for="owner-password">Workshop owner password</label><input id="owner-password" name="owner_password" type="password" autocomplete="current-password" required maxlength="1024"><button class="approve" name="decision" value="approve">Authorize</button><button name="decision" value="deny">Deny</button></form></main></body></html>`,
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Authorize Sticks &amp; Clay</title><style>body{font:16px system-ui;max-width:42rem;margin:8vh auto;padding:1.5rem;color:#213b2d;background:#f8f5ed}main{border:1px solid #dedfd2;border-radius:12px;padding:2rem;background:#fffdf7}h1{margin-top:0}p{line-height:1.5}.scope{display:flex;gap:.75rem;padding:1rem 0;border-top:1px solid #dedfd2}.scope span{display:grid;gap:.25rem}small{color:#586555;line-height:1.4}input[type=password]{box-sizing:border-box;display:block;width:100%;padding:.7rem;margin:.5rem 0 1rem;border:1px solid #899681;border-radius:6px;font:inherit}button{font:inherit;padding:.7rem 1rem;margin:.75rem .5rem 0 0;border-radius:6px;border:1px solid #38553e;background:#fffdf7}.approve{background:#294a34;color:#fffdf7}</style></head><body><main><h1>Authorize Sticks &amp; Clay access?</h1><p><strong>${escapeHtml(clientName)}</strong> wants access to this workshop. Select the permissions you want to grant. Generating assets can spend the configured AI budget.</p><form method="post" action="${escapeHtml(url.pathname + url.search)}"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}">${controls}${passwordControl}<button class="approve" name="decision" value="approve">Authorize</button><button name="decision" value="deny">Deny</button></form></main></body></html>`,
     {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
@@ -336,6 +340,8 @@ export function createOAuthHttpHandler(config: McpConfig, store: OAuthStore) {
       url.pathname === "/oauth/authorize" &&
       ["GET", "POST"].includes(request.method)
     ) {
+      if (config.ownerAuth.kind === "hodor" && !hasValidOwnerSession(request))
+        return json({ error: "access_denied", error_description: "Workshop login required" }, 401);
       try {
         const authorizationUrl = new URL(url);
         if (!authorizationUrl.searchParams.has("scope"))
@@ -375,6 +381,7 @@ export function createOAuthHttpHandler(config: McpConfig, store: OAuthStore) {
               [...new Set<McpScope>([MCP_READ_SCOPE, ...requested])],
               authorization.redirectUri,
               token,
+              config.ownerAuth,
             ),
             token,
             config,
@@ -389,7 +396,7 @@ export function createOAuthHttpHandler(config: McpConfig, store: OAuthStore) {
             403,
           );
         const form = await request.formData();
-        if (!validOwnerPassword(form.get("owner_password"), config)) {
+        if (config.ownerAuth.kind === "password" && !validOwnerPassword(form.get("owner_password"), config)) {
           await audit(store, {
             event: "authorization",
             outcome: "failure",
