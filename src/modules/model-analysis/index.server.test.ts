@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { Document, NodeIO } from "@gltf-transform/core";
 import { analyzeModel } from "./index.server";
+import { loadRuntimeSettings } from "../../lib/runtime-settings.server";
 
 test("missing model is unavailable evidence, never an exception or clean pass", async () => {
   const result = await analyzeModel(`/tmp/no-model-${crypto.randomUUID()}.glb`);
@@ -12,6 +13,8 @@ test("missing model is unavailable evidence, never an exception or clean pass", 
   expect(result.unavailable.length).toBeGreaterThan(0);
 });
 const blenderTest = process.env.BLENDER_BIN ? test : test.skip;
+const { timeouts } = await loadRuntimeSettings();
+const analysisBudget = timeouts.analysisBlenderMs + timeouts.analysisPythonMs;
 blenderTest(
   "adapter supplies hash-linked Blender findings without changing the GLB",
   async () => {
@@ -50,7 +53,7 @@ blenderTest(
       await rm(directory, { recursive: true, force: true });
     }
   },
-  process.platform === "win32" ? 120_000 : 30_000,
+  analysisBudget + 10_000,
 );
 
 blenderTest(
@@ -146,7 +149,7 @@ blenderTest(
       await rm(directory, { recursive: true, force: true });
     }
   },
-  process.platform === "win32" ? 120_000 : 30_000,
+  3 * analysisBudget + 10_000,
 );
 
 blenderTest(
@@ -190,5 +193,5 @@ blenderTest(
       await rm(directory, { recursive: true, force: true });
     }
   },
-  process.platform === "win32" ? 120_000 : 30_000,
+  analysisBudget + 10_000,
 );

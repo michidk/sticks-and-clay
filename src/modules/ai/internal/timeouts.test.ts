@@ -11,6 +11,7 @@ test("builder turns have a larger default timeout", () => {
   const settings = runtimeSettingsDefaults({});
   expect(agentTimeoutMs("builder", settings)).toBe(DEFAULT_BUILDER_TIMEOUT_MS);
   expect(agentTimeoutMs("judge", settings)).toBe(DEFAULT_AGENT_TIMEOUT_MS);
+  expect(agentTimeoutMs("photographer", settings)).toBe(5_400_000);
   expect(settings.timeouts.blenderSeconds).toBe(
     DEFAULT_BLENDER_BUILD_TIMEOUT_SECONDS,
   );
@@ -24,6 +25,7 @@ test("timeout overrides remain explicit and validated", () => {
   });
   expect(agentTimeoutMs("judge", settings)).toBe(60000);
   expect(agentTimeoutMs("builder", settings)).toBe(120000);
+  expect(agentTimeoutMs("photographer", settings)).toBe(690000);
   expect(settings.timeouts.blenderSeconds).toBe(90);
   expect(() =>
     runtimeSettingsDefaults({ BUILDER_TIMEOUT_MS: "nope" }),

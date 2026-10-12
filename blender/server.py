@@ -209,9 +209,11 @@ async def photograph_asset(capability:str,front_azimuth:float=-55,elevation:floa
         script=candidate/'photograph.py'
         script.write_text((ROOT/'blender'/'photograph.py').read_text()+'\nphotograph('+','.join(repr(v) for v in [glb,str(candidate),front_azimuth,elevation,framing,exposure,info.get("views")])+')\n')
         env={k:v for k,v in os.environ.items() if not any(s in k.upper() for s in ['TOKEN','SECRET','PASSWORD','API_KEY','CREDENTIAL'])}
-        proc=await asyncio.create_subprocess_exec(sys.executable,str(ROOT/'blender'/'build_runtime.py'),'--cwd',str(dest),'--timeout',str(build_timeout_seconds()),'--',os.environ.get('BLENDER_BIN','blender'),'-b','--threads','2','--python-exit-code','1','--python',str(script),cwd=dest,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
+        # Photography renders multiple full-quality views in one process.
+        timeout=build_timeout_seconds()*(7 if len(info.get('views') or [])>3 else 3)
+        proc=await asyncio.create_subprocess_exec(sys.executable,str(ROOT/'blender'/'build_runtime.py'),'--cwd',str(dest),'--timeout',str(timeout),'--',os.environ.get('BLENDER_BIN','blender'),'-b','--threads','2','--python-exit-code','1','--python',str(script),cwd=dest,env=env,stdout=asyncio.subprocess.PIPE,stderr=asyncio.subprocess.STDOUT)
         monitor=asyncio.create_task(watch_cancellation(capability,proc))
-        try:out,_=await asyncio.wait_for(proc.communicate(),build_timeout_seconds()+5)
+        try:out,_=await asyncio.wait_for(proc.communicate(),timeout+5)
         except (asyncio.TimeoutError,asyncio.CancelledError):
             if proc.returncode is None:proc.kill()
             await proc.wait()

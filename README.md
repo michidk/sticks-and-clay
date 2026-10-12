@@ -24,7 +24,6 @@ Start PostgreSQL and apply the migrations:
 ```sh
 docker compose -p studio up -d --wait
 bun run db:migrate
-bun run eve:build
 bun run services
 ```
 

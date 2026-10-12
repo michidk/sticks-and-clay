@@ -15,7 +15,7 @@ import { runs, events } from "../../../db/schema";
 import { imagePart } from "../../../lib/storage.server";
 import { assertJobActive } from "../../../lib/queue.server";
 import { prompt } from "../../../lib/prompts.server";
-import { price } from "../../../lib/contracts";
+import { effortSchema, price } from "../../../lib/contracts";
 import { recoveryAction } from "../../../lib/recovery";
 import { checkpoint, jobContext } from "../../../lib/checkpoint.server";
 import { resolve } from "node:path";
@@ -53,21 +53,33 @@ export async function agent<T>(
   if (saved?.status === "done")
     return { result: args.schema.parse(saved.result) as T, runId: saved.id };
   if (saved) args = { ...args, input: saved.input, images: saved.images };
-  const id = saved?.id || crypto.randomUUID(),
+  const savedSnapshot = saved?.sessionId
+    ? await client().sessions.attach(saved.sessionId).snapshot({
+        signal: AbortSignal.timeout(agentTimeoutMs(args.role, profile.settings)),
+      }).catch(async (error: unknown) => {
+        await db.update(runs).set({
+          status: "failed", error: String(error), finishedAt: new Date(),
+        }).where(eq(runs.id, saved.id));
+        throw error;
+      })
+    : undefined;
+  const restart = savedSnapshot && recoveryAction(savedSnapshot.events) === "restart";
+  // A dead workflow or lost sandbox cannot continue. Retain its run and usage.
+  const id = (!restart && saved?.id) || crypto.randomUUID(),
     systemPrompt = await roleInstructions(
       args.role,
       saved?.systemPrompt,
       args.construction,
     ),
     images = args.images || [];
-  if (!saved)
+  if (!saved || restart)
     await recordRun(args, {
       id,
       engine: "eve",
-      model: agentModel,
+      model: saved?.model || agentModel,
       systemPrompt,
-      rates,
-      effort: profile.effort,
+      rates: saved?.rates || rates,
+      effort: effortSchema.parse(saved?.effort || profile.effort),
     });
   await checkpoint(key, id);
   const runRates = saved?.rates || rates;
@@ -137,7 +149,7 @@ export async function agent<T>(
       agentTimeoutMs(args.role, await loadRuntimeSettings()),
     );
     // Persist an idle session before submitting work, so recovery has an identity.
-    const session = saved?.sessionId
+    const session = saved?.sessionId && !restart
       ? client().sessions.attach(saved.sessionId)
       : (await client().sessions.create()).session;
     sessionId = session.state.sessionId;
@@ -162,7 +174,7 @@ export async function agent<T>(
     } catch (error: any) {
       if (error.code !== "EEXIST") throw error;
     }
-    const snapshot = await session.snapshot({ signal });
+    const snapshot = (!restart && savedSnapshot) || await session.snapshot({ signal });
     const history = snapshot.events;
     const lastBoundary = [...history]
       .reverse()
@@ -359,7 +371,7 @@ export async function agent<T>(
       .set({
         status: "failed",
         error: String(error),
-        output: output || saved?.output,
+        output: output || (restart ? null : saved?.output),
         finishedAt: new Date(),
       })
       .where(eq(runs.id, id));
@@ -371,7 +383,7 @@ export async function agent<T>(
         outputTokens = Math.ceil(Math.max(output.length, stepOutputChars) / 4);
         estimatedSteps++;
         await saveUsage();
-      } else if (!saved)
+      } else if (!saved || restart)
         await db
           .update(runs)
           .set({

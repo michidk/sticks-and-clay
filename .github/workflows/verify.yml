@@ -51,4 +51,4 @@ jobs:
           PYTHONPATH=blender .venv/bin/python -m unittest \
             blender.test_analyze_mesh blender.test_materials blender.test_material_quality \
             blender.test_build_artifacts blender.test_workspace blender.test_build_runtime \
-            blender.test_cancellation scripts.test_provider
+            blender.test_cancellation scripts.test_provider scripts.test_services

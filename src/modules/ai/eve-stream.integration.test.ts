@@ -9,12 +9,13 @@ const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 
 async function withSession(
   check: (fixture: {
-    execute: () => ReturnType<typeof runRole<"photographer">>;
+    execute: () => Promise<unknown>;
     runId: string;
     sessionId: string;
     requests: { method: string; url: URL }[];
   }) => Promise<void>,
   finish: boolean,
+  role: "photographer" | "judge" = "photographer",
 ) {
   const projectId = crypto.randomUUID();
   const jobId = crypto.randomUUID();
@@ -85,7 +86,7 @@ async function withSession(
     await db.insert(runs).values({
       id: runId,
       projectId,
-      role: "photographer",
+      role,
       engine: "eve",
       status: "running",
       sessionId,
@@ -95,12 +96,12 @@ async function withSession(
       input: "fixture",
       rates: { input: 2, cached: 0.2, output: 10, source: "fixture" },
     });
-    const context = { id: jobId, checkpoint: { "agent:photographer:0": runId } };
+    const context = { id: jobId, checkpoint: { [`agent:${role}:0`]: runId } };
     await check({
       execute: () =>
         jobContext.run(context, () =>
           runRole({
-            role: "photographer",
+            role,
             projectId,
             input: "Must not submit another turn",
           }),
@@ -152,7 +153,7 @@ integration("a resumed Eve turn still times out and cancels its retained session
       expect(saved.status).toBe("failed");
       expect(saved.error).toContain("TimeoutError");
       expect(saved.sessionId).toBe(sessionId);
-    }, false);
+    }, false, "judge");
   } finally {
     if (previousTimeout === undefined) delete process.env.AGENT_TIMEOUT_MS;
     else process.env.AGENT_TIMEOUT_MS = previousTimeout;

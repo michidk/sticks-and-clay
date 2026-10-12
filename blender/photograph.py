@@ -39,6 +39,10 @@ def photograph(glb, destination, front_azimuth=-55, elevation=25, framing=1.2, e
             for obj in roots: obj.location += offset
         bpy.context.view_layer.update()
     scene = bpy.context.scene
+    # Factory settings reset the process's --threads limit.
+    scene.render.threads_mode = 'FIXED'
+    scene.render.threads = 2
+    scene.render.use_persistent_data = True
     meshes = [o for o in scene.objects if o.type == 'MESH']
     if not meshes:
         raise ValueError('Export contains no meshes')

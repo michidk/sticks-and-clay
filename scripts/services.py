@@ -31,6 +31,12 @@ def stop(_sig, _frame):
 signal.signal(signal.SIGTERM, stop)
 signal.signal(signal.SIGINT, stop)
 try:
+    # HTTP health does not check sandbox images lost when Docker is restarted.
+    subprocess.run(
+        ["bun", "../node_modules/eve/bin/eve.js", "build"],
+        cwd=ROOT / "eve",
+        check=True,
+    )
     launch("blender-mcp", [str(ROOT / ".venv/bin/python"), "blender/server.py"])
     eve = launch(
         "eve",

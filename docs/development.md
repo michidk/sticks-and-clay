@@ -25,9 +25,13 @@ Keep credentials, filesystem access, database calls, and agent execution in serv
 
 ## Runtime services
 
-`bun run services` supervises Eve, Blender MCP, and the worker. It loads `.env`, writes logs to `data/logs/`, waits for Eve readiness, and stops its children on termination. It launches Eve with Bun so authored TypeScript tools use the same runtime as the app. Do not run a second supervisor against the same database.
+`bun run services` builds Eve and provisions its sandbox templates before starting Eve, Blender MCP, and the worker. It loads `.env`, writes service logs to `data/logs/`, waits for Eve readiness, and stops its children on termination. A failed build prevents the worker from claiming jobs. It launches Eve with Bun so authored TypeScript tools use the same runtime as the app. Do not run a second supervisor against the same database.
 
-If startup fails, inspect `data/logs/eve.log` and `data/logs/blender-mcp.log`. Confirm PostgreSQL is healthy with `docker compose -p studio ps`. Check that the app, worker, and Eve share `EVE_PASSWORD`, storage settings, and provider credentials. The Eve secret must contain at least 32 random characters. The shared system prompt or Eve channel configuration requires `bun run eve:build` followed by a service restart.
+If startup fails, inspect the supervisor output, `data/logs/eve.log`, and `data/logs/blender-mcp.log`. Confirm PostgreSQL is healthy with `docker compose -p studio ps`. Check that the app, worker, and Eve share `EVE_PASSWORD`, storage settings, and provider credentials. The Eve secret must contain at least 32 random characters. Restart the supervisor after changing shared instructions or Eve configuration; startup rebuilds them.
+
+After Docker state loss, restart the supervisor to restore sandbox templates, then resume failed jobs. Unusable Eve workflows and sessions whose sandbox containers were lost get new runs for the interrupted role. Failed runs, their usage, completed pipeline checkpoints, and archived assets remain in history. Ordinary turn failures continue their existing sessions.
+
+Photography applies the configured Blender execution budget to each of its three or seven full-quality views. Its agent deadline includes the seven-view render budget plus the configured agent time for camera selection and inspection. Render-slot waiting counts toward the execution budget, and cancellation still stops the owned process tree.
 
 The web production build is `.output/server/index.mjs`. Run it with `PORT=3000 bun .output/server/index.mjs`. Bind internal services to loopback. Blender scripts run with the service user's permissions; generated code is not an operating-system sandbox.
 
@@ -70,7 +74,7 @@ PYTHONPATH=blender .venv/bin/python -m unittest \
   blender.test_materials blender.test_material_quality \
   blender.test_build_artifacts blender.test_workspace \
   blender.test_build_runtime blender.test_build_workflow \
-  blender.test_cancellation scripts.test_provider
+  blender.test_cancellation scripts.test_provider scripts.test_services
 ```
 
 Set `BLENDER_BIN` in the shell to enable real Blender analysis and source-rebuild tests. These use temporary directories and may take several minutes. The sprite, geometry, and assignment checks run inside Blender itself:

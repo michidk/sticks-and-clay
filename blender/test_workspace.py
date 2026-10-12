@@ -77,5 +77,21 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(client.post('/workspace', content='not JSON').status_code, 403)
             self.assertEqual(client.post('/workspace', json={'capability': 'invalid', 'operation': 'read'}).status_code, 400)
 
+    async def test_photography_budget_covers_each_full_quality_view(self):
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, patch
+        glb = server.DATA / 'versions' / 'saved' / 'asset.glb'
+        glb.parent.mkdir(parents=True)
+        glb.write_bytes(b'fixture')
+        for views, expected in [(['front', 'rear', 'detail'], 1800), (['front', 'rear', 'detail', 'left', 'right', 'top', 'bottom'], 4200)]:
+            self.marker.write_text(json.dumps({'directory': 'photo', 'role': 'photographer', 'glb': 'versions/saved/asset.glb', 'views': views}))
+            proc = SimpleNamespace(returncode=1, communicate=AsyncMock(return_value=(b'fixture failure', None)))
+            with patch('blender.server.build_timeout_seconds', return_value=600), patch('asyncio.create_subprocess_exec', new_callable=AsyncMock, return_value=proc) as launch:
+                result = await server.photograph_asset(self.cap)
+                command = launch.call_args.args
+                self.assertEqual(command[command.index('--timeout') + 1], str(expected))
+                self.assertFalse(result['ok'])
+                self.assertFalse((server.DATA / 'photo' / 'photography.json').exists())
+
 
 if __name__ == '__main__': unittest.main()

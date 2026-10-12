@@ -28,3 +28,14 @@ test("failed turns continue, operator input stays blocked, invalid results can b
     "continue",
   );
 });
+test("dead workflows and lost sandbox state need a new run, ordinary failures retain the session", () => {
+  expect(recoveryAction(events("session.failed"))).toBe("restart");
+  expect(recoveryAction(events("turn.started", "step.completed", "session.failed"))).toBe("restart");
+  expect(recoveryAction([{ type: "turn.failed", data: { message: "Docker sandbox session container eve-session-123 no longer exists." } }])).toBe("restart");
+  expect(recoveryAction([{ type: "turn.failed", data: { message: "Sandbox template is not provisioned" } }])).toBe("continue");
+  expect(recoveryAction([
+    { type: "turn.started" },
+    { type: "turn.failed", data: { message: "Docker sandbox session container eve-session-123 no longer exists." } },
+    { type: "turn.started" },
+  ])).toBe("attach");
+});
