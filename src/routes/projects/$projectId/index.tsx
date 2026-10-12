@@ -35,7 +35,8 @@ import { useImageUpload } from "@/hooks/use-image-upload";
 import { appendReferenceImages } from "@/lib/image-file";
 import { TriangleCount } from "@/components/triangle-count";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { ModelViewer } from "@/components/ui/model-viewer/lazy";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { diffLines } from "diff";
@@ -61,11 +62,6 @@ import { agentStateFromStatus } from "../../../components/agent-state";
 import { PendingModel } from "./-components/pending-model";
 import { pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
-const Viewer = lazy(() =>
-  import("@/components/model-viewer").then((module) => ({
-    default: module.ModelViewer,
-  })),
-);
 export const Route = createFileRoute("/projects/$projectId/")({
   component: ProjectPage,
 });
@@ -752,16 +748,15 @@ function ProjectPage() {
                             </span>
                           </a>
                         ) : previewModelId === m.id && m.artifacts ? (
-                          <Suspense fallback={<ViewerSkeleton />}>
-                            <Viewer
-                              src={fileUrl(m.artifacts.glb)}
-                              alt={`${m.name} quick preview`}
-                              className="model-card-viewer"
-                              height="100%"
-                              showUi={false}
-                              autoRotate
-                            />
-                          </Suspense>
+                          <ModelViewer
+                            src={fileUrl(m.artifacts.glb)}
+                            aria-label={`${m.name} quick preview`}
+                            className="model-card-viewer"
+                            height="100%"
+                            showUi={false}
+                            defaultAutoRotate
+                            loadingFallback={<ViewerSkeleton overlay />}
+                          />
                         ) : (
                           <Link
                             className="model-cover-image"

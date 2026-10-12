@@ -1,30 +1,37 @@
 # Model viewer
 
-`ModelViewer` displays a GLB in a Three.js lightbox. Import it lazily on pages that do not always show a model. Static renders are the default on collection cards; an opt-in compact viewer avoids creating many WebGL contexts for a large collection.
+Collection quick previews and model detail pages use [shadcn-3d-viewer](https://github.com/michidk/shadcn-3d-viewer). The component is installed as source in `src/components/ui/model-viewer/`, following the upstream source-install workflow. It inherits the workshop's semantic theme tokens.
 
-## Component options
+Import the lazy entry so the Three.js renderer loads only when a viewer mounts:
 
-| Option | Behavior |
-|---|---|
-| `src`, `alt`, `height`, `className` | Model URL, accessible label, and layout. Omitting `src` shows sample cubes. |
-| `mode` | `orbit`, `split`, or `firstPerson`. Orbit has bounded zoom; split shows front, right, back, and left views. |
-| `lighting` | `day` or `night` |
-| `shading` | `realistic`, `solid`, `normals`, or `wireframe` |
-| `showGrid`, `showCubes` | Initial scene options |
-| `showUi` | Set to `false` for a compact preview without controls or hints. |
-| `showOrientation` | Show the XYZ axis helper. Click an axis endpoint to align the camera. |
-| `autoRotate`, `autoRotateSpeed` | Initial orbit animation options |
-| `onLoad`, `onError` | Loading and failure callbacks |
-| `onModeChange`, `onLightingChange`, `onShadingChange` | Scene option callbacks |
+```tsx
+import { ModelViewer } from "@/components/ui/model-viewer/lazy";
+import { ViewerSkeleton } from "@/components/loading";
 
-The toolbar changes options locally. Use the callbacks when the parent needs to retain those changes. Reset returns the camera to its initial view.
+<ModelViewer
+  src="/api/files/example.glb"
+  aria-label="Example model"
+  loadingFallback={<ViewerSkeleton overlay />}
+  showRetry
+/>
+```
 
-## Camera controls
+Static renders remain the default on collection cards. The opt-in preview uses `showUi={false}`, `height="100%"`, and `defaultAutoRotate`; only one card preview is active at a time.
 
-In first-person mode, click the scene to lock the pointer. Move with WASD or the arrow keys; use Space/E to rise and Shift/Q to descend. Escape releases the pointer. The camera does not collide with model geometry. Embedded frames that disallow pointer lock support dragging on the focused canvas to look around, with the same movement keys.
+## Controls
 
-## Images and fullscreen
+The detail viewer provides orbit, four-view split, and first-person cameras; perspective and orthographic projection; day, night, and outdoor lighting; realistic, solid, normal, and wireframe shading; grid and floor toggles; animation playback; scene inspection; screenshots; and fullscreen. Toolbar state is local unless the caller supplies a controlled prop and its change callback. Use `default*` props for initial uncontrolled state.
 
-The camera menu captures the scene as a PNG, including all four panes in split mode. Copy to clipboard puts the image on the system clipboard; Download image saves it with a model-based filename. If browser clipboard permissions block copying, the viewer reports the error and downloading remains available.
+The orientation helper supports mouse and keyboard controls. First-person navigation uses WASD or arrow keys, Space/E to rise, and Shift/Q to descend. Escape releases pointer lock. Frames that restrict pointer lock support drag-look instead. The camera does not collide with geometry.
 
-The bottom-right button enters fullscreen. Compact viewers with `showUi={false}` omit these actions.
+Screenshot controls download or copy a PNG, including all four panes in split mode. Clipboard permissions may block copying; download remains available. Fullscreen uses an in-page fallback when the browser restricts the Fullscreen API.
+
+The viewer pauses rendering and animation while hidden. Failed model loads offer retry. A failed renderer download stays inside the viewer and offers **Reload page**, which refreshes obsolete module URLs after deployment.
+
+## Upstream source
+
+The installed source is pinned to commit [`b0d7dfbc7a14384d5c939121c0c2816a80b5f4fc`](https://github.com/michidk/shadcn-3d-viewer/tree/b0d7dfbc7a14384d5c939121c0c2816a80b5f4fc). Its [MIT license](../src/components/ui/model-viewer/LICENSE) is retained alongside the source.
+
+Local adaptations are limited to importing the required Base UI button, tooltip, and menu primitives from the viewer's `primitives/` folder preserving the workshop's initial three-quarter camera direction, and keeping narrow-viewer controls at least 44px tall with space below the toolbar for the orientation helper. Other app controls retain their existing Radix implementations. The viewer's stylesheet owns its controls; application CSS owns card and page placement. Selected upstream lifecycle, camera, and model-inspection tests run through Bun.
+
+For updates, review the upstream source diff, copy the viewer files and its required primitives, retain these adaptations, and run `bun run verify`. Check a real exported GLB at desktop and phone widths, including split view, shading, screenshots, fullscreen, and the compact card preview. The procedural material editor has its own texture/slot preview and remains separate.

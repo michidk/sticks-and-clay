@@ -1,16 +1,15 @@
-import { useThree } from "@react-three/fiber";
 import { useGizmoContext } from "@react-three/drei";
-import { useEffect, useMemo, useState, type PointerEvent } from "react";
+import { useThree } from "@react-three/fiber";
+import { type PointerEvent, useEffect, useMemo, useState } from "react";
 import { CanvasTexture, Vector3 } from "three";
 
 const axes = [
-  { color: "#ff4466", position: [1, 0, 0] as const, rotation: [0, 0, 0] as const },
-  { color: "#88ff44", position: [0, 1, 0] as const, rotation: [0, 0, Math.PI / 2] as const },
-  { color: "#4488ff", position: [0, 0, 1] as const, rotation: [0, -Math.PI / 2, 0] as const },
+  { color: "#ff4967", position: [1, 0, 0] as const, rotation: [0, 0, 0] as const },
+  { color: "#7ee052", position: [0, 1, 0] as const, rotation: [0, 0, Math.PI / 2] as const },
+  { color: "#4a83ff", position: [0, 0, 1] as const, rotation: [0, -Math.PI / 2, 0] as const },
 ] as const;
 
-/** React Three Fiber adaptation of the axis helper used by three.js/editor. */
-export function EditorViewHelper() {
+export function ViewHelper() {
   return (
     <group scale={40}>
       {axes.map((axis) => (
@@ -21,12 +20,14 @@ export function EditorViewHelper() {
           </mesh>
         </group>
       ))}
-      {axes.map((axis) => <AxisPoint key={`positive-${axis.color}`} color={axis.color} position={axis.position} />)}
+      {axes.map((axis) => (
+        <AxisPoint key={`positive-${axis.color}`} color={axis.color} position={axis.position} />
+      ))}
       {axes.map((axis) => (
         <AxisPoint
           key={`negative-${axis.color}`}
-          color="#242424"
-          opacity={0.24}
+          color="#252525"
+          opacity={0.25}
           position={axis.position.map((value) => -value) as [number, number, number]}
         />
       ))}
@@ -34,7 +35,15 @@ export function EditorViewHelper() {
   );
 }
 
-function AxisPoint({ color, opacity = 1, position }: { color: string; opacity?: number; position: readonly [number, number, number] }) {
+function AxisPoint({
+  color,
+  opacity = 1,
+  position,
+}: {
+  color: string;
+  opacity?: number;
+  position: readonly [number, number, number];
+}) {
   const gl = useThree((state) => state.gl);
   const { tweenCamera } = useGizmoContext();
   const [hovered, setHovered] = useState(false);
@@ -51,6 +60,7 @@ function AxisPoint({ color, opacity = 1, position }: { color: string; opacity?: 
     result.anisotropy = gl.capabilities.getMaxAnisotropy() || 1;
     return result;
   }, [color, gl]);
+
   useEffect(() => () => texture.dispose(), [texture]);
 
   function activate(event: PointerEvent) {
@@ -63,10 +73,22 @@ function AxisPoint({ color, opacity = 1, position }: { color: string; opacity?: 
       position={position}
       scale={hovered ? 1.05 : 0.82}
       onPointerDown={activate}
-      onPointerOver={(event) => { event.stopPropagation(); setHovered(true); }}
-      onPointerOut={(event) => { event.stopPropagation(); setHovered(false); }}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        setHovered(true);
+      }}
+      onPointerOut={(event) => {
+        event.stopPropagation();
+        setHovered(false);
+      }}
     >
-      <spriteMaterial map={texture} alphaTest={0.15} opacity={opacity} transparent toneMapped={false} />
+      <spriteMaterial
+        map={texture}
+        alphaTest={0.15}
+        opacity={opacity}
+        transparent
+        toneMapped={false}
+      />
     </sprite>
   );
 }

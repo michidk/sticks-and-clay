@@ -1,16 +1,10 @@
-import { lazy, Suspense } from "react";
 import { Boxes, ImageOff, Maximize2 } from "lucide-react";
 import { AssetImage } from "@/components/asset-image";
+import { ModelViewer } from "@/components/ui/model-viewer/lazy";
 import { ViewerSkeleton } from "@/components/loading";
 import { useLightbox, type LightboxImage } from "@/components/image-lightbox";
 import { fileUrl } from "@/lib/client";
 import type { Artifacts } from "../-lib/model";
-const Viewer = lazy(() =>
-  import("@/components/model-viewer").then((module) => ({
-    default: module.ModelViewer,
-  })),
-);
-
 /** Lightbox entries for a version's product renders, in render order. */
 export function renderGallery(renders: string[] = []): LightboxImage[] {
   return renders.map((key, index) => ({
@@ -34,14 +28,14 @@ export function ModelMedia({
   const openLightbox = useLightbox();
   if (view === "3d" && artifacts?.glb)
     return (
-      <Suspense fallback={<ViewerSkeleton />}>
-        <Viewer
-          key={artifacts.glb}
-          src={fileUrl(artifacts.glb)}
-          alt={name}
-          className="model-detail-viewer"
-        />
-      </Suspense>
+      <ModelViewer
+        key={artifacts.glb}
+        src={fileUrl(artifacts.glb)}
+        aria-label={name}
+        className="model-detail-viewer"
+        loadingFallback={<ViewerSkeleton overlay />}
+        showRetry
+      />
     );
   if (view === "target" && target) {
     const image: LightboxImage = {

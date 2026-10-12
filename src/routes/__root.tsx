@@ -1,5 +1,6 @@
 import { StudioNav } from "@/components/studio-nav";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   createRootRoute,
   HeadContent,
@@ -37,8 +38,13 @@ export const Route = createRootRoute({
     <main>
       <h1>Something needs attention</h1>
       <Alert variant="destructive" className="error">
-        {error instanceof Error ? error.message : String(error)}
+        <AlertDescription className="min-w-0 break-words">
+          {error instanceof Error ? error.message : String(error)}
+        </AlertDescription>
       </Alert>
+      <Button variant="outline" onClick={() => window.location.reload()}>
+        Reload page
+      </Button>
       <a href="/">Return to projects</a>
     </main>
   ),
