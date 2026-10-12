@@ -28,6 +28,9 @@ import {
   TextSkeleton,
 } from "@/components/loading";
 import { AssetImage } from "@/components/asset-image";
+import { PictureUploader } from "@/components/picture-uploader";
+import { useImageUpload } from "@/hooks/use-image-upload";
+import { appendReferenceImages } from "@/lib/image-file";
 import { TriangleCount } from "@/components/triangle-count";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -66,6 +69,7 @@ export const Route = createFileRoute("/projects/$projectId/")({
 });
 function ProjectPage() {
   const { projectId } = Route.useParams();
+  const uploader = useImageUpload();
   const [data, setData] = useState<any>(),
     [tab, setTab] = useState("models"),
     [filter, setFilter] = useState("all"),
@@ -87,6 +91,7 @@ function ProjectPage() {
     setVersion(-1);
     setDesign("");
     setEditing(false);
+    uploader.reset();
     setPreviewModelId(null);
     setFilter("all");
     setQuery("");
@@ -110,19 +115,27 @@ function ProjectPage() {
     if (data && version === -1 && data.project.design) {
       setDesign(data.project.design);
       setVersion(data.project.designVersion);
+      uploader.reset(data.project.references);
     }
   }, [data, version]);
   async function save(approve: boolean) {
+    if (busy || uploader.isBusy) return;
     setBusy(true);
     setError("");
     try {
-      await request(
-        `projects/${projectId}/design`,
-        json({ design, version, approve }, "PUT"),
-      );
+      const form = new FormData();
+      form.set("design", design);
+      form.set("version", String(version));
+      form.set("approve", String(approve));
+      appendReferenceImages(form, uploader.images);
+      await request(`projects/${projectId}/design`, {
+        method: "PUT",
+        body: form,
+      });
       const d = await load();
       setVersion(d.project.designVersion);
       setDesign(d.project.design);
+      uploader.reset(d.project.references);
       setEditing(false);
     } catch (e) {
       setError((e as Error).message);
@@ -163,7 +176,11 @@ function ProjectPage() {
     modelGroups.map((group) => [group.representative.id, group]),
   );
   const state = projectState(p.status, collection);
-  const designChanged = design !== p.design;
+  const referencesChanged =
+    uploader.images.length !== p.references.length ||
+    uploader.images.some((image, index) => image.key !== p.references[index]);
+  const designChanged = design !== p.design || referencesChanged;
+  const saving = busy || uploader.isBusy;
   const designHeadings = [
     ...(design || p.design || "").matchAll(/^## (.+)$/gm),
   ].map((match, index) => ({ title: match[1], id: `design-section-${index}` }));
@@ -414,6 +431,7 @@ function ProjectPage() {
                 </div>
                 <Button
                   variant="outline"
+                  disabled={saving}
                   onClick={() => {
                     setEditing(!editing);
                   }}
@@ -424,7 +442,8 @@ function ProjectPage() {
               <p className="note">
                 Saving a draft requires approval before new generation. Approval
                 applies to future batches; existing batches keep their saved
-                design.
+                design. Reference changes are saved with the design and do not
+                rewrite the document automatically.
               </p>
               {!editing && !!designHeadings.length && (
                 <nav className="design-contents" aria-label="Design sections">
@@ -439,6 +458,7 @@ function ProjectPage() {
                 <Textarea
                   className="design-editor"
                   aria-label="Design reference"
+                  disabled={saving}
                   value={design}
                   onChange={(e) => setDesign(e.target.value)}
                 />
@@ -472,13 +492,14 @@ function ProjectPage() {
                       ? "Unsaved changes"
                       : "Review this direction before approving"}
                   </span>
-                  {editing && (
+                  {(editing || designChanged) && (
                     <Button
                       variant="ghost"
-                      disabled={busy}
+                      disabled={saving}
                       onClick={() => {
                         setDesign(p.design);
                         setVersion(p.designVersion);
+                        uploader.reset(p.references);
                         setEditing(false);
                       }}
                     >
@@ -487,7 +508,7 @@ function ProjectPage() {
                   )}
                   <Button
                     variant="outline"
-                    disabled={busy || !designChanged || design.length < 100}
+                    disabled={saving || !designChanged || design.length < 100}
                     onClick={() => save(false)}
                   >
                     Save as draft
@@ -495,7 +516,7 @@ function ProjectPage() {
                   <Button
                     variant="default"
                     className=""
-                    disabled={busy || design.length < 100}
+                    disabled={saving || design.length < 100}
                     onClick={() => save(true)}
                   >
                     <Check size={17} />
@@ -510,24 +531,17 @@ function ProjectPage() {
             </Card>
             <aside>
               <Card className="panel">
-                <div className="eyebrow">VISUAL REFERENCES</div>
-                <div className="reference-grid">
-                  {p.references.map((f: string) => (
-                    <a
-                      href={fileUrl(f)}
-                      key={f}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <AssetImage src={fileUrl(f)} alt="Project reference" />
-                    </a>
-                  ))}
-                </div>
-                {!p.references.length && (
-                  <p className="muted">
-                    This project starts from a written brief.
-                  </p>
-                )}
+                <PictureUploader
+                  images={uploader.images}
+                  onFilesAdded={uploader.addFiles}
+                  onImportFromUrl={uploader.importFromUrl}
+                  onRemove={uploader.remove}
+                  disabled={busy}
+                  isBusy={uploader.isBusy}
+                />
+                <p className="muted">
+                  Add or remove references before saving or approving the design.
+                </p>
               </Card>
               <Card className="panel">
                 <h3>Design history</h3>
@@ -578,7 +592,7 @@ function ProjectPage() {
                         <Button
                           variant="outline"
                           disabled={
-                            busy || !["ready", "review"].includes(p.status)
+                            saving || !["ready", "review"].includes(p.status)
                           }
                           onClick={() => {
                             setDesign(r.content);

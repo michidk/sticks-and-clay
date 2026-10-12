@@ -3,8 +3,90 @@ import { api } from "./api.server";
 import { db } from "../db/client";
 import { projects, revisions } from "../db/schema";
 import { eq } from "drizzle-orm";
+import { getStorage, upload } from "./storage.server";
 // Opt in against an isolated migrated database with no worker; fixtures clean up queued jobs.
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
+integration("design edits save references atomically, retain JSON callers and reject stale uploads", async () => {
+  const id = crypto.randomUUID();
+  const design =
+    "# Reference style\n" + "Soft shapes and warm ivory surfaces. ".repeat(4);
+  const file = new File(
+    [Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhFcAAAAASUVORK5CYII=",
+      "base64",
+    )],
+    "pixel.png",
+    { type: "image/png" },
+  );
+  const saved = await upload(file);
+  const keys = [saved];
+  const readProject = async () =>
+    (await db.select().from(projects).where(eq(projects.id, id)))[0];
+  const form = new FormData();
+  form.set("design", design);
+  form.set("version", "1");
+  form.set("approve", "false");
+  form.set("references", JSON.stringify([saved]));
+  form.append("images", file);
+  const save = () => api(new Request(
+    `http://localhost/api/projects/${id}/design`,
+    { method: "PUT", body: form },
+  ));
+  try {
+    await db.insert(projects).values({
+      id,
+      name: "Design references fixture",
+      description: "test",
+      status: "review",
+      design,
+      designVersion: 1,
+      references: [saved],
+    });
+    expect((await save()).status).toBe(200);
+    const draft = await readProject();
+    keys.push(...draft.references.filter((key) => key !== saved));
+    expect(draft.references).toHaveLength(2);
+    expect(draft.references[0]).toBe(saved);
+    expect(await getStorage().exists(draft.references[1])).toBe(true);
+    expect(draft.status).toBe("review");
+    expect(draft.designVersion).toBe(2);
+    const storedBefore = (await getStorage().list("references")).sort();
+    expect((await save()).status).toBe(400);
+    expect((await readProject()).references).toEqual(draft.references);
+    expect((await getStorage().list("references")).sort()).toEqual(storedBefore);
+    const history = await db.select().from(revisions)
+      .where(eq(revisions.projectId, id));
+    expect(history).toHaveLength(1);
+    form.delete("images");
+    form.set("version", "2");
+    form.set("references", '["references/foreign.png"]');
+    expect((await save()).status).toBe(400);
+    form.set("references", JSON.stringify(draft.references));
+    form.append("images", new File(["invalid"], "bad.png", { type: "image/png" }));
+    expect((await save()).status).toBe(400);
+    expect((await readProject()).designVersion).toBe(2);
+    form.delete("images");
+    const approved = await api(new Request(`http://localhost/api/projects/${id}/design`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ design, version: 2, approve: true }),
+    }));
+    expect(approved.status).toBe(200);
+    expect((await readProject()).references).toEqual(draft.references);
+    expect((await readProject()).status).toBe("ready");
+    form.set("version", "3");
+    form.set("references", "[]");
+    form.set("approve", "true");
+    expect((await save()).status).toBe(200);
+    expect((await readProject()).references).toEqual([]);
+    expect((await readProject()).status).toBe("ready");
+    expect(await getStorage().exists(saved)).toBe(true);
+  } finally {
+    await db.delete(revisions).where(eq(revisions.projectId, id));
+    await db.delete(projects).where(eq(projects.id, id));
+    for (const key of keys) await getStorage().delete(key);
+  }
+});
 integration(
   "design approval, immutable revisions and optimistic edit conflict",
   async () => {

@@ -562,38 +562,62 @@ export async function api(request: Request) {
         );
       }
       if (path[2] === "design" && request.method === "PUT") {
-        const input = designInput.parse(await request.json());
-        await db.transaction(async (tx) => {
-          const updated = await tx
-            .update(projects)
-            .set({
-              design: input.design,
-              designVersion: input.version + 1,
-              status: input.approve ? "ready" : "review",
-              progress: 100,
-              phase: input.approve ? "Ready to build" : "Review design",
-              error: null,
-            })
-            .where(
-              and(
-                eq(projects.id, id),
-                eq(projects.designVersion, input.version),
-                inArray(projects.status, ["ready", "review"]),
-              ),
-            )
-            .returning();
-          if (!updated.length)
-            throw new Error(
-              "Design changed or is still generating. Reload before saving.",
-            );
-          await tx.insert(revisions).values({
-            id: crypto.randomUUID(),
-            projectId: id,
-            version: input.version + 1,
-            content: input.design,
-            author: "user",
+        const form = request.headers
+          .get("content-type")
+          ?.includes("multipart/form-data")
+          ? await request.formData()
+          : null;
+        const input = designInput.parse(
+          form
+            ? {
+                design: form.get("design"),
+                version: JSON.parse(String(form.get("version"))),
+                approve: form.has("approve")
+                  ? JSON.parse(String(form.get("approve")))
+                  : false,
+              }
+            : await request.json(),
+        );
+        const prepared = form
+          ? await prepareReferences(form, project.references)
+          : null;
+        try {
+          await db.transaction(async (tx) => {
+            const updated = await tx
+              .update(projects)
+              .set({
+                design: input.design,
+                designVersion: input.version + 1,
+                ...(prepared ? { references: prepared.references } : {}),
+                status: input.approve ? "ready" : "review",
+                progress: 100,
+                phase: input.approve ? "Ready to build" : "Review design",
+                error: null,
+              })
+              .where(
+                and(
+                  eq(projects.id, id),
+                  eq(projects.designVersion, input.version),
+                  inArray(projects.status, ["ready", "review"]),
+                ),
+              )
+              .returning();
+            if (!updated.length)
+              throw new Error(
+                "Design changed or is still generating. Reload before saving.",
+              );
+            await tx.insert(revisions).values({
+              id: crypto.randomUUID(),
+              projectId: id,
+              version: input.version + 1,
+              content: input.design,
+              author: "user",
+            });
           });
-        });
+        } catch (error) {
+          await prepared?.rollback();
+          throw error;
+        }
         return reply({ ok: true });
       }
       if (path[2] === "workshop" && request.method === "PUT") {
