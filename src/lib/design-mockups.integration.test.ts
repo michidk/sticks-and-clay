@@ -67,8 +67,12 @@ integration("partial mockups reuse completed runs, generate remaining images onc
   const input = { version: 2, references: [], prompts: ["Saved concept one", "Saved concept two"] };
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhFcAAAAASUVORK5CYII=", "base64");
   const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY;
+  const originalBase = process.env.OPENAI_BASE_URL;
   let providerRequests = 0;
   try {
+    process.env.OPENAI_API_KEY = "mockup-test-fixture";
+    process.env.OPENAI_BASE_URL = "https://mockups.invalid/v1";
     await db.insert(projects).values({ id: projectId, name: "Recovered mockups", description: "test", design,
       designVersion: 3, status: "ready" });
     await db.insert(jobs).values({ id: jobId, kind: "design-mockups", targetId: projectId, status: "failed",
@@ -120,6 +124,10 @@ integration("partial mockups reuse completed runs, generate remaining images onc
     expect(detail.project.status).toBe("ready");
   } finally {
     globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = originalKey;
+    if (originalBase === undefined) delete process.env.OPENAI_BASE_URL;
+    else process.env.OPENAI_BASE_URL = originalBase;
     await db.delete(events).where(inArray(events.runId,
       db.select({ id: runs.id }).from(runs).where(eq(runs.projectId, projectId)),
     ));
