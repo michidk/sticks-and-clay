@@ -2,7 +2,6 @@
 
 import {
   Box,
-  Camera,
   ChevronDown,
   CloudSun,
   Copy,
@@ -19,6 +18,8 @@ import {
   RotateCcw,
   RotateCw,
   ScanSearch,
+  SlidersHorizontal,
+  Paintbrush,
 } from "lucide-react";
 import {
   type ComponentProps,
@@ -26,11 +27,11 @@ import {
   useImperativeHandle,
   useLayoutEffect,
   useRef,
-  useState,
 } from "react";
 import {
   DropdownMenu,
   DropdownMenuItem,
+  DropdownMenuCheckboxItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
@@ -210,10 +211,9 @@ export function ModelViewerControls({
   onCapture,
   ...props
 }: ModelViewerControlsProps) {
-  const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
   return (
     <ModelViewerToolbar {...props}>
-      <ModelViewerToolbarGroup aria-label="Shading">
+      <ModelViewerToolbarGroup aria-label="Model review">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
             render={
@@ -221,15 +221,20 @@ export function ModelViewerControls({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="viewer-shading-trigger"
-                aria-label={`Shading: ${shading}`}
+                className="viewer-menu-trigger"
+                aria-label={`Shading: ${shadingLabels[shading]}`}
               >
-                {shadingLabels[shading]}
-                <ChevronDown />
+                <Paintbrush />
+                <span className="viewer-control-label">{shadingLabels[shading]}</span>
+                <ChevronDown className="viewer-control-label" />
               </Button>
             }
           />
-          <DropdownMenuContent align="start" sideOffset={6} className="min-w-40">
+          <DropdownMenuContent
+            align="start"
+            sideOffset={6}
+            className="viewer-options-menu min-w-44"
+          >
             <DropdownMenuRadioGroup
               aria-label="Shading"
               value={shading}
@@ -243,111 +248,68 @@ export function ModelViewerControls({
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
-      </ModelViewerToolbarGroup>
-      <ModelViewerToolbarGroup aria-label="Interaction mode">
-        <ModelViewerToolbarButton
-          icon={<Rotate3D />}
-          label="Orbit camera"
-          active={mode === "orbit"}
-          onClick={() => onModeChange("orbit")}
-        />
-        <ModelViewerToolbarButton
-          icon={<LayoutGrid />}
-          label="Four-view split"
-          active={mode === "split"}
-          onClick={() => onModeChange("split")}
-        />
-        <ModelViewerToolbarButton
-          icon={<Footprints />}
-          label="Fly camera"
-          active={mode === "firstPerson"}
-          onClick={() => onModeChange("firstPerson")}
-        />
-        {onAutoRotateChange && (
-          <ModelViewerToolbarButton
-            icon={<RotateCw />}
-            label="Rotate automatically"
-            active={autoRotate}
-            disabled={mode !== "orbit"}
-            onClick={() => onAutoRotateChange(!autoRotate)}
-          />
-        )}
-      </ModelViewerToolbarGroup>
-      <ModelViewerToolbarGroup aria-label="Scene options">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
             render={
               <Button
                 type="button"
-                size="icon-sm"
-                variant="ghost"
-                aria-label={`Lighting: ${lighting}`}
-                tooltip="Lighting"
+                variant={mode === "orbit" ? "ghost" : "secondary"}
+                size="sm"
+                className="viewer-menu-trigger"
+                aria-label="Camera options"
               >
-                <CloudSun />
+                {mode === "split" ? (
+                  <LayoutGrid />
+                ) : mode === "firstPerson" ? (
+                  <Footprints />
+                ) : (
+                  <Rotate3D />
+                )}
+                <span className="viewer-control-label">
+                  {mode === "split" ? "Four views" : mode === "firstPerson" ? "Fly" : "Orbit"}
+                </span>
+                <ChevronDown className="viewer-control-label" />
               </Button>
             }
           />
-          <DropdownMenuContent className="min-w-40">
+          <DropdownMenuContent
+            align="start"
+            sideOffset={6}
+            className="viewer-options-menu min-w-52"
+          >
             <DropdownMenuRadioGroup
-              aria-label="Lighting"
-              value={lighting}
-              onValueChange={onLightingChange}
+              aria-label="Camera mode"
+              value={mode}
+              onValueChange={onModeChange}
             >
-              {(["day", "night", "outside"] as const).map((value) => (
-                <DropdownMenuRadioItem key={value} value={value} closeOnClick>
-                  {value === "outside"
-                    ? "Outside sky"
-                    : value === "day"
-                      ? "Day studio"
-                      : "Night studio"}
-                </DropdownMenuRadioItem>
-              ))}
+              <DropdownMenuRadioItem value="orbit" closeOnClick>
+                <Rotate3D /> Orbit camera
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="split" closeOnClick>
+                <LayoutGrid /> Four-view split
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="firstPerson" closeOnClick>
+                <Footprints /> Fly camera
+              </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <ModelViewerToolbarButton
-          icon={<Grid2X2 />}
-          label="Show grid"
-          active={grid}
-          onClick={() => onGridChange(!grid)}
-        />
-        {onFloorChange && (
-          <ModelViewerToolbarButton
-            icon={<Layers3 />}
-            label="Show floor"
-            active={floor}
-            onClick={() => onFloorChange(!floor)}
-          />
-        )}
-        <ModelViewerToolbarButton
-          icon={<ScanSearch />}
-          label="Orthographic view"
-          active={projection === "orthographic"}
-          onClick={() =>
-            onProjectionChange(projection === "orthographic" ? "perspective" : "orthographic")
-          }
-        />
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger
-            render={
-              <Button type="button" size="icon-sm" variant="ghost" aria-label="View cube options">
-                <Box />
-              </Button>
-            }
-          />
-          <DropdownMenuContent className="min-w-40">
-            <DropdownMenuRadioGroup
-              aria-label="View cube"
-              value={viewCube}
-              onValueChange={onViewCubeChange}
+            <div role="separator" className="my-1 border-t" />
+            <DropdownMenuCheckboxItem
+              checked={projection === "orthographic"}
+              onCheckedChange={(checked) =>
+                onProjectionChange(checked ? "orthographic" : "perspective")
+              }
             >
-              {([false, "drei", "asset-studio"] as const).map((value) => (
-                <DropdownMenuRadioItem key={String(value)} value={value} closeOnClick>
-                  {value === false ? "Off" : value === "drei" ? "Drei cube" : "Asset Studio"}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
+              <ScanSearch /> Orthographic view
+            </DropdownMenuCheckboxItem>
+            {onAutoRotateChange && (
+              <DropdownMenuCheckboxItem
+                checked={autoRotate}
+                disabled={mode !== "orbit"}
+                onCheckedChange={onAutoRotateChange}
+              >
+                <RotateCw /> Rotate automatically
+              </DropdownMenuCheckboxItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
         <ModelViewerToolbarButton
@@ -357,30 +319,55 @@ export function ModelViewerControls({
           onClick={() => onInspectorChange(!inspectorOpen)}
         />
         <ModelViewerToolbarButton icon={<RotateCcw />} label="Reset view" onClick={onReset} />
-        <DropdownMenu modal={false} open={captureMenuOpen} onOpenChange={setCaptureMenuOpen}>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger
             render={
-              <Button
-                type="button"
-                size="icon-sm"
-                variant={captureMenuOpen ? "secondary" : "ghost"}
-                aria-label="Screenshot options"
-                title="Screenshot options"
-                disabled={captureDisabled}
-              >
-                <Camera />
+              <Button type="button" size="icon-sm" variant="ghost" aria-label="Viewer options">
+                <SlidersHorizontal />
               </Button>
             }
           />
-          <DropdownMenuContent align="end" sideOffset={8} className="min-w-52">
-            <div className="flex items-center justify-between border-b px-2 py-1.5 text-xs font-medium">
-              Capture view <span className="text-muted-foreground">PNG</span>
+          <DropdownMenuContent align="end" sideOffset={6} className="viewer-options-menu min-w-56">
+            <div className="px-1.5 py-1.5 text-xs font-medium text-muted-foreground">Lighting</div>
+            <DropdownMenuRadioGroup
+              aria-label="Lighting"
+              value={lighting}
+              onValueChange={onLightingChange}
+            >
+              <DropdownMenuRadioItem value="day" closeOnClick>
+                <CloudSun /> Day studio
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="night" closeOnClick>
+                <CloudSun /> Night studio
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="outside" closeOnClick>
+                <CloudSun /> Outside sky
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <div role="separator" className="my-1 border-t" />
+            <DropdownMenuCheckboxItem checked={grid} onCheckedChange={onGridChange}>
+              <Grid2X2 /> Show grid
+            </DropdownMenuCheckboxItem>
+            {onFloorChange && (
+              <DropdownMenuCheckboxItem checked={floor} onCheckedChange={onFloorChange}>
+                <Layers3 /> Show floor
+              </DropdownMenuCheckboxItem>
+            )}
+            <DropdownMenuCheckboxItem
+              checked={viewCube !== false}
+              onCheckedChange={(checked) => onViewCubeChange(checked ? "asset-studio" : false)}
+            >
+              <Box /> Orientation helper
+            </DropdownMenuCheckboxItem>
+            <div role="separator" className="my-1 border-t" />
+            <div className="px-1.5 py-1.5 text-xs font-medium text-muted-foreground">
+              Screenshot · PNG
             </div>
-            <DropdownMenuItem onClick={() => void onCapture("copy")}>
-              <Copy /> Copy to clipboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => void onCapture("download")}>
+            <DropdownMenuItem disabled={captureDisabled} onClick={() => void onCapture("download")}>
               <Download /> Download image
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={captureDisabled} onClick={() => void onCapture("copy")}>
+              <Copy /> Copy to clipboard
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

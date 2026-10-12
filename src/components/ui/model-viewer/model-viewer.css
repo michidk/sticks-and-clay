@@ -122,7 +122,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    max-width: calc(100% - 68px);
+    max-width: calc(100% - 28px);
   }
   .viewer-toolbar-group,
   .viewer-animation-controls {
@@ -290,15 +290,18 @@
       min-width: 44px;
       min-height: 44px;
     }
-    .viewer-toolbar-group {
-      flex-wrap: wrap;
-      max-width: 100%;
+    .viewer-menu-trigger {
+      width: 44px;
+      padding-inline: 0;
+    }
+    .viewer-control-label {
+      display: none;
     }
     .viewer-toolbar-top {
       top: 9px;
       left: 9px;
       gap: 4px;
-      max-width: calc(100% - 58px);
+      max-width: calc(100% - 18px);
     }
 
     .viewer-animation-controls {
@@ -326,6 +329,11 @@
     .viewer-pane-label {
       top: 8px;
       left: 8px;
+    }
+  }
+  @media (pointer: coarse), (max-width: 680px) {
+    .viewer-options-menu [role^="menuitem"] {
+      min-height: 44px;
     }
   }
   .viewer-inspector {
