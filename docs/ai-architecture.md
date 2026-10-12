@@ -31,6 +31,8 @@ Legacy designer jobs with Eve checkpoints retain Eve execution. New Eve work req
 
 The internal accounting module owns run creation and pricing snapshots. Adapters own usage collection because TanStack response usage and Eve event replay have different semantics. Both persist to the historical `agent_runs` table, now with explicit `engine` and `step_id`. Provider cost fields remain ignored. Unknown failed usage stays unknown; Eve event replay does not add the same costs twice.
 
+Resuming a running Eve turn follows the saved session through idle stream reconnects until a terminal event or the configured role deadline. Quiet Blender work must not exhaust the SDK's default idle reconnect limit. A deadline cancels the retained session and records a timeout; it does not submit another turn. Completed turns still require artifact validation before the pipeline advances.
+
 Optional `design-mockups` jobs snapshot the approved design's rendered prompts and reference keys when queued. Each completed image is checkpointed independently; resume reuses completed image runs and retains the original inputs. Mockups do not change project approval, collection assets or uploaded references. Their gallery is read from job checkpoints, with costs in the ordinary run history.
 
 ## Pipeline interface

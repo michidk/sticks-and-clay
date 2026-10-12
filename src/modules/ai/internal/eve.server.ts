@@ -205,7 +205,13 @@ export async function agent<T>(
         { outputSchema: args.schema, signal },
       );
     } else if (action === "attach") {
-      continuation = handle.stream({ signal });
+      continuation = handle.stream({
+        signal,
+        // Blender can stay silent across reconnects; the role deadline bounds recovery.
+        streamReconnectPolicy: {
+          streamIdleReconnectPolicy: { maxAttempts: Infinity },
+        },
+      });
     }
     async function* replay() {
       for (const event of history) yield { event, historical: true };
@@ -319,6 +325,7 @@ export async function agent<T>(
         );
       if (!historical && event.type === "turn.completed") break;
     }
+    signal.throwIfAborted();
     if (!complete) throw new Error("Agent stream ended without completion");
     await assertJobActive();
     let parsed: T;
