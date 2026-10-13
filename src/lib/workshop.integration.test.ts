@@ -117,7 +117,7 @@ integration(
       const queue = await api(new Request("http://localhost/api/queue"));
       expect(
         (await queue.json()).jobs.find((job: any) => job.id === renderId).name,
-      ).toBe("Render Saved prop");
+      ).toBe("Saved version render · Saved prop");
       expect((await send(`queue/${renderId}/cancel`, {})).status).toBe(200);
       const status = await api(
         new Request(`http://localhost/api/workshop-jobs/${renderId}`),
