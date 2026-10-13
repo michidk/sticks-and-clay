@@ -32,7 +32,7 @@ import { z } from "zod";
 import { Plus } from "lucide-react";
 import { request, json, costSummary, fileUrl } from "../../../lib/client";
 import { PendingModel } from "./-components/pending-model";
-import { pendingCollectionItems } from "./-lib/collection";
+import { failedBatchFor, pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
 import { queueKindLabels } from "@/lib/queue-view";
 
@@ -150,16 +150,26 @@ function ProjectPage() {
     ? { label: `${queueKindLabels[activeWork.kind] || activeWork.kind} · ${activeWork.status}`, tone: activeWork.status === "queued" ? "queued" : "running" }
     : projectState(p.status, collection);
   const pending = pendingCollectionItems(data.batches, data.models);
+  // Collection renders that failed after the models existed belong on those models' cards.
+  const renderFailureByRepresentative = new Map(
+    modelGroups.map((group) => [
+      group.representative.id,
+      failedBatchFor(data.batches, group.assets),
+    ]),
+  );
+  const needsAttention = (m: any) =>
+    m.verdict === "limit_reached" ||
+    m.status === "failed" ||
+    Boolean(renderFailureByRepresentative.get(m.id));
   const ideas = data.ideas || [];
   const counts = {
-    all: collectionModels.length + pending.filter((i) => i.placeholder).length,
+    all: collectionModels.length + pending.length,
     working:
       collectionModels.filter((m: any) => !finished.includes(m.status)).length +
       pending.filter((item) => item.batch.status !== "failed").length,
     attention:
-      collectionModels.filter(
-        (m: any) => m.verdict === "limit_reached" || m.status === "failed",
-      ).length + pending.filter((item) => item.batch.status === "failed").length,
+      collectionModels.filter(needsAttention).length +
+      pending.filter((item) => item.batch.status === "failed").length,
     finished: collectionModels.filter((m: any) => m.status === "done").length,
   };
   const matches = (text: string) =>
@@ -171,7 +181,7 @@ function ProjectPage() {
         (filter === "working"
           ? !finished.includes(m.status)
           : filter === "attention"
-            ? m.verdict === "limit_reached" || m.status === "failed"
+            ? needsAttention(m)
             : m.status === "done")),
   );
   const visiblePending = pending.filter(
@@ -402,19 +412,16 @@ function ProjectPage() {
                   />
                 </div>
                 <div className="model-grid">
-                  {visiblePending
-                    .filter((item) => item.placeholder)
-                    .map((item) => (
-                      <PendingModel
-                        key={item.key}
-                        batch={item.batch}
-                        index={item.index}
-                        placeholder={item.placeholder}
-                        busy={busy}
-                        onResume={() => resumeBatch(item.batch.id)}
-                        assetType={p.assetType}
-                      />
-                    ))}
+                  {visiblePending.map((item) => (
+                    <PendingModel
+                      key={item.key}
+                      batch={item.batch}
+                      index={item.index}
+                      busy={busy}
+                      onResume={() => resumeBatch(item.batch.id)}
+                      assetType={p.assetType}
+                    />
+                  ))}
                   {visibleModels.map((m: any) => {
                     const group = modelGroupByRepresentative.get(m.id);
                     const modelIds = new Set(
@@ -440,6 +447,9 @@ function ProjectPage() {
                         projectId={projectId}
                         model={m}
                         lineage={lineage || undefined}
+                        renderFailure={renderFailureByRepresentative.get(m.id)}
+                        resumingBatch={busy}
+                        onResumeBatch={resumeBatch}
                         activeJobs={(data.activeJobs || []).filter((job: any) => job.modelId === m.id && job.kind !== "model")}
                         isGraphics={isGraphics}
                         cost={rs
@@ -478,19 +488,6 @@ function ProjectPage() {
                     </Empty>
                   )}
                 </div>
-                {visiblePending
-                  .filter((item) => !item.placeholder)
-                  .map((item) => (
-                    <PendingModel
-                      key={item.key}
-                      batch={item.batch}
-                      index={item.index}
-                      placeholder={item.placeholder}
-                      busy={busy}
-                      onResume={() => resumeBatch(item.batch.id)}
-                      assetType={p.assetType}
-                    />
-                  ))}
               </>
             )}
             {!isGraphics &&

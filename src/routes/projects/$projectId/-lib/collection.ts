@@ -5,6 +5,7 @@ export type PendingBatch = {
   prompt: string;
   error?: string;
 };
+/** One placeholder card per model the batch still owes. */
 export function pendingCollectionItems(
   batches: PendingBatch[],
   models: { batchId: string }[],
@@ -15,15 +16,24 @@ export function pendingCollectionItems(
       const created = models.filter(
         (model) => model.batchId === batch.id,
       ).length;
-      const remaining = Math.max(0, batch.count - created);
       return Array.from(
-        { length: remaining || (batch.status === "failed" ? 1 : 0) },
+        { length: Math.max(0, batch.count - created) },
         (_, index) => ({
           batch,
           index: created + index,
-          placeholder: remaining > 0,
           key: `${batch.id}:${created + index}`,
         }),
       );
     });
+}
+/** A batch that failed after its models existed, i.e. the collection render step. */
+export function failedBatchFor(
+  batches: PendingBatch[],
+  models: { batchId?: string }[],
+) {
+  return batches.find(
+    (batch) =>
+      batch.status === "failed" &&
+      models.some((model) => model.batchId === batch.id),
+  );
 }

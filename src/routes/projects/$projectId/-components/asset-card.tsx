@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Boxes, Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AssetImage } from "@/components/asset-image";
 import { ModelViewer } from "@/components/ui/model-viewer/lazy";
 import { ViewerSkeleton } from "@/components/loading";
@@ -23,6 +23,9 @@ export function AssetCard({
   cost,
   sourceRunId,
   lineage,
+  renderFailure,
+  resumingBatch = false,
+  onResumeBatch,
   previewing,
   onPreview,
   onRefresh,
@@ -35,6 +38,10 @@ export function AssetCard({
   cost: number;
   sourceRunId?: string;
   lineage?: string;
+  /** The batch whose collection render failed after this model finished. */
+  renderFailure?: { id: string; error?: string };
+  resumingBatch?: boolean;
+  onResumeBatch?: (batchId: string) => void;
   previewing: boolean;
   onPreview: (id: string | null) => void;
   onRefresh: () => Promise<unknown>;
@@ -138,6 +145,18 @@ export function AssetCard({
             <AlertDescription>{m.error}</AlertDescription>
           </Alert>
         )}
+        {renderFailure && (
+          <Alert variant="destructive" className="error">
+            <AlertTitle>Collection renders failed</AlertTitle>
+            <AlertDescription>
+              <p>The lineup and demo scene for this {isGraphics ? "graphic" : "model"} did not render.</p>
+              <p className="break-all">
+                {renderFailure.error ||
+                  "Rendering stopped before it finished."}
+              </p>
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="card-meta">
           <span>
             {m.artifacts && !isGraphics ? (
@@ -156,6 +175,15 @@ export function AssetCard({
           {m.status === "failed" && (
             <Button variant="outline" disabled={resuming} onClick={resume}>
               {resuming ? "Resuming…" : "Resume"}
+            </Button>
+          )}
+          {renderFailure && onResumeBatch && (
+            <Button
+              variant="outline"
+              disabled={resumingBatch}
+              onClick={() => onResumeBatch(renderFailure.id)}
+            >
+              Retry renders
             </Button>
           )}
           {!isGraphics && (

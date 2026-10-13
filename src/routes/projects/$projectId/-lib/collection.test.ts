@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { pendingCollectionItems } from "./collection";
+import { failedBatchFor, pendingCollectionItems } from "./collection";
 const batch = { id: "b", count: 3, prompt: "Ships", status: "queued" };
 test("queued requests occupy one card per model and disappear as models are created", () => {
   expect(pendingCollectionItems([batch], [])).toHaveLength(3);
@@ -16,11 +16,11 @@ test("other batches do not consume slots and finished batches do not create plac
     pendingCollectionItems([{ ...batch, status: "done" }], []),
   ).toHaveLength(0);
 });
-test("failed batches retain a recovery card after all model rows exist", () => {
-  const items = pendingCollectionItems(
-    [{ ...batch, status: "failed" }],
-    Array(3).fill({ batchId: "b" }),
-  );
-  expect(items).toHaveLength(1);
-  expect(items[0].placeholder).toBe(false);
+test("a batch that failed after its models exist attaches to those models instead of a card", () => {
+  const failed = { ...batch, status: "failed", error: "Render timed out" };
+  const models = Array(3).fill({ batchId: "b" });
+  expect(pendingCollectionItems([failed], models)).toHaveLength(0);
+  expect(failedBatchFor([failed], models)).toBe(failed);
+  expect(failedBatchFor([failed], [{ batchId: "other" }])).toBeUndefined();
+  expect(failedBatchFor([batch], models)).toBeUndefined();
 });
