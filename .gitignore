@@ -1,0 +1,36 @@
+node_modules/
+data/
+output/
+.env*
+!.env.example
+.output/
+.tanstack/
+eve/.eve/
+.venv/
+__pycache__/
+*.pyc
+.ruff_cache/
+
+.venv-imagegen/
+
+# User-local agent and development-tool state
+.codex/
+.claude/
+.serena/
+.agents/
+.gitnexus/
+
+# Build/test output and private local files
+dist/
+coverage/
+.cache/
+.npm/
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+*.bak
+*.tmp
+*.local.*
+.DS_Store

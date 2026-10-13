@@ -1,0 +1,145 @@
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { z } from "zod";
+import { db } from "../db/client";
+import { jobs, models, batches, projects, runs } from "../db/schema";
+import { agentInput } from "./api-inputs";
+import { cancelJob } from "./queue.server";
+import { agentSettings, immediateRoles } from "../modules/ai/index.server";
+import {
+  loadRuntimeSettings,
+  saveRuntimeSettings,
+  updateRuntimeSettings,
+} from "./runtime-settings.server";
+import { readWorkerHeartbeat } from "./worker-control.server";
+import { diagnosticsSnapshot } from "./diagnostics.server";
+import { immediateRunView, queueJobView } from "./queue-view";
+
+const uuid = z.string().uuid();
+const reply = (value: unknown) => Response.json(value);
+
+export async function adminAction(request: Request, path: string[]) {
+  if (path[0] === "queue") {
+    if (request.method === "GET") {
+      const [list, assets, collections, workspaces, drafts, settings, worker] =
+        await Promise.all([
+          db
+            .select()
+            .from(jobs)
+            .orderBy(desc(jobs.createdAt)),
+          db.select().from(models),
+          db.select().from(batches),
+          db.select().from(projects),
+          db.select().from(runs).where(inArray(runs.role, immediateRoles))
+            .orderBy(desc(runs.createdAt)),
+          loadRuntimeSettings(),
+          readWorkerHeartbeat(),
+        ]);
+      return reply({
+        control: {
+          ...settings.queue,
+          activeJobs: list.filter((job) => ["running", "cancelling"].includes(job.status)).length +
+            drafts.filter((run) => run.status === "running").length,
+          workerHealthy: worker?.healthy ?? false,
+        },
+        jobs: [
+          ...list.map((job) => queueJobView(job, assets, collections, workspaces)),
+          ...drafts.map((run) => immediateRunView(run, workspaces.find((p) => p.id === run.projectId))),
+        ].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+      });
+    }
+    if (request.method === "POST" && path[1] === "cancel-pending") {
+      const pending = await db
+        .select()
+        .from(jobs)
+        .where(eq(jobs.status, "queued"));
+      for (const j of pending) {
+        const [stillQueued] = await db
+          .select()
+          .from(jobs)
+          .where(and(eq(jobs.id, j.id), eq(jobs.status, "queued")));
+        if (stillQueued) await cancelJob(j.id, true);
+      }
+      return reply({ ok: true });
+    }
+    if (request.method === "POST" && path[2] === "resume") {
+      const [saved] = await db
+        .select()
+        .from(jobs)
+        .where(eq(jobs.id, uuid.parse(path[1])));
+      if (
+        !saved ||
+        ![
+          "project-photo",
+          "design-mockups",
+          "presentation",
+          "material",
+          "material-assignment",
+        ].includes(saved.kind) ||
+        saved.status !== "failed"
+      )
+        throw new Error(
+          "Only failed mockup, photography, presentation or material jobs can be resumed here",
+        );
+      if (saved.kind === "design-mockups") {
+        await db.transaction(async (tx) => {
+          await tx.select().from(projects)
+            .where(eq(projects.id, saved.targetId)).for("update");
+          const [active] = await tx.select().from(jobs).where(and(
+            eq(jobs.kind, "design-mockups"), eq(jobs.targetId, saved.targetId),
+            inArray(jobs.status, ["queued", "running", "cancelling"]),
+          ));
+          if (active) throw new Error("Mockups are already in progress for this project");
+          await tx.update(jobs).set({ status: "queued", error: null, finishedAt: null })
+            .where(and(eq(jobs.id, saved.id), eq(jobs.status, "failed")));
+        });
+        return reply({ ok: true });
+      }
+      await db
+        .update(jobs)
+        .set({ status: "queued", error: null, finishedAt: null })
+        .where(and(eq(jobs.id, saved.id), eq(jobs.status, "failed")));
+      return reply({ ok: true });
+    }
+    if (request.method === "POST" && path[2] === "cancel")
+      return reply({ status: await cancelJob(uuid.parse(path[1])) });
+  }
+  if (path[0] === "agents" && request.method === "GET")
+    return reply({ agents: await agentSettings() });
+  if (path[0] === "agents" && request.method === "PATCH") {
+    const input = agentInput.parse(await request.json());
+    const configured = (await agentSettings()).find(
+      (agent) => agent.id === input.id,
+    );
+    if (!configured || configured.engine !== input.engine)
+      throw new Error("Unknown or mismatched agent role");
+    const patch =
+      input.engine === "imagegen"
+        ? {
+            imageAgents: {
+              [input.id]: { model: input.model, quality: input.effort },
+            },
+          }
+        : {
+            agents: {
+              [input.id]: { model: input.model, effort: input.effort },
+            },
+          };
+    await updateRuntimeSettings(patch);
+    return reply({ agents: await agentSettings() });
+  }
+  if (path[0] === "settings") {
+    if (request.method === "GET")
+      return reply({ settings: await loadRuntimeSettings() });
+    if (request.method === "PUT")
+      return reply({
+        settings: await saveRuntimeSettings(await request.json()),
+      });
+    if (request.method === "PATCH")
+      return reply({
+        settings: await updateRuntimeSettings(await request.json()),
+      });
+  }
+  if (path[0] === "diagnostics" && request.method === "GET")
+    return reply(await diagnosticsSnapshot());
+  return null;
+}

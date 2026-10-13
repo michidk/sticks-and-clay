@@ -1,0 +1,54 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.11-alpine
+        env:
+          POSTGRES_DB: studio_test
+          POSTGRES_USER: studio
+          POSTGRES_PASSWORD: test-only-password
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U studio -d studio_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://studio:test-only-password@127.0.0.1:5432/studio_test
+      TEST_DATABASE: "1"
+      TEST_REFERENCE_DATABASE: "1"
+      STUDIO_DATA_DIR: ${{ github.workspace }}/data/test
+      STUDIO_PYTHON: ${{ github.workspace }}/.venv/bin/python
+      EVE_PASSWORD: ci-only-secret-not-used-by-any-live-service
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11"
+      - run: bun install --frozen-lockfile
+      - run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -r blender/requirements.txt -r scripts/requirements-dev.txt
+      - run: bun run db:migrate
+      - run: bun run verify
+      - run: bun run eve:build
+      - run: bun run audit
+      - run: .venv/bin/ruff check blender scripts
+      - run: |
+          PYTHONPATH=blender .venv/bin/python -m unittest \
+            blender.test_analyze_mesh blender.test_materials blender.test_material_quality \
+            blender.test_build_artifacts blender.test_workspace blender.test_build_runtime \
+            blender.test_cancellation scripts.test_provider scripts.test_services

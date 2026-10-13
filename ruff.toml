@@ -1,0 +1,6 @@
+target-version = "py311"
+# The fixed Blender runner supplies these globals to authored scripts.
+builtins = ["OUTPUT_DIR", "PARAMS", "finish_asset"]
+
+[lint]
+select = ["F"]

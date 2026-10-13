@@ -1,0 +1,37 @@
+name: Container image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: container-image
+  cancel-in-progress: false
+
+jobs:
+  image:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Build and smoke-test the runtime
+        run: |
+          docker build -t "ghcr.io/michidk/sticks-and-clay:sha-${GITHUB_SHA}" .
+          docker run --rm "ghcr.io/michidk/sticks-and-clay:sha-${GITHUB_SHA}" sh -ec '
+            test ! -e .env
+            test ! -e eve/.eve/.workflow-data
+            bun test src/lib/sandbox.test.ts
+            /opt/blender/blender --background --factory-startup --python-exit-code 1 --python-expr "import bpy; s=bpy.context.scene; s.render.engine=\"CYCLES\"; s.cycles.samples=1; s.render.resolution_x=64; s.render.resolution_y=64; s.render.resolution_percentage=100; s.render.filepath=\"/tmp/smoke.png\"; bpy.ops.render.render(write_still=True)"
+            test -s /tmp/smoke.png
+          '
+      - name: Publish immutable release
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "ghcr.io/michidk/sticks-and-clay:sha-${GITHUB_SHA}"

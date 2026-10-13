@@ -1,0 +1,1 @@
+ALTER TABLE "oauth_authorization_codes" ADD COLUMN "compromised_at" timestamp with time zone;

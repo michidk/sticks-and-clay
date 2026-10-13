@@ -1,0 +1,16 @@
+REQUEST
+{{description}}
+APPROVED DESIGN
+{{design}}
+COLLECTION GUIDANCE
+{{guidance}}
+FIXED INPUT PARAMETERS
+{{parameters}}
+PINNED TOOLKIT CAPABILITIES
+{{capabilities}}
+PREVIOUS SCRIPT
+{{script}}
+PREVIOUS REVIEW OR RUNTIME ERROR
+{{feedback}}
+ATTACHED EVIDENCE
+{{evidence}}
