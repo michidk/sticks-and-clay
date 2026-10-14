@@ -42,7 +42,7 @@ On Windows, use WSL for the service launcher. See [development and operations](d
 1. Choose 3D assets or graphics. Enter a name, an optional brief, and up to six reference images. AI can draft the name and brief.
 2. Review the generated design. Edit it directly or use Design chat to request changes. AI revisions appear in the queue and need approval before generating assets.
 3. Optionally generate 1–4 concept mockups through the ChatGPT Image API to preview the approved direction. Skip this step to go straight to generation. Mockups retain their design version and do not alter the approved design or uploaded references.
-4. Add model or graphic ideas using the brief dialog, with 1–20 deliverables per idea. Start generation right away, or save the idea for later; saved ideas wait at the top of the Models or Graphics tab with Start, Edit and Discard actions. Starting uses the currently approved design; each batch snapshots that design and collection guidance.
+4. Add model or graphic ideas using the brief dialog, with 1–20 deliverables per idea. Start generation right away, or save the idea for later; saved ideas wait in the Ideas tab with Start, Edit and Discard actions. Starting uses the currently approved design; each batch snapshots that design and collection guidance.
 5. Inspect generated assets, technical checks, archived versions, transcripts, and costs. Models support refinement, forks, material assignment, new renders, and sprite exports.
 6. Download GLB/Blender files, images, or source bundles. Source bundles include pinned helpers and rebuild without an agent or database.
 

@@ -37,6 +37,7 @@ import { History } from "./-components/history";
 import { queueKindLabels } from "@/lib/queue-view";
 
 const tabs = [
+  "ideas",
   "models",
   "design",
   "mockups",
@@ -207,9 +208,12 @@ function ProjectPage() {
   const activeTab: ProjectTab =
     !ready && (!search.tab || search.tab === "mockups")
       ? "design"
-      : search.tab || "models";
+      : search.tab === "ideas" && !ideas.length
+        ? "models"
+        : search.tab || "models";
   const hasCollection = data.models.length || data.batches.length;
   const tabList: [ProjectTab, string, number?][] = [
+    ...(ideas.length ? [["ideas", "Ideas", ideas.length] as [ProjectTab, string, number]] : []),
     ["models", isGraphics ? "Graphics" : "Models", counts.all],
     ["design", "Design"],
     ...(ready ? [["mockups", "Mockups"] as [ProjectTab, string]] : []),
@@ -345,23 +349,25 @@ function ProjectPage() {
           />
         )}
         {activeTab === "history" && <History runs={rs} models={data.models} />}
+        {activeTab === "ideas" && (
+          <ModelIdeas
+            key={projectId}
+            projectId={projectId}
+            ideas={ideas}
+            designVersion={p.designVersion}
+            isGraphics={isGraphics}
+            ready={ready}
+            onRefresh={load}
+          />
+        )}
         {activeTab === "models" && (
           <>
-            <ModelIdeas
-              key={projectId}
-              projectId={projectId}
-              ideas={ideas}
-              designVersion={p.designVersion}
-              isGraphics={isGraphics}
-              ready={ready}
-              onRefresh={load}
-            />
             {!hasCollection ? (
               <Empty className="empty">
                 <h2>No {assetPlural} yet</h2>
                 <p>
                   {ideas.length
-                    ? `Start a saved idea above to begin generating ${assetPlural}.`
+                    ? `Start a saved idea from the Ideas tab to begin generating ${assetPlural}.`
                     : `Add a brief for the ${assetPlural} you want, or let AI propose a set from the design.`}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
@@ -543,9 +549,9 @@ function ProjectPage() {
         open={generate}
         onOpenChange={setGenerate}
         onRefresh={load}
-        onSaved={async () => {
+        onSaved={async (started) => {
           await load();
-          setTab("models");
+          setTab(started ? "models" : "ideas");
         }}
       />
     </main>

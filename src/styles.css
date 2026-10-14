@@ -1391,11 +1391,19 @@ pre {
 .project-overview .model-card .downloads { border-top: 0; padding-top: 12px; }
 .project-overview .model-card .project-body > a[data-slot="button"] { justify-content: space-between; background: var(--muted); border-color: transparent; font-size: 12px; box-shadow: none; }
 .collection-no-results { grid-column: 1 / -1; padding: 60px 24px; }
-.idea-section { margin-top: 18px; }
-.idea-section .section-title { margin: 0 0 14px; }
-.idea-grid { margin-bottom: 30px; }
-.idea-card { border-style: dashed; background: var(--popover); box-shadow: none; }
-.idea-card h3 { font-size: 15px; }
+.idea-section { margin-top: 18px; display: grid; gap: 12px; }
+.idea-table { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+.idea-table table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.idea-table th { padding: 8px 12px; text-align: left; font-weight: 600; color: var(--muted-foreground); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.idea-table td { padding: 6px 12px; border-top: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+.idea-table tbody tr:first-child td { border-top: 0; }
+.idea-table td:first-child { width: 100%; max-width: 0; min-width: 220px; }
+.idea-brief { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.idea-brief:hover { text-decoration: underline; }
+@media (max-width: 680px) {
+  .idea-table :is(th, td):is(:nth-child(2), :nth-child(3)) { display: none; }
+  .idea-table td:first-child { min-width: 0; }
+}
 @media (max-width: 1000px) {
 }
 @media (max-width: 600px) {

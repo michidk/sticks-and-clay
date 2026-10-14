@@ -34,7 +34,7 @@ type GenerationDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onRefresh: () => Promise<unknown>;
-  onSaved: () => Promise<void>;
+  onSaved: (started: boolean) => Promise<void>;
 };
 
 export function GenerationDialog({
@@ -130,7 +130,7 @@ export function GenerationDialog({
         await request(`projects/${projectId}/ideas/${saved.id}/generate`, json({}));
       setModelBrief("");
       onOpenChange(false);
-      await onSaved();
+      await onSaved(start);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -169,8 +169,8 @@ export function GenerationDialog({
             {idea
               ? "Changes apply to this unstarted idea only."
               : ready
-                ? `Start generation now, or save the idea and start it later from the collection. Generation uses design v${designVersion}.`
-                : "Saved ideas wait in the collection until the design is approved."}
+                ? `Start generation now, or save the idea and start it later from the Ideas tab. Generation uses design v${designVersion}.`
+                : "Saved ideas wait in the Ideas tab until the design is approved."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={saveIdea} className="setup-form">
