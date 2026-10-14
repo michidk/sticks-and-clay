@@ -2,7 +2,6 @@ import type { ComponentProps, CSSProperties, ReactNode } from "react";
 import type { GLTFLoader } from "three-stdlib";
 import type { ModelInspection } from "./model-inspection";
 import type { ViewCubePosition } from "./view-cube";
-import type { ViewerUiComponents } from "./viewer-ui";
 
 export type ViewerMode = "orbit" | "split" | "firstPerson";
 export type ViewerLighting = "day" | "night" | "outside";
@@ -35,11 +34,7 @@ export type ViewerProgress = {
 };
 
 export interface ModelViewerProps extends Omit<ComponentProps<"div">, "onLoad" | "onError"> {
-  /** Compatibility escape hatch. Prefer local primitives, composition, and render. */
-  components?: Partial<ViewerUiComponents>;
   src?: string;
-  /** @deprecated Use aria-label (or aria-labelledby) to name the viewer. */
-  alt?: string;
   className?: string;
   height?: CSSProperties["height"];
   mode?: ViewerMode;
@@ -75,8 +70,6 @@ export interface ModelViewerProps extends Omit<ComponentProps<"div">, "onLoad" |
   projection?: "perspective" | "orthographic";
   defaultProjection?: "perspective" | "orthographic";
   onProjectionChange?: (projection: "perspective" | "orthographic") => void;
-  /** Legacy initial/synchronized visibility. Prefer inspectorOpen/defaultInspectorOpen. */
-  showInspector?: boolean;
   inspectorOpen?: boolean;
   defaultInspectorOpen?: boolean;
   /** Side used by the built-in inspector. Defaults to right. */

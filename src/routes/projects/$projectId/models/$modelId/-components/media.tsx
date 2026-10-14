@@ -1,4 +1,4 @@
-import type { ModelViewerProps } from "@/components/ui/model-viewer/model-viewer-types";
+import type { ModelViewerProps } from "@/components/ui/model-viewer";
 import { Boxes, ImageOff, Maximize2 } from "lucide-react";
 import { AssetImage } from "@/components/asset-image";
 import { ModelViewer } from "@/components/ui/model-viewer/lazy";

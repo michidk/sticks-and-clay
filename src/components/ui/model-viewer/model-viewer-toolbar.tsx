@@ -2,6 +2,7 @@
 
 import {
   Box,
+  Camera,
   ChevronDown,
   CloudSun,
   Copy,
@@ -27,6 +28,7 @@ import {
   useImperativeHandle,
   useLayoutEffect,
   useRef,
+  useState,
 } from "react";
 import {
   DropdownMenu,
@@ -37,8 +39,13 @@ import {
   DropdownMenuTrigger,
 } from "./primitives/dropdown-menu";
 import { cn } from "@/lib/utils";
-import type { ViewerLighting, ViewerMode, ViewerShading, ViewerViewCube } from "./model-viewer";
 import { useOptionalViewerRuntime } from "./model-viewer-context";
+import type {
+  ViewerLighting,
+  ViewerMode,
+  ViewerShading,
+  ViewerViewCube,
+} from "./model-viewer-types";
 import { DropdownMenuContent } from "./viewer-popups";
 import { ViewerControlButton as Button } from "./viewer-ui";
 import "./model-viewer.css";
@@ -87,7 +94,7 @@ export function ModelViewerToolbar({
       role="toolbar"
       aria-label="3D viewer controls"
       className={cn(
-        "viewer-toolbar",
+        "viewer-toolbar flex flex-wrap items-center gap-2",
         placement === "top" && "viewer-toolbar-top",
         placement === "animation" && "viewer-animation-controls",
         className,
@@ -125,7 +132,7 @@ export function ModelViewerToolbarGroup({ className, ...props }: ComponentProps<
       data-slot="model-viewer-toolbar-group"
       role="group"
       className={cn(
-        "viewer-toolbar-group rounded-lg border bg-popover p-1 text-popover-foreground",
+        "viewer-toolbar-group flex items-center gap-0.5 rounded-lg border bg-popover p-1 text-popover-foreground",
         className,
       )}
       {...props}
@@ -376,6 +383,215 @@ export function ModelViewerControls({
   );
 }
 
+export function ModelViewerShadingMenu({
+  shading,
+  onShadingChange,
+  className,
+  children,
+  ...props
+}: Pick<ModelViewerControlsProps, "shading" | "onShadingChange"> & ComponentProps<typeof Button>) {
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn("viewer-shading-trigger", className)}
+            aria-label={`Shading: ${shading}`}
+            {...props}
+          >
+            {children ?? (
+              <>
+                {shadingLabels[shading]}
+                <ChevronDown />
+              </>
+            )}
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="start" sideOffset={6} className="min-w-40">
+        <DropdownMenuRadioGroup
+          aria-label="Shading"
+          value={shading}
+          onValueChange={onShadingChange}
+        >
+          {(["realistic", "solid", "normals", "wireframe"] as const).map((option) => (
+            <DropdownMenuRadioItem key={option} value={option} closeOnClick>
+              {shadingLabels[option]}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function ModelViewerLightingMenu({
+  lighting,
+  onLightingChange,
+  children,
+  ...props
+}: Pick<ModelViewerControlsProps, "lighting" | "onLightingChange"> &
+  ComponentProps<typeof Button>) {
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label={`Lighting: ${lighting}`}
+            tooltip="Lighting"
+            {...props}
+          >
+            {children ?? <CloudSun />}
+          </Button>
+        }
+      />
+      <DropdownMenuContent className="min-w-40">
+        <DropdownMenuRadioGroup
+          aria-label="Lighting"
+          value={lighting}
+          onValueChange={onLightingChange}
+        >
+          {(["day", "night", "outside"] as const).map((value) => (
+            <DropdownMenuRadioItem key={value} value={value} closeOnClick>
+              {value === "outside"
+                ? "Outside sky"
+                : value === "day"
+                  ? "Day studio"
+                  : "Night studio"}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function ModelViewerViewCubeMenu({
+  viewCube,
+  onViewCubeChange,
+  children,
+  ...props
+}: Pick<ModelViewerControlsProps, "viewCube" | "onViewCubeChange"> &
+  ComponentProps<typeof Button>) {
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="View cube options"
+            {...props}
+          >
+            {children ?? <Box />}
+          </Button>
+        }
+      />
+      <DropdownMenuContent className="min-w-40">
+        <DropdownMenuRadioGroup
+          aria-label="View cube"
+          value={viewCube}
+          onValueChange={onViewCubeChange}
+        >
+          {([false, "drei", "asset-studio"] as const).map((value) => (
+            <DropdownMenuRadioItem key={String(value)} value={value} closeOnClick>
+              {value === false ? "Off" : value === "drei" ? "Drei cube" : "Asset Studio"}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function ModelViewerCaptureMenu({
+  captureDisabled,
+  onCapture,
+  children,
+  ...props
+}: Pick<ModelViewerControlsProps, "captureDisabled" | "onCapture"> &
+  ComponentProps<typeof Button>) {
+  const [captureMenuOpen, setCaptureMenuOpen] = useState(false);
+  return (
+    <DropdownMenu modal={false} open={captureMenuOpen} onOpenChange={setCaptureMenuOpen}>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            size="icon-sm"
+            variant={captureMenuOpen ? "secondary" : "ghost"}
+            aria-label="Screenshot options"
+            title="Screenshot options"
+            disabled={captureDisabled}
+            {...props}
+          >
+            {children ?? <Camera />}
+          </Button>
+        }
+      />
+      <DropdownMenuContent align="end" sideOffset={8} className="min-w-52">
+        <div className="flex items-center justify-between border-b px-2 py-1.5 text-xs font-medium">
+          Capture view <span className="text-muted-foreground">PNG</span>
+        </div>
+        <DropdownMenuItem onClick={() => void onCapture("copy")}>
+          <Copy /> Copy to clipboard
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => void onCapture("download")}>
+          <Download /> Download image
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function ModelViewerCameraControls({
+  mode,
+  onModeChange,
+  autoRotate = false,
+  onAutoRotateChange,
+  ...props
+}: Pick<ModelViewerControlsProps, "mode" | "onModeChange" | "autoRotate" | "onAutoRotateChange"> &
+  ComponentProps<"div">) {
+  return (
+    <ModelViewerToolbarGroup aria-label="Interaction mode" {...props}>
+      <ModelViewerToolbarButton
+        icon={<Rotate3D />}
+        label="Orbit camera"
+        active={mode === "orbit"}
+        onClick={() => onModeChange("orbit")}
+      />
+      <ModelViewerToolbarButton
+        icon={<LayoutGrid />}
+        label="Four-view split"
+        active={mode === "split"}
+        onClick={() => onModeChange("split")}
+      />
+      <ModelViewerToolbarButton
+        icon={<Footprints />}
+        label="Fly camera"
+        active={mode === "firstPerson"}
+        onClick={() => onModeChange("firstPerson")}
+      />
+      {onAutoRotateChange && (
+        <ModelViewerToolbarButton
+          icon={<RotateCw />}
+          label="Rotate automatically"
+          active={autoRotate}
+          disabled={mode !== "orbit"}
+          onClick={() => onAutoRotateChange(!autoRotate)}
+        />
+      )}
+    </ModelViewerToolbarGroup>
+  );
+}
+
 const animationSpeeds = [0.5, 1, 1.5, 2];
 
 export type ModelViewerAnimationControlsProps = ComponentProps<"div"> & {
@@ -406,7 +622,7 @@ export function ModelViewerAnimationControls({
       placement="animation"
       data-slot="model-viewer-animation-controls"
       aria-label="Animation controls"
-      className={cn("rounded-lg border bg-popover p-1 text-popover-foreground", className)}
+      className={cn("gap-0.5 rounded-lg border bg-popover p-1 text-popover-foreground", className)}
       {...props}
     >
       <ModelViewerToolbarButton

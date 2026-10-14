@@ -26,7 +26,6 @@ export function useViewerPreferences({
   projection: controlledProjection,
   defaultProjection = "perspective",
   onProjectionChange,
-  showInspector,
   inspectorOpen: controlledInspectorOpen,
   defaultInspectorOpen = false,
   onInspectorOpenChange,
@@ -64,7 +63,7 @@ export function useViewerPreferences({
 
   const [inspectorOpen, setInspectorOpen] = useControlledState(
     controlledInspectorOpen,
-    showInspector ?? defaultInspectorOpen,
+    defaultInspectorOpen,
     onInspectorOpenChange,
   );
 
@@ -120,11 +119,6 @@ export function useViewerPreferences({
     previousAnimationSrc.current = src;
     if (controlledAnimation === undefined) resetAnimation(defaultAnimation);
   }, [src, defaultAnimation, controlledAnimation, resetAnimation]);
-
-  useEffect(() => {
-    if (showInspector !== undefined && controlledInspectorOpen === undefined)
-      setInspectorOpen(showInspector);
-  }, [showInspector, controlledInspectorOpen, setInspectorOpen]);
 
   return {
     mode,

@@ -42,9 +42,7 @@ export function useModelViewerRuntime(input: ModelViewerRootProps) {
     props: remainingProps,
   } = useViewerPreferences(input);
   const {
-    components,
     src,
-    alt = "3D model",
     "aria-label": ariaLabel,
     "aria-labelledby": ariaLabelledBy,
     className,
@@ -158,7 +156,7 @@ export function useModelViewerRuntime(input: ModelViewerRootProps) {
     canvasRef,
     canCapture,
     lighting,
-    fileName: ariaLabel ?? alt,
+    fileName: ariaLabel ?? "3D model",
     report,
   });
 
@@ -209,7 +207,7 @@ export function useModelViewerRuntime(input: ModelViewerRootProps) {
   };
   return {
     state,
-    root: { components, className, style, children, height, props, isExpanded },
+    root: { className, style, children, height, props, isExpanded },
     viewerRef,
     canvasRef,
     enableCapture,
@@ -221,7 +219,7 @@ export function useModelViewerRuntime(input: ModelViewerRootProps) {
     setSceneMounted,
     // Renderer configuration stays private; useModelViewer exposes only state/actions.
     src,
-    accessibleLabel: ariaLabelledBy ? undefined : (ariaLabel ?? alt),
+    accessibleLabel: ariaLabelledBy ? undefined : (ariaLabel ?? "3D model"),
     ariaLabelledBy,
     mode,
     lighting,

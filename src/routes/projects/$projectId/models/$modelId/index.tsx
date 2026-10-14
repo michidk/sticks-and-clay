@@ -1,4 +1,4 @@
-import type { ModelInspection } from "@/components/ui/model-viewer/model-inspection";
+import type { ModelInspection } from "@/components/ui/model-viewer";
 import type { ObjectReference } from "@/lib/object-reference";
 import { objectReferenceFromNode } from "./-lib/selection";
 import { ModelChecks } from "./-components/checks";

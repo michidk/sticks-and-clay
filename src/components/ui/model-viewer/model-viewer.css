@@ -108,12 +108,6 @@
     position: absolute;
     z-index: 3;
   }
-  .viewer-toolbar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
   .viewer-toolbar-top {
     position: absolute;
     z-index: 3;
@@ -124,7 +118,6 @@
     gap: 8px;
     max-width: calc(100% - 28px);
   }
-  .viewer-toolbar-group,
   .viewer-animation-controls {
     top: auto;
     display: flex;
@@ -342,233 +335,12 @@
     top: max(14px, var(--viewer-toolbar-offset, 0px));
     width: min(330px, calc(100% - 28px));
     max-height: calc(100% - max(14px, var(--viewer-toolbar-offset, 0px)) - 80px);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--popover);
-    color: var(--popover-foreground);
-    box-shadow:
-      0 4px 6px -1px rgb(0 0 0 / 0.1),
-      0 2px 4px -2px rgb(0 0 0 / 0.1);
-    font-size: 11px;
   }
   .viewer-inspector[data-position="left"] {
     left: 14px;
   }
   .viewer-inspector[data-position="right"] {
     right: 14px;
-  }
-  .inspector-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 15px 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .inspector-header > button {
-    margin-left: auto;
-  }
-  .inspector-emblem {
-    display: grid;
-    place-items: center;
-    width: 35px;
-    height: 35px;
-    border: 1px solid var(--border);
-    border-radius: calc(var(--radius) - 2px);
-    background: var(--secondary);
-    color: var(--primary);
-  }
-  .inspector-eyebrow {
-    font-size: 9px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--muted-foreground);
-  }
-  .inspector-header h3 {
-    margin: 2px 0 0;
-    font-size: 14px;
-    font-weight: 650;
-    letter-spacing: -0.02em;
-  }
-  .inspector-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-    margin: 13px 14px;
-  }
-  .inspector-metrics > div {
-    display: grid;
-    gap: 4px;
-    padding: 10px;
-    border: 1px solid var(--border);
-    border-radius: calc(var(--radius) - 2px);
-    background: color-mix(in srgb, var(--muted) 40%, transparent);
-  }
-  .inspector-metrics svg {
-    color: var(--muted-foreground);
-  }
-  .inspector-metrics strong {
-    font-size: 18px;
-    font-weight: 650;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.04em;
-  }
-  .inspector-metrics span {
-    font-size: 9px;
-    color: var(--muted-foreground);
-  }
-  .inspector-dimensions {
-    margin: 0 14px 14px;
-  }
-  .inspector-section-label {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10px;
-    font-weight: 650;
-  }
-  .inspector-section-label > span {
-    font-size: 9px;
-    font-weight: 400;
-    color: var(--muted-foreground);
-  }
-  .inspector-axis-values {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
-    margin-top: 7px;
-  }
-  .inspector-axis-values > div {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    padding: 6px 8px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-  }
-  .inspector-axis-values strong {
-    font-family: ui-monospace, monospace;
-    font-size: 10px;
-    font-weight: 500;
-    overflow-wrap: anywhere;
-  }
-  .inspector-axis-values [data-axis] {
-    font-size: 9px;
-    font-weight: 750;
-  }
-  .inspector-axis-values [data-axis="0"] {
-    color: #b85b63;
-  }
-  .inspector-axis-values [data-axis="1"] {
-    color: #58855c;
-  }
-  .inspector-axis-values [data-axis="2"] {
-    color: #527da9;
-  }
-  .inspector-hierarchy-heading {
-    display: flex;
-    justify-content: space-between;
-    padding: 12px 16px 8px;
-    border-top: 1px solid var(--border);
-  }
-  .inspector-hierarchy-heading > span:last-child {
-    color: var(--muted-foreground);
-    font-size: 9px;
-  }
-  .inspector-search {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0 14px 8px;
-    padding: 6px 9px;
-    border: 1px solid var(--border);
-    border-radius: 7px;
-    color: var(--muted-foreground);
-  }
-  .inspector-search:focus-within {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
-  .inspector-search input {
-    width: 100%;
-    min-width: 0;
-    outline: none;
-    background: transparent;
-    color: var(--foreground);
-    font-size: 11px;
-  }
-  .inspector-tree {
-    list-style: none;
-    margin: 0;
-    padding: 0 10px 10px;
-    overflow-y: auto;
-    min-height: 60px;
-    flex: 1;
-    scrollbar-width: thin;
-  }
-  .inspector-tree li {
-    display: flex;
-    align-items: center;
-    border-radius: 6px;
-  }
-  .inspector-tree li.is-selected {
-    background: var(--secondary);
-    box-shadow: inset 2px 0 var(--primary);
-  }
-
-  .inspector-spacer {
-    width: 1.75rem;
-    flex-shrink: 0;
-  }
-  .inspector-node {
-    flex: 1 1 0%;
-    min-width: 0;
-    justify-content: flex-start;
-  }
-
-  .inspector-node > span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .inspector-selection {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    padding: 11px 14px;
-    margin: 0;
-    border-top: 1px solid var(--border);
-    background: color-mix(in srgb, var(--secondary) 30%, transparent);
-  }
-  .inspector-selection > div {
-    min-width: 0;
-    flex: 1;
-    display: grid;
-    gap: 2px;
-  }
-  .inspector-selection span {
-    font-size: 9px;
-    color: var(--muted-foreground);
-  }
-  .inspector-selection strong {
-    font-size: 10px;
-    font-weight: 550;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .inspector-empty {
-    padding: 18px 14px;
-    color: var(--muted-foreground);
-  }
-  .viewer-inspector {
-    overflow-y: auto;
-    scrollbar-width: thin;
-  }
-  .viewer-inspector > :not(.inspector-tree) {
-    flex-shrink: 0;
   }
   @container viewer (max-width: 680px) {
     .viewer-inspector {
@@ -579,28 +351,6 @@
     }
     .viewer-inspector[data-position="right"] {
       right: 9px;
-    }
-    .inspector-header {
-      padding: 10px 12px;
-    }
-    .inspector-metrics {
-      margin: 9px 12px;
-    }
-    .inspector-metrics > div {
-      padding: 7px;
-      gap: 2px;
-    }
-    .inspector-metrics svg {
-      display: none;
-    }
-    .inspector-dimensions {
-      margin: 0 12px 9px;
-    }
-    .inspector-hierarchy-heading {
-      padding: 8px 12px 6px;
-    }
-    .inspector-selection {
-      padding: 8px 12px;
     }
   }
   @media (prefers-reduced-motion: reduce) {

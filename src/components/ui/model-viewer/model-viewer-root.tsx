@@ -1,10 +1,10 @@
 "use client";
 import type { CSSProperties } from "react";
+import { TooltipProvider } from "./primitives/tooltip";
 import { cn } from "@/lib/utils";
 import { ModelViewerContext } from "./model-viewer-context";
 import type { ModelViewerRootProps } from "./model-viewer-types";
 import { useModelViewerRuntime } from "./use-model-viewer-runtime";
-import { ViewerUiProvider } from "./viewer-ui";
 import "./model-viewer.css";
 
 /** Owns state and layout only. Mount exactly one ModelViewerScene inside it. */
@@ -13,7 +13,7 @@ export function ModelViewerRoot(props: ModelViewerRootProps) {
   const { state, root, viewerRef, viewerKey, toolbarOffset } = runtime;
   return (
     <ModelViewerContext.Provider value={runtime}>
-      <ViewerUiProvider components={root.components}>
+      <TooltipProvider delay={350}>
         {/* biome-ignore lint/a11y/useAriaPropsSupportedByRole lint/a11y/noStaticElementInteractions: The runtime role is group or dialog, with keyboard selection controls. */}
         <div
           ref={viewerRef}
@@ -59,7 +59,7 @@ export function ModelViewerRoot(props: ModelViewerRootProps) {
         >
           {root.children}
         </div>
-      </ViewerUiProvider>
+      </TooltipProvider>
     </ModelViewerContext.Provider>
   );
 }

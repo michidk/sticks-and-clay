@@ -1,12 +1,11 @@
 "use client";
 import {
-  ModelViewerAnimationBar,
-  ModelViewerDefaultToolbar,
   ModelViewerFullscreen,
-  ModelViewerInspector,
   ModelViewerOverlay,
   ModelViewerStatus,
-} from "./model-viewer-parts";
+} from "./model-viewer-core-parts";
+import { ModelViewerInspector } from "./model-viewer-inspector";
+import { ModelViewerAnimationBar, ModelViewerDefaultToolbar } from "./model-viewer-parts";
 import { ModelViewerRoot } from "./model-viewer-root";
 import { ModelViewerScene } from "./model-viewer-scene";
 import type { ModelViewerProps } from "./model-viewer-types";
