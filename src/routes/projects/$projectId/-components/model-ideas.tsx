@@ -60,6 +60,7 @@ export function ModelIdeas({ projectId, designVersion, ideas, isGraphics, ready,
               <td className="tabular-nums">{idea.input.count}</td>
               <td className="muted">
                 {isGraphics ? `Canvas ${idea.input.imageSize}` : `${idea.input.judgeIterations} review rounds`}
+                {!isGraphics && (idea.input.visualTargetMode === "skip" ? " · No visual mock" : " · Visual target approval")}
                 {idea.input.spriteTarget && ` · Sprites ${idea.input.spriteTarget.size}px`}
               </td>
               <td>

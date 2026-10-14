@@ -41,6 +41,7 @@ export function pipelineSteps(
   const ordered = runs
     .filter((run) => run.modelId === model.id && labels[run.role])
     .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  const latestTargetId = ordered.filter((item) => item.role === "visual-target").at(-1)?.id;
   return ordered.map((run) => {
     const version = versions.find(
       (v) =>
@@ -62,7 +63,9 @@ export function pipelineSteps(
           }
         : undefined;
     const state =
-      run.status === "running"
+      model.status === "awaiting_approval" && run.id === latestTargetId
+        ? "Awaiting approval"
+        : run.status === "running"
         ? terminal
           ? "Interrupted"
           : "Running"

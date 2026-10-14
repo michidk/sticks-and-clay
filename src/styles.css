@@ -1864,3 +1864,6 @@ pre {
 .studio-object-reference small { display: block; color: var(--muted-foreground); font-size: 10px; overflow-wrap: anywhere; }
 .studio-object-reference > button { min-width: 44px; min-height: 44px; }
 .chat-object-reference { display: flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 11px; overflow-wrap: anywhere; }
+
+.visual-target-review .asset-image { height: auto; aspect-ratio: 1; }
+.visual-target-review .asset-image > img { object-fit: contain; }

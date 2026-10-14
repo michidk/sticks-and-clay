@@ -62,6 +62,8 @@ const actions: {
   { name: "generate_material", scope: write, method: "POST", path: `projects/${id}/materials`, args: { projectId: id, parameters: {} } },
   { name: "branch_asset", scope: write, method: "POST", path: `models/${id}/branch`, args: { modelId: id, kind: "iterate", sourceRunId, prompt: "Fix the handle", judgeIterations: 0 } },
   { name: "update_design_from_asset", scope: write, method: "POST", path: `models/${id}/design-update`, args: { modelId: id, sourceRunId, view: 0 } },
+  { name: "approve_visual_target", scope: write, method: "POST", path: `models/${id}/visual-target`, args: { modelId: id, target: "models/target.png" } },
+  { name: "revise_visual_target", scope: write, method: "POST", path: `models/${id}/visual-target`, args: { modelId: id, target: "models/target.png", prompt: "Make it taller" } },
   { name: "retry_asset", scope: write, method: "POST", path: `models/${id}/retry`, args: { modelId: id } },
   { name: "list_animation_clips", scope: read, method: "GET", path: `models/${id}/sprite-clips?sourceRunId=${sourceRunId}`, args: { modelId: id, sourceRunId } },
   { name: "render_asset", scope: write, method: "POST", path: `models/${id}/presentation`, args: { modelId: id, sourceRunId } },
@@ -119,12 +121,12 @@ test("modern SDK clients discover every human action with the correct HTTP metho
       expect(result.isError).not.toBe(true);
       expect(requests.at(-1)).toEqual({ method: action.method, path: action.path });
     }
-    expect(requests).toHaveLength(38);
+    expect(requests).toHaveLength(40);
     const clients = await connected.client.callTool({ name: "list_mcp_clients", arguments: {} });
     expect(clients.structuredContent).toEqual({ data: [{ id: "client-1", name: "Test client", redirectUris: ["http://localhost/callback"], revokedAt: null }] });
     await connected.client.callTool({ name: "revoke_mcp_client", arguments: { clientId: "client-1" } });
     expect(revoked).toEqual(["client-1"]);
-    expect(requests).toHaveLength(38);
+    expect(requests).toHaveLength(40);
   } finally { await connected.close(); }
 });
 

@@ -15,6 +15,8 @@ export function statusInfo(status: string, verdict?: string | null) {
   if (status === "failed") return { tone: "failed" as Tone, label: "Failed" };
   if (status === "cancelled")
     return { tone: "queued" as Tone, label: "Cancelled" };
+  if (["waiting", "awaiting_approval"].includes(status))
+    return { tone: "warning" as Tone, label: "Awaiting approval" };
   if (status === "review")
     return { tone: "warning" as Tone, label: "Review design" };
   if (status === "queued") return { tone: "queued" as Tone, label: "Queued" };

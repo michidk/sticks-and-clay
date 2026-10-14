@@ -66,7 +66,7 @@ export function ModelPipeline({
                 ? "is-running"
                 : ["Failed", "Interrupted", "Cancelled"].includes(step.state)
                   ? "is-failed"
-                  : step.state === "Changes requested"
+                  : ["Changes requested", "Awaiting approval"].includes(step.state)
                     ? "is-warning"
                     : step.state === "Passed"
                       ? "is-passed"

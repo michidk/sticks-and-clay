@@ -62,6 +62,7 @@ export const modelIdeas = pgTable("model_ideas", {
   createdAt: created(),
 }, (table) => [index("model_ideas_project_id_idx").on(table.projectId)]);
 export const batches = pgTable("batches", {
+  visualTargetMode: text("visual_target_mode").$type<"auto" | "review" | "skip">().default("auto").notNull(),
   id: text().primaryKey(),
   projectId: text()
     .notNull()

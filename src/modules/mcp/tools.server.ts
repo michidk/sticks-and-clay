@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
   agentInput, assetBriefInput, branchInput, designInput, designUpdateInput,
-  generationInput, materialAssignmentInput, materialInput, presentationInput,
+  visualTargetDecisionInput, generationInput, materialAssignmentInput, materialInput, presentationInput,
 } from "../../lib/api-inputs";
 import { runtimeSettingsPatchSchema, runtimeSettingsSchema } from "../../lib/contracts";
 import { workshopSchema } from "../../lib/workshop";
@@ -90,7 +90,7 @@ export function createStudioMcpServer(options: {
     designInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/design`, method: "PUT", body: input }));
   register("update_workshop", "Save collection memory, style, variation and completed examples using its current workshop version. Future batches snapshot this guidance.", write,
     workshopSchema.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/workshop`, method: "PUT", body: input }));
-  register("generate_assets", "Queue a batch from the approved design. Returns batch id, not a completed asset. Paid AI. Graphics require judgeIterations=0; 3D supports spriteTarget and uses square imageSize.", write,
+  register("generate_assets", "Queue a batch from the approved design. Returns batch id, not a completed asset. Paid AI. Graphics require judgeIterations=0; 3D supports spriteTarget and uses square imageSize. Visual targets require user approval unless visualTargetMode is skip.", write,
     generationInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/generate`, method: "POST", body: input }), { paid: true });
   const ideaId = projectId.extend({ ideaId: uuid });
   register("save_idea", "Save generation settings as an idea for later, like Save idea in the UI. No AI charge; the design need not be approved yet. Returns the idea id; list ideas with get_project section ideas.", write,
@@ -116,6 +116,12 @@ export function createStudioMcpServer(options: {
     branchInput.extend(modelId.shape), (input) => ({ path: `models/${input.modelId}/branch`, method: "POST", body: input }), { paid: true });
   register("update_design_from_asset", "Queue a draft design from a saved 3D render index. Paid AI. Choose replaceReference when the project already has six references. Approval is still required before generation.", write,
     designUpdateInput.extend(modelId.shape), (input) => ({ path: `models/${input.modelId}/design-update`, method: "POST", body: input }), { paid: true });
+  register("approve_visual_target", "Approve the exact current visual target after the user reviews it, then queue the paid 3D build.", write,
+    visualTargetDecisionInput.options[0].omit({ action: true }).extend(modelId.shape),
+    ({ modelId, target }) => ({ path: `models/${modelId}/visual-target`, method: "POST", body: { action: "approve", target } }), { paid: true });
+  register("revise_visual_target", "Request a paid revision of the current visual target. The new image awaits user approval before building.", write,
+    visualTargetDecisionInput.options[1].omit({ action: true }).extend(modelId.shape),
+    ({ modelId, target, prompt }) => ({ path: `models/${modelId}/visual-target`, method: "POST", body: { action: "revise", target, prompt } }), { paid: true });
   register("retry_asset", "Continue a failed asset with its original checkpoints and Eve session. Paid work may continue; existing attempts remain in history.", write,
     modelId, ({ modelId }) => ({ path: `models/${modelId}/retry`, method: "POST" }), { paid: true });
   register("list_animation_clips", "Read named animations from a saved GLB before selecting a sprite clip.", read,

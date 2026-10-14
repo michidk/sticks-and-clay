@@ -48,3 +48,9 @@ When a generation batch settles, a separate `project-photo` job snapshots the la
 New attempts perform separate persisted blockout, shape refinement, materials and polish builds. Each exports an immutable version and receives photography. Refinement and polish receive the preceding photographs as well as the previous Blender source, target and original references. Geometry review happens only after refinement, and surface review only after polish. Failed reviews repeat that stage's refinement within the chosen review limit; exhausted geometry review still withholds materials. Saved v1–v3 jobs resume their original graph.
 
 `prompts/modeling-pass.md` defines concrete work and a before/after summary for each pass; `prompts/modeling-review.md` gives that summary to the judge as claims to verify against the actual photographs. These are additional build sessions, so elapsed time and estimated cost increase. No time, tool-call or polygon quota substitutes for visible quality. Each run retains normal history, usage accounting and resume identity.
+
+## Visual target approval
+
+New 3D generation pauses after the visual target. Approve & build queues the existing job; Revise visual target uses feedback and the previous image to generate another target for approval. Each image run remains in Activity. Waiting models release their worker slot and remain waiting across restarts. Approval is tied to the exact current image, so an outdated browser cannot approve a newer revision.
+
+Skip visual mock in the model idea dialog builds directly from the approved design and brief without an image-generation call. The choice is saved with the idea and batch. Graphics keep their one-shot generation flow. Existing batches retain automatic progression through their saved pipeline; the migration does not introduce a new approval requirement into ongoing work.

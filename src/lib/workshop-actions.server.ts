@@ -141,6 +141,7 @@ export async function workshopAction(
     await db.transaction(async (tx) => {
       await tx.insert(batches).values({
         id: batchId,
+        visualTargetMode: "review",
         projectId: project.id,
         prompt,
         count: 1,

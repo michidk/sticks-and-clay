@@ -77,10 +77,10 @@ export function collectionSummary(assets: Asset[], batches: Batch[]) {
   };
   for (const asset of collectionAssets) {
     if (asset.status === "queued") summary.queued++;
-    else if (!["done", "failed", "cancelled"].includes(asset.status))
+    else if (!["done", "failed", "cancelled", "awaiting_approval"].includes(asset.status))
       summary.active++;
     if (asset.status === "done") summary.completed++;
-    if (asset.status === "failed" || asset.verdict === "limit_reached")
+    if (["failed", "awaiting_approval"].includes(asset.status) || asset.verdict === "limit_reached")
       summary.attention++;
   }
   for (const batch of batches) {

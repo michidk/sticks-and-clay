@@ -7,6 +7,8 @@ import { Client } from "eve/client";
 import { db } from "../db/client";
 import { jobs, models, batches, runs, projects } from "../db/schema";
 import { jobContext } from "./checkpoint.server";
+export class JobWaiting extends Error {}
+
 export class JobCancelled extends Error {
   constructor() {
     super("Cancelled by user");
@@ -73,7 +75,7 @@ export async function cancelJob(id: string, queuedOnly = false) {
   const [queued] = await db
     .update(jobs)
     .set({ status: "cancelled", finishedAt: new Date() })
-    .where(and(eq(jobs.id, id), eq(jobs.status, "queued")))
+    .where(and(eq(jobs.id, id), inArray(jobs.status, queuedOnly ? ["queued"] : ["queued", "waiting"])))
     .returning();
   if (queued) {
     await finishCancellation(queued);

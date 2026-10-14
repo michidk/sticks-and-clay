@@ -100,3 +100,8 @@ test("photography links only to its explicitly recorded builder version", () => 
     pipelineSteps(model, [{ ...photo, result: null }], [version])[0].version,
   ).toBeUndefined();
 });
+
+test("only the latest visual target waits for approval", () => {
+  const steps = pipelineSteps({ ...model, status: "awaiting_approval" }, [run("0", "visual-target"), run("1", "visual-target")], []);
+  expect(steps.map((step) => step.state)).toEqual(["Complete", "Awaiting approval"]);
+});

@@ -18,6 +18,7 @@ export const designInput = z.object({
 });
 
 export const generationInput = z.object({
+  visualTargetMode: z.enum(["review", "skip"]).optional(),
   prompt: z.string().trim().max(12000).default(""),
   count: z.number().int().min(1).max(20),
   judgeIterations: z.number().int().min(0).max(5),
@@ -73,3 +74,8 @@ export const materialAssignmentInput = z.object({
   slot: z.string().min(1).max(256),
   repeat: z.number().min(1).max(8),
 });
+
+export const visualTargetDecisionInput = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("approve"), target: z.string().min(1) }),
+  z.object({ action: z.literal("revise"), target: z.string().min(1), prompt: z.string().trim().min(3).max(12000) }),
+]);

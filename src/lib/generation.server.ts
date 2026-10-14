@@ -23,6 +23,7 @@ export async function insertGeneration(tx: Transaction, project: typeof projects
   const workshop = await snapshotWorkshop(project.id, project.workshop);
   await tx.insert(batches).values({
     id, projectId: project.id, ...input,
+    visualTargetMode: input.visualTargetMode ?? "review",
     design: project.design, designVersion: project.designVersion, workshop,
   });
   await tx.insert(jobs).values({ id: crypto.randomUUID(), kind: "plan", targetId: id });

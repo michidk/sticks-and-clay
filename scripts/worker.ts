@@ -3,6 +3,7 @@ import { jobs } from "../src/db/schema";
 import { and, eq } from "drizzle-orm";
 import {
   assertJobActive,
+  JobWaiting,
   cancelJob,
   finishCancellation,
   deferInterruptedJob,
@@ -95,6 +96,7 @@ async function lane(laneIndex: number) {
           targetId: job.targetId,
         });
     } catch (error) {
+      if (error instanceof JobWaiting) continue;
       const [current] = await db.select().from(jobs).where(eq(jobs.id, job.id));
       if (current && ["cancelling", "cancelled"].includes(current.status)) {
         await finishCancellation(current);

@@ -73,3 +73,7 @@ test("prompt iterations replace their model in collection summaries while forks 
     attention: 0,
   });
 });
+
+test("visual targets awaiting approval need attention without counting as active work", () => {
+  expect(collectionSummary([{ status: "awaiting_approval" }], [])).toEqual({ total: 1, queued: 0, active: 0, completed: 0, attention: 1 });
+});

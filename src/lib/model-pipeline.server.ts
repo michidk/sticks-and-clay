@@ -1,3 +1,4 @@
+import { prepareVisualTarget } from "./visual-target.server";
 import { referencedChange } from "./object-reference";
 import { analyzeModel } from "../modules/model-analysis/index.server";
 import { and, eq } from "drizzle-orm";
@@ -156,60 +157,7 @@ export async function executeModelJob(targetId: string) {
   if (job.checkpoint.pipeline && job.checkpoint.pipeline !== pipelineVersion)
     throw new Error("Unsupported saved pipeline version");
   if (!job.checkpoint.pipeline) await checkpoint("pipeline", pipelineVersion);
-  let target = model.visualTarget;
-  if (!legacy) {
-    await db
-      .update(models)
-      .set({
-        status: "building",
-        phase: "Creating visual target",
-        progress: 2,
-      })
-      .where(eq(models.id, model.id));
-    const savedTarget = job.checkpoint["visual-target"];
-    if (savedTarget) target = savedTarget;
-    else {
-      if (!job.checkpoint["visual-target-input"])
-        await checkpoint(
-          "visual-target-input",
-          JSON.stringify({
-            prompt: await prompt("visual-target", {
-              design: batch.design,
-              name: model.name,
-              request,
-            }),
-            images: job.checkpoint["branch-references"]
-              ? JSON.parse(job.checkpoint["branch-references"])
-              : project.references,
-          }),
-        );
-      const targetInput = JSON.parse(job.checkpoint["visual-target-input"]);
-      const concept = await runImageRole({
-        role: "visual-target",
-        name: "visual-target",
-        stepId: "visual-target",
-        projectId: model.projectId,
-        batchId: batch.id,
-        modelId: model.id,
-        directory: `models/${model.id}/${attempt}/concept`,
-        prompt: targetInput.prompt,
-        images: targetInput.images,
-        assertActive: assertJobActive,
-      });
-      target = concept.key;
-      await checkpoint("visual-target", concept.key);
-    }
-    await assertJobActive();
-    await db
-      .update(models)
-      .set({ visualTarget: target })
-      .where(eq(models.id, model.id));
-  }
-  const visualReferences: string[] = job.checkpoint["visual-target-input"]
-    ? JSON.parse(job.checkpoint["visual-target-input"]).images
-    : job.checkpoint["branch-references"]
-      ? JSON.parse(job.checkpoint["branch-references"])
-      : project.references;
+  const { target, visualReferences } = await prepareVisualTarget({ model, batch, project, request, attempt, legacy });
   let geometryBlocked = false;
   await runPipeline(
     definition,
@@ -350,7 +298,7 @@ export async function executeModelJob(targetId: string) {
               stage: stage || "complete",
               target: target
                 ? resolve(DATA, target)
-                : "No visual target (legacy attempt)",
+                : "No visual target; follow the approved design and request",
             })) +
             (model.sourceRunId && iteration === 0
               ? `\n\nThis is a ${model.branchKind === "fork" ? "fork" : "prompt iteration"} of a saved model. Load the supplied previous Blender source and revise its actual geometry/materials for the requested change; preserve useful existing work. The first additional photographs show the selected source version.`

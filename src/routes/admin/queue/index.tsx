@@ -82,8 +82,8 @@ function QueuePage() {
     ["running", "cancelling"].includes(j.status),
   );
   const queued = jobs.filter((j) => j.status === "queued");
-  const attention = jobs.filter((j) => j.status === "failed");
-  const history = jobs.filter((j) => !active.includes(j) && j.status !== "failed");
+  const attention = jobs.filter((j) => ["failed", "waiting"].includes(j.status));
+  const history = jobs.filter((j) => !active.includes(j) && !attention.includes(j));
   const summary = [
     { label: "In progress", value: running.length, tone: "running", icon: Activity },
     { label: "Waiting", value: queued.length, tone: "warning", icon: Clock3 },
@@ -95,7 +95,7 @@ function QueuePage() {
     },
     {
       label: "Needs attention",
-      value: jobs.filter((j) => j.status === "failed").length,
+      value: attention.length,
       tone: "failed",
       icon: AlertTriangle,
     },
@@ -170,7 +170,7 @@ function QueuePage() {
       )}
       {!loading && (
         <>
-          {!!attention.length && <QueueSection title="Needs attention" description="Open the project or model to resume or retry." jobs={attention} busy={busy} onAction={cancel} empty="No failed jobs." />}
+          {!!attention.length && <QueueSection title="Needs attention" description="Open the model to approve its visual target, or inspect failed work to resume or retry." jobs={attention} busy={busy} onAction={cancel} empty="No failed jobs." />}
           <QueueSection
             title="Active queue"
             description={`${active.length} in progress or waiting. Stopping can take a moment while Blender exits.`}

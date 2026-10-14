@@ -63,7 +63,7 @@ export function QueueJobCard({
   const label = queueKindLabels[job.kind] || job.kind;
   const Icon = kindIcons[job.kind] || Box;
   const time = jobTime(job);
-  const canCancel = job.canCancel !== false && ["queued", "running", "cancelling"].includes(job.status);
+  const canCancel = job.canCancel !== false && ["queued", "running", "cancelling", "waiting"].includes(job.status);
   const showProgress =
     ["running", "queued"].includes(job.status) &&
     ["model", "project-photo", "material", "design", "design-from-model", "design-update"].includes(job.kind);

@@ -1,0 +1,1 @@
+ALTER TABLE "batches" ADD COLUMN "visual_target_mode" text DEFAULT 'auto' NOT NULL;

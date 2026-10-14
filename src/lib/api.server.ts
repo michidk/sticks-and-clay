@@ -1,3 +1,5 @@
+import { decideVisualTarget } from "./visual-target.server";
+import { visualTargetDecisionInput } from "./api-inputs";
 import { adminAction } from "./admin.server";
 import {
   assetBriefInput,
@@ -784,6 +786,10 @@ export async function api(request: Request) {
         return reply({ ok: true });
       }
     }
+    if (path[0] === "models" && path[1] && path[2] === "visual-target" && request.method === "POST") {
+      await decideVisualTarget(uuid.parse(path[1]), visualTargetDecisionInput.parse(await request.json()));
+      return reply({ ok: true });
+    }
     if (
       path[0] === "models" &&
       path[1] &&
@@ -850,6 +856,7 @@ export async function api(request: Request) {
       await db.transaction(async (tx) => {
         await tx.insert(batches).values({
           id: batchId,
+          visualTargetMode: "review",
           projectId: parent.projectId,
           prompt: input.prompt,
           count: 1,

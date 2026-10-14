@@ -165,13 +165,13 @@ function ProjectPage() {
   );
   const needsAttention = (m: any) =>
     m.verdict === "limit_reached" ||
-    m.status === "failed" ||
+    ["failed", "awaiting_approval"].includes(m.status) ||
     Boolean(renderFailureByRepresentative.get(m.id));
   const ideas = data.ideas || [];
   const counts = {
     all: collectionModels.length + pending.length,
     working:
-      collectionModels.filter((m: any) => !finished.includes(m.status)).length +
+      collectionModels.filter((m: any) => !finished.includes(m.status) && m.status !== "awaiting_approval").length +
       pending.filter((item) => item.batch.status !== "failed").length,
     attention:
       collectionModels.filter(needsAttention).length +
@@ -185,7 +185,7 @@ function ProjectPage() {
       matches(m.name + " " + m.prompt) &&
       (filter === "all" ||
         (filter === "working"
-          ? !finished.includes(m.status)
+          ? !finished.includes(m.status) && m.status !== "awaiting_approval"
           : filter === "attention"
             ? needsAttention(m)
             : m.status === "done")),

@@ -52,6 +52,7 @@ export function GenerationDialog({
   const [error, setError] = useState("");
   const [modelBrief, setModelBrief] = useState(idea?.input.prompt || "");
   const [modelCount, setModelCount] = useState(idea?.input.count ?? 1);
+  const [skipVisualMock, setSkipVisualMock] = useState(idea?.input.visualTargetMode === "skip");
   const [spriteEnabled, setSpriteEnabled] = useState(Boolean(idea?.input.spriteTarget));
   const [judgeIterations, setJudgeIterations] = useState(idea?.input.judgeIterations ?? 2);
   const [imageSize, setImageSize] =
@@ -62,6 +63,7 @@ export function GenerationDialog({
   useEffect(() => {
     setModelBrief(idea?.input.prompt || "");
     setSpriteEnabled(Boolean(idea?.input.spriteTarget));
+    setSkipVisualMock(idea?.input.visualTargetMode === "skip");
   }, [projectId, idea]);
   useEffect(() => {
     if (idea) return;
@@ -110,6 +112,7 @@ export function GenerationDialog({
         `projects/${projectId}/ideas${idea ? `/${idea.id}` : ""}`,
         json({
           prompt: f.get("prompt"),
+          visualTargetMode: skipVisualMock ? "skip" : "review",
           spriteTarget:
             f.get("spriteTarget") === "on"
               ? {
@@ -279,6 +282,13 @@ export function GenerationDialog({
                     ? "Four modeling passes with photographs, no judge review or score."
                     : `Up to ${judgeIterations} review round${judgeIterations === 1 ? "" : "s"} each for geometry and materials. Geometry must pass first; a pass ends review early. More rounds add time and cost.`}
               </p>
+              {!isGraphics && <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input id="skip-visual-mock" type="checkbox" className="workshop-checkbox" checked={skipVisualMock} onChange={(event) => setSkipVisualMock(event.target.checked)} />
+                  <Label htmlFor="skip-visual-mock">Skip visual mock</Label>
+                </div>
+                <p className="muted">{skipVisualMock ? "Build directly from the approved design and brief, without generating a concept image." : "Generate a visual target first. Review, revise, and approve it before the 3D build starts."}</p>
+              </div>}
               {!isGraphics && (
                 <div className="idea-sprite">
                   <div className="idea-sprite-toggle">

@@ -1,3 +1,4 @@
+import { VisualTargetReview } from "./visual-target-review";
 import type { ObjectReference } from "@/lib/object-reference";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -196,7 +197,7 @@ export function ModelConversation({
               ? "is-running"
               : ["Failed", "Interrupted", "Cancelled"].includes(step.state)
                 ? "is-failed"
-                : step.state === "Changes requested"
+                : ["Changes requested", "Awaiting approval"].includes(step.state)
                   ? "is-warning"
                   : "";
           // Finished steps fold to one line; the latest step stays open.
@@ -286,9 +287,12 @@ export function ModelConversation({
             </span>
           </div>
         ))}
+        {model.status === "awaiting_approval" && model.visualTarget && <VisualTargetReview
+          key={model.visualTarget} modelId={model.id} target={model.visualTarget} onRefresh={onRefresh}
+        />}
         {notice}
       </div>
-      <div className="studio-chat-compose">
+      {model.status !== "awaiting_approval" && <div className="studio-chat-compose">
         <p className="studio-compose-source">
           {source
             ? `${kind === "fork" ? "Forking" : "Continuing"} from ${versionLabel(source)} · Ctrl or ⌘ + Enter sends`
@@ -462,7 +466,7 @@ export function ModelConversation({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
-      </div>
+      </div>}
     </>
   );
 }
