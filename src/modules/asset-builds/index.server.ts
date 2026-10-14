@@ -89,6 +89,16 @@ export function savedExport(job: typeof jobs.$inferSelect) {
 }
 
 /** Cancellation is shared with existing queue actions; local builds make no API calls. */
+/** The last few stderr lines, without Blender's harmless container warning. */
+export function blenderFailure(stderr = "") {
+  return stderr
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.includes("mounted file-systems"))
+    .slice(-3)
+    .join("\n");
+}
+
 export async function runExportProcess(
   binary: string,
   args: string[],
@@ -156,6 +166,16 @@ export async function runExportProcess(
       resolve(cwd, "process-failure.json"),
       JSON.stringify({ kind, message: failure.message }, null, 2),
     );
+    // The raw message leads with the full supervisor command line.
+    if (kind === "timeout")
+      throw new Error(
+        `Blender did not finish within the ${Math.round(timeout / 60_000)} minute limit. Raise it under Settings › Timeouts, then retry.`,
+        { cause: error },
+      );
+    if (kind === "runner")
+      throw new Error(blenderFailure(failure.stderr) || failure.message, {
+        cause: error,
+      });
     throw error;
   } finally {
     clearInterval(timer);

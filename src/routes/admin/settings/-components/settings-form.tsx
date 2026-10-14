@@ -14,7 +14,7 @@ const timeoutFields = [
   ["builderMs", "Builder turn", "Complete builder turn and tool calls"],
   ["tanstackMs", "Direct AI request", "Brief and design requests"],
   ["imageMs", "Image generation", "Graphics, visual targets, and textures"],
-  ["collectionMs", "Collection render", "One collection scene render"],
+  ["collectionMs", "Collection render", "Lineup and demo scene renders"],
   ["analysisBlenderMs", "Analysis Blender import", "Geometry extraction subprocess"],
   ["analysisPythonMs", "Geometry analysis", "Deterministic Python analysis"],
 ] as const;

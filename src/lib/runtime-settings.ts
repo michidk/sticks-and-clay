@@ -22,7 +22,7 @@ export function runtimeSettingsDefaults(env: RuntimeEnv = process.env): RuntimeS
       blenderSeconds: numberSetting(env.BLENDER_BUILD_TIMEOUT_SECONDS, DEFAULT_BLENDER_BUILD_TIMEOUT_SECONDS),
       tanstackMs: 180_000,
       imageMs: 240_000,
-      collectionMs: 900_000, // two Cycles renders; 240s expired on a 2-CPU pod
+      collectionMs: 1_800_000, // two Cycles renders take ~8 min on a 2-CPU pod
       analysisBlenderMs: 90_000,
       analysisPythonMs: 60_000,
     },
