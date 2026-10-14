@@ -66,13 +66,13 @@ Keep `/oauth/authorize` behind the login gate. Allow machine clients through Hod
 
 Write and admin permissions start unchecked on the consent page. The owner chooses each grant; admin does not imply write. Clients see only tools allowed by their grant, and direct calls to other tools fail. Read access includes project prompts, run history, files and cost estimates, so grant it only to clients that should see the workshop's content.
 
-There are 38 tools covering existing workshop actions and artifact access. `create_collection` provides a workflow prompt; `sticks-and-clay://workflow` explains generation and recovery. No shell, arbitrary Python execution, internal texture-builder endpoint, filesystem-path import, or history-deletion tool is exposed.
+There are 42 tools covering existing workshop actions and artifact access. `create_collection` provides a workflow prompt; `sticks-and-clay://workflow` explains generation and recovery. No shell, arbitrary Python execution, internal texture-builder endpoint, filesystem-path import, or history-deletion tool is exposed.
 
 ## Working with assets
 
 1. Use `create_project` to queue design generation. Brief/name drafting tools use paid AI and return a recoverable draft ID.
 2. Poll `get_project`, review its design, and use `save_design` with its current version and `approve=true` after the user approves it. Stale edits fail. Existing design revisions remain immutable.
-3. Use `generate_assets` once per requested batch, then poll its project or queue. The job uses the approved design snapshot. Graphics require zero judge rounds. Zero rounds for 3D retains all four modeling passes.
+3. Use `generate_assets` once per requested batch, then poll its project or queue. The job uses the approved design snapshot. Graphics require zero judge rounds. Zero rounds for 3D retains all four modeling passes. To keep a batch for later, `save_idea` stores the same settings without charge, even before design approval; `start_idea` queues it, and `update_idea`/`discard_idea` change unstarted ideas.
 4. Inspect saved models, versions and runs using `get_project` sections. Use `get_run_events` for paginated transcripts and `view_image` for render pixels. All list tools return `nextOffset` for subsequent pages where pagination applies.
 5. Iterate or fork using `branch_asset` and a saved `sourceRunId`. Render views/sprites with `render_asset` or apply a material with `assign_material`. Poll `get_export_job` using the returned job ID.
 6. Resume eligible failed work with its recovery tool. Do not repeat successful generation or project-creation calls to check progress. Those calls may create another paid job. Costs already incurred remain after cancellation.

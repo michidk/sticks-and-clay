@@ -51,6 +51,10 @@ const actions: {
   { name: "save_design", scope: write, method: "PUT", path: `projects/${id}/design`, args: { projectId: id, design: "A".repeat(100), version: 0, approve: true } },
   { name: "update_workshop", scope: write, method: "PUT", path: `projects/${id}/workshop`, args: { projectId: id } },
   { name: "generate_assets", scope: write, method: "POST", path: `projects/${id}/generate`, args: { projectId: id, count: 1, judgeIterations: 0 } },
+  { name: "save_idea", scope: write, method: "POST", path: `projects/${id}/ideas`, args: { projectId: id, count: 1, judgeIterations: 0 } },
+  { name: "update_idea", scope: write, method: "PUT", path: `projects/${id}/ideas/${sourceRunId}`, args: { projectId: id, ideaId: sourceRunId, count: 2, judgeIterations: 0 } },
+  { name: "discard_idea", scope: write, method: "DELETE", path: `projects/${id}/ideas/${sourceRunId}`, args: { projectId: id, ideaId: sourceRunId } },
+  { name: "start_idea", scope: write, method: "POST", path: `projects/${id}/ideas/${sourceRunId}/generate`, args: { projectId: id, ideaId: sourceRunId } },
   { name: "retry_project_design", scope: write, method: "POST", path: `projects/${id}/retry-design`, args: { projectId: id } },
   { name: "photograph_project", scope: write, method: "POST", path: `projects/${id}/photograph`, args: { projectId: id } },
   { name: "import_asset", scope: write, method: "POST", path: `projects/${id}/import`, args: { projectId: id, name: "Axe", prompt: "Polish this axe", file: { filename: "axe.glb", base64: glb.toString("base64") } } },
@@ -115,12 +119,12 @@ test("modern SDK clients discover every human action with the correct HTTP metho
       expect(result.isError).not.toBe(true);
       expect(requests.at(-1)).toEqual({ method: action.method, path: action.path });
     }
-    expect(requests).toHaveLength(34);
+    expect(requests).toHaveLength(38);
     const clients = await connected.client.callTool({ name: "list_mcp_clients", arguments: {} });
     expect(clients.structuredContent).toEqual({ data: [{ id: "client-1", name: "Test client", redirectUris: ["http://localhost/callback"], revokedAt: null }] });
     await connected.client.callTool({ name: "revoke_mcp_client", arguments: { clientId: "client-1" } });
     expect(revoked).toEqual(["client-1"]);
-    expect(requests).toHaveLength(34);
+    expect(requests).toHaveLength(38);
   } finally { await connected.close(); }
 });
 

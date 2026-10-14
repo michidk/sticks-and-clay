@@ -92,6 +92,15 @@ export function createStudioMcpServer(options: {
     workshopSchema.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/workshop`, method: "PUT", body: input }));
   register("generate_assets", "Queue a batch from the approved design. Returns batch id, not a completed asset. Paid AI. Graphics require judgeIterations=0; 3D supports spriteTarget and uses square imageSize.", write,
     generationInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/generate`, method: "POST", body: input }), { paid: true });
+  const ideaId = projectId.extend({ ideaId: uuid });
+  register("save_idea", "Save generation settings as an idea for later, like Save idea in the UI. No AI charge; the design need not be approved yet. Returns the idea id; list ideas with get_project section ideas.", write,
+    generationInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/ideas`, method: "POST", body: input }));
+  register("update_idea", "Replace the settings of an unstarted idea. No AI charge.", write,
+    generationInput.extend(ideaId.shape), (input) => ({ path: `projects/${input.projectId}/ideas/${input.ideaId}`, method: "PUT", body: input }));
+  register("discard_idea", "Discard an unstarted idea. Started ideas remain as their batch.", write,
+    ideaId, ({ projectId, ideaId }) => ({ path: `projects/${projectId}/ideas/${ideaId}`, method: "DELETE" }), { destructive: true });
+  register("start_idea", "Queue paid generation from a saved idea using the approved design. Returns the batch id; repeating it returns the same batch.", write,
+    ideaId, ({ projectId, ideaId }) => ({ path: `projects/${projectId}/ideas/${ideaId}/generate`, method: "POST" }), { paid: true });
   register("retry_project_design", "Continue a failed project setup using its checkpoints. Only failed setup is eligible; paid work may continue.", write,
     projectId, ({ projectId }) => ({ path: `projects/${projectId}/retry-design`, method: "POST" }), { paid: true });
   register("photograph_project", "Queue a collection cover using photographer AI and Blender. Reuses active or failed photograph work and returns the job id.", write,
