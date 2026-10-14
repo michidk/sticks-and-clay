@@ -1015,7 +1015,9 @@ export async function api(request: Request) {
     if (path[0] === "runs" && path[1] && path[2] === "details" && request.method === "GET") {
       const [run] = await db.select().from(runs).where(eq(runs.id, uuid.parse(path[1])));
       if (!run) return reply({ error: "Run not found" }, 404);
-      const log = await db.select().from(events).where(eq(events.runId, run.id)).orderBy(events.createdAt);
+      const log = new URL(request.url).searchParams.get("events") === "false"
+        ? []
+        : await db.select().from(events).where(eq(events.runId, run.id)).orderBy(events.createdAt);
       return reply({ run, events: log });
     }
     if (path[0] === "runs" && path[1] && request.method === "GET")

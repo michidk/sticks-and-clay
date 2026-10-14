@@ -39,7 +39,7 @@ import { request, money, costSummary, fileUrl } from "../../../../lib/client";
 import { TextSkeleton } from "../../../../components/loading";
 import { AssetImage } from "../../../../components/asset-image";
 import type { runs as agentRuns } from "@/db/schema";
-type RunContent = Pick<typeof agentRuns.$inferSelect, "id" | "systemPrompt" | "input" | "output" | "images">;
+type RunContent = Pick<typeof agentRuns.$inferSelect, "status" | "id" | "systemPrompt" | "input" | "output" | "images">;
 const roleIcons: Record<string, typeof Bot> = {
   "visual-target": ImageIcon,
   graphic: ImageIcon,
@@ -63,18 +63,22 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
     [content, setContent] = useState<RunContent | null>(null),
     [events, setEvents] = useState<unknown[]>([]),
     [error, setError] = useState("");
+  const [eventsOpen, setEventsOpen] = useState(false);
+  useEffect(() => { setEventsOpen(false); }, [open]);
   useEffect(() => {
     if (!open) return;
     let active = true;
+    let running = true;
     let timer: ReturnType<typeof setTimeout>;
     const controller = new AbortController();
     setEvents([]);
     setContent(null);
     setError("");
     const load = () =>
-      request<{ run: RunContent; events: unknown[] }>(`runs/${open}/details`, { signal: controller.signal })
+      request<{ run: RunContent; events: unknown[] }>(`runs/${open}/details?events=${eventsOpen}`, { signal: controller.signal })
         .then((result) => {
           if (active) {
+            running = result.run.status === "running";
             setEvents(result.events);
             setContent(result.run);
             setError("");
@@ -84,7 +88,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
           if (active) setError(String(e));
         })
         .finally(() => {
-          if (active) timer = setTimeout(load, 3000);
+          if (active && running) timer = setTimeout(load, 3000);
         });
     void load();
     return () => {
@@ -92,7 +96,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [open]);
+  }, [open, eventsOpen]);
   const filtered = runs.filter(
     (r) =>
       (assetFilter === "all" || (r.modelId || "project") === assetFilter) &&
@@ -383,22 +387,19 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                         </AccordionContent>
                       </AccordionItem>
                     </Accordion>
-                    <Accordion type="single" collapsible>
+                    <Accordion type="single" collapsible value={eventsOpen ? "content" : ""} onValueChange={(value) => setEventsOpen(value === "content")}>
                       <AccordionItem value="content">
                         <AccordionTrigger>
-                          Tool calls & events ({events.length})
+                          Tool calls & events{eventsOpen ? ` (${events.length})` : ""}
                         </AccordionTrigger>
                         <AccordionContent>
-                          {events.length ? (
+                          {eventsOpen && (events.length ? (
                             <pre>{JSON.stringify(events, null, 2)}</pre>
                           ) : (
                             !error && (
-                              <TextSkeleton
-                                label="Loading agent events"
-                                lines={3}
-                              />
+                              <p className="muted">No events recorded.</p>
                             )
-                          )}
+                          ))}
                         </AccordionContent>
                       </AccordionItem>
                     </Accordion>

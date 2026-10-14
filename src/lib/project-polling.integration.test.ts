@@ -33,6 +33,7 @@ integration("workspace summaries omit transcript bodies while run details and th
     expect(detail.run).toEqual(full.runs[0]);
     expect(detail.run).toMatchObject({ systemPrompt: "Saved role instructions", input: "Saved input", output: "Saved output", images: ["references/fixture.png"] });
     expect(detail.events).toEqual(await get(`runs/${runId}`));
+    expect(await get(`runs/${runId}/details?events=false`)).toEqual({ run: detail.run, events: [] });
     expect(detail.events[0].payload).toEqual({ text: "Saved event" });
     expect((await api(new Request(`http://localhost/api/runs/${crypto.randomUUID()}/details`))).status).toBe(404);
     const modelId = crypto.randomUUID();

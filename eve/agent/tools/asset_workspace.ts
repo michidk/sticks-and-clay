@@ -2,6 +2,8 @@ import { defineTool, defineDynamic } from "eve/tools";
 import { z } from "zod";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 
 export const workspaceTool = defineTool({
   description:
@@ -27,16 +29,31 @@ export const workspaceTool = defineTool({
         "/workspace",
         process.env.BLENDER_MCP_URL || "http://127.0.0.1:33442/mcp",
       ).href;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-      signal: options.abortSignal,
+    // Bun fetch can time out before Blender's own deadline while rendering is silent.
+    const request = new URL(url).protocol === "https:" ? httpsRequest : httpRequest;
+    return new Promise((resolve, reject) => {
+      const req = request(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: options.abortSignal,
+        agent: false,
+      }, (response) => {
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk: string) => { body += chunk; });
+        response.on("error", reject);
+        response.on("end", () => {
+          try {
+            const result = JSON.parse(body);
+            if ((response.statusCode ?? 500) >= 400)
+              throw new Error(result.error || "Asset workspace operation failed");
+            resolve(result);
+          } catch (error) { reject(error); }
+        });
+      });
+      req.on("error", reject);
+      req.end(JSON.stringify(input));
     });
-    const result = await response.json();
-    if (!response.ok)
-      throw new Error(result.error || "Asset workspace operation failed");
-    return result;
   },
 });
 

@@ -1,45 +1,34 @@
-import { expect, test, spyOn } from "bun:test";
+import { expect, test } from "bun:test";
 import { workspaceTool } from "../../eve/agent/tools/asset_workspace";
 
-test("native workspace authoring bypasses MCP and carries cancellation and scoped capability", async () => {
-  const previous = process.env.BLENDER_MCP_URL;
-  const previousRunner = process.env.BLENDER_RUNNER_URL;
+test("workspace HTTP requests preserve scoped inputs, errors, and cancellation", async () => {
+  const previous = process.env.BLENDER_RUNNER_URL;
+  const previousMcp = process.env.BLENDER_MCP_URL;
+  const received: unknown[] = [];
+  const server = Bun.serve({ port: 0, async fetch(request) {
+    expect(new URL(request.url).pathname).toBe("/workspace");
+    received.push(await request.json());
+    if (received.length === 2)
+      return Response.json({ error: "Asset script changed" }, { status: 400 });
+    await Bun.sleep(100);
+    return Response.json({ completed: true });
+  } });
   delete process.env.BLENDER_RUNNER_URL;
-  process.env.BLENDER_MCP_URL = "http://127.0.0.1:33499/mcp";
-  const controller = new AbortController();
-  const capability = crypto.randomUUID();
-  const fetchMock = spyOn(globalThis, "fetch").mockResolvedValue(
-    Response.json({ sha256: "a".repeat(64), saved: true }),
-  );
+  process.env.BLENDER_MCP_URL = new URL("/mcp", server.url).href;
+  const input = { capability: crypto.randomUUID(), operation: "run", mode: "final" };
   try {
-    const input = {
-      capability,
-      operation: "write",
-      code: "finish_asset()",
-      mode: "quick",
-    };
-    const result = await (workspaceTool.execute as any)(input, {
-      abortSignal: controller.signal,
-    });
-    expect(result.saved).toBe(true);
-    const [url, options] = fetchMock.mock.calls[0] as any;
-    expect(url).toBe("http://127.0.0.1:33499/workspace");
-    expect(options.signal).toBe(controller.signal);
-    expect(JSON.parse(options.body)).toEqual(input);
-    fetchMock.mockResolvedValue(
-      Response.json(
-        { error: "Asset script changed; read the current source" },
-        { status: 400 },
-      ),
-    );
-    await expect((workspaceTool.execute as any)(input, {})).rejects.toThrow(
-      "Asset script changed",
-    );
+    expect(await (workspaceTool.execute as any)(input, {})).toEqual({ completed: true });
+    expect(received[0]).toEqual(input);
+    process.env.BLENDER_RUNNER_URL = new URL("/workspace", server.url).href;
+    await expect((workspaceTool.execute as any)(input, {})).rejects.toThrow("Asset script changed");
+    await expect((workspaceTool.execute as any)(input, {
+      abortSignal: AbortSignal.timeout(30),
+    })).rejects.toThrow();
   } finally {
-    fetchMock.mockRestore();
-    if (previous === undefined) delete process.env.BLENDER_MCP_URL;
-    else process.env.BLENDER_MCP_URL = previous;
-    if (previousRunner === undefined) delete process.env.BLENDER_RUNNER_URL;
-    else process.env.BLENDER_RUNNER_URL = previousRunner;
+    server.stop(true);
+    if (previous === undefined) delete process.env.BLENDER_RUNNER_URL;
+    else process.env.BLENDER_RUNNER_URL = previous;
+    if (previousMcp === undefined) delete process.env.BLENDER_MCP_URL;
+    else process.env.BLENDER_MCP_URL = previousMcp;
   }
 });
