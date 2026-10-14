@@ -8,6 +8,8 @@ const server = serve({
   port: Number.isNaN(port) ? 3000 : port,
   hostname: process.env.NITRO_HOST || process.env.HOST,
   maxRequestBodySize: MAX_MCP_BODY_BYTES,
+  // Allow slow requests below the ingress's 300s limit and Bun's 255s maximum.
+  bun: { idleTimeout: 240 },
   tls: process.env.NITRO_SSL_CERT && process.env.NITRO_SSL_KEY
     ? { cert: process.env.NITRO_SSL_CERT, key: process.env.NITRO_SSL_KEY } : undefined,
 });

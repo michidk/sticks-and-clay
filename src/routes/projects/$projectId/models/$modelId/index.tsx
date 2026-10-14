@@ -95,7 +95,7 @@ function ModelPage() {
     setError("");
     const refresh = async () => {
       try {
-        const next = await request<Workspace>("projects/" + projectId);
+        const next = await request<Workspace>(`projects/${projectId}?summary=true`);
         if (active) {
           setData(next);
           setError("");
@@ -215,7 +215,7 @@ function ModelPage() {
     setError("");
     try {
       await request("models/" + modelId + "/retry", json({}));
-      setData(await request<Workspace>("projects/" + projectId));
+      setData(await request<Workspace>(`projects/${projectId}?summary=true`));
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -334,7 +334,7 @@ function ModelPage() {
               })
             }
             onRefresh={async () =>
-              setData(await request<Workspace>("projects/" + projectId))
+              setData(await request<Workspace>(`projects/${projectId}?summary=true`))
             }
           />
         </aside>

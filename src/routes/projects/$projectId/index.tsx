@@ -65,7 +65,7 @@ function ProjectPage() {
   const setTab = (tab: ProjectTab) =>
     navigate({ search: { tab }, resetScroll: false });
   async function load() {
-    const d = await request("projects/" + projectId);
+    const d = await request(`projects/${projectId}?summary=true`);
     setData(d);
     return d;
   }
@@ -75,8 +75,10 @@ function ProjectPage() {
     setFilter("all");
     setQuery("");
     let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const controller = new AbortController();
     const refresh = () =>
-      request("projects/" + projectId)
+      request(`projects/${projectId}?summary=true`, { signal: controller.signal })
         .then((d) => {
           if (active) {
             setData(d);
@@ -85,12 +87,15 @@ function ProjectPage() {
         })
         .catch((e) => {
           if (active) setError(e.message);
+        })
+        .finally(() => {
+          if (active) timer = setTimeout(refresh, 2500);
         });
     void refresh();
-    const t = setInterval(refresh, 2500);
     return () => {
       active = false;
-      clearInterval(t);
+      clearTimeout(timer);
+      controller.abort();
     };
   }, [projectId]);
   if (!data)

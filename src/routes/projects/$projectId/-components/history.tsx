@@ -38,6 +38,8 @@ import { roleLabel } from "@/lib/queue-view";
 import { request, money, costSummary, fileUrl } from "../../../../lib/client";
 import { TextSkeleton } from "../../../../components/loading";
 import { AssetImage } from "../../../../components/asset-image";
+import type { runs as agentRuns } from "@/db/schema";
+type RunContent = Pick<typeof agentRuns.$inferSelect, "id" | "systemPrompt" | "input" | "output" | "images">;
 const roleIcons: Record<string, typeof Bot> = {
   "visual-target": ImageIcon,
   graphic: ImageIcon,
@@ -58,26 +60,37 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [open, setOpen] = useState<string | null>(null),
-    [events, setEvents] = useState<any[]>([]),
+    [content, setContent] = useState<RunContent | null>(null),
+    [events, setEvents] = useState<unknown[]>([]),
     [error, setError] = useState("");
   useEffect(() => {
     if (!open) return;
     let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const controller = new AbortController();
     setEvents([]);
+    setContent(null);
     setError("");
     const load = () =>
-      request("runs/" + open)
+      request<{ run: RunContent; events: unknown[] }>(`runs/${open}/details`, { signal: controller.signal })
         .then((result) => {
-          if (active) setEvents(result);
+          if (active) {
+            setEvents(result.events);
+            setContent(result.run);
+            setError("");
+          }
         })
         .catch((e) => {
           if (active) setError(String(e));
+        })
+        .finally(() => {
+          if (active) timer = setTimeout(load, 3000);
         });
     void load();
-    const timer = setInterval(load, 3000);
     return () => {
       active = false;
-      clearInterval(timer);
+      clearTimeout(timer);
+      controller.abort();
     };
   }, [open]);
   const filtered = runs.filter(
@@ -253,6 +266,8 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                 </div>
                 <CollapsibleContent asChild>
                   <div className="run-detail">
+                    {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
+                    {content?.id !== r.id && !error && <TextSkeleton label="Loading agent details" />}
                     <p className="run-engine">
                       {" "}
                       <small>
@@ -320,13 +335,14 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                         />
                       </a>
                     ))}
+                    {content && content.id === r.id && <>
                     <Accordion type="single" collapsible>
                       <AccordionItem value="content">
                         <AccordionTrigger>
                           Role instructions · revision {r.promptVersion}
                         </AccordionTrigger>
                         <AccordionContent>
-                          <pre>{r.systemPrompt}</pre>
+                          <pre>{content.systemPrompt}</pre>
                         </AccordionContent>
                       </AccordionItem>
                     </Accordion>
@@ -334,9 +350,9 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                       <AccordionItem value="content">
                         <AccordionTrigger>Agent input</AccordionTrigger>
                         <AccordionContent>
-                          <pre>{r.input}</pre>
+                          <pre>{content.input}</pre>
                           <div className="reference-strip">
-                            {r.images.map((src: string) => (
+                            {content.images.map((src) => (
                               <a
                                 key={src}
                                 href={fileUrl(src)}
@@ -357,8 +373,8 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                       <AccordionItem value="content">
                         <AccordionTrigger>Agent output</AccordionTrigger>
                         <AccordionContent>
-                          {r.output ? (
-                            <pre>{r.output}</pre>
+                          {content.output ? (
+                            <pre>{content.output}</pre>
                           ) : r.status === "running" ? (
                             <TextSkeleton label="Waiting for agent response" />
                           ) : (
@@ -373,11 +389,6 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                           Tool calls & events ({events.length})
                         </AccordionTrigger>
                         <AccordionContent>
-                          {error && (
-                            <Alert variant="destructive" className="error">
-                              <AlertDescription>{error}</AlertDescription>
-                            </Alert>
-                          )}
                           {events.length ? (
                             <pre>{JSON.stringify(events, null, 2)}</pre>
                           ) : (
@@ -391,6 +402,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                         </AccordionContent>
                       </AccordionItem>
                     </Accordion>
+                    </>}
                   </div>
                 </CollapsibleContent>
               </article>

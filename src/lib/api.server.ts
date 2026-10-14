@@ -14,7 +14,7 @@ import { workshopAction } from "./workshop-actions.server";
 import { materialAction } from "./materials.server";
 import { collectionSummary } from "./project-summary";
 import { databaseErrorResponse } from "./database-error";
-import { eq, desc, and, inArray, or } from "drizzle-orm";
+import { eq, desc, and, inArray, or, getTableColumns, sql } from "drizzle-orm";
 import { assertDesignIdle } from "./design-updates.server";
 import { immediateRunView, queueJobView } from "./queue-view";
 import { z } from "zod";
@@ -481,6 +481,7 @@ export async function api(request: Request) {
         return reply({ id: jobId }, 201);
       }
       if (request.method === "GET") {
+        const summary = new URL(request.url).searchParams.get("summary") === "true";
         const [assets, history, versions, requests, designUpdates, activeJobs] =
           await Promise.all([
             db
@@ -489,7 +490,15 @@ export async function api(request: Request) {
               .where(eq(models.projectId, id))
               .orderBy(models.createdAt, models.name, models.id),
             db
-              .select()
+              .select({
+                ...getTableColumns(runs),
+                ...(summary ? {
+                  systemPrompt: sql<string>`''`,
+                  input: sql<string>`case when ${runs.role} = 'judge' then ${runs.input} else '' end`,
+                  output: sql<string | null>`null`,
+                  images: sql<string[]>`'[]'::jsonb`,
+                } : {}),
+              })
               .from(runs)
               .where(eq(runs.projectId, id))
               .orderBy(desc(runs.createdAt)),
@@ -565,7 +574,7 @@ export async function api(request: Request) {
                 })),
               };
             }),
-          runs: history,
+          runs: summary ? history.map(({ systemPrompt, input, output, images, ...run }) => run) : history,
           revisions: versions,
           batches: requests,
           workerHealthy: (await readWorkerHeartbeat())?.healthy ?? false,
@@ -1002,6 +1011,12 @@ export async function api(request: Request) {
           .where(eq(batches.id, id));
       });
       return reply({ ok: true });
+    }
+    if (path[0] === "runs" && path[1] && path[2] === "details" && request.method === "GET") {
+      const [run] = await db.select().from(runs).where(eq(runs.id, uuid.parse(path[1])));
+      if (!run) return reply({ error: "Run not found" }, 404);
+      const log = await db.select().from(events).where(eq(events.runId, run.id)).orderBy(events.createdAt);
+      return reply({ run, events: log });
     }
     if (path[0] === "runs" && path[1] && request.method === "GET")
       return reply(

@@ -3,10 +3,13 @@ export async function request<T = any>(
   init?: RequestInit,
 ): Promise<T> {
   const response = await fetch("/api/" + url, init);
-  const data = await response.json();
-  if (!response.ok)
-    throw Object.assign(new Error(data.error || "Request failed"), { data });
-  return data;
+  if (!response.ok) {
+    const data: unknown = await response.json().catch(() => null);
+    const message = data && typeof data === "object" && "error" in data && typeof data.error === "string"
+      ? data.error : `Request failed (HTTP ${response.status})`;
+    throw Object.assign(new Error(message), { data, status: response.status });
+  }
+  return response.json();
 }
 export const json = (body: unknown, method = "POST") => ({
   method,
