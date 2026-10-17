@@ -43,7 +43,7 @@ export function AssetCard({
   sourceRunId?: string;
   lineage?: string;
   /** The generation request this asset came from; its design version is frozen. */
-  batch?: { designVersion: number; judgeIterations: number; imageSize?: string; spriteTarget?: unknown };
+  batch?: { designVersion: number };
   currentDesignVersion: number;
   archived?: boolean;
   /** The batch whose collection render failed after this model finished. */
@@ -69,13 +69,7 @@ export function AssetCard({
     if (!batch) return;
     setResuming(true);
     try {
-      await request(`projects/${projectId}/generate`, json({
-        prompt: m.prompt,
-        count: 1,
-        judgeIterations: batch.judgeIterations,
-        ...(batch.imageSize && { imageSize: batch.imageSize }),
-        ...(batch.spriteTarget ? { spriteTarget: batch.spriteTarget } : {}),
-      }));
+      await request(`models/${m.id}/regenerate`, json({}));
       await onRefresh();
     } catch (e) {
       onError((e as Error).message);

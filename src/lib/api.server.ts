@@ -62,7 +62,7 @@ import {
   setArchived,
   startDesign,
 } from "./project-lifecycle.server";
-import { queueGeneration } from "./generation.server";
+import { queueGeneration, regenerateAsset } from "./generation.server";
 import { discardModelIdea, listModelIdeas, saveModelIdea, startModelIdea, updateModelIdea } from "./model-ideas.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -956,6 +956,8 @@ export async function api(request: Request) {
       });
       return reply({ id: modelId }, 201);
     }
+    if (path[0] === "models" && path[1] && path[2] === "regenerate" && request.method === "POST")
+      return reply({ id: await regenerateAsset(uuid.parse(path[1])) }, 201);
     if (
       path[0] === "models" &&
       path[1] &&
