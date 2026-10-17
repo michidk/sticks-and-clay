@@ -1,4 +1,5 @@
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
+import { ClientSession } from "eve/client";
 import { eq } from "drizzle-orm";
 import { db } from "../../db/client";
 import { events, jobs, projects, runs } from "../../db/schema";
@@ -71,6 +72,23 @@ async function withSession(
   });
   const previousUrl = process.env.EVE_URL;
   process.env.EVE_URL = server.url.toString();
+  const stream = ClientSession.prototype.stream;
+  // Keep the retry limit under test, but skip production backoff delays.
+  const streamSpy = spyOn(ClientSession.prototype, "stream").mockImplementation(function (this: ClientSession, options) {
+    const policy = options?.streamReconnectPolicy;
+    if (policy && "reconnect" in policy) return stream.call(this, options);
+    return stream.call(this, {
+      ...options,
+      streamReconnectPolicy: {
+        ...policy,
+        streamIdleReconnectPolicy: {
+          ...policy?.streamIdleReconnectPolicy,
+          baseDelayMs: 1,
+          maxDelayMs: 1,
+        },
+      },
+    });
+  });
   try {
     await db.insert(projects).values({
       id: projectId,
@@ -111,6 +129,7 @@ async function withSession(
       requests,
     });
   } finally {
+    streamSpy.mockRestore();
     if (previousUrl === undefined) delete process.env.EVE_URL;
     else process.env.EVE_URL = previousUrl;
     await server.stop(true);
@@ -126,6 +145,7 @@ integration("resumed Eve turns survive idle reconnects and replay without duplic
     const expected = { result: { summary: "Photographed", limitations: [] }, runId };
     expect(await execute()).toEqual(expected);
     const requestCount = requests.length;
+    expect(requestCount).toBe(9);
     expect(await execute()).toEqual(expected);
     expect(requests).toHaveLength(requestCount);
     expect(requests.every(({ method, url }) => method === "GET" && url.pathname.includes(sessionId))).toBe(true);
@@ -138,14 +158,20 @@ integration("resumed Eve turns survive idle reconnects and replay without duplic
     expect(saved.estimatedCost).toBeCloseTo(0.0004, 8);
     expect(await db.select().from(events).where(eq(events.runId, runId))).toHaveLength(5);
   }, true);
-}, 30_000);
+}, 5_000);
 
 integration("a resumed Eve turn still times out and cancels its retained session", async () => {
   const previousTimeout = process.env.AGENT_TIMEOUT_MS;
   process.env.AGENT_TIMEOUT_MS = "60000";
+  const timeout = AbortSignal.timeout;
+  // Exercise actual abort handling without waiting for the minimum production timeout.
+  const timeoutSpy = spyOn(AbortSignal, "timeout").mockImplementation((ms) =>
+    timeout(ms === 60_000 ? 250 : ms),
+  );
   try {
     await withSession(async ({ execute, runId, sessionId, requests }) => {
       await expect(execute()).rejects.toMatchObject({ name: "TimeoutError" });
+      expect(timeoutSpy).toHaveBeenCalledWith(60_000);
       expect(requests.filter(({ method }) => method === "POST").map(({ url }) => url.pathname)).toEqual([
         `/eve/v1/session/${sessionId}/cancel`,
       ]);
@@ -155,7 +181,8 @@ integration("a resumed Eve turn still times out and cancels its retained session
       expect(saved.sessionId).toBe(sessionId);
     }, false, "judge");
   } finally {
+    timeoutSpy.mockRestore();
     if (previousTimeout === undefined) delete process.env.AGENT_TIMEOUT_MS;
     else process.env.AGENT_TIMEOUT_MS = previousTimeout;
   }
-}, 65_000);
+}, 5_000);
