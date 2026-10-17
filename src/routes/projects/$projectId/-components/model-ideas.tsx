@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/status";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { json, request } from "@/lib/client";
+import { usePending } from "@/hooks/use-pending";
 import type { GenerationInput } from "@/lib/api-inputs";
 
 export type ModelIdea = {
@@ -22,13 +23,13 @@ export const ideaSettings = (idea: ModelIdea, isGraphics: boolean) =>
   + (isGraphics ? "" : idea.input.visualTargetMode === "skip" ? " · No visual mock" : " · Visual target approval")
   + (idea.input.spriteTarget ? ` · Sprites ${idea.input.spriteTarget.size}px` : "");
 
-/** Start, mark ready, or discard an idea; the caller refreshes the project. */
+/** Start, mark ready, or discard an idea; the caller refreshes the project.
+ * Each idea's action is tracked on its own, so working on one never locks the others. */
 export function useIdeaActions(projectId: string, onRefresh: () => Promise<unknown>) {
-  const [pending, setPending] = useState<{ id: string; action: IdeaAction } | null>(null);
+  const pending = usePending();
   const [error, setError] = useState("");
-  async function act(idea: ModelIdea, action: IdeaAction) {
-    if (pending) return;
-    setPending({ id: idea.id, action });
+  const isPending = (idea: { id: string }, action: IdeaAction) => pending.has(`${idea.id}:${action}`);
+  const act = (idea: ModelIdea, action: IdeaAction) => pending.run(`${idea.id}:${action}`, async () => {
     setError("");
     try {
       const base = `projects/${projectId}/ideas/${idea.id}`;
@@ -38,11 +39,9 @@ export function useIdeaActions(projectId: string, onRefresh: () => Promise<unkno
       await onRefresh();
     } catch (error) {
       setError(error instanceof Error ? error.message : "Could not update this idea");
-    } finally {
-      setPending(null);
     }
-  }
-  return { pending, error, act };
+  });
+  return { isPending, error, act };
 }
 type IdeaAction = "generate" | "discard" | "ready";
 
@@ -56,7 +55,7 @@ export function ModelIdeas({ projectId, designVersion, ideas, isGraphics, ready,
   onRefresh: () => Promise<unknown>;
 }) {
   const [editing, setEditing] = useState<ModelIdea | null>(null);
-  const { pending, error, act } = useIdeaActions(projectId, onRefresh);
+  const { isPending, error, act } = useIdeaActions(projectId, onRefresh);
   const noun = isGraphics ? "graphic" : "model";
   if (!ideas.length) return null;
   return <section className="idea-section" aria-label={`Saved ${noun} ideas`}>
@@ -74,7 +73,7 @@ export function ModelIdeas({ projectId, designVersion, ideas, isGraphics, ready,
         <tbody>
           {ideas.map((idea) => {
             const brief = ideaBrief(idea);
-            const starting = pending?.id === idea.id && pending.action === "generate";
+            const starting = isPending(idea, "generate");
             return <tr key={idea.id}>
               <td>
                 <div className="idea-brief-cell">
@@ -89,17 +88,17 @@ export function ModelIdeas({ projectId, designVersion, ideas, isGraphics, ready,
               <td className="muted">{ideaSettings(idea, isGraphics)}</td>
               <td>
                 <div className="flex justify-end gap-1">
-                  <Button size="sm" disabled={!ready || pending !== null} onClick={() => act(idea, "generate")}>
+                  <Button size="sm" disabled={!ready || starting} onClick={() => act(idea, "generate")}>
                     {starting ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
                     {starting ? "Starting…" : "Start"}
                   </Button>
-                  <Button size="sm" variant="outline" aria-pressed={!!idea.readyAt} disabled={pending !== null} onClick={() => act(idea, "ready")}>
+                  <Button size="sm" variant="outline" aria-pressed={!!idea.readyAt} disabled={isPending(idea, "ready")} onClick={() => act(idea, "ready")}>
                     <Check size={15} /> {idea.readyAt ? "Ready" : "Mark ready"}
                   </Button>
-                  <Button size="icon-sm" variant="ghost" aria-label="Edit idea" disabled={pending !== null} onClick={() => setEditing(idea)}>
+                  <Button size="icon-sm" variant="ghost" aria-label="Edit idea" onClick={() => setEditing(idea)}>
                     <Pencil size={15} />
                   </Button>
-                  <Button size="icon-sm" variant="ghost" aria-label="Discard idea" disabled={pending !== null} onClick={() => act(idea, "discard")}>
+                  <Button size="icon-sm" variant="ghost" aria-label="Discard idea" disabled={isPending(idea, "discard")} onClick={() => act(idea, "discard")}>
                     <Trash2 size={15} />
                   </Button>
                 </div>

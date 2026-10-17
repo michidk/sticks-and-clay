@@ -7,6 +7,7 @@ import { AssetImage } from "@/components/asset-image";
 import { StatusBadge } from "@/components/status";
 import { assetStage, boardColumns, boardStages, boardStageTitles, latestSourceRun } from "@/lib/board";
 import { fileUrl, json, request } from "@/lib/client";
+import { usePending } from "@/hooks/use-pending";
 import { GenerationDialog } from "./generation-dialog";
 import { GraphicVariant } from "./graphic-variant";
 import { ReturnToIdea } from "./return-to-idea";
@@ -27,21 +28,18 @@ export function Board({ projectId, project, ideas, models, batches, runs, onRefr
   const columns = boardColumns(ideas, models, batches);
   const ideaActions = useIdeaActions(projectId, onRefresh);
   const [editing, setEditing] = useState<ModelIdea | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const pending = usePending();
   const [error, setError] = useState("");
-  async function send(id: string, path: string, body: unknown) {
-    setBusy(id);
+  // The path identifies one button, so only the button just clicked is disabled while it runs.
+  const send = (path: string, body: unknown) => pending.run(path, async () => {
     setError("");
     try {
       await request(path, json(body));
       await onRefresh();
     } catch (e) {
       setError((e as Error).message);
-    } finally {
-      setBusy(null);
     }
-  }
-  const locked = busy !== null || ideaActions.pending !== null;
+  });
   const ideaCard = (idea: ModelIdea) => {
     const brief = ideaBrief(idea);
     return <li key={idea.id} className="board-card">
@@ -49,10 +47,10 @@ export function Board({ projectId, project, ideas, models, batches, runs, onRefr
       <p className="muted">{idea.input.count > 1 && `${idea.input.count} × · `}{ideaSettings(idea, isGraphics)}</p>
       <div className="board-card-actions">
         {idea.readyAt ? <>
-          <Button size="sm" disabled={!ready || locked} onClick={() => ideaActions.act(idea, "generate")}><Play size={14} /> Start</Button>
-          <Button size="icon-sm" variant="ghost" aria-label="Back to ideas" title="Back to ideas" disabled={locked} onClick={() => ideaActions.act(idea, "ready")}><Undo2 size={14} /></Button>
-        </> : <Button size="sm" variant="outline" disabled={locked} onClick={() => ideaActions.act(idea, "ready")}><Check size={14} /> Mark ready</Button>}
-        <Button size="icon-sm" variant="ghost" aria-label="Discard idea" disabled={locked} onClick={() => ideaActions.act(idea, "discard")}><Trash2 size={14} /></Button>
+          <Button size="sm" disabled={!ready || ideaActions.isPending(idea, "generate")} onClick={() => ideaActions.act(idea, "generate")}><Play size={14} /> Start</Button>
+          <Button size="icon-sm" variant="ghost" aria-label="Back to ideas" title="Back to ideas" disabled={ideaActions.isPending(idea, "ready")} onClick={() => ideaActions.act(idea, "ready")}><Undo2 size={14} /></Button>
+        </> : <Button size="sm" variant="outline" disabled={ideaActions.isPending(idea, "ready")} onClick={() => ideaActions.act(idea, "ready")}><Check size={14} /> Mark ready</Button>}
+        <Button size="icon-sm" variant="ghost" aria-label="Discard idea" disabled={ideaActions.isPending(idea, "discard")} onClick={() => ideaActions.act(idea, "discard")}><Trash2 size={14} /></Button>
       </div>
     </li>;
   };
@@ -74,14 +72,14 @@ export function Board({ projectId, project, ideas, models, batches, runs, onRefr
       </div>
       <div className="board-card-actions">
         {stage === "review" && <>
-          <Button size="sm" disabled={locked} onClick={() => send(m.id, `models/${m.id}/accept`, { accepted: true })}><Check size={14} /> Accept</Button>
+          <Button size="sm" disabled={pending.has(`models/${m.id}/accept`)} onClick={() => send(`models/${m.id}/accept`, { accepted: true })}><Check size={14} /> Accept</Button>
           {isGraphics ? <GraphicVariant kind="iterate" model={m} sourceRunId={sourceRunId} onSaved={onRefresh} />
             : <Button size="sm" variant="outline" asChild><Link {...link} search={{ view: "3d", section: "review" }}>Iterate</Link></Button>}
         </>}
-        {stage === "done" && <Button size="sm" variant="ghost" disabled={locked} onClick={() => send(m.id, `models/${m.id}/accept`, { accepted: false })}>
+        {stage === "done" && <Button size="sm" variant="ghost" disabled={pending.has(`models/${m.id}/accept`)} onClick={() => send(`models/${m.id}/accept`, { accepted: false })}>
           <Undo2 size={14} /> Back to review
         </Button>}
-        {m.status === "failed" && <Button size="sm" variant="outline" disabled={locked} onClick={() => send(m.id, `models/${m.id}/retry`, {})}>Resume</Button>}
+        {m.status === "failed" && <Button size="sm" variant="outline" disabled={pending.has(`models/${m.id}/retry`)} onClick={() => send(`models/${m.id}/retry`, {})}>Resume</Button>}
         {m.status === "awaiting_approval" && <Button size="sm" variant="outline" asChild><Link {...link} search={{ view: "target", section: "review" }}>Review target</Link></Button>}
         {!project.archivedAt && <ReturnToIdea id={root.id} name={name} noun={isGraphics ? "graphic" : "model"} versions={attempts}
           canDelete={["done", "failed", "cancelled"].includes(m.status)} onDone={onRefresh} />}
@@ -102,7 +100,7 @@ export function Board({ projectId, project, ideas, models, batches, runs, onRefr
                 <span className="muted">{card.owed} planned</span>
               </div>
               {card.batch.status === "failed" && <div className="board-card-actions">
-                <Button size="sm" variant="outline" disabled={locked} onClick={() => send(card.batch.id, `batches/${card.batch.id}/resume`, {})}>Resume</Button>
+                <Button size="sm" variant="outline" disabled={pending.has(`batches/${card.batch.id}/resume`)} onClick={() => send(`batches/${card.batch.id}/resume`, {})}>Resume</Button>
               </div>}
             </li>
             : assetCard(card.asset, card.root, card.attempts))}
