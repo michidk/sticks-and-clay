@@ -43,6 +43,10 @@ type RunContent = Pick<typeof agentRuns.$inferSelect, "status" | "id" | "systemP
 const roleIcons: Record<string, typeof Bot> = {
   "visual-target": ImageIcon,
   graphic: ImageIcon,
+  svg: PenLine,
+  "svg-designer": PenLine,
+  "svg-design-update": PenLine,
+  "svg-planner": ListChecks,
   texture: ImageIcon,
   builder: Boxes,
   "material-builder": Boxes,

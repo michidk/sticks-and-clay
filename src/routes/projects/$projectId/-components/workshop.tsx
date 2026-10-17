@@ -123,7 +123,7 @@ export function WorkshopPanel({
               Lower values keep siblings closer to the examples.
             </p>
           </div>
-          {project.assetType !== "graphic" && (
+          {project.assetType === "model" && (
             <div className="space-y-2">
               <Label htmlFor="workshop-effort">Preview effort</Label>
               <Select

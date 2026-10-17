@@ -1,3 +1,4 @@
+import { generateSvg } from "./svg-generation.server";
 import { prepareVisualTarget } from "./visual-target.server";
 import { referencedChange } from "./object-reference";
 import { analyzeModel } from "../modules/model-analysis/index.server";
@@ -47,7 +48,7 @@ export async function executeModelJob(targetId: string) {
     ? referencedChange(model.prompt, model.sourceRunId, model.objectReference)
     : model.prompt;
   const attempt = job.checkpoint.workspace || job.id;
-  if (project.assetType === "graphic") {
+  if (project.assetType !== "model") {
     await db
       .update(models)
       .set({
@@ -56,7 +57,13 @@ export async function executeModelJob(targetId: string) {
         progress: 10,
       })
       .where(eq(models.id, model.id));
-    const graphic = await runImageRole({
+    const graphic = project.assetType === "svg" ? await generateSvg({
+      projectId: model.projectId, batchId: batch.id, modelId: model.id,
+      directory: `graphics/${model.id}/${attempt}`,
+      design: batch.design + workshopContext(batch.workshop, false), name: model.name, request, size: batch.imageSize,
+      images: [...(job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : project.references),
+        ...(batch.workshop?.examples?.flatMap((e) => e.renders.slice(0, 1)) || [])],
+    }) : await runImageRole({
       role: "graphic",
       name: "graphic",
       stepId: "graphic",
@@ -93,7 +100,7 @@ export async function executeModelJob(targetId: string) {
           artifacts: {
             image: graphic.key,
             stage: "final",
-            format: "png",
+            format: project.assetType === "svg" ? "svg" : "png",
           },
         })
         .where(eq(models.id, model.id));

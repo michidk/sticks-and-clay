@@ -282,8 +282,8 @@ integration(
     }
   },
 );
-integration(
-  "graphic variants retain the actual source as an edit reference and reject judge rounds",
+for (const assetType of ["graphic", "svg"] as const) integration(
+  `${assetType} variants retain the actual source as an edit reference and reject judge rounds`,
   async () => {
     const projectId = crypto.randomUUID(),
       batchId = crypto.randomUUID(),
@@ -293,7 +293,7 @@ integration(
       id: projectId,
       name: "Graphic fixture",
       description: "test",
-      assetType: "graphic",
+      assetType,
       design: "Approved graphic design",
       designVersion: 1,
       status: "ready",
@@ -320,15 +320,15 @@ integration(
       id: runId,
       projectId,
       modelId,
-      role: "graphic",
-      engine: "imagegen",
+      role: assetType,
+      engine: assetType === "svg" ? "tanstack" : "imagegen",
       status: "done",
       model: "fixture",
       promptVersion: "test",
       systemPrompt: "test",
       input: "test",
       rates: { input: 0, output: 0, cached: 0, source: "test" },
-      result: { key: "graphics/source.png" },
+      result: { key: `graphics/source.${assetType === "svg" ? "svg" : "png"}` },
     });
     try {
       expect(
@@ -353,7 +353,7 @@ integration(
       const { id } = await response.json();
       const [job] = await db.select().from(jobs).where(eq(jobs.targetId, id));
       expect(JSON.parse(job.checkpoint["branch-references"])[0]).toBe(
-        "graphics/source.png",
+        `graphics/source.${assetType === "svg" ? "svg" : "png"}`,
       );
       const [variant] = await db.select().from(models).where(eq(models.id, id));
       expect(variant.sourceRunId).toBe(runId);

@@ -68,7 +68,7 @@ async function resumeJob(
   return resumed || null;
 }
 const uuid = z.string().uuid();
-const assetType = z.enum(["model", "graphic"]);
+const assetType = z.enum(["model", "graphic", "svg"]);
 const reply = (v: unknown, status = 200) => Response.json(v, { status });
 export async function api(request: Request) {
   try {
@@ -121,6 +121,7 @@ export async function api(request: Request) {
         headers: {
           "Content-Type": fileMimeType(key),
           "X-Content-Type-Options": "nosniff",
+          ...(fileMimeType(key) === "image/svg+xml" ? { "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'" } : {}),
           "Cache-Control": "private, max-age=60",
         },
       });
@@ -166,7 +167,7 @@ export async function api(request: Request) {
             collections.filter((b) => b.projectId === p.id),
           ),
           thumbnail:
-            p.assetType === "graphic"
+            p.assetType !== "model"
               ? generated.find(
                   (asset) =>
                     asset.projectId === p.id &&
@@ -626,7 +627,7 @@ export async function api(request: Request) {
           .from(models)
           .where(eq(models.projectId, id));
         const briefRole =
-          project.assetType === "graphic" ? "graphic-brief" : "model-brief";
+          project.assetType !== "model" ? "graphic-brief" : "model-brief";
         const text = await roleInput(briefRole, {
           name: project.name,
           version: project.designVersion,
@@ -805,7 +806,7 @@ export async function api(request: Request) {
           and(
             eq(runs.id, input.sourceRunId),
             eq(runs.modelId, id),
-            inArray(runs.role, ["builder", "graphic"]),
+            inArray(runs.role, ["builder", "graphic", "svg"]),
           ),
         );
       if (
@@ -813,7 +814,7 @@ export async function api(request: Request) {
         source.status !== "done" ||
         !(
           (source.result as any)?.artifacts?.blend ||
-          (source.role === "graphic" && (source.result as any)?.key)
+          ((source.role === "graphic" || source.role === "svg") && (source.result as any)?.key)
         )
       )
         throw new Error("Choose a saved build version with a Blender source");
@@ -828,8 +829,8 @@ export async function api(request: Request) {
       if (!parentBatch || !project)
         throw new Error("Source project is unavailable");
       if (
-        project.assetType === "graphic" &&
-        (input.judgeIterations !== 0 || source.role !== "graphic")
+        project.assetType !== "model" &&
+        (input.judgeIterations !== 0 || source.role !== project.assetType)
       )
         throw new Error(
           "Graphic variants need a saved graphic and zero judge rounds",
@@ -883,7 +884,7 @@ export async function api(request: Request) {
           targetId: modelId,
           checkpoint: {
             "branch-references": JSON.stringify([
-              ...(source.role === "graphic"
+              ...((source.role === "graphic" || source.role === "svg")
                 ? [(source.result as any).key]
                 : []),
               ...project.references,

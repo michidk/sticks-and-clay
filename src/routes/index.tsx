@@ -51,7 +51,7 @@ function ProjectsPage() {
     [error, setError] = useState(""),
     [name, setName] = useState(""),
     [description, setDescription] = useState(""),
-    [assetType, setAssetType] = useState<"model" | "graphic">("model"),
+    [assetType, setAssetType] = useState<"model" | "graphic" | "svg">("model"),
     [draftId, setDraftId] = useState<string | null>(null),
     [naming, setNaming] = useState(false),
     [briefing, setBriefing] = useState(false);
@@ -325,12 +325,12 @@ function ProjectsPage() {
                       variant="secondary"
                       className="badge asset-type-badge"
                     >
-                      {p.assetType === "graphic" ? (
+                      {p.assetType !== "model" ? (
                         <ImageIcon size={12} />
                       ) : (
                         <Layers size={12} />
                       )}
-                      {p.assetType === "graphic" ? "Graphics" : "3D assets"}
+                      {p.assetType === "svg" ? "SVG files" : p.assetType !== "model" ? "Graphics" : "3D assets"}
                     </Badge>
                   </div>
                   <div className="project-body">
@@ -354,7 +354,7 @@ function ProjectsPage() {
                     <div className="project-card-status">
                       <span>
                         {p.collection?.total || 0}{" "}
-                        {p.assetType === "graphic"
+                        {p.assetType !== "model"
                           ? p.collection?.total === 1
                             ? "graphic"
                             : "graphics"
@@ -450,7 +450,7 @@ function ProjectsPage() {
               >
                 <legend>Asset type</legend>
                 <div>
-                  {(["model", "graphic"] as const).map((type) => (
+                  {(["model", "graphic", "svg"] as const).map((type) => (
                     <label key={type}>
                       <input
                         type="radio"
@@ -466,12 +466,12 @@ function ProjectsPage() {
                       )}
                       <span>
                         <strong>
-                          {type === "model" ? "3D assets" : "Graphics"}
+                          {type === "model" ? "3D assets" : type === "svg" ? "SVG files" : "Graphics"}
                         </strong>
                         <small>
                           {type === "model"
                             ? "GLB models and Blender source"
-                            : "PNG images"}
+                            : type === "svg" ? "Editable vector graphics" : "PNG images"}
                         </small>
                       </span>
                     </label>

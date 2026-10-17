@@ -65,7 +65,7 @@ export function GraphicVariant({
             <DialogTitle>New variant</DialogTitle>
             <DialogDescription>
               Edits this graphic into a new one. The original is kept. Paid
-              image request.
+              generation request.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-4">

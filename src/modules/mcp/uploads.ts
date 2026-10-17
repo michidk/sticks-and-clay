@@ -54,7 +54,7 @@ export const projectSetupInput = z
   .object({
     name: z.string().trim().min(1).max(100),
     description: z.string().trim().max(12000).default(""),
-    assetType: z.enum(["model", "graphic"]).default("model"),
+    assetType: z.enum(["model", "graphic", "svg"]).default("model"),
     draftId: z.string().uuid().optional(),
     images: z.array(imageUploadSchema).max(MAX_REFERENCE_IMAGES).default([]),
     references: z.array(z.string()).max(MAX_REFERENCE_IMAGES).optional(),

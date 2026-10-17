@@ -15,15 +15,15 @@ export function PendingModel({
   index: number;
   busy: boolean;
   onResume: () => void;
-  assetType: "model" | "graphic";
+  assetType: "model" | "graphic" | "svg";
 }) {
   const failed = batch.status === "failed";
-  const noun = assetType === "graphic" ? "graphic" : "model";
+  const noun = assetType !== "model" ? "graphic" : "model";
   return (
     <Card className="model-card pending-model">
       <div className="model-cover">
         <div className="abstract">
-          {assetType === "graphic" ? (
+          {assetType !== "model" ? (
             <ImageIcon size={44} strokeWidth={1} />
           ) : (
             <Boxes size={44} strokeWidth={1} />

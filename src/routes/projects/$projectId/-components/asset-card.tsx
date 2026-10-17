@@ -162,7 +162,7 @@ export function AssetCard({
             {m.artifacts && !isGraphics ? (
               <TriangleCount artifacts={m.artifacts} suffix />
             ) : isGraphics && m.artifacts?.image ? (
-              "PNG"
+              m.artifacts?.format === "svg" ? "SVG" : "PNG"
             ) : working ? (
               ""
             ) : (
@@ -197,7 +197,7 @@ export function AssetCard({
             <>
               <Button variant="outline" asChild>
                 <a href={fileUrl(m.artifacts.image)} download>
-                  <Download size={14} /> PNG
+                  <Download size={14} /> {m.artifacts?.format === "svg" ? "SVG" : "PNG"}
                 </a>
               </Button>
               <GraphicVariant

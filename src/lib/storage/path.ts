@@ -27,6 +27,7 @@ export function storageUrl(path: string) {
 export function fileMimeType(path: string) {
   const types: Record<string, string> = {
     png: "image/png",
+    svg: "image/svg+xml",
     jpg: "image/jpeg",
     jpeg: "image/jpeg",
     webp: "image/webp",

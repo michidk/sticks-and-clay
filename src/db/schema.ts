@@ -30,7 +30,7 @@ export const projects = pgTable("projects", {
   id: text().primaryKey(),
   name: text().notNull(),
   assetType: text("asset_type")
-    .$type<"model" | "graphic">()
+    .$type<"model" | "graphic" | "svg">()
     .default("model")
     .notNull(),
   description: text().notNull(),

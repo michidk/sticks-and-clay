@@ -61,7 +61,7 @@ export async function executeJob(kind: string, targetId: string) {
       })
       .where(eq(projects.id, p.id));
     const designRole =
-      p.assetType === "graphic" ? "graphic-designer" : "designer";
+      p.assetType === "svg" ? "svg-designer" : p.assetType !== "model" ? "graphic-designer" : "designer";
     const input = await roleInput(designRole, {
       name: p.name,
       description: p.description,
@@ -111,7 +111,7 @@ export async function executeJob(kind: string, targetId: string) {
       throw new Error("Design changed since this update was requested");
     const references: string[] = JSON.parse(snapshot.references);
     const updateRole = kind === "design-from-model" ? "design-from-model"
-      : snapshot.assetType === "graphic" ? "graphic-design-update" : "design-update";
+      : snapshot.assetType === "svg" ? "svg-design-update" : snapshot.assetType === "graphic" ? "graphic-design-update" : "design-update";
     const { result } = await runRole({
       role: updateRole,
       projectId: p.id,
@@ -182,7 +182,7 @@ export async function executeJob(kind: string, targetId: string) {
         JSON.stringify(referenceProject.references),
       );
     const plannerRole =
-      referenceProject.assetType === "graphic" ? "graphic-planner" : "planner";
+      referenceProject.assetType === "svg" ? "svg-planner" : referenceProject.assetType !== "model" ? "graphic-planner" : "planner";
     const { result, runId } = await runRole({
       images: JSON.parse(job.checkpoint["planner-references"]),
       projectId: batch.projectId,

@@ -112,7 +112,7 @@ function ProjectPage() {
     );
   const p = data.project,
     rs = data.runs;
-  const isGraphics = p.assetType === "graphic";
+  const isGraphics = p.assetType !== "model";
   const assetPlural = isGraphics ? "graphics" : "models";
   const assetSingular = isGraphics ? "graphic" : "model";
   const ready = p.status === "ready";
@@ -238,7 +238,7 @@ function ProjectPage() {
           <h1>{p.name}</h1>
           <div className="page-meta">
             <StatusBadge tone={state.tone as any}>{state.label}</StatusBadge>
-            <span>{isGraphics ? "Graphics" : "3D assets"}</span>
+            <span>{p.assetType === "svg" ? "SVG files" : isGraphics ? "Graphics" : "3D assets"}</span>
             <button type="button" onClick={() => setTab("design")}>
               Design v{p.designVersion} {ready ? "approved" : "awaiting approval"}
             </button>
@@ -330,7 +330,7 @@ function ProjectPage() {
             versions={[
               ...(data.versions || []),
               ...rs
-                .filter((r: any) => r.role === "graphic" && r.status === "done")
+                .filter((r: any) => (r.role === "graphic" || r.role === "svg") && r.status === "done")
                 .map((r: any) => ({
                   ...r,
                   artifacts: { image: r.result?.key, renders: [r.result?.key] },
@@ -472,7 +472,7 @@ function ProjectPage() {
                         sourceRunId={
                           rs.find(
                             (r: any) =>
-                              r.role === "graphic" &&
+                              (r.role === "graphic" || r.role === "svg") &&
                               r.modelId === m.id &&
                               r.status === "done",
                           )?.id

@@ -277,7 +277,7 @@ h3 {
 .graphic-cover {
   background: var(--muted);
 }
-.graphic-cover img {
+.graphic-cover .asset-image > img {
   object-fit: contain;
 }
 .project-cover > .badge,
@@ -1462,7 +1462,7 @@ pre {
 }
 .asset-type-choice { border: 0; padding: 0; margin: 0; }
 .asset-type-choice legend { font-size: 13px; font-weight: 550; margin-bottom: 8px; }
-.asset-type-choice > div { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.asset-type-choice > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 .asset-type-choice label { display: flex; flex-direction: row; align-items: center; gap: 9px; padding: 12px; margin: 0; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; min-width: 0; }
 .asset-type-choice label:has(:checked) { border-color: var(--primary); background: var(--accent); }
 .asset-type-choice label:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }

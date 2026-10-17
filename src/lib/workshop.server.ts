@@ -14,7 +14,7 @@ export async function snapshotWorkshop(
         .where(
           and(
             eq(runs.projectId, projectId),
-            inArray(runs.role, ["builder", "graphic"]),
+            inArray(runs.role, ["builder", "graphic", "svg"]),
             eq(runs.status, "done"),
             inArray(runs.id, workshop.exampleRunIds),
           ),
@@ -31,7 +31,7 @@ export async function snapshotWorkshop(
   return {
     ...workshop,
     examples: examples.map((run) => {
-      if (run.role === "graphic") {
+      if ((run.role === "graphic" || run.role === "svg")) {
         const key = (run.result as any)?.key;
         if (!key) throw new Error("Graphic example is unavailable");
         return {

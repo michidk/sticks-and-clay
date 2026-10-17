@@ -240,11 +240,11 @@ integration("model generation accepts optional briefs and preserves the design s
   }
 });
 
-integration("graphic projects persist their type and skip 3D judge settings", async () => {
+for (const assetType of ["graphic", "svg"] as const) integration(`${assetType} projects persist their type and skip 3D judge settings`, async () => {
   const { batches, jobs } = await import("../db/schema");
   const form = new FormData();
   form.set("name", "Graphic fixture");
-  form.set("assetType", "graphic");
+  form.set("assetType", assetType);
   const created = await api(
     new Request("http://localhost/api/projects", {
       method: "POST",
@@ -258,7 +258,7 @@ integration("graphic projects persist their type and skip 3D judge settings", as
       .select()
       .from(projects)
       .where(eq(projects.id, id));
-    expect(project.assetType).toBe("graphic");
+    expect(project.assetType).toBe(assetType);
     await db
       .update(projects)
       .set({

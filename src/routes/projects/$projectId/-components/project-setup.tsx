@@ -18,7 +18,7 @@ export function ProjectSetup({
     progress: number;
     phase: string;
     error?: string | null;
-    assetType?: "model" | "graphic";
+    assetType?: "model" | "graphic" | "svg";
   };
   error: string;
   retrying: boolean;
@@ -39,7 +39,7 @@ export function ProjectSetup({
           <div className="page-meta">
             <StatusBadge status={failed ? "failed" : project.status} />
             <span>
-              {project.assetType === "graphic" ? "Graphics" : "3D assets"}
+              {project.assetType === "svg" ? "SVG files" : project.assetType !== "model" ? "Graphics" : "3D assets"}
             </span>
           </div>
         </div>

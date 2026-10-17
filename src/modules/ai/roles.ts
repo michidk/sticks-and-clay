@@ -34,6 +34,10 @@ function role<S extends z.ZodType>(
 
 /** Authored instructions stay in /prompts; execution policy and contracts live here. */
 export const roles = {
+  svg: role("tanstack", "svg", z.object({ svg: z.string().min(1).max(500_000) })),
+  "svg-designer": role("tanstack", "svg-designer", designResult),
+  "svg-design-update": { ...role("tanstack", "svg-designer", designResult), inputTemplate: "design-update-input" },
+  "svg-planner": { ...role("tanstack", "graphic-planner", planResult), inputTemplate: "graphic-planner-input" },
   "material-planner": role("tanstack", "material-planner", materialPlanResult),
   "material-builder": role(
     "tanstack",

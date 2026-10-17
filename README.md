@@ -39,14 +39,14 @@ On Windows, use WSL for the service launcher. See [development and operations](d
 
 ## Create a collection
 
-1. Choose 3D assets or graphics. Enter a name, an optional brief, and up to six reference images. AI can draft the name and brief.
+1. Choose 3D assets, graphics, or SVG files. Enter a name, an optional brief, and up to six reference images. AI can draft the name and brief.
 2. Review the generated design. Edit it directly or use Design chat to request changes. AI revisions appear in the queue and need approval before generating assets.
 3. Optionally generate 1–4 concept mockups through the ChatGPT Image API to preview the approved direction. Skip this step to go straight to generation. Mockups retain their design version and do not alter the approved design or uploaded references.
 4. Add model or graphic ideas using the brief dialog, with 1–20 deliverables per idea. Choose Skip visual mock to build directly; otherwise review, revise, and approve each visual target before building. Start generation right away, or save the idea for later; saved ideas wait in the Ideas tab with Start, Edit and Discard actions. Starting uses the currently approved design; each batch snapshots that design and collection guidance.
 5. Inspect generated assets, technical checks, archived versions, transcripts, and costs. Models support refinement, forks, material assignment, new renders, and sprite exports.
 6. Download GLB/Blender files, images, or source bundles. Source bundles include pinned helpers and rebuild without an agent or database.
 
-New 3D jobs retain blockout, shape refinement, materials, and polish passes. Zero review rounds disables judging while retaining those passes and photography. With judging enabled, geometry must pass before material work. Exhausted reviews finish with issues; technical failures remain separately recoverable. Graphics use a one-shot image request and skip Blender and 3D judging.
+New 3D jobs retain blockout, shape refinement, materials, and polish passes. Zero review rounds disables judging while retaining those passes and photography. With judging enabled, geometry must pass before material work. Exhausted reviews finish with issues; technical failures remain separately recoverable. Graphics use a one-shot image request and skip Blender and 3D judging. SVG projects use a text model to produce editable vector artwork with previews, SVG downloads and saved variants. SVG generation supports static shapes, text and gradients, and rejects scripts, external content and embedded raster images.
 
 ## Connect an agent
 

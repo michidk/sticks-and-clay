@@ -27,7 +27,7 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
         name: project.name,
         description: project.description,
         design: project.design,
-        assetType: project.assetType === "graphic" ? "2D graphics" : "3D assets",
+        assetType: project.assetType !== "model" ? "2D graphics" : "3D assets",
         request: input.hint || "Choose a useful example from the design reference.",
         variation: index + 1,
         count: input.count,

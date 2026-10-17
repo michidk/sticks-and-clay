@@ -10,8 +10,8 @@ import { roleInput } from "../modules/ai/index.server";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 
-test("design chat prompts preserve the document and requested changes for both asset types", async () => {
-  for (const role of ["design-update", "graphic-design-update"] as const) {
+test("design chat prompts preserve the document and requested changes for all asset types", async () => {
+  for (const role of ["design-update", "graphic-design-update", "svg-design-update"] as const) {
     const input = await roleInput(role, {
       name: "Garden", description: "Stone ornaments", version: 3,
       design: "Keep silhouettes simple", prompt: "Use warmer stone",
@@ -23,7 +23,7 @@ test("design chat prompts preserve the document and requested changes for both a
   }
 });
 
-for (const assetType of ["model", "graphic"] as const) {
+for (const assetType of ["model", "graphic", "svg"] as const) {
   integration(`design chat queues, cancels and replays one safe ${assetType} revision`, async () => {
     const projectId = crypto.randomUUID();
     const batchId = crypto.randomUUID();
@@ -63,7 +63,7 @@ for (const assetType of ["model", "graphic"] as const) {
       expect(queued.status).toBe(201);
       const { id } = await queued.json();
       const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
-      const role = assetType === "graphic" ? "graphic-design-update" : "design-update";
+      const role = assetType === "svg" ? "svg-design-update" : assetType === "graphic" ? "graphic-design-update" : "design-update";
       const runId = crypto.randomUUID();
       await db.insert(runs).values({
         id: runId, projectId, role, engine: "tanstack", status: "done",
