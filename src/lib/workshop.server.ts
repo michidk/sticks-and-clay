@@ -1,12 +1,11 @@
-import { acceptedMockups } from "./design-mockups.server";
-import { workshopSchema, type WorkshopSnapshot } from "./workshop";
-/** Freezes the collection settings and accepted mockups a new batch will build from. */
-export async function snapshotWorkshop(
-  projectId: string,
+import { referenceNotesFor, workshopSchema, type WorkshopSnapshot } from "./workshop";
+/** Freezes the collection settings and the owner's reference notes a new batch will build from. */
+export function snapshotWorkshop(
+  project: { references: string[]; referenceNotes: Record<string, string> },
   value: unknown,
-): Promise<WorkshopSnapshot> {
+): WorkshopSnapshot {
   return {
     ...workshopSchema.parse(value || {}),
-    mockups: await acceptedMockups(projectId),
+    referenceNotes: referenceNotesFor(project.references, project.referenceNotes),
   };
 }

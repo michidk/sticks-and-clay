@@ -1,14 +1,15 @@
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { jobs, mockups, projects } from "../db/schema";
 import { runImageRole } from "../modules/ai/index.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
-import { MAX_ACCEPTED_MOCKUPS, mockupInput, mockupImage, mockupSnapshot } from "./design-mockups";
-import { validateImageFile } from "./image-file";
+import { mockupInput, mockupImage, mockupSnapshot } from "./design-mockups";
+import { MAX_REFERENCE_IMAGES, validateImageFile } from "./image-file";
+import { assertNotArchived } from "./project-lifecycle.server";
 import { prompt } from "./prompts.server";
 import { assertJobActive } from "./queue.server";
 import { upload } from "./storage.server";
-import { mockupReferences, workshopContext, workshopSchema } from "./workshop";
+import { referenceNotesFor, workshopContext, workshopSchema } from "./workshop";
 import type { z } from "zod";
 
 const revisionRequest = (hint: string) =>
@@ -32,10 +33,10 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
       ? await tx.select().from(mockups).where(and(eq(mockups.id, input.baseId), eq(mockups.projectId, projectId)))
       : [];
     if (input.baseId && !base) throw new Error("The mockup to revise no longer exists");
-    // Mockups see what a real batch would: the accepted mockups and their notes, after the project's own references.
+    // Mockups see what a real batch would: the project's references with the owner's notes on them.
     const direction = {
       ...workshopSchema.parse(project.workshop || {}),
-      mockups: (await acceptedMockups(projectId)).filter((mockup) => mockup.key !== base?.key),
+      referenceNotes: referenceNotesFor(project.references, project.referenceNotes),
     };
     const prompts = await Promise.all(Array.from({ length: input.count }, (_, index) =>
       prompt("design-mockup", {
@@ -58,7 +59,7 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
       checkpoint: {
         input: JSON.stringify({
           version: input.version,
-          references: [...(base ? [base.key] : []), ...project.references, ...mockupReferences(direction)],
+          references: [...new Set([...(base ? [base.key] : []), ...project.references])],
           prompts,
           hint: input.hint,
           baseId: base?.id,
@@ -146,20 +147,22 @@ export async function uploadMockup(projectId: string, file: File) {
   return id;
 }
 
-export async function acceptMockup(projectId: string, id: string, note: string) {
-  const [row] = await db.update(mockups)
-    .set({ acceptedAt: new Date(), note })
-    .where(and(eq(mockups.id, id), eq(mockups.projectId, projectId)))
-    .returning();
-  if (!row) throw new Error("Mockup not found");
-}
-
-export async function unacceptMockup(projectId: string, id: string) {
-  const [row] = await db.update(mockups)
-    .set({ acceptedAt: null })
-    .where(and(eq(mockups.id, id), eq(mockups.projectId, projectId)))
-    .returning();
-  if (!row) throw new Error("Mockup not found");
+/** Adds a mockup to, or removes it from, the project's reference images (the same list the design page edits). */
+export async function setMockupReference(projectId: string, id: string, use: boolean) {
+  await db.transaction(async (tx) => {
+    const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
+    if (!project) throw new Error("Project not found");
+    assertNotArchived(project);
+    const [row] = await tx.select().from(mockups).where(and(eq(mockups.id, id), eq(mockups.projectId, projectId)));
+    if (!row) throw new Error("Mockup not found");
+    const rest = project.references.filter((key) => key !== row.key);
+    if (use && rest.length >= MAX_REFERENCE_IMAGES)
+      throw new Error(`A project holds up to ${MAX_REFERENCE_IMAGES} reference images. Remove one on the Design tab first.`);
+    const { [row.key]: _removed, ...notes } = project.referenceNotes;
+    await tx.update(projects)
+      .set(use ? { references: [...rest, row.key] } : { references: rest, referenceNotes: notes })
+      .where(eq(projects.id, projectId));
+  });
 }
 
 export async function deleteMockup(projectId: string, id: string) {
@@ -167,13 +170,4 @@ export async function deleteMockup(projectId: string, id: string) {
     .where(and(eq(mockups.id, id), eq(mockups.projectId, projectId)))
     .returning();
   if (!row) throw new Error("Mockup not found");
-}
-
-/** The visual direction a new batch freezes: accepted mockups with the user's context, newest first. */
-export async function acceptedMockups(projectId: string) {
-  const rows = await db.select({ key: mockups.key, note: mockups.note }).from(mockups)
-    .where(and(eq(mockups.projectId, projectId), isNotNull(mockups.acceptedAt)))
-    .orderBy(desc(mockups.acceptedAt))
-    .limit(MAX_ACCEPTED_MOCKUPS);
-  return rows;
 }

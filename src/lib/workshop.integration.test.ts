@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, batches, jobs, mockups, models, runs } from "../db/schema";
+import { projects, batches, jobs, models, runs } from "../db/schema";
 import { api } from "./api.server";
 import { readFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -35,10 +35,8 @@ integration(
       design: "Approved original",
       designVersion: 1,
       workshop: guidance,
-    });
-    await db.insert(mockups).values({
-      id: crypto.randomUUID(), projectId, key: "mockups/fixture.png", source: "uploaded",
-      designVersion: 1, note: "Sage matte", acceptedAt: new Date(),
+      references: ["mockups/fixture.png"],
+      referenceNotes: { "mockups/fixture.png": "Sage matte" },
     });
     await db.insert(batches).values({
       id: batchId,
@@ -96,8 +94,8 @@ integration(
         .select()
         .from(batches)
         .where(eq(batches.id, variant.batchId));
-      expect(newBatch.workshop?.mockups).toEqual([
-        { key: "mockups/fixture.png", note: "Sage matte" },
+      expect(newBatch.workshop?.referenceNotes).toEqual([
+        { position: 1, note: "Sage matte" },
       ]);
       expect(newBatch.design).toBe("Approved original");
       const presentation = await send(`models/${modelId}/presentation`, {
@@ -175,7 +173,7 @@ integration(
         .select()
         .from(batches)
         .where(eq(batches.id, baseline.batchId));
-      expect(importBatch.workshop?.mockups?.[0].note).toBe("Sage matte");
+      expect(importBatch.workshop?.referenceNotes?.[0].note).toBe("Sage matte");
       expect(importBatch.design).toBe("Approved original");
     } finally {
       const assets = await db
@@ -200,7 +198,7 @@ integration(
   },
 );
 integration(
-  "workshop edits are optimistic and future batches freeze accepted mockups and effort",
+  "workshop edits are optimistic and future batches freeze reference notes and effort",
   async () => {
     const projectId = crypto.randomUUID();
     await db.insert(projects).values({
@@ -210,10 +208,8 @@ integration(
       design: "Approved design",
       designVersion: 1,
       status: "ready",
-    });
-    await db.insert(mockups).values({
-      id: crypto.randomUUID(), projectId, key: "mockups/first.png", source: "uploaded",
-      designVersion: 1, note: "First lesson", acceptedAt: new Date(),
+      references: ["mockups/first.png"],
+      referenceNotes: { "mockups/first.png": "First lesson" },
     });
     try {
       const update = await send(
@@ -246,9 +242,9 @@ integration(
           )
         ).status,
       ).toBe(200);
-      await db.delete(mockups).where(eq(mockups.projectId, projectId));
+      await db.update(projects).set({ references: [], referenceNotes: {} }).where(eq(projects.id, projectId));
       const [batch] = await db.select().from(batches).where(eq(batches.id, id));
-      expect(batch.workshop?.mockups).toEqual([{ key: "mockups/first.png", note: "First lesson" }]);
+      expect(batch.workshop?.referenceNotes).toEqual([{ position: 1, note: "First lesson" }]);
       expect(batch.workshop?.effort).toBe("thorough");
       const [project] = await db
         .select()

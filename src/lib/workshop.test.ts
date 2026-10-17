@@ -3,6 +3,7 @@ import {
   workshopSchema,
   workshopContext,
   mockupReferences,
+  referenceNotesFor,
   constructionGuides,
 } from "./workshop";
 import { sourceZip } from "./source-bundle.server";
@@ -21,7 +22,7 @@ test("bounded variation and effort produce an explicit lower-priority snapshot",
   expect(workshopContext(draft)).toContain("up to 5");
   expect(workshopContext(draft)).toContain("take precedence");
 });
-test("accepted mockups become lower-priority visual direction and extra references", () => {
+test("batches saved with accepted mockups keep them as lower-priority direction and extra references", () => {
   const snapshot = {
     ...workshopSchema.parse({}),
     mockups: [
@@ -36,6 +37,13 @@ test("accepted mockups become lower-priority visual direction and extra referenc
   expect(context).toContain("take precedence");
   expect(mockupReferences(snapshot)).toEqual(["mockups/a.png", "mockups/b.png"]);
   expect(mockupReferences(null)).toEqual([]);
+});
+test("reference notes are numbered by position among the project references", () => {
+  const notes = referenceNotesFor(["r/a.png", "r/b.png", "r/c.png"], { "r/b.png": " keep the thin lines ", "r/c.png": "  ", "r/gone.png": "stale" });
+  expect(notes).toEqual([{ position: 2, note: "keep the thin lines" }]);
+  const context = workshopContext({ ...workshopSchema.parse({}), referenceNotes: notes });
+  expect(context).toContain("project reference 2: keep the thin lines");
+  expect(workshopContext(workshopSchema.parse({}))).not.toContain("Reference image notes");
 });
 test("batches saved with style memory keep showing it to their prompts", () => {
   const context = workshopContext({ ...workshopSchema.parse({}), memory: "legacy rule", style: "sage matte" });

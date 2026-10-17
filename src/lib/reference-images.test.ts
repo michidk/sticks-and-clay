@@ -35,3 +35,11 @@ test("an explicitly selected empty file is rejected rather than silently removed
   form.append("images", new File([], "empty.png", { type: "image/png" }));
   await expect(prepareReferences(form)).rejects.toThrow("1 byte and 8 MB");
 });
+
+test("reference notes are trimmed, capped and dropped with their image", async () => {
+  const { retainedNotes } = await import("./reference-images.server");
+  expect(retainedNotes({ a: "  keep ", b: "gone", c: "x".repeat(1500), d: " " }, ["a", "c", "d"])).toEqual({
+    a: "keep",
+    c: "x".repeat(1000),
+  });
+});

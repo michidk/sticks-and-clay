@@ -38,6 +38,9 @@ type Props = {
   onRemove: (id: string) => void;
   disabled?: boolean;
   isBusy?: boolean;
+  /** Context per saved image key; shown as a text field under each saved image when set. */
+  notes?: Record<string, string>;
+  onNoteChange?: (key: string, note: string) => void;
   /** Replaces the default "Reference images (optional)" heading. */
   title?: string;
 };
@@ -51,6 +54,8 @@ export function PictureUploader({
   disabled,
   isBusy,
   title,
+  notes,
+  onNoteChange,
 }: Props) {
   const [urlOpen, setUrlOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
@@ -191,6 +196,17 @@ export function PictureUploader({
               <span className="reference-caption" title={image.name}>
                 {image.name}
               </span>
+              {onNoteChange && image.key && (
+                <Input
+                  className="reference-note"
+                  aria-label={`Context for reference ${index + 1}`}
+                  placeholder="Context (optional)"
+                  maxLength={1000}
+                  value={notes?.[image.key] ?? ""}
+                  disabled={busy}
+                  onChange={(event) => onNoteChange(image.key!, event.target.value)}
+                />
+              )}
             </li>
           ))}
         </ul>

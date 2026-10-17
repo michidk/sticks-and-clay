@@ -138,7 +138,7 @@ integration("partial mockups reuse completed runs, generate remaining images onc
   }
 });
 
-integration("mockups can be uploaded, accepted with context, frozen into batches, revised and deleted", async () => {
+integration("mockups can be uploaded, used as references, frozen into batches, revised and deleted", async () => {
   const { batches, mockups } = await import("../db/schema");
   const { getStorage } = await import("./storage.server");
   const id = crypto.randomUUID();
@@ -167,36 +167,44 @@ integration("mockups can be uploaded, accepted with context, frozen into batches
       const [batch] = await db.select().from(batches).where(eq(batches.id, (await response.json()).id));
       return batch;
     };
-    expect((await generate()).workshop?.mockups).toEqual([]);
+    expect((await generate()).workshop?.referenceNotes).toEqual([]);
 
-    expect((await call(`/mockups/${mockupId}/accept`, { note: "Love the thin outlines" })).status).toBe(200);
-    expect((await generate()).workshop?.mockups).toEqual([{ key, note: "Love the thin outlines" }]);
-    const detail = await (await call("")).json();
-    expect(detail.mockupItems[0]).toMatchObject({ id: mockupId, source: "uploaded", note: "Love the thin outlines" });
+    // A mockup becomes a reference image of the project and can be removed again.
+    const references = async () => (await (await call("")).json()).project.references as string[];
+    expect((await call(`/mockups/${mockupId}/reference`, {})).status).toBe(200);
+    expect(await references()).toEqual([key]);
+    expect((await call(`/mockups/${mockupId}/reference`, undefined, "DELETE")).status).toBe(200);
+    expect(await references()).toEqual([]);
 
-    // Batches already started keep their snapshot when the direction changes later.
+    // The six-image limit holds; the mockup fits once there is room.
+    await db.update(projects).set({ references: ["r/1.png", "r/2.png", "r/3.png", "r/4.png", "r/5.png", "r/6.png"] }).where(eq(projects.id, id));
+    expect((await call(`/mockups/${mockupId}/reference`, {})).status).toBe(400);
+
+    // Notes on references are frozen into batches; later edits leave started batches alone.
+    await db.update(projects).set({ references: [key], referenceNotes: { [key]: "Love the thin outlines" } }).where(eq(projects.id, id));
+    expect((await generate()).workshop?.referenceNotes).toEqual([{ position: 1, note: "Love the thin outlines" }]);
     const frozen = await generate();
-    expect((await call(`/mockups/${mockupId}/unaccept`, {})).status).toBe(200);
-    expect((await generate()).workshop?.mockups).toEqual([]);
-    expect((await db.select().from(batches).where(eq(batches.id, frozen.id)))[0].workshop?.mockups).toHaveLength(1);
+    await db.update(projects).set({ referenceNotes: {} }).where(eq(projects.id, id));
+    expect((await generate()).workshop?.referenceNotes).toEqual([]);
+    expect((await db.select().from(batches).where(eq(batches.id, frozen.id)))[0].workshop?.referenceNotes).toHaveLength(1);
+    await db.update(projects).set({ referenceNotes: { [key]: "Love the thin outlines" } }).where(eq(projects.id, id));
 
     expect((await call("/mockups", { version: 2, count: 1, baseId: crypto.randomUUID() })).status).toBe(400);
-    // A revision freezes the chosen mockup as the first reference, ahead of the project's own.
+    // A revision sends the chosen mockup first, once, then the project's other references.
     expect((await call("/mockups", { version: 2, count: 1, hint: "Thinner", baseId: mockupId })).status).toBe(201);
     const [job] = await db.select().from(jobs).where(eq(jobs.targetId, id));
     const snapshot = mockupSnapshot.parse(JSON.parse(job.checkpoint.input));
     expect(snapshot.baseId).toBe(mockupId);
-    expect(snapshot.references[0]).toBe(key);
+    expect(snapshot.references).toEqual([key]);
     expect(snapshot.prompts[0]).toContain("Revise the first supplied image");
 
-    // New mockups are generated with the accepted ones and their notes, as a real batch would be.
-    await call(`/mockups/${mockupId}/accept`, { note: "Love the thin outlines" });
+    // New mockups see the project's references with their notes, as a real batch would.
     await db.delete(jobs).where(eq(jobs.targetId, id));
     expect((await call("/mockups", { version: 2, count: 1 })).status).toBe(201);
     const [fresh] = await db.select().from(jobs).where(eq(jobs.targetId, id));
-    const accepted = mockupSnapshot.parse(JSON.parse(fresh.checkpoint.input));
-    expect(accepted.references.at(-1)).toBe(key);
-    expect(accepted.prompts[0]).toContain("mockup 1: Love the thin outlines");
+    const direction = mockupSnapshot.parse(JSON.parse(fresh.checkpoint.input));
+    expect(direction.references).toEqual([key]);
+    expect(direction.prompts[0]).toContain("project reference 1: Love the thin outlines");
 
     expect((await call(`/mockups/${mockupId}`, undefined, "DELETE")).status).toBe(200);
     expect(await db.select().from(mockups).where(eq(mockups.projectId, id))).toHaveLength(0);

@@ -1365,6 +1365,7 @@ pre {
 .reference-previews li { position: relative; min-width: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--card); }
 .reference-previews .asset-image { width: 100%; height: auto; aspect-ratio: 1.3; background: var(--muted); }
 .reference-previews .reference-caption { display: block; padding: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--muted-foreground); }
+.reference-previews .reference-note { display: block; width: calc(100% - 16px); margin: 0 8px 8px; height: 32px; font-size: 12px; }
 .reference-previews .reference-remove { position: absolute; top: 5px; right: 5px; width: 32px; height: 32px; border: 1px solid var(--border); background: var(--card); }
 @media (max-width: 600px) {
   .reference-previews { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1895,7 +1896,6 @@ pre {
 .mockup-card-image { display: block; width: 100%; background: var(--muted); cursor: zoom-in; }
 .mockup-card figcaption { display: grid; gap: 8px; padding: 12px; }
 .mockup-card-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted-foreground); }
-.mockup-note { margin: 0; font-size: 12px; line-height: 1.6; color: var(--foreground); white-space: pre-wrap; overflow-wrap: anywhere; }
 .mockup-card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .mockup-chat-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 6px; margin-top: 8px; }
 .mockup-chat-thumbs button { overflow: hidden; aspect-ratio: 3 / 2; border: 1px solid var(--border); border-radius: 8px; background: var(--muted); cursor: zoom-in; }
@@ -1903,7 +1903,6 @@ pre {
 .mockup-base-chip { display: flex; align-items: center; gap: 10px; padding: 6px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); font-size: 12px; }
 .mockup-base-chip .asset-image { width: 56px; aspect-ratio: 3 / 2; border-radius: 6px; flex-shrink: 0; }
 .mockup-base-chip > span { flex: 1; min-width: 0; }
-.mockup-accept-preview { width: 100%; max-height: 260px; border-radius: 10px; background: var(--muted); }
 .empty-note { display: grid; justify-items: center; gap: 6px; padding: 32px 12px; color: var(--muted-foreground); text-align: center; font-size: 13px; }
 @media (max-width: 900px) {
   .mockup-studio { grid-template-columns: minmax(0, 1fr); }

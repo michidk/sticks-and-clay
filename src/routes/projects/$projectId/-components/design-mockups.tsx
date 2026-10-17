@@ -28,12 +28,14 @@ const running = (status: string) => ["queued", "running", "cancelling"].includes
 
 /** Concept images beside a chat: generate, revise any mockup, accept the ones that set the direction, upload your own. */
 export function DesignMockupStep({
-  projectId, version, mockups, items, onRefresh,
+  projectId, version, mockups, items, references, onRefresh,
 }: {
   projectId: string;
   version: number;
   mockups: DesignMockups[];
   items: MockupItem[];
+  /** The project's reference images; a mockup is one when its key is listed here. */
+  references: string[];
   onRefresh: () => Promise<unknown>;
 }) {
   const [busy, setBusy] = useState("");
@@ -41,8 +43,6 @@ export function DesignMockupStep({
   const [baseId, setBaseId] = useState<string | null>(null);
   const [hint, setHint] = useState("");
   const [count, setCount] = useState(3);
-  const [accepting, setAccepting] = useState<MockupItem | null>(null);
-  const [note, setNote] = useState("");
   const [deleting, setDeleting] = useState<MockupItem | null>(null);
   const feed = useRef<HTMLDivElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -50,11 +50,12 @@ export function DesignMockupStep({
   const openLightbox = useLightbox();
   const active = mockups.some((job) => running(job.status));
   const base = items.find((item) => item.id === baseId);
-  const accepted = items.filter((item) => item.acceptedAt);
+  const isReference = (item: MockupItem) => references.includes(item.key);
+  const referenceCount = items.filter(isReference).length;
   const gallery = items.map((item, index) => ({
     src: fileUrl(item.key),
     title: item.source === "uploaded" ? `Uploaded mockup ${items.length - index}` : `Design v${item.designVersion} mockup`,
-    caption: item.note || (item.acceptedAt ? "Accepted mockup" : "Concept preview from the approved design"),
+    caption: isReference(item) ? "Reference image" : "Concept preview from the approved design",
   }));
   useEffect(() => {
     if (feed.current) feed.current.scrollTop = feed.current.scrollHeight;
@@ -188,9 +189,9 @@ export function DesignMockupStep({
           <div>
             <h2>Mockups</h2>
             <p className="muted">
-              {accepted.length
-                ? `${accepted.length} accepted. Accepted mockups and your notes are sent as visual direction with every new batch.`
-                : "Accept the mockups that show the direction you want. Each new batch is then built with them and your notes."}
+              {referenceCount
+                ? `${referenceCount} used as reference. Reference images are sent with every new mockup and batch, and appear on the Design tab where you can add context.`
+                : "Mark the mockups that show the direction you want as reference images. They are then sent with every new mockup and batch."}
             </p>
           </div>
           <div>
@@ -207,7 +208,7 @@ export function DesignMockupStep({
         ) : (
           <div className="mockup-grid">
             {items.map((item, index) => (
-              <figure key={item.id} className={item.acceptedAt ? "mockup-card is-accepted" : "mockup-card"}>
+              <figure key={item.id} className={isReference(item) ? "mockup-card is-accepted" : "mockup-card"}>
                 <button type="button" className="mockup-card-image" aria-label={`Inspect mockup ${items.length - index}`}
                   onClick={() => openLightbox(gallery, index)}>
                   <AssetImage src={fileUrl(item.key)} alt={gallery[index].title} className="aspect-[3/2] w-full" style={{ objectFit: "contain" }} />
@@ -215,20 +216,13 @@ export function DesignMockupStep({
                 <figcaption>
                   <div className="mockup-card-meta">
                     <span>{item.source === "uploaded" ? "Uploaded" : `Design v${item.designVersion}`}{item.parentId ? " · revision" : ""}</span>
-                    {item.acceptedAt && <Badge variant="secondary"><Check size={12} /> Accepted</Badge>}
+                    {isReference(item) && <Badge variant="secondary"><Check size={12} /> Reference</Badge>}
                   </div>
-                  {item.acceptedAt && <p className="mockup-note">{item.note || "Accepted without comment."}</p>}
                   <div className="mockup-card-actions">
-                    <Button size="sm" variant={item.acceptedAt ? "outline" : "default"} disabled={Boolean(busy)}
-                      onClick={() => { setAccepting(item); setNote(item.note); }}>
-                      <Check size={14} /> {item.acceptedAt ? "Edit note" : "Accept"}
+                    <Button size="sm" variant={isReference(item) ? "outline" : "default"} disabled={Boolean(busy)}
+                      onClick={() => void act(`reference-${item.id}`, () => request(urlFor(item, "reference"), { method: isReference(item) ? "DELETE" : "POST" }))}>
+                      <Check size={14} /> {isReference(item) ? "Remove from references" : "Use as reference"}
                     </Button>
-                    {item.acceptedAt && (
-                      <Button size="sm" variant="ghost" disabled={Boolean(busy)}
-                        onClick={() => void act(`unaccept-${item.id}`, () => request(urlFor(item, "unaccept"), json({})))}>
-                        Remove from direction
-                      </Button>
-                    )}
                     <Button size="sm" variant="outline" disabled={active || Boolean(busy)}
                       onClick={() => { setBaseId(item.id); document.getElementById("mockup-hint")?.focus(); }}>
                       <Wand2 size={14} /> Revise
@@ -251,7 +245,7 @@ export function DesignMockupStep({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Upload mockups</DialogTitle>
-            <DialogDescription>Add your own concept images. They join the gallery and can be accepted like generated ones.</DialogDescription>
+            <DialogDescription>Add your own concept images. They join the gallery and can be used as references like generated ones.</DialogDescription>
           </DialogHeader>
           <PictureUploader title="Mockup images" images={uploader.images} onFilesAdded={uploader.addFiles}
             onImportFromUrl={uploader.importFromUrl} onRemove={uploader.remove} disabled={Boolean(busy)} isBusy={uploader.isBusy} />
@@ -264,31 +258,6 @@ export function DesignMockupStep({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={Boolean(accepting)} onOpenChange={(open) => !busy && !open && setAccepting(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Accept this mockup</DialogTitle>
-            <DialogDescription>
-              Say what you like about it. The mockup and your note go to the AI with every batch you start from now on.
-            </DialogDescription>
-          </DialogHeader>
-          {accepting && <AssetImage src={fileUrl(accepting.key)} alt="Mockup being accepted" className="mockup-accept-preview" style={{ objectFit: "contain" }} />}
-          <div className="space-y-2">
-            <Label htmlFor="mockup-note">Context (optional)</Label>
-            <Textarea id="mockup-note" value={note} maxLength={2000} rows={4}
-              placeholder="I like the thin outlines and the warm background, but keep the icons less detailed."
-              onChange={(event) => setNote(event.target.value)} />
-          </div>
-          <DialogFooter>
-            <DialogClose asChild><Button variant="outline" disabled={Boolean(busy)}>Cancel</Button></DialogClose>
-            <Button disabled={Boolean(busy)}
-              onClick={() => accepting && void act(`accept-${accepting.id}`, () => request(urlFor(accepting, "accept"), json({ note })), () => setAccepting(null))}>
-              <Check size={16} /> {busy.startsWith("accept-") ? "Saving…" : "Accept mockup"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={Boolean(deleting)} onOpenChange={(open) => !busy && !open && setDeleting(null)}>
         <DialogContent>
           <DialogHeader>

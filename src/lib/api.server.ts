@@ -42,17 +42,16 @@ async function draftBrief<
 }
 import { readStoredFile } from "./storage.server";
 import { fileMimeType } from "./storage/path";
-import { prepareReferences } from "./reference-images.server";
+import { prepareReferences, retainedNotes } from "./reference-images.server";
 import { readWorkerHeartbeat } from "./worker-control.server";
 import { downloadImage } from "./remote-image.server";
-import { mockupInput, mockupNoteInput } from "./design-mockups";
+import { mockupInput } from "./design-mockups";
 import {
-  acceptMockup,
   deleteMockup,
   designMockups,
   listMockups,
   queueDesignMockups,
-  unacceptMockup,
+  setMockupReference,
   uploadMockup,
 } from "./design-mockups.server";
 import {
@@ -647,16 +646,12 @@ export async function api(request: Request) {
         if (!(file instanceof File)) throw new Error("Choose an image to upload");
         return reply({ id: await uploadMockup(id, file) }, 201);
       }
-      if (path[2] === "mockups" && path[3] && request.method === "DELETE") {
+      if (path[2] === "mockups" && path[3] && !path[4] && request.method === "DELETE") {
         await deleteMockup(id, uuidOrJob.parse(path[3]));
         return reply({ ok: true });
       }
-      if (path[2] === "mockups" && path[3] && path[4] === "accept" && request.method === "POST") {
-        await acceptMockup(id, uuidOrJob.parse(path[3]), mockupNoteInput.parse(await request.json()).note);
-        return reply({ ok: true });
-      }
-      if (path[2] === "mockups" && path[3] && path[4] === "unaccept" && request.method === "POST") {
-        await unacceptMockup(id, uuidOrJob.parse(path[3]));
+      if (path[2] === "mockups" && path[3] && path[4] === "reference" && ["POST", "DELETE"].includes(request.method)) {
+        await setMockupReference(id, uuidOrJob.parse(path[3]), request.method === "POST");
         return reply({ ok: true });
       }
       if (path[2] === "ideas") {
@@ -763,7 +758,15 @@ export async function api(request: Request) {
               .set({
                 design: input.design,
                 designVersion: input.version + 1,
-                ...(prepared ? { references: prepared.references } : {}),
+                ...(prepared
+                  ? {
+                      references: prepared.references,
+                      referenceNotes: retainedNotes(
+                        form?.has("referenceNotes") ? JSON.parse(String(form.get("referenceNotes"))) : project.referenceNotes,
+                        prepared.references,
+                      ),
+                    }
+                  : {}),
                 status: input.approve ? "ready" : "review",
                 progress: 100,
                 phase: input.approve ? "Ready to build" : "Review design",
@@ -801,7 +804,6 @@ export async function api(request: Request) {
         const previous = workshopSchema.parse(project.workshop || {});
         if (input.version !== previous.version)
           throw new Error("Collection settings changed; reload before saving");
-        await snapshotWorkshop(id, input);
         const [updated] = await db
           .update(projects)
           .set({ workshop: { ...input, version: input.version + 1 } })
@@ -909,7 +911,7 @@ export async function api(request: Request) {
       }
       const fullPrompt = `${parent.prompt}\n\nRequested change from saved version:\n${input.prompt}`;
       const workshop = input.useCurrentStyle
-        ? await snapshotWorkshop(project.id, project.workshop)
+        ? snapshotWorkshop(project, project.workshop)
         : parentBatch.workshop;
       await db.transaction(async (tx) => {
         await tx.insert(batches).values({

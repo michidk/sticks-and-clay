@@ -137,7 +137,7 @@ export async function workshopAction(
     await publishFiles([key]);
     const id = crypto.randomUUID(),
       batchId = crypto.randomUUID(),
-      workshop = await snapshotWorkshop(project.id, project.workshop);
+      workshop = snapshotWorkshop(project, project.workshop);
     await db.transaction(async (tx) => {
       await tx.insert(batches).values({
         id: batchId,

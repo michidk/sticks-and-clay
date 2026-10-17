@@ -94,7 +94,7 @@ export function VersionActions({
           judgeIterations: 2,
           useCurrentStyle: style,
           prompt: style
-            ? "Match the project's accepted mockups; retain this asset's functional silhouette and preserve all working interfaces."
+            ? "Match the project's reference images and their notes; retain this asset's functional silhouette and preserve all working interfaces."
             : `Repair only these selected findings, then inspect the same locations. Preserve unrelated geometry and materials, including mirrored partners unless the repair requires both.\n${selected.map((i) => findings[i]).join("\n")}`,
         }),
       );
@@ -137,7 +137,7 @@ export function VersionActions({
           disabled={!sourceRunId || busy}
           onClick={() => void revise(true)}
         >
-          Match accepted mockups
+          Match references
         </Button>
       </div>
       {job && (

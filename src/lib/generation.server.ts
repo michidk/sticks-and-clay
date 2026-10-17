@@ -20,7 +20,7 @@ export async function insertGeneration(tx: Transaction, project: typeof projects
   assertNotArchived(project);
   validateGeneration(project, input);
   const id = crypto.randomUUID();
-  const workshop = await snapshotWorkshop(project.id, project.workshop);
+  const workshop = snapshotWorkshop(project, project.workshop);
   await tx.insert(batches).values({
     id, projectId: project.id, ...input,
     visualTargetMode: input.visualTargetMode ?? "review",

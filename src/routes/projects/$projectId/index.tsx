@@ -333,6 +333,7 @@ function ProjectPage() {
               version={p.designVersion}
               mockups={data.mockups || []}
               items={data.mockupItems || []}
+              references={p.references}
               onRefresh={load}
             />
           </LightboxProvider>

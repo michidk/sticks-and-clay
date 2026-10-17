@@ -35,12 +35,15 @@ export function DesignReference({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notes, setNotes] = useState<Record<string, string>>(project.referenceNotes ?? {});
   const ready = project.status === "ready";
+  const savedNote = (key: string) => (project.referenceNotes?.[key] ?? "").trim();
   const referencesChanged =
     uploader.images.length !== project.references.length ||
     uploader.images.some(
       (image, index) => image.key !== project.references[index],
-    );
+    ) ||
+    uploader.images.some((image) => image.key && (notes[image.key] ?? "").trim() !== savedNote(image.key));
   const changed = design !== project.design || referencesChanged;
   const stale = version !== project.designVersion;
   const saving = busy || uploader.isBusy || updating;
@@ -51,6 +54,7 @@ export function DesignReference({
     setDesign(project.design || "");
     setVersion(project.designVersion);
     uploader.reset(project.references);
+    setNotes(project.referenceNotes ?? {});
     setSynced(project.designVersion);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project.designVersion, editing, synced]);
@@ -62,6 +66,7 @@ export function DesignReference({
     setDesign(project.design);
     setVersion(project.designVersion);
     uploader.reset(project.references);
+    setNotes(project.referenceNotes ?? {});
     setEditing(false);
   }
   async function save(approve: boolean) {
@@ -81,6 +86,7 @@ export function DesignReference({
       form.set("version", String(version));
       form.set("approve", String(approve));
       appendReferenceImages(form, uploader.images);
+      form.set("referenceNotes", JSON.stringify(notes));
       await request(`projects/${project.id}/design`, {
         method: "PUT",
         body: form,
@@ -231,6 +237,8 @@ export function DesignReference({
             onFilesAdded={uploader.addFiles}
             onImportFromUrl={uploader.importFromUrl}
             onRemove={uploader.remove}
+            notes={notes}
+            onNoteChange={(key, note) => setNotes((current) => ({ ...current, [key]: note }))}
             disabled={saving}
             isBusy={uploader.isBusy}
           />

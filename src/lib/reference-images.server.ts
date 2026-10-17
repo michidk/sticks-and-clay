@@ -43,3 +43,11 @@ export async function prepareReferences(
       Promise.allSettled(uploaded.map((key) => getStorage().delete(key))),
   };
 }
+
+/** The owner's notes for the references that remain, trimmed and capped. */
+export function retainedNotes(notes: unknown, references: readonly string[]) {
+  const parsed = z.record(z.string(), z.string()).parse(notes);
+  return Object.fromEntries(
+    references.flatMap((key) => (parsed[key]?.trim() ? [[key, parsed[key].trim().slice(0, 1000)]] : [])),
+  );
+}

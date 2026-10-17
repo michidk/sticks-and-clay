@@ -36,6 +36,8 @@ export const projects = pgTable("projects", {
     .notNull(),
   description: text().notNull(),
   references: jsonb().$type<string[]>().default([]).notNull(),
+  /** The owner's context for individual references, keyed by reference key. */
+  referenceNotes: jsonb("reference_notes").$type<Record<string, string>>().default({}).notNull(),
   design: text().default("").notNull(),
   designVersion: integer().default(0).notNull(),
   workshop: jsonb().$type<Workshop>(),

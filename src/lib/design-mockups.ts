@@ -18,11 +18,6 @@ export const mockupSnapshot = z.object({
 
 export const mockupImage = z.object({ key: z.string(), runId: z.string() });
 
-export const mockupNoteInput = z.object({ note: z.string().trim().max(2000).default("") });
-
-/** Accepted mockups frozen into a batch, newest first and capped so references stay few. */
-export const MAX_ACCEPTED_MOCKUPS = 4;
-
 export type DesignMockups = {
   id: string;
   status: string;
@@ -42,7 +37,5 @@ export type MockupItem = {
   designVersion: number;
   parentId: string | null;
   jobId: string | null;
-  note: string;
-  acceptedAt: string | null;
   createdAt: string;
 };
