@@ -260,7 +260,7 @@ export async function executeModelJob(targetId: string) {
               : "") +
             (workPass
               ? "\n\n" +
-                (await prompt("modeling-pass", {
+                (await prompt("models/modeling-pass", {
                   pass: workPass,
                   photographs: images.length,
                 }))
@@ -558,7 +558,7 @@ export async function executeModelJob(targetId: string) {
             })) +
             (workPass
               ? "\n\n" +
-                (await prompt("modeling-review", {
+                (await prompt("models/modeling-review", {
                   pass: workPass,
                   summary: buildSummary,
                 }))

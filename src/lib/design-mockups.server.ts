@@ -49,7 +49,7 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
       referenceNotes: referenceNotesFor(project.references, project.referenceNotes),
     };
     const prompts = await Promise.all(Array.from({ length: input.count }, (_, index) =>
-      prompt("design-mockup", {
+      prompt("design/design-mockup", {
         name: project.name,
         description: project.description,
         design: project.design,

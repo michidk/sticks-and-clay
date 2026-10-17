@@ -213,7 +213,7 @@ export async function agent<T>(
       );
     } else if (action === "continue") {
       continuation = await handle.send(
-        await prompt("resume", { error: saved?.error || "Interrupted turn" }),
+        await prompt("eve/resume", { error: saved?.error || "Interrupted turn" }),
         { outputSchema: args.schema, signal },
       );
     } else if (action === "attach") {

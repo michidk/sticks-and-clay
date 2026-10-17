@@ -26,7 +26,7 @@ const graphicKind: AssetKind = {
       modelId: model.id,
       directory: `graphics/${model.id}/${ctx.attempt}`,
       prompt:
-        (await prompt("graphic", { design: batch.design, name: model.name, request: ctx.request })) +
+        (await prompt("graphics/graphic", { design: batch.design, name: model.name, request: ctx.request })) +
         workshopContext(batch.workshop, false) +
         revision,
       size: batch.imageSize,

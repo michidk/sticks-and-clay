@@ -2,30 +2,28 @@
 
 All authored agent instructions and input templates live here.
 
-- `system.md`: shared Eve agent rules. `eve/agent/instructions.ts` loads this file at build time.
-- `project-name.md`: creates a concise initial project name from the user's brief.
-- `project-brief.md`: fills the initial project brief using TanStack AI.
-- `designer.md`: uses TanStack AI to write the project's design reference.
-- `design-update-input.md`: revises a saved design from a chat prompt; 3D and graphic revisions retain their respective designer instructions.
-- `idea-title.md`: names a saved idea from its brief when the owner leaves the title blank.
-- `model-brief.md`: uses TanStack AI to draft the editable Model brief from the approved design and requested count.
-- `planner.md`: turns a submitted model brief into individual builder tasks.
-- `graphic-brief.md`, `graphic-designer.md`, `graphic-planner.md`: the parallel brief, visual-system, and planning roles for 2D graphic collections.
-- `svg-designer.md`, `svg.md`: vector design direction and static SVG generation through the text model (a short plan, then the markup). SVG planning uses the graphic planner instructions.
-- `svg-judge.md`, `graphic-judge.md`, `graphic-judge-input.md`: the reviewers for SVG and raster graphics. They inspect renders and measurements, then return the same verdict contract as the 3D judge, which drives revision rounds.
-- `graphic.md`: the final prompt sent to the configured Image API for each planned graphic.
-- `design-mockup.md`: optional collection concept images from an approved design and its visual references, before final asset generation. When the request leaves the subject open it also receives a few unstarted saved ideas to pick from.
-- `builder.md`, `photographer.md`, `judge.md`: build, photograph the exported GLB, and visually review assets.
-- `*-input.md`: task-specific input templates, with `{{placeholders}}` populated by the app.
-- `modeling-pass.md`, `modeling-review.md`: required v4 modeling passes and review of their recorded changes.
-- `resume.md`: continues a failed Eve turn in the same session.
-- `pipeline.md`: the reusable asset-pack pipeline reference.
+A prompt's name is its path under `prompts/` without `.md` (for example `design/designer`), which is what `src/modules/ai/roles.ts` and `prompt()` use. `<name>-input.md` beside an instruction file is its input template, with `{{placeholders}}` filled in by the app. Every file under these folders must be used by a role or a `prompt()` call; `src/modules/ai/prompts.test.ts` fails on an unused or missing one.
+
+| Folder | Contents |
+| --- | --- |
+| `eve/` | `system.md`: shared Eve agent rules, loaded by `eve/agent/instructions.ts` at build time. `resume.md`: continues a failed Eve turn in the same session. |
+| `project/` | `project-name`, `project-brief` (initial name and brief from the user's notes) and `idea-title` (names a saved idea from its brief when the title is left blank). |
+| `design/` | The design reference: `designer` (3D), `graphic-designer`, `svg-designer`, plus `design-update-input`, `design-from-model-input` and `design-mockup` (concept images from the approved design; with an open request it also gets a few unstarted saved ideas to pick from). |
+| `planning/` | `model-brief` and `graphic-brief` draft the editable brief; `planner` and `graphic-planner` turn a submitted brief into individual tasks. SVG planning uses the graphic planner. |
+| `models/` | 3D generation: `builder`, `photographer`, `judge`, `visual-target` (the imagegen concept step), and the required v4 passes `modeling-pass` and `modeling-review`. |
+| `graphics/` | `graphic` (the final prompt sent to the Image API) and `graphic-judge` with its input; the SVG judge shares this input template. |
+| `svg/` | `svg` (a short plan, then the markup through the text model), `svg-input` and `svg-judge`. |
+| `materials/` | `material-planner`, `material-builder` and `material-judge`. |
+| `references/` | Focused construction references added to role instructions, plus `SOURCES.md` and `WORKSHOP-INSPIRATION.md`, which are documentation and excluded from agent input. |
+| `evaluations/`, `licenses/` | The control prompt for `scripts/evaluate-material-prompts.ts` and upstream MIT notices. Neither is model input. |
+
+The judges for SVG and raster graphics inspect renders and measurements and return the same verdict contract as the 3D judge, which drives revision rounds.
 
 Each run stores the rendered inputs and role instructions in the database. Resumed runs retain their original instructions; edits apply to new runs. New builders edit persistent `asset.py` through native `asset_workspace` tools and run fixed `render.py` for quick/final exports. The photographer and historical sessions retain MCP tools. The shared Eve system prompt requires an Eve rebuild/restart after edits.
 
 Model and effort settings are configured in `src/modules/ai/roles.ts` and shown at `/admin/agents`. Builder/judge instructions require developed geometry rather than unmodified primitive assemblies. Builders can use `generate_texture`, the TypeScript image-generation API integration, and must connect the generated images to UV-mapped materials. Triangle counts are informational metrics, with no budget configuration or enforcement.
 
-`visual-target.md` drives the imagegen concept step for 3D models. Graphic projects send `graphic.md` directly through the same logged one-shot Image API adapter and retain the resulting PNG in collection and activity history. See [quality pipeline](../docs/quality-pipeline.md) for geometry gates, target thumbnails, image accounting and legacy recovery semantics.
+`models/visual-target.md` drives the imagegen concept step for 3D models. Graphic projects send `graphics/graphic.md` directly through the same logged one-shot Image API adapter and retain the resulting PNG in collection and activity history. See [quality pipeline](../docs/quality-pipeline.md) for geometry gates, target thumbnails, image accounting and legacy recovery semantics.
 
 ## Focused construction references
 

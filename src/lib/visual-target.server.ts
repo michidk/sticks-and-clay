@@ -36,7 +36,7 @@ export async function prepareVisualTarget({ model, batch, project, request, atte
   if (!target) {
     await db.update(models).set({ status: "building", phase: revision ? "Revising visual target" : "Creating visual target", progress: 2 }).where(eq(models.id, model.id));
     if (!job.checkpoint[inputKey]) {
-      const base = await prompt("visual-target", { design: batch.design, name: model.name, request });
+      const base = await prompt("models/visual-target", { design: batch.design, name: model.name, request });
       await checkpoint(inputKey, JSON.stringify({
         prompt: revision ? `${base}\n\nRevise the previous visual target according to this feedback:\n${job.checkpoint[`${key}-feedback`]}` : base,
         images: revision && model.visualTarget ? [...references, model.visualTarget] : references,

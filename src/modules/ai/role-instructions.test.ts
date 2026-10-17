@@ -47,14 +47,14 @@ test("agent settings include authored prompts and shared references", async () =
   const settings = await agentSettings();
   const builder = settings.find((agent) => agent.id === "builder");
   expect(builder?.promptFiles.map((file) => file.path)).toEqual([
-    "prompts/builder.md",
+    "prompts/models/builder.md",
     "prompts/references/modeling-method.md",
     "prompts/references/hard-surface.md",
     "prompts/references/organic-and-trees.md",
     "prompts/references/uv-and-materials.md",
     "prompts/references/assetkit.md",
     "prompts/references/game-interfaces.md",
-    "prompts/builder-input.md",
+    "prompts/models/builder-input.md",
   ]);
   expect(builder?.promptFiles[0]?.content).toContain(
     "You are a Blender artist",

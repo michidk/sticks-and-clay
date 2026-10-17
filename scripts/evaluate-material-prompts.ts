@@ -116,13 +116,13 @@ if (!manifest) {
     if (variant === "control")
       await copyFile(
         resolve(repository, "prompts/evaluations/material-builder-control.md"),
-        resolve(workspace, "prompts/material-builder.md"),
+        resolve(workspace, "prompts/materials/material-builder.md"),
       );
     manifest.variants[variant] = {
       workspace,
       promptSha256: hash(
         await readFile(
-          resolve(workspace, "prompts/material-builder.md"),
+          resolve(workspace, "prompts/materials/material-builder.md"),
           "utf8",
         ),
       ),

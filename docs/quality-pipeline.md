@@ -2,7 +2,7 @@
 
 New model attempts use `model-quality:4`:
 
-1. Generate a per-asset visual target through the Image API (`prompts/visual-target.md`). The approved batch design, specific model brief and uploaded references are inputs. Log the request, reference keys, image, usage and estimated cost separately from Eve sessions.
+1. Generate a per-asset visual target through the Image API (`prompts/models/visual-target.md`). The approved batch design, specific model brief and uploaded references are inputs. Log the request, reference keys, image, usage and estimated cost separately from Eve sessions.
 2. Show the target as the card cover until a 3D render exists. Label it as a concept. The Visual target tab keeps it accessible; historical versions retain their own target key.
 3. Build and photograph separate blockout and shape-refinement passes using temporary matte colors. With judging enabled, a fresh judge compares the seven photographs with the target and user references. Major silhouette, construction and transition defects block surface work.
 4. Retry geometry within the configured stage limit. A pass advances to materials; exhaustion finishes with issues and explicitly states that surface work was withheld.
@@ -47,7 +47,7 @@ When a generation batch settles, a separate `project-photo` job snapshots the la
 
 New attempts perform separate persisted blockout, shape refinement, materials and polish builds. Each exports an immutable version and receives photography. Refinement and polish receive the preceding photographs as well as the previous Blender source, target and original references. Geometry review happens only after refinement, and surface review only after polish. Failed reviews repeat that stage's refinement within the chosen review limit; exhausted geometry review still withholds materials. Saved v1–v3 jobs resume their original graph.
 
-`prompts/modeling-pass.md` defines concrete work and a before/after summary for each pass; `prompts/modeling-review.md` gives that summary to the judge as claims to verify against the actual photographs. These are additional build sessions, so elapsed time and estimated cost increase. No time, tool-call or polygon quota substitutes for visible quality. Each run retains normal history, usage accounting and resume identity.
+`prompts/models/modeling-pass.md` defines concrete work and a before/after summary for each pass; `prompts/models/modeling-review.md` gives that summary to the judge as claims to verify against the actual photographs. These are additional build sessions, so elapsed time and estimated cost increase. No time, tool-call or polygon quota substitutes for visible quality. Each run retains normal history, usage accounting and resume identity.
 
 ## Visual target approval
 
