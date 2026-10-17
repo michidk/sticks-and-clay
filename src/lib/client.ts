@@ -20,6 +20,8 @@ export const json = (body: unknown, method = "POST") => ({
 });
 export const fileUrl = (key: string) =>
   "/api/files/" + key.split("/").map(encodeURIComponent).join("/");
+/** The compressed WebP copy of an image, for viewing; `fileUrl` is the original, for downloads. */
+export const previewUrl = (key: string, width: 320 | 640 | 1280 = 1280) => `${fileUrl(key)}?w=${width}`;
 export const money = (value: number) =>
   new Intl.NumberFormat("en-US", {
     style: "currency",

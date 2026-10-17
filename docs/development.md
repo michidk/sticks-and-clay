@@ -133,8 +133,8 @@ Every image the interface shows is a compressed WebP, never the stored original.
 (`src/components/asset-image.tsx`) requests `/api/files/<key>?w=320|640|1280` (640 by default), and
 `src/lib/thumbnail.server.ts` makes all three sizes from one decode, caches them under `data/.thumbnails`, and
 shares or limits the work so a cold project cannot starve the server. A project request warms the thumbnails
-of the images it mentions before the browser asks. The lightbox shows 1280 px and offers the original through
-**Open original** and download links. Use `AssetImage` (or add `?w=` by hand for a raw `<img>`) for new images.
-Pixel-exact views, such as the sprite player and sheets, and textures loaded into the 3D viewer deliberately use
-the original. The project overview polls `?summary=true&versions=false`, which leaves out the per-version
+of the images it mentions before the browser asks. The lightbox, "open in a new tab" links and review sheets show 1280 px (`previewUrl` in `src/lib/client.ts`); only
+the explicit download buttons use the original (`fileUrl`). Use `AssetImage`, or `previewUrl` for a raw `<img>`;
+`src/components/image-previews.test.ts` fails on an `<img>` given an original URL. Two views deliberately keep the
+original: the sprite player (it animates exact pixels) and textures loaded into the 3D viewer. The project overview polls `?summary=true&versions=false`, which leaves out the per-version
 history that only the model page reads.

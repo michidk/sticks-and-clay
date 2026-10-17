@@ -35,7 +35,7 @@ import {
   ScanEye,
 } from "lucide-react";
 import { roleLabel } from "@/lib/queue-view";
-import { request, money, costSummary, fileUrl } from "../../../../lib/client";
+import { request, money, costSummary, fileUrl, previewUrl } from "../../../../lib/client";
 import { TextSkeleton } from "../../../../components/loading";
 import { AssetImage } from "../../../../components/asset-image";
 import type { runs as agentRuns } from "@/db/schema";
@@ -332,7 +332,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                     )?.map((key: string) => (
                       <a
                         key={key}
-                        href={fileUrl(key)}
+                        href={previewUrl(key)}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -363,7 +363,7 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                             {content.images.map((src) => (
                               <a
                                 key={src}
-                                href={fileUrl(src)}
+                                href={previewUrl(src)}
                                 target="_blank"
                                 rel="noreferrer"
                               >

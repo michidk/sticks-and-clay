@@ -416,7 +416,7 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
                 materialId={job.id}
               />
               {preview && (
-                <a href={fileUrl(preview)} target="_blank" rel="noreferrer">
+                <a href={`${fileUrl(preview)}?w=1280`} target="_blank" rel="noreferrer">
                   <img
                     className="material-review"
                     src={`${fileUrl(preview)}?w=1280`}

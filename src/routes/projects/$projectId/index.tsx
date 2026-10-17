@@ -32,7 +32,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { z } from "zod";
 import { Plus } from "lucide-react";
-import { request, json, costSummary, fileUrl } from "../../../lib/client";
+import { request, json, costSummary, fileUrl, previewUrl } from "../../../lib/client";
 import { PendingModel } from "./-components/pending-model";
 import { failedBatchFor, pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
@@ -375,7 +375,7 @@ function ProjectPage() {
                     </div>
                     <div className="collection-renders">
                       <a
-                        href={fileUrl(b.preview.sheet)}
+                        href={previewUrl(b.preview.sheet)}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -405,7 +405,7 @@ function ProjectPage() {
                     </div>
                     <div className="collection-renders">
                       <a
-                        href={fileUrl(b.preview.lineup)}
+                        href={previewUrl(b.preview.lineup)}
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -416,7 +416,7 @@ function ProjectPage() {
                         <span>Scale lineup</span>
                       </a>
                       <a
-                        href={fileUrl(b.preview.scene)}
+                        href={previewUrl(b.preview.scene)}
                         target="_blank"
                         rel="noreferrer"
                       >

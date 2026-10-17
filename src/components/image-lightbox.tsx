@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  ArrowUpRight,
   ChevronLeft,
   ChevronRight,
   Download,
@@ -99,11 +98,6 @@ export function LightboxProvider({ children }: { children: ReactNode }) {
                   <Button variant="outline" size="sm" asChild>
                     <a href={current.src} download>
                       <Download size={14} /> Download
-                    </a>
-                  </Button>
-                  <Button variant="ghost" size="sm" asChild>
-                    <a href={current.src} target="_blank" rel="noreferrer">
-                      Open original <ArrowUpRight size={14} />
                     </a>
                   </Button>
                 </div>

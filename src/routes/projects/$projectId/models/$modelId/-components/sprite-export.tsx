@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { request, json, fileUrl } from "@/lib/client";
+import { request, json, fileUrl, previewUrl } from "@/lib/client";
 import { spriteOptionsSchema, type SpriteOptions } from "@/lib/sprites";
 
 export function SpriteExport({
@@ -310,10 +310,10 @@ export function SpriteExport({
                     />
                   )}
                 {image && (
-                  <a href={fileUrl(image)} target="_blank" rel="noreferrer">
+                  <a href={previewUrl(image)} target="_blank" rel="noreferrer">
                     <img
                       className="sprite-review"
-                      src={fileUrl(image)}
+                      src={previewUrl(image)}
                       alt="Rendered directions and animation frames"
                       loading="lazy"
                     />
