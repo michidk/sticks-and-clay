@@ -1,9 +1,8 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
-import { jobs, models, batches, projects, runs, oauthClients, mcpAuditEvents } from "../db/schema";
-import { getMcpConfig } from "../modules/mcp/auth/config.server";
-import { DrizzleOAuthStore } from "../modules/mcp/auth/oauth-store.server";
+import { jobs, models, batches, projects, runs } from "../db/schema";
+import { loadMcpAdminState, loadMcpAuditPage, revokeMcpClient, saveMcpPolicy } from "../modules/mcp/settings.server";
 import { agentInput, type AgentInput } from "./api-inputs";
 import { cancelJob } from "./queue.server";
 import { agentSettings, immediateRoles } from "../modules/ai/index.server";
@@ -144,19 +143,12 @@ export async function adminAction(request: Request, path: string[]) {
       });
   }
   if (path[0] === "mcp") {
-    if (request.method === "GET") {
-      let endpoint: string | null = null;
-      let configurationError: string | null = null;
-      try { endpoint = getMcpConfig(request).serverUrl.href; }
-      catch (error) { configurationError = (error as Error).message; }
-      const [clients, audit] = await Promise.all([
-        db.select().from(oauthClients).orderBy(desc(oauthClients.createdAt)),
-        db.select().from(mcpAuditEvents).orderBy(desc(mcpAuditEvents.createdAt)).limit(25),
-      ]);
-      return reply({ endpoint, configurationError, clients, audit });
-    }
+    if (request.method === "GET" && path[1] === "audit")
+      return reply(await loadMcpAuditPage(Number(new URL(request.url).searchParams.get("page")) || 0));
+    if (request.method === "GET") return reply(await loadMcpAdminState(request));
+    if (request.method === "PUT" && path[1] === "policy") return reply(await saveMcpPolicy(await request.json()));
     if (request.method === "POST" && path[1] === "revoke") {
-      await new DrizzleOAuthStore().revokeClient(uuid.parse((await request.json()).clientId));
+      await revokeMcpClient(uuid.parse((await request.json()).clientId));
       return reply({ ok: true });
     }
   }

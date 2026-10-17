@@ -15,6 +15,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as AdminAgentsIndexRouteImport } from './routes/admin/agents/index'
 import { Route as AdminDiagnosticsIndexRouteImport } from './routes/admin/diagnostics/index'
+import { Route as AdminMcpIndexRouteImport } from './routes/admin/mcp/index'
 import { Route as AdminQueueIndexRouteImport } from './routes/admin/queue/index'
 import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
@@ -50,6 +51,11 @@ const AdminDiagnosticsIndexRoute = AdminDiagnosticsIndexRouteImport.update({
   path: '/diagnostics/',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminMcpIndexRoute = AdminMcpIndexRouteImport.update({
+  id: '/mcp/',
+  path: '/mcp/',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminQueueIndexRoute = AdminQueueIndexRouteImport.update({
   id: '/queue/',
   path: '/queue/',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/admin/agents/': typeof AdminAgentsIndexRoute
   '/admin/diagnostics/': typeof AdminDiagnosticsIndexRoute
+  '/admin/mcp/': typeof AdminMcpIndexRoute
   '/admin/queue/': typeof AdminQueueIndexRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/admin/agents': typeof AdminAgentsIndexRoute
   '/admin/diagnostics': typeof AdminDiagnosticsIndexRoute
+  '/admin/mcp': typeof AdminMcpIndexRoute
   '/admin/queue': typeof AdminQueueIndexRoute
   '/admin/settings': typeof AdminSettingsIndexRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/admin/agents/': typeof AdminAgentsIndexRoute
   '/admin/diagnostics/': typeof AdminDiagnosticsIndexRoute
+  '/admin/mcp/': typeof AdminMcpIndexRoute
   '/admin/queue/': typeof AdminQueueIndexRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/agents/'
     | '/admin/diagnostics/'
+    | '/admin/mcp/'
     | '/admin/queue/'
     | '/admin/settings/'
     | '/projects/$projectId/'
@@ -128,6 +138,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/agents'
     | '/admin/diagnostics'
+    | '/admin/mcp'
     | '/admin/queue'
     | '/admin/settings'
     | '/projects/$projectId'
@@ -140,6 +151,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/admin/agents/'
     | '/admin/diagnostics/'
+    | '/admin/mcp/'
     | '/admin/queue/'
     | '/admin/settings/'
     | '/projects/$projectId/'
@@ -198,6 +210,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDiagnosticsIndexRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/mcp/': {
+      id: '/admin/mcp/'
+      path: '/mcp'
+      fullPath: '/admin/mcp/'
+      preLoaderRoute: typeof AdminMcpIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/queue/': {
       id: '/admin/queue/'
       path: '/queue'
@@ -233,6 +252,7 @@ interface AdminRouteRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   AdminAgentsIndexRoute: typeof AdminAgentsIndexRoute
   AdminDiagnosticsIndexRoute: typeof AdminDiagnosticsIndexRoute
+  AdminMcpIndexRoute: typeof AdminMcpIndexRoute
   AdminQueueIndexRoute: typeof AdminQueueIndexRoute
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
 }
@@ -241,6 +261,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   AdminAgentsIndexRoute: AdminAgentsIndexRoute,
   AdminDiagnosticsIndexRoute: AdminDiagnosticsIndexRoute,
+  AdminMcpIndexRoute: AdminMcpIndexRoute,
   AdminQueueIndexRoute: AdminQueueIndexRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,
 }

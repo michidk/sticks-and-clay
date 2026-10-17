@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AiAccess } from "./-components/ai-access";
 import { SettingsForm } from "./-components/settings-form";
 
 export const Route = createFileRoute("/admin/settings/")({
@@ -18,7 +17,6 @@ function SettingsPage() {
         </div>
       </section>
       <SettingsForm />
-      <AiAccess />
     </div>
   );
 }

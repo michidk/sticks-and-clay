@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { runtimeSettingsDefaults } from "../../lib/runtime-settings";
-import { createStudioMcpServer } from "./tools.server";
+import { createStudioMcpServer, studioToolCatalog } from "./tools.server";
 
 const id = "12345678-1234-4234-8234-123456789012";
 const sourceRunId = "12345678-1234-4234-8234-123456789013";
@@ -241,4 +241,24 @@ test("legacy HTTP initialization and discovery remain available alongside modern
     expect(body).toContain('"name":"list_projects"');
     expect(body).not.toContain('"name":"generate_assets"');
   } finally { await handler.close(); }
+});
+
+test("owner-disabled tools disappear from discovery and cannot be called", async () => {
+  const connected = await session({ disabledTools: new Set(["list_projects"]) });
+  try {
+    const names = (await connected.client.listTools()).tools.map((tool) => tool.name);
+    expect(names).toContain("get_project");
+    expect(names).not.toContain("list_projects");
+    const called = await connected.client.callTool({ name: "list_projects", arguments: {} }).then(() => "ok", () => "rejected");
+    expect(called).toBe("rejected");
+  } finally { await connected.close(); }
+});
+
+test("the settings catalog lists every tool with its required scope", () => {
+  const catalog = studioToolCatalog();
+  const scopeOf = (name: string) => catalog.find((tool) => tool.name === name)?.scope;
+  expect(scopeOf("list_projects")).toBe(read);
+  expect(scopeOf("generate_assets")).toBe(write);
+  expect(scopeOf("update_settings")).toBe(admin);
+  expect(scopeOf("revoke_mcp_client")).toBe(admin);
 });

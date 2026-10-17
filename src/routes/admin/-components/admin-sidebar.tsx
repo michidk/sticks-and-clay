@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Activity, Bot, ListTodo, Settings } from "lucide-react";
+import { Activity, Bot, KeyRound, ListTodo, Settings } from "lucide-react";
 
 const sections = [
   {
@@ -19,6 +19,12 @@ const sections = [
     label: "Diagnostics",
     description: "Service health",
     icon: Activity,
+  },
+  {
+    to: "/admin/mcp",
+    label: "AI access",
+    description: "MCP tools and clients",
+    icon: KeyRound,
   },
   {
     to: "/admin/settings",

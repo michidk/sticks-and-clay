@@ -115,3 +115,12 @@ integration("MCP mutations retain design approval, optimistic conflicts, immutab
     await connected.close();
   }
 });
+
+test("a paused server rejects MCP and OAuth requests before authentication", async () => {
+  const handler = createMcpHttpHandler(config, new DrizzleOAuthStore(), { policy: async () => ({ enabled: false, disabledTools: [] }) });
+  for (const path of ["/api/mcp", "/oauth/token"]) {
+    const response = await handler(new Request(new URL(path, config.issuer), { method: "POST", headers: { Host: config.serverUrl.host } }));
+    expect(response?.status).toBe(503);
+    expect(await response?.json()).toMatchObject({ error: "mcp_disabled" });
+  }
+});

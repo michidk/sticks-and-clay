@@ -6,6 +6,7 @@ import {
   index,
   uniqueIndex,
   serial,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 const created = () =>
@@ -88,3 +89,10 @@ export const mcpAuditEvents = pgTable(
   },
   (table) => [index("mcp_audit_events_created_at_idx").on(table.createdAt)],
 );
+
+export const mcpSettings = pgTable("mcp_settings", {
+  id: text("id").primaryKey(),
+  enabled: boolean("enabled").notNull().default(true),
+  disabledTools: jsonb("disabled_tools").$type<string[]>().notNull().default([]),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

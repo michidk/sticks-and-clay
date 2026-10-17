@@ -29,9 +29,20 @@ export function createStudioMcpServer(options: {
   publicUrl: URL;
   store?: Pick<OAuthStore, "listClients" | "revokeClient">;
   readFile?: typeof readStoredFile;
+  /** Owner-disabled tools stay registered but are hidden from discovery and calls. */
+  disabledTools?: ReadonlySet<string>;
 }) {
   const scopes = new Set(options.scopes);
   const server = new McpServer({ name: "sticks-and-clay", version: "1.0.0" }, { instructions: workflow });
+  const disabled = options.disabledTools;
+  if (disabled?.size) {
+    const registerTool = server.registerTool.bind(server) as (name: string, ...rest: unknown[]) => { disable(): void };
+    server.registerTool = ((name: string, ...rest: unknown[]) => {
+      const tool = registerTool(name, ...rest);
+      if (disabled.has(name)) tool.disable();
+      return tool;
+    }) as typeof server.registerTool;
+  }
 
   function register<S extends z.ZodObject>(
     name: string, description: string, scope: McpScope, input: S,
@@ -178,4 +189,25 @@ export function createStudioMcpServer(options: {
       async ({ clientId }) => { await store.revokeClient(clientId); return result({ data: { ok: true } }); });
   }
   return server;
+}
+
+export type StudioToolInfo = { name: string; title: string; description: string; scope: McpScope };
+
+// Tools are registered per scope, so the first scope level that exposes a tool is its required scope.
+export function studioToolCatalog(): StudioToolInfo[] {
+  const catalog = new Map<string, StudioToolInfo>();
+  const store = { listClients: async () => [], revokeClient: async () => {} };
+  for (const scope of [read, write, admin]) {
+    const server = createStudioMcpServer({
+      scopes: [read, write, admin].slice(0, [read, write, admin].indexOf(scope) + 1),
+      publicUrl: new URL("https://catalog.invalid"), store,
+    });
+    const tools = (server as unknown as { _registeredTools: Record<string, { description?: string }> })._registeredTools;
+    for (const [name, tool] of Object.entries(tools))
+      if (!catalog.has(name)) catalog.set(name, {
+        name, scope, description: tool.description ?? "",
+        title: name.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase()),
+      });
+  }
+  return [...catalog.values()];
 }

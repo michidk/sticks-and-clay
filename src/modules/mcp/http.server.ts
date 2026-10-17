@@ -12,6 +12,7 @@ import { createOAuthHttpHandler, handlesOAuthPath } from "./auth/oauth-http.serv
 import { DrizzleOAuthStore, type OAuthStore } from "./auth/oauth-store.server";
 import { MAX_MCP_BODY_BYTES, MCP_SCOPE_VALUES } from "./catalog";
 import { createStudioMcpServer } from "./tools.server";
+import { defaultMcpPolicy, loadMcpPolicy, type McpPolicy } from "./settings.server";
 import type { AppApi } from "./api.server";
 
 const MCP_PATH = "/api/mcp";
@@ -68,10 +69,13 @@ async function auditOutcome(response: Response) {
 export function createMcpHttpHandler(config: McpConfig, store: OAuthStore, options: {
   api?: AppApi;
   readFile?: typeof readStoredFile;
+  policy?: () => Promise<McpPolicy>;
 } = {}) {
+  const loadPolicy = options.policy ?? (async () => defaultMcpPolicy);
   const oauth = createOAuthHttpHandler(config, store);
   const protocol = createMcpHandler(({ authInfo }) => createStudioMcpServer({
-    scopes: authInfo?.scopes ?? [], publicUrl: config.serverUrl, store, ...options,
+    scopes: authInfo?.scopes ?? [], publicUrl: config.serverUrl, store, api: options.api, readFile: options.readFile,
+    disabledTools: new Set((authInfo?.extra?.disabledTools as string[] | undefined) ?? []),
   }), { maxRequestBodySize: MAX_MCP_BODY_BYTES });
   const authenticate = requireBearerAuth({
     verifier: createLocalTokenVerifier(config, store), requiredScopes: [MCP_READ_SCOPE],
@@ -83,6 +87,11 @@ export function createMcpHttpHandler(config: McpConfig, store: OAuthStore, optio
     if (!handlesMcpHttpPath(path)) return null;
     const rejectedHost = hostHeaderValidationResponse(request, config.allowedHostnames);
     if (rejectedHost) return rejectedHost;
+    const policy = await loadPolicy();
+    if (!policy.enabled) return Response.json(
+      { error: "mcp_disabled", error_description: "MCP access is paused by the owner" },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
     if (handlesOAuthPath(path)) return oauth(request);
     const origin = request.headers.get("origin");
     if (origin && ![config.issuer.origin, ...config.allowedOrigins].includes(origin))
@@ -118,7 +127,7 @@ export function createMcpHttpHandler(config: McpConfig, store: OAuthStore, optio
       : { body: undefined };
     if (parsed instanceof Response) return cors(parsed, origin);
     const call = callEnvelope.safeParse(parsed.body);
-    const response = await protocol.fetch(request, { authInfo: auth, parsedBody: parsed.body });
+    const response = await protocol.fetch(request, { authInfo: { ...auth, extra: { disabledTools: policy.disabledTools } }, parsedBody: parsed.body });
     if (call.success) {
       try { await store.audit({ event: "tool_called", clientId: auth.clientId, toolName: call.data.params.name, outcome: await auditOutcome(response) }); }
       catch { console.error("[Sticks & Clay] MCP audit persistence failed"); }
@@ -133,7 +142,7 @@ export async function handleMcpHttpRequest(request: Request): Promise<Response |
   try {
     const config = getMcpConfig(request);
     let handler = liveHandlers.get(config.serverUrl.href);
-    if (!handler) liveHandlers.set(config.serverUrl.href, handler = createMcpHttpHandler(config, new DrizzleOAuthStore()));
+    if (!handler) liveHandlers.set(config.serverUrl.href, handler = createMcpHttpHandler(config, new DrizzleOAuthStore(), { policy: loadMcpPolicy }));
     return await handler(request);
   } catch {
     console.error("[Sticks & Clay] MCP service unavailable");
