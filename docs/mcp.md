@@ -72,7 +72,7 @@ Keep `/oauth/authorize` behind the login gate. Allow machine clients through Hod
 
 Write and admin permissions start unchecked on the consent page. The owner chooses each grant; admin does not imply write. Clients see only tools allowed by their grant, and direct calls to other tools fail. Read access includes project prompts, run history, files and cost estimates, so grant it only to clients that should see the workshop's content.
 
-There are 42 tools covering existing workshop actions and artifact access. `create_collection` provides a workflow prompt; `sticks-and-clay://workflow` explains generation and recovery. No shell, arbitrary Python execution, internal texture-builder endpoint, filesystem-path import, or history-deletion tool is exposed.
+There are 47 tools covering existing workshop actions and artifact access. `create_collection` provides a workflow prompt; `sticks-and-clay://workflow` explains generation and recovery. No shell, arbitrary Python execution, internal texture-builder endpoint, filesystem-path import, or history-deletion tool is exposed.
 
 ## Working with assets
 
