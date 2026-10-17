@@ -1,4 +1,5 @@
 import { Boxes, Image as ImageIcon } from "lucide-react";
+import type { AssetType } from "@/lib/asset-types";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,7 +16,7 @@ export function PendingModel({
   index: number;
   busy: boolean;
   onResume: () => void;
-  assetType: "model" | "graphic" | "svg";
+  assetType: AssetType;
 }) {
   const failed = batch.status === "failed";
   const noun = assetType !== "model" ? "graphic" : "model";

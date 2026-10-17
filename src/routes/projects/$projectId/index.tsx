@@ -33,6 +33,7 @@ import remarkGfm from "remark-gfm";
 import { z } from "zod";
 import { Plus } from "lucide-react";
 import { request, json, costSummary, fileUrl, previewUrl } from "../../../lib/client";
+import { assetTypeLabels, isFlatRole, type AssetType } from "@/lib/asset-types";
 import { PendingModel } from "./-components/pending-model";
 import { failedBatchFor, pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
@@ -241,7 +242,7 @@ function ProjectPage() {
           <h1>{p.name}</h1>
           <div className="page-meta">
             <StatusBadge tone={state.tone as any}>{state.label}</StatusBadge>
-            <span>{p.assetType === "svg" ? "SVG files" : isGraphics ? "Graphics" : "3D assets"}</span>
+            <span>{assetTypeLabels[p.assetType as AssetType]}</span>
             <button type="button" onClick={() => setTab("design")}>
               Design v{p.designVersion} {ready ? "approved" : "awaiting approval"}
             </button>
@@ -566,7 +567,7 @@ function ProjectPage() {
                         sourceRunId={
                           rs.find(
                             (r: any) =>
-                              (r.role === "graphic" || r.role === "svg") &&
+                              isFlatRole(r.role) &&
                               r.modelId === m.id &&
                               r.status === "done",
                           )?.id

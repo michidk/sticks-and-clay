@@ -101,7 +101,7 @@ export function AssetCard({
       <div className={`model-cover${isGraphics ? " graphic-cover" : ""}`}>
         {isGraphics && m.artifacts?.image ? (
           <Link className="model-cover-image" {...modelLink} search={{ view: "3d", section: "review" }}>
-            <AssetImage src={fileUrl(m.artifacts.image)} alt={name} />
+            <AssetImage src={fileUrl(m.artifacts.image)} pixelated={m.artifacts.format === "pixel"} alt={name} />
           </Link>
         ) : previewing && m.artifacts ? (
           <ModelViewer

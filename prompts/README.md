@@ -8,16 +8,17 @@ A prompt's name is its path under `prompts/` without `.md` (for example `design/
 | --- | --- |
 | `eve/` | `system.md`: shared Eve agent rules, loaded by `eve/agent/instructions.ts` at build time. `resume.md`: continues a failed Eve turn in the same session. |
 | `project/` | `project-name`, `project-brief` (initial name and brief from the user's notes) and `idea-title` (names a saved idea from its brief when the title is left blank). |
-| `design/` | The design reference: `designer` (3D), `graphic-designer`, `svg-designer`, plus `design-update-input`, `design-from-model-input` and `design-mockup` (concept images from the approved design; with an open request it also gets a few unstarted saved ideas to pick from). |
-| `planning/` | `model-brief` and `graphic-brief` draft the editable brief; `planner` and `graphic-planner` turn a submitted brief into individual tasks. SVG planning uses the graphic planner. |
+| `design/` | The design reference: `designer` (3D), `graphic-designer`, `svg-designer`, `pixel-designer`, plus `design-update-input`, `design-from-model-input` and `design-mockup` (concept images from the approved design; with an open request it also gets a few unstarted saved ideas to pick from). |
+| `planning/` | `model-brief` and `graphic-brief` draft the editable brief; `planner` and `graphic-planner` turn a submitted brief into individual tasks. SVG and pixel-art planning use the graphic planner. |
 | `models/` | 3D generation: `builder`, `photographer`, `judge`, `visual-target` (the imagegen concept step), and the required v4 passes `modeling-pass` and `modeling-review`. |
-| `graphics/` | `graphic` (the final prompt sent to the Image API) and `graphic-judge` with its input; the SVG judge shares this input template. |
+| `graphics/` | `graphic` (the final prompt sent to the Image API) and `graphic-judge` with its input; the SVG and pixel judges share this input template. |
+| `pixel/` | `pixel` (a plan, then a palette and rows of cells), `pixel-input` and `pixel-judge`. |
 | `svg/` | `svg` (a short plan, then the markup through the text model), `svg-input` and `svg-judge`. |
 | `materials/` | `material-planner`, `material-builder` and `material-judge`. |
 | `references/` | Focused construction references added to role instructions, plus `SOURCES.md` and `WORKSHOP-INSPIRATION.md`, which are documentation and excluded from agent input. |
 | `evaluations/`, `licenses/` | The control prompt for `scripts/evaluate-material-prompts.ts` and upstream MIT notices. Neither is model input. |
 
-The judges for SVG and raster graphics inspect renders and measurements and return the same verdict contract as the 3D judge, which drives revision rounds.
+The judges for SVG, pixel art and raster graphics inspect renders and measurements and return the same verdict contract as the 3D judge, which drives revision rounds.
 
 Each run stores the rendered inputs and role instructions in the database. Resumed runs retain their original instructions; edits apply to new runs. New builders edit persistent `asset.py` through native `asset_workspace` tools and run fixed `render.py` for quick/final exports. The photographer and historical sessions retain MCP tools. The shared Eve system prompt requires an Eve rebuild/restart after edits.
 

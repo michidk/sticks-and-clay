@@ -12,7 +12,7 @@ export async function settleBatch(id: string) {
   const [project] = batch
     ? await db.select().from(projects).where(eq(projects.id, batch.projectId))
     : [];
-  const graphics = project?.assetType === "graphic" || project?.assetType === "svg";
+  const graphics = !!project && project.assetType !== "model";
   const hasFinalAsset = rows.some(
     (m) =>
       m.status === "done" &&

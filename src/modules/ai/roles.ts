@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { pixelGridSchema } from "../../lib/pixel";
+import type { AssetType } from "../../lib/asset-types";
 import {
   materialPlanResult,
   materialBuildResult,
@@ -51,6 +53,15 @@ export const roles = {
   "svg-designer": role("tanstack", "design/svg-designer", designResult),
   "svg-design-update": { ...role("tanstack", "design/svg-designer", designResult), inputTemplate: "design/design-update-input" },
   "svg-planner": { ...role("tanstack", "planning/graphic-planner", planResult), inputTemplate: "planning/graphic-planner-input" },
+  // Pixel art is drawn on a grid by the text model, like SVG, and rendered exactly by the app.
+  pixel: role("tanstack", "pixel/pixel", pixelGridSchema, "gpt-6-sol", "high"),
+  "pixel-judge": {
+    ...role("tanstack", "pixel/pixel-judge", judgeResult, "gpt-6-sol", "high"),
+    inputTemplate: "graphics/graphic-judge-input",
+  },
+  "pixel-designer": role("tanstack", "design/pixel-designer", designResult),
+  "pixel-design-update": { ...role("tanstack", "design/pixel-designer", designResult), inputTemplate: "design/design-update-input" },
+  "pixel-planner": { ...role("tanstack", "planning/graphic-planner", planResult), inputTemplate: "planning/graphic-planner-input" },
   "material-planner": role("tanstack", "materials/material-planner", materialPlanResult),
   "material-builder": role(
     "tanstack",
@@ -108,6 +119,13 @@ export const roles = {
   ]),
 } as const;
 export type Role = keyof typeof roles;
+/** Which role handles each stage for each asset type; a new type must name all three. */
+export const assetRoles = {
+  model: { designer: "designer", update: "design-update", planner: "planner" },
+  graphic: { designer: "graphic-designer", update: "graphic-design-update", planner: "graphic-planner" },
+  svg: { designer: "svg-designer", update: "svg-design-update", planner: "svg-planner" },
+  pixel: { designer: "pixel-designer", update: "pixel-design-update", planner: "pixel-planner" },
+} as const satisfies Record<AssetType, { designer: Role; update: Role; planner: Role }>;
 export const immediateRoles: Role[] = ["project-name", "idea-title", "project-brief", "model-brief", "graphic-brief"];
 export type RoleResult<R extends Role> = z.infer<(typeof roles)[R]["schema"]>;
 export type RunInput<R extends Role = Role> = {

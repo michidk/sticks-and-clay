@@ -1,4 +1,5 @@
 import { collectionAssetGroups } from "./project-summary";
+import { isFlatRole } from "./asset-types";
 
 export const boardStages = ["idea", "ready", "progress", "review", "done"] as const;
 export type BoardStage = (typeof boardStages)[number];
@@ -56,5 +57,5 @@ export function boardColumns<I extends Idea, A extends Asset, B extends Batch>(
 /** The latest saved build or graphic an iteration can start from (runs are newest first). */
 export function latestSourceRun(runs: { id: string; modelId?: string | null; status: string; role: string; result?: any }[], modelId: string) {
   return runs.find((run) => run.modelId === modelId && run.status === "done" &&
-    (["graphic", "svg"].includes(run.role) || (run.role === "builder" && run.result?.artifacts?.blend)))?.id;
+    (isFlatRole(run.role) || (run.role === "builder" && run.result?.artifacts?.blend)))?.id;
 }

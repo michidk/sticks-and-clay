@@ -11,9 +11,10 @@ const compressed = (src: string | undefined, width: Width) =>
     : src;
 
 /** Reserve the image area while it loads; reset state when the artifact changes. */
-export function AssetImage({ width = 640, ...props }: ComponentProps<"img"> & { width?: Width }) {
+export function AssetImage({ width = 640, pixelated, ...props }: ComponentProps<"img"> & { width?: Width; pixelated?: boolean }) {
   const src = compressed(props.src, width);
-  return <ImageContent key={src} {...props} src={src} />;
+  // Pixel art scales up without smoothing, so every cell stays a sharp square.
+  return <ImageContent key={src} {...props} className={cn(props.className, pixelated && "pixelated")} src={src} />;
 }
 
 function ImageContent({

@@ -6,6 +6,8 @@ import { db } from "../db/client";
 import { projects, revisions, batches, models, jobs, runs } from "../db/schema";
 import { assertJobActive } from "./queue.server";
 import { runRole, roleInput } from "../modules/ai/index.server";
+import { assetRoles } from "../modules/ai/roles";
+import type { AssetType } from "./asset-types";
 import { photographProject } from "./project-photography.server";
 import { renderCollection } from "./collection.server";
 import { mockupReferences, workshopContext } from "./workshop";
@@ -60,8 +62,7 @@ export async function executeJob(kind: string, targetId: string) {
         progress: 20,
       })
       .where(eq(projects.id, p.id));
-    const designRole =
-      p.assetType === "svg" ? "svg-designer" : p.assetType !== "model" ? "graphic-designer" : "designer";
+    const designRole = assetRoles[p.assetType].designer;
     const input = await roleInput(designRole, {
       name: p.name,
       description: p.description,
@@ -111,7 +112,7 @@ export async function executeJob(kind: string, targetId: string) {
       throw new Error("Design changed since this update was requested");
     const references: string[] = JSON.parse(snapshot.references);
     const updateRole = kind === "design-from-model" ? "design-from-model"
-      : snapshot.assetType === "svg" ? "svg-design-update" : snapshot.assetType === "graphic" ? "graphic-design-update" : "design-update";
+      : assetRoles[snapshot.assetType as AssetType].update;
     const { result } = await runRole({
       role: updateRole,
       projectId: p.id,
@@ -181,8 +182,7 @@ export async function executeJob(kind: string, targetId: string) {
         "planner-references",
         JSON.stringify([...referenceProject.references, ...mockupReferences(batch.workshop)]),
       );
-    const plannerRole =
-      referenceProject.assetType === "svg" ? "svg-planner" : referenceProject.assetType !== "model" ? "graphic-planner" : "planner";
+    const plannerRole = assetRoles[referenceProject.assetType].planner;
     const { result, runId } = await runRole({
       images: JSON.parse(job.checkpoint["planner-references"]),
       projectId: batch.projectId,

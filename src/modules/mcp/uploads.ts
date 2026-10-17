@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { assetTypeSchema } from "../../lib/asset-types";
 import {
   IMAGE_MIME_TYPES,
   MAX_IMAGE_BYTES,
@@ -54,7 +55,7 @@ export const projectSetupInput = z
   .object({
     name: z.string().trim().min(1).max(100),
     description: z.string().trim().max(12000).default(""),
-    assetType: z.enum(["model", "graphic", "svg"]).default("model"),
+    assetType: assetTypeSchema.default("model"),
     draftId: z.string().uuid().optional(),
     images: z.array(imageUploadSchema).max(MAX_REFERENCE_IMAGES).default([]),
     references: z.array(z.string()).max(MAX_REFERENCE_IMAGES).optional(),

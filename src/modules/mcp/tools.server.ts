@@ -105,7 +105,7 @@ export function createStudioMcpServer(options: {
     async (input) => ({ path: "projects/name", method: "POST", body: await projectForm({ ...input, name: "Untitled project", images: [] }) }), { paid: true });
   register("draft_project_brief", "Draft or improve a project brief using paid AI and optional images. Returns draft ID and retained reference keys. Explicit references=[] removes old draft references.", write,
     projectSetupInput, async (input) => ({ path: "projects/brief", method: "POST", body: await projectForm(input) }), { paid: true });
-  register("create_project", "Create a 3D, graphic or SVG project and queue paid design generation. Optional draftId finishes a saved draft. Poll get_project with returned id instead of repeating this tool.", write,
+  register("create_project", "Create a 3D, graphic, SVG or pixel-art project and queue paid design generation. Optional draftId finishes a saved draft. Poll get_project with returned id instead of repeating this tool.", write,
     projectSetupInput, async (input) => ({ path: "projects", method: "POST", body: await projectForm(input) }), { paid: true });
   register("draft_asset_brief", "Suggest the next assets using the approved design and existing assets. Uses paid AI. The project must be ready.", write,
     assetBriefInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/model-brief`, method: "POST", body: input }), { paid: true });

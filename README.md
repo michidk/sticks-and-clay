@@ -34,7 +34,7 @@
 ## 🧱 What it is
 
 Sticks & Clay is a self-hosted workshop for cohesive collections of **3D models,
-graphics, SVG artwork, procedural PBR materials, and sprites rendered from 3D**.
+graphics, SVG artwork, pixel art, procedural PBR materials, and sprites rendered from 3D**.
 You describe a collection once; AI agents draft the design, write editable
 Blender Python, render product shots, and judge their own output. You stay in
 charge at every step that matters.
@@ -149,6 +149,9 @@ configuration, scopes, and deployment behind an auth proxy.
 - 🎨 **Graphics and SVG.** One-shot images through an OpenAI-compatible Image
   API, or editable vector artwork with previews, variants, and safe SVG output
   (no scripts, external content, or embedded rasters).
+- 👾 **Pixel art.** Drawn cell by cell on a grid (a palette and one row of text
+  per row) instead of generated, rendered exactly by the app, reviewed against
+  cell-level measurements, and shown enlarged without smoothing.
 - 🧪 **Procedural PBR materials** generated as recipes, previewed live, and
   assigned to models.
 - 🎞️ **Sprites from 3D.** Render pixel or smooth sprite sheets with 1, 4, or

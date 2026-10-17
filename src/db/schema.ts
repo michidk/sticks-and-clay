@@ -12,6 +12,7 @@ import {
 import type { Workshop, WorkshopSnapshot } from "../lib/workshop";
 import type { SpriteOptions } from "../lib/sprites";
 import type { GenerationInput } from "../lib/api-inputs";
+import type { AssetType } from "../lib/asset-types";
 const created = () =>
   timestamp("created_at", { withTimezone: true }).defaultNow().notNull();
 export const materialVersions = pgTable("material_versions", {
@@ -31,7 +32,7 @@ export const projects = pgTable("projects", {
   id: text().primaryKey(),
   name: text().notNull(),
   assetType: text("asset_type")
-    .$type<"model" | "graphic" | "svg">()
+    .$type<AssetType>()
     .default("model")
     .notNull(),
   description: text().notNull(),

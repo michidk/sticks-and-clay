@@ -1,8 +1,9 @@
-import type { projects } from "../db/schema";
+import type { AssetType } from "./asset-types";
 import { runImageRole } from "../modules/ai/index.server";
 import { prompt } from "./prompts.server";
 import { assertJobActive } from "./queue.server";
 import type { AssetKind } from "./reviewed-asset.server";
+import { pixelKind } from "./pixel-generation.server";
 import { svgKind } from "./svg-generation.server";
 import { workshopContext } from "./workshop";
 
@@ -40,7 +41,8 @@ const graphicKind: AssetKind = {
 /** Typed over every non-3D asset type: adding a type without a kind fails to compile,
  * and every kind is reviewed by `runReviewedAsset`.
  */
-export const assetKinds: Record<Exclude<typeof projects.$inferSelect.assetType, "model">, AssetKind> = {
+export const assetKinds: Record<Exclude<AssetType, "model">, AssetKind> = {
   graphic: graphicKind,
   svg: svgKind,
+  pixel: pixelKind,
 };

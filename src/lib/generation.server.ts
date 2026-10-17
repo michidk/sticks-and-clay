@@ -2,6 +2,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { batches, jobs, models, projects, runs } from "../db/schema";
 import type { GenerationInput } from "./api-inputs";
+import { flatRoles } from "./asset-types";
 import { assertNotArchived } from "./project-lifecycle.server";
 import { snapshotWorkshop } from "./workshop.server";
 
@@ -49,7 +50,7 @@ export async function regenerateAsset(modelId: string) {
       throw new Error("Approve the design before generating assets");
     assertNotArchived(project);
     const saved = await tx.select().from(runs).where(and(
-      eq(runs.modelId, modelId), eq(runs.status, "done"), inArray(runs.role, ["builder", "graphic", "svg"]),
+      eq(runs.modelId, modelId), eq(runs.status, "done"), inArray(runs.role, ["builder", ...flatRoles]),
     )).orderBy(desc(runs.createdAt));
     const source = saved.find((run) => {
       const result = run.result as { key?: string; artifacts?: { blend?: string } } | null;
