@@ -189,6 +189,15 @@ integration("mockups can be uploaded, accepted with context, frozen into batches
     expect(snapshot.references[0]).toBe(key);
     expect(snapshot.prompts[0]).toContain("Revise the first supplied image");
 
+    // New mockups are generated with the accepted ones and their notes, as a real batch would be.
+    await call(`/mockups/${mockupId}/accept`, { note: "Love the thin outlines" });
+    await db.delete(jobs).where(eq(jobs.targetId, id));
+    expect((await call("/mockups", { version: 2, count: 1 })).status).toBe(201);
+    const [fresh] = await db.select().from(jobs).where(eq(jobs.targetId, id));
+    const accepted = mockupSnapshot.parse(JSON.parse(fresh.checkpoint.input));
+    expect(accepted.references.at(-1)).toBe(key);
+    expect(accepted.prompts[0]).toContain("mockup 1: Love the thin outlines");
+
     expect((await call(`/mockups/${mockupId}`, undefined, "DELETE")).status).toBe(200);
     expect(await db.select().from(mockups).where(eq(mockups.projectId, id))).toHaveLength(0);
     expect((await call(`/mockups/${mockupId}`, undefined, "DELETE")).status).toBe(400);

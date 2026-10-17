@@ -8,6 +8,7 @@ import { validateImageFile } from "./image-file";
 import { prompt } from "./prompts.server";
 import { assertJobActive } from "./queue.server";
 import { upload } from "./storage.server";
+import { mockupReferences, workshopContext, workshopSchema } from "./workshop";
 import type { z } from "zod";
 
 const revisionRequest = (hint: string) =>
@@ -31,6 +32,11 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
       ? await tx.select().from(mockups).where(and(eq(mockups.id, input.baseId), eq(mockups.projectId, projectId)))
       : [];
     if (input.baseId && !base) throw new Error("The mockup to revise no longer exists");
+    // Mockups see what a real batch would: the accepted mockups and their notes, after the project's own references.
+    const direction = {
+      ...workshopSchema.parse(project.workshop || {}),
+      mockups: (await acceptedMockups(projectId)).filter((mockup) => mockup.key !== base?.key),
+    };
     const prompts = await Promise.all(Array.from({ length: input.count }, (_, index) =>
       prompt("design-mockup", {
         name: project.name,
@@ -42,7 +48,7 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
           : input.hint || "Choose a useful example from the design reference.",
         variation: index + 1,
         count: input.count,
-      }),
+      }).then((text) => text + workshopContext(direction, false)),
     ));
     const id = crypto.randomUUID();
     await tx.insert(jobs).values({
@@ -52,7 +58,7 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
       checkpoint: {
         input: JSON.stringify({
           version: input.version,
-          references: [...(base ? [base.key] : []), ...project.references],
+          references: [...(base ? [base.key] : []), ...project.references, ...mockupReferences(direction)],
           prompts,
           hint: input.hint,
           baseId: base?.id,
