@@ -88,3 +88,44 @@ integration("planner failure and cancellation leave versions with their own dura
     expect(await states()).toContainEqual({ id: t.ids[1], status: "cancelled" });
   } finally { await t.cleanup(); }
 });
+
+integration("the planner names the assets of a multi-asset request, but an idea keeps the title it was given", async () => {
+  const projectId = crypto.randomUUID();
+  await db.insert(projects).values({ id: projectId, name: "Naming fixture", description: "test", status: "ready", assetType: "svg", design: "Green switches", designVersion: 1 });
+  const plan = async (batchId: string, names: string[]) => {
+    const runId = crypto.randomUUID();
+    await db.insert(runs).values({ id: runId, projectId, batchId, role: "svg-planner", engine: "tanstack", status: "done", model: "fixture",
+      promptVersion: "test", systemPrompt: "test", input: "test", rates: { input: 0, output: 0, cached: 0, source: "test" },
+      result: { models: names.map((name) => ({ name, prompt: `Planned brief for the ${name}` })) } });
+    const [job] = await db.select().from(jobs).where(and(eq(jobs.kind, "plan"), eq(jobs.targetId, batchId)));
+    const checkpoint = { "direct:svg-planner": runId, "planner-references": "[]" };
+    await jobContext.run({ id: job.id, checkpoint }, () => executeJob("plan", batchId));
+  };
+  try {
+    const { queueGeneration, } = await import("./generation.server");
+    const { createAsset, startAsset } = await import("./assets.server");
+    const request = await queueGeneration(projectId, { prompt: "Two wall switches: a light switch and a fan switch", count: 2, judgeIterations: 0, imageSize: "1024x1024" } as never);
+    await plan(request, ["Light switch", "Fan switch"]);
+    const versions = await db.select().from(assetVersions).where(eq(assetVersions.batchId, request));
+    expect(versions.map((v) => v.name).sort()).toEqual(["Fan switch", "Light switch"]);
+    const assets = await db.select().from(assetEntries).where(eq(assetEntries.batchId, request));
+    expect(assets.map((a) => a.title).sort()).toEqual(["Fan switch", "Light switch"]);
+    expect(assets.map((a) => a.input.prompt).sort()).toEqual(["Planned brief for the Fan switch", "Planned brief for the Light switch"]);
+
+    const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
+    const idea = await createAsset(project, { title: "Hallway dimmer", prompt: "A dimmer switch", count: 1, judgeIterations: 0, imageSize: "1024x1024" } as never, async () => "unused");
+    const started = await startAsset(projectId, idea.id);
+    await plan(started, ["Rotary dimmer"]);
+    expect((await db.select().from(assetVersions).where(eq(assetVersions.batchId, started)))[0].name).toBe("Hallway dimmer");
+    expect((await db.select().from(assetEntries).where(eq(assetEntries.id, idea.id)))[0].title).toBe("Hallway dimmer");
+  } finally {
+    const batchIds = (await db.select({ id: batches.id }).from(batches).where(eq(batches.projectId, projectId))).map((b) => b.id);
+    const versionIds = (await db.select({ id: assetVersions.id }).from(assetVersions).where(eq(assetVersions.projectId, projectId))).map((v) => v.id);
+    await db.delete(jobs).where(inArray(jobs.targetId, [...batchIds, ...versionIds, "none"]));
+    await db.delete(runs).where(eq(runs.projectId, projectId));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
+    await db.delete(assetEntries).where(eq(assetEntries.projectId, projectId));
+    await db.delete(batches).where(eq(batches.projectId, projectId));
+    await db.delete(projects).where(eq(projects.id, projectId));
+  }
+});

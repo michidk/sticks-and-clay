@@ -15,6 +15,7 @@ import { renderPresentation } from "./workshop-actions.server";
 import { renderMaterial } from "./materials.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { generateDesignMockups } from "./design-mockups.server";
+import { placeholderTitle } from "./generation.server";
 async function one<T>(rows: T[]) {
   if (!rows[0]) throw new Error("Record not found");
   return rows[0];
@@ -215,7 +216,12 @@ export async function executeJob(kind: string, targetId: string) {
       for (const [index, model] of result.models.entries()) {
         const existing = reserved[index];
         const id = existing?.id || crypto.randomUUID();
-        if (existing) await tx.update(assetVersions).set({ prompt: model.prompt, status: "queued", phase: "Queued", progress: 0, error: null }).where(eq(assetVersions.id, id));
+        // A request for several assets only had a stand-in title (its first line) until now; the planner names
+        // each one. A title the owner or AI wrote for an idea differs from the stand-in and is kept.
+        const slot = slots[index];
+        const named = !!slot && slot.title === placeholderTitle(slot.input.prompt || batch.design);
+        if (named) await tx.update(assetEntries).set({ title: model.name, input: { ...slot.input, prompt: model.prompt } }).where(eq(assetEntries.id, slot.id));
+        if (existing) await tx.update(assetVersions).set({ prompt: model.prompt, ...(named ? { name: model.name } : {}), status: "queued", phase: "Queued", progress: 0, error: null }).where(eq(assetVersions.id, id));
         else await tx.insert(assetVersions).values({
           id, projectId: batch.projectId, batchId: batch.id,
           ...(slots[index] ? { assetId: slots[index].id } : {}), ...model,

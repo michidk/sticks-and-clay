@@ -18,6 +18,10 @@ A **review round** is an AI review and possible repair inside a version. It is
 not another asset or version. For new v4 3D jobs, zero review rounds still
 runs the four modeling passes. Older saved jobs keep their original pipeline.
 
+A request for several assets at once (a count above one) creates its assets with the request's first line as a
+stand-in title. When the planner names them, each asset and its version take the planner's name and own brief. An
+idea's own title, written by the owner or by AI, is kept.
+
 ## Board stages
 
 | Stage | Meaning |

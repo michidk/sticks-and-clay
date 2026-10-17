@@ -16,6 +16,9 @@ export function validateGeneration(project: typeof projects.$inferSelect, input:
     throw new Error("Image size applies only to graphic projects");
 }
 
+/** The stand-in name given to each asset of a request that has no title of its own, until the planner names them. */
+export const placeholderTitle = (prompt: string) => prompt.split("\n")[0].slice(0, 100) || "Asset";
+
 export async function insertGeneration(tx: Transaction, project: typeof projects.$inferSelect, input: GenerationInput, asset?: typeof assetEntries.$inferSelect) {
   if (project.status !== "ready")
     throw new Error("Approve the design before generating assets");
@@ -32,7 +35,7 @@ export async function insertGeneration(tx: Transaction, project: typeof projects
     for (let index = 0; index < input.count; index++) {
       const assetId = crypto.randomUUID();
       const prompt = input.prompt || project.design;
-      const name = prompt.split("\n")[0].slice(0, 100) || "Asset";
+      const name = placeholderTitle(prompt);
       await tx.insert(assetEntries).values({ id: assetId, projectId: project.id, title: name, input: { ...input, prompt, count: 1 }, batchId: id, inIdea: false });
       await tx.insert(assetVersions).values({ id: crypto.randomUUID(), assetId, projectId: project.id, batchId: id, name, prompt });
     }
