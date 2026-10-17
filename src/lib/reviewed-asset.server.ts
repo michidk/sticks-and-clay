@@ -30,8 +30,9 @@ export type AssetContext = {
   references: string[];
 };
 export type AssetKind = {
-  format: "svg" | "png";
-  judge: "svg-judge" | "graphic-judge";
+  /** Stored with the asset; "pixel" is a PNG that views must show without smoothing. */
+  format: "svg" | "png" | "pixel";
+  judge: "svg-judge" | "graphic-judge" | "pixel-judge";
   /** Produce the first version, or revise `previous` using the judge's `feedback`. */
   build(
     ctx: AssetContext,

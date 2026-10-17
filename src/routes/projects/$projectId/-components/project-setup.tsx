@@ -1,4 +1,5 @@
 import { LoaderCircle } from "lucide-react";
+import { assetTypeLabels, type AssetType } from "@/lib/asset-types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,7 +20,7 @@ export function ProjectSetup({
     progress: number;
     phase: string;
     error?: string | null;
-    assetType?: "model" | "graphic" | "svg";
+    assetType?: AssetType;
   };
   error: string;
   retrying: boolean;
@@ -40,7 +41,7 @@ export function ProjectSetup({
           <div className="page-meta">
             <StatusBadge status={failed ? "failed" : project.status} />
             <span>
-              {project.assetType === "svg" ? "SVG files" : project.assetType !== "model" ? "Graphics" : "3D assets"}
+              {assetTypeLabels[project.assetType ?? "model"]}
             </span>
           </div>
         </div>

@@ -6,6 +6,8 @@ import { DATA, readStoredFile } from "./storage.server";
 import { fileMimeType } from "./storage/path";
 
 export const THUMBNAIL_WIDTHS = [320, 640, 1280] as const;
+/** Longest side, in pixels, up to which an image is compressed losslessly. */
+const TINY = 256;
 const raster = new Set(["image/png", "image/jpeg", "image/webp"]);
 const isRaster = (key: string) => raster.has(fileMimeType(key));
 const fileFor = (key: string, width: number) =>
@@ -32,9 +34,13 @@ function make(key: string) {
   if (!pending) {
     pending = slot(async () => {
       const source = sharp(Buffer.from(await (await readStoredFile(key)).arrayBuffer())).rotate();
+      const { width: native = 0, height = 0 } = await source.metadata();
+      // Tiny images (pixel art) are kept exact: lossy compression would smudge their cells.
+      const lossless = Math.max(native, height) <= TINY;
       await mkdir(resolve(DATA, ".thumbnails"), { recursive: true });
       for (const width of THUMBNAIL_WIDTHS) {
-        const bytes = await source.clone().resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
+        const bytes = await source.clone().resize({ width, withoutEnlargement: true })
+          .webp(lossless ? { lossless: true } : { quality: 78 }).toBuffer();
         const file = fileFor(key, width);
         const temporary = `${file}.${crypto.randomUUID()}`;
         await writeFile(temporary, bytes);

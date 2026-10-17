@@ -1,4 +1,5 @@
 import type { ObjectReference } from "@/lib/object-reference";
+import type { AssetType } from "@/lib/asset-types";
 import type { AnalysisReport } from "@/modules/model-analysis/report";
 import type { PipelineRun } from "./pipeline";
 export type Review = {
@@ -83,7 +84,7 @@ export type Workspace = {
     id: string;
     name: string;
     designVersion: number;
-    assetType?: "model" | "graphic" | "svg";
+    assetType?: AssetType;
     archivedAt?: string | null;
     status: string;
     references: string[];

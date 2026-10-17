@@ -14,8 +14,10 @@ export async function composeSheet(tiles: { name: string; image: Buffer }[]) {
   const rows = Math.ceil(tiles.length / columns);
   const cards = await Promise.all(
     tiles.map(async ({ name, image }, index) => {
+      // Small images (pixel art) are enlarged without smoothing; large ones are shrunk with the default filter.
+      const { width = CELL } = await sharp(image).metadata();
       const card = await sharp(image, { density: 144 })
-        .resize(CELL, CELL, { fit: "contain", background: "#ffffff" })
+        .resize(CELL, CELL, { fit: "contain", background: "#ffffff", kernel: width < CELL ? "nearest" : "lanczos3" })
         .flatten({ background: "#ffffff" })
         .png()
         .toBuffer();

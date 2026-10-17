@@ -254,7 +254,7 @@ export function GenerationDialog({
             </div>
             <fieldset disabled={locked} className="space-y-3">
               <legend>Parts (optional)</legend>
-              <p className="muted">{isGraphics ? "Each named part is delivered as its own image in this version." : "Related parts stay together as named objects in one 3D file."}</p>
+              <p className="muted">Named parts are generated together as one asset version.</p>
               {parts.map((part, index) => <div key={index} className="space-y-2 rounded border p-3">
                 <Label htmlFor={`part-name-${index}`}>Part name</Label>
                 <Input id={`part-name-${index}`} value={part.name} maxLength={80} required onChange={(event) => setParts(parts.map((value, position) => position === index ? { ...value, name: event.target.value } : value))} />

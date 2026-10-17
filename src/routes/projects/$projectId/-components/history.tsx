@@ -32,6 +32,7 @@ import {
   Image as ImageIcon,
   ListChecks,
   PenLine,
+  Grid3x3,
   ScanEye,
 } from "lucide-react";
 import { roleLabel } from "@/lib/queue-view";
@@ -47,6 +48,10 @@ const roleIcons: Record<string, typeof Bot> = {
   "svg-designer": PenLine,
   "svg-design-update": PenLine,
   "svg-planner": ListChecks,
+  pixel: Grid3x3,
+  "pixel-designer": Grid3x3,
+  "pixel-design-update": Grid3x3,
+  "pixel-planner": ListChecks,
   texture: ImageIcon,
   builder: Boxes,
   "material-builder": Boxes,

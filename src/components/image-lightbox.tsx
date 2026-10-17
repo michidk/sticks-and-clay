@@ -20,7 +20,7 @@ import {
 import { Button } from "./ui/button";
 import { AssetImage } from "./asset-image";
 
-export type LightboxImage = { src: string; title: string; caption?: string };
+export type LightboxImage = { src: string; title: string; caption?: string; pixelated?: boolean };
 type OpenLightbox = (images: LightboxImage[], index?: number) => void;
 
 const LightboxContext = createContext<OpenLightbox>(() => {});
@@ -78,7 +78,7 @@ export function LightboxProvider({ children }: { children: ReactNode }) {
         {gallery && current && (
           <DialogContent className="image-lightbox">
             <figure className="image-lightbox-figure">
-              <AssetImage src={current.src} width={1280} alt={current.title} />
+              <AssetImage src={current.src} width={1280} pixelated={current.pixelated} alt={current.title} />
               <figcaption>
                 <div>
                   <DialogTitle>{current.title}</DialogTitle>

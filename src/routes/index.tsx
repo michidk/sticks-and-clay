@@ -34,6 +34,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Plus, Layers, LoaderCircle, Image as ImageIcon } from "lucide-react";
 import { projectState } from "@/lib/project-summary";
+import { assetTypeHints, assetTypeLabels, assetTypes, type AssetType } from "@/lib/asset-types";
 import { request, costSummary, fileUrl } from "../lib/client";
 import { Progress, StatusBadge } from "../components/status";
 export const Route = createFileRoute("/")({ component: ProjectsPage });
@@ -52,7 +53,7 @@ function ProjectsPage() {
     [error, setError] = useState(""),
     [name, setName] = useState(""),
     [description, setDescription] = useState(""),
-    [assetType, setAssetType] = useState<"model" | "graphic" | "svg">("model"),
+    [assetType, setAssetType] = useState<AssetType>("model"),
     [draftId, setDraftId] = useState<string | null>(null),
     [naming, setNaming] = useState(false),
     [briefing, setBriefing] = useState(false);
@@ -335,7 +336,7 @@ function ProjectsPage() {
                       ) : (
                         <Layers size={12} />
                       )}
-                      {p.assetType === "svg" ? "SVG files" : p.assetType !== "model" ? "Graphics" : "3D assets"}
+                      {assetTypeLabels[p.assetType as AssetType]}
                     </Badge>
                   </div>
                   <div className="project-body">
@@ -463,7 +464,7 @@ function ProjectsPage() {
               >
                 <legend>Asset type</legend>
                 <div>
-                  {(["model", "graphic", "svg"] as const).map((type) => (
+                  {assetTypes.map((type) => (
                     <label key={type}>
                       <input
                         type="radio"
@@ -479,13 +480,9 @@ function ProjectsPage() {
                       )}
                       <span>
                         <strong>
-                          {type === "model" ? "3D assets" : type === "svg" ? "SVG files" : "Graphics"}
+                          {assetTypeLabels[type]}
                         </strong>
-                        <small>
-                          {type === "model"
-                            ? "GLB models and Blender source"
-                            : type === "svg" ? "Editable vector graphics" : "PNG images"}
-                        </small>
+                        <small>{assetTypeHints[type]}</small>
                       </span>
                     </label>
                   ))}

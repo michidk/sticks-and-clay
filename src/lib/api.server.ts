@@ -25,6 +25,7 @@ import { imageKeys, thumbnail, warmThumbnails } from "./thumbnail.server";
 import { workshopAction } from "./workshop-actions.server";
 import { materialAction } from "./materials.server";
 import { collectionSummary, slimResult } from "./project-summary";
+import { assetTypeSchema, flatRoles, isFlatRole } from "./asset-types";
 import { databaseErrorResponse } from "./database-error";
 import { eq, desc, and, inArray, or, getTableColumns, sql } from "drizzle-orm";
 import { assertDesignIdle } from "./design-updates.server";
@@ -97,7 +98,7 @@ async function resumeJob(
 const uuid = z.string().uuid();
 // Generated mockups are `<job uuid>:<index>`, uploaded ones are plain uuids.
 const uuidOrJob = z.string().regex(/^[0-9a-f-]{36}(:[0-3])?$/);
-const assetType = z.enum(["model", "graphic", "svg"]);
+const assetType = assetTypeSchema;
 const reply = (v: unknown, status = 200) => Response.json(v, { status });
 export async function api(request: Request) {
   try {
@@ -907,7 +908,7 @@ export async function api(request: Request) {
           and(
             eq(runs.id, input.sourceRunId),
             eq(runs.modelId, id),
-            inArray(runs.role, ["builder", "graphic", "svg"]),
+            inArray(runs.role, ["builder", ...flatRoles]),
           ),
         );
       if (
@@ -915,7 +916,7 @@ export async function api(request: Request) {
         source.status !== "done" ||
         !(
           (source.result as any)?.artifacts?.blend ||
-          ((source.role === "graphic" || source.role === "svg") && (source.result as any)?.key)
+          (isFlatRole(source.role) && (source.result as any)?.key)
         )
       )
         throw new Error("Choose a saved build version with a Blender source");
@@ -987,7 +988,7 @@ export async function api(request: Request) {
           targetId: modelId,
           checkpoint: {
             "branch-references": JSON.stringify([
-              ...((source.role === "graphic" || source.role === "svg")
+              ...(isFlatRole(source.role)
                 ? [(source.result as any).key]
                 : []),
               ...(workshop.references || []),

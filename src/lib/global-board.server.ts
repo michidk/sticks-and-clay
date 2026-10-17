@@ -21,7 +21,7 @@ export async function getGlobalBoard(projectId?: string): Promise<{ projects: Bo
     db.select({ id: batches.id, projectId: batches.projectId, prompt: batches.prompt, status: batches.status, count: batches.count })
       .from(batches).where(inArray(batches.projectId, projectIds)),
     db.select({ id: runs.id, projectId: runs.projectId, modelId: runs.modelId, role: runs.role, status: runs.status })
-      .from(runs).where(and(inArray(runs.projectId, projectIds), inArray(runs.role, ["graphic", "svg"]), eq(runs.status, "done"))).orderBy(desc(runs.createdAt)),
+      .from(runs).where(and(inArray(runs.projectId, projectIds), inArray(runs.role, ["graphic", "svg", "pixel"]), eq(runs.status, "done"))).orderBy(desc(runs.createdAt)),
   ]);
   return { projects: projectRows.map((project) => {
     const assets = assetRows.filter((asset) => asset.projectId === project.id).map((asset) => ({ ...asset, readyAt: asset.readyAt?.toISOString() ?? null }));
@@ -32,7 +32,7 @@ export async function getGlobalBoard(projectId?: string): Promise<{ projects: Bo
         ...version, artifacts: version.artifacts ? { image: version.artifacts.image, renders: version.artifacts.renders } : null,
       })),
       batches: batchRows.filter((batch) => batch.projectId === project.id).map((batch) => ({ ...batch, count: batch.count - versionRows.filter((version) => version.batchId === batch.id && !activeIds.has(version.assetId)).length })),
-      runs: sourceRows.filter((run) => run.projectId === project.id && ["graphic", "svg"].includes(run.role) && run.status === "done"),
+      runs: sourceRows.filter((run) => run.projectId === project.id && ["graphic", "svg", "pixel"].includes(run.role) && run.status === "done"),
     };
   }) };
 }

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { costSummary, fileUrl, json, request } from "@/lib/client";
 import { describeError } from "@/lib/error-message";
+import { isFlatRole } from "@/lib/asset-types";
 import { DeleteAsset } from "../../../-components/delete-asset";
 import { ReturnToIdea } from "../../../-components/return-to-idea";
 import { GraphicVariant } from "../../../-components/graphic-variant";
@@ -63,7 +64,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
   const runs = data.runs.filter((run) => run.modelId === modelId);
   const builds = runs
     .filter((run: any) => {
-      if (!["graphic", "svg"].includes(run.role) || run.status !== "done" || !run.result?.key) return false;
+      if (!isFlatRole(run.role) || run.status !== "done" || !run.result?.key) return false;
       const parts = namedParts.safeParse(run.result.parts);
       return !parts.success || !parts.data.length || parts.data[0]?.key === run.result.key;
     })
@@ -85,8 +86,9 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
   const working = !["done", "failed", "cancelled"].includes(model.status);
   const cost = runs.reduce((sum, run) => sum + (run.estimatedCost || 0), 0);
   const format = (key?: string) => (key?.endsWith(".svg") ? "SVG" : "PNG");
+  const pixelated = data.project.assetType === "pixel";
   const gallery = builds.map((build: any, index) => ({
-    src: fileUrl(build.result.key), title: `${name} · review round ${index + 1}`, caption: reviewOf(build)?.summary,
+    pixelated, src: fileUrl(build.result.key), title: `${name} · review round ${index + 1}`, caption: reviewOf(build)?.summary,
   }));
 
   async function act(action: () => Promise<unknown>) {
@@ -158,7 +160,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
           {currentKey ? (
             <button type="button" aria-label="Open full size" className="block w-full"
               onClick={() => openLightbox(gallery, Math.max(0, builds.findIndex((build) => build.id === current?.id)))}>
-              <AssetImage src={fileUrl(currentKey)} width={1280} alt={name}
+              <AssetImage src={fileUrl(currentKey)} width={1280} pixelated={pixelated} alt={name}
                 className="mx-auto aspect-square w-full max-w-[640px] rounded-lg bg-white" style={{ objectFit: "contain" }} />
             </button>
           ) : (
@@ -193,7 +195,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
                   <button type="button" aria-pressed={build.id === current?.id} aria-label={`Review round ${index + 1}`}
                     className="block size-20 overflow-hidden rounded-md border bg-white aria-pressed:ring-2 aria-pressed:ring-primary"
                     onClick={() => setPicked(build.id)}>
-                    <AssetImage src={fileUrl(build.result.key)} width={320} alt="" className="size-full" style={{ objectFit: "contain" }} />
+                    <AssetImage src={fileUrl(build.result.key)} width={320} pixelated={pixelated} alt="" className="size-full" style={{ objectFit: "contain" }} />
                   </button>
                 </li>
               ))}
