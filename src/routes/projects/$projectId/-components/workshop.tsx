@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/markdown-textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AssetImage } from "@/components/asset-image";
 import { request, json, fileUrl } from "@/lib/client";
@@ -76,7 +76,7 @@ export function WorkshopPanel({
         )}
         <div className="space-y-2">
           <Label htmlFor="workshop-memory">Project memory</Label>
-          <Textarea
+          <MarkdownTextarea
             disabled={busy}
             id="workshop-memory"
             rows={5}
@@ -91,7 +91,7 @@ export function WorkshopPanel({
         </div>
         <div className="space-y-2">
           <Label htmlFor="workshop-style">Shared style</Label>
-          <Textarea
+          <MarkdownTextarea
             disabled={busy}
             id="workshop-style"
             rows={4}

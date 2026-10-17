@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/markdown-textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { request, json, fileUrl } from "@/lib/client";
 import { AssetImage } from "@/components/asset-image";
@@ -325,7 +325,7 @@ export function ModelConversation({
           </div>
         )}
         <div className="studio-compose-box">
-          <Textarea
+          <MarkdownTextarea
             id="continuation-prompt"
             aria-label="What should change?"
             value={prompt}

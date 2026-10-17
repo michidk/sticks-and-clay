@@ -4,7 +4,7 @@ import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/markdown-textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { StatusBadge } from "@/components/status";
 import { request } from "@/lib/client";
@@ -88,7 +88,7 @@ export function DesignConversation({
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         <Label htmlFor="design-change-prompt">Adjust the design reference</Label>
         <div className="studio-compose-box">
-          <Textarea id="design-change-prompt" value={prompt} maxLength={12000} disabled={blocked}
+          <MarkdownTextarea id="design-change-prompt" value={prompt} maxLength={12000} disabled={blocked}
             placeholder="Use warmer stone and soften the edges…"
             onChange={(event) => setPrompt(event.target.value)}
             onKeyDown={(event) => {

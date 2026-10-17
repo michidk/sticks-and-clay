@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/markdown-textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Select,
@@ -233,7 +233,7 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
             onChange={(e) => setReviewRounds(Number(e.target.value))}
           />
           <Label htmlFor="material-brief">Optional material brief</Label>
-          <Textarea
+          <MarkdownTextarea
             id="material-brief"
             value={brief}
             onChange={(e) => setBrief(e.target.value)}

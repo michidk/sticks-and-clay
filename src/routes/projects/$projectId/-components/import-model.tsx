@@ -4,7 +4,7 @@ import { LoaderCircle, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/markdown-textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
@@ -71,7 +71,7 @@ export function ImportModel({ projectId }: { projectId: string }) {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="import-prompt">Requested changes</Label>
-                <Textarea
+                <MarkdownTextarea
                   id="import-prompt"
                   name="prompt"
                   minLength={3}

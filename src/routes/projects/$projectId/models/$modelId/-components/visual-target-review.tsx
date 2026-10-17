@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/markdown-textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useLightbox } from "@/components/image-lightbox";
 import { AssetImage } from "@/components/asset-image";
@@ -38,7 +38,7 @@ export function VisualTargetReview({ modelId, target, onRefresh }: {
     <Button disabled={busy} onClick={() => void decide("approve")}>Approve &amp; build</Button>
     <div className="space-y-2">
       <Label htmlFor="visual-target-feedback">Changes to the visual target</Label>
-      <Textarea id="visual-target-feedback" value={feedback} disabled={busy} maxLength={12000}
+      <MarkdownTextarea id="visual-target-feedback" value={feedback} disabled={busy} maxLength={12000}
         onChange={(event) => setFeedback(event.target.value)} placeholder="Describe what to change…" />
       <Button variant="outline" disabled={busy || feedback.trim().length < 3} onClick={() => void decide("revise")}>Revise visual target</Button>
       <p className="muted">Generates a new image for your approval. Uses paid image generation.</p>

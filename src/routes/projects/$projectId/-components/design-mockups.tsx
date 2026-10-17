@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { MarkdownTextarea } from "@/components/markdown-textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AssetImage } from "@/components/asset-image";
 import { useLightbox } from "@/components/image-lightbox";
@@ -72,7 +72,7 @@ export function DesignMockupStep({
             </div>
             <div className="space-y-2">
               <Label htmlFor="mockup-hint">What should the mockups show? (optional)</Label>
-              <Textarea id="mockup-hint" name="hint" maxLength={12000} rows={3}
+              <MarkdownTextarea id="mockup-hint" name="hint" maxLength={12000} rows={3}
                 placeholder="Describe a few examples, or let the design guide the images."
                 disabled={busy || active} />
             </div>

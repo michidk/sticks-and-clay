@@ -530,7 +530,8 @@ textarea::placeholder {
   gap: 8px;
 }
 .markdown-input { display: flex; flex-direction: column; gap: 8px; }
-.markdown-input-toolbar { display: flex; justify-content: flex-end; }
+.markdown-input-toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 12px; }
+.markdown-input-toolbar > button { color: var(--primary); font-size: 11px; font-weight: 500; background: none; border: 0; cursor: pointer; }
 .markdown-input-toolbar > span { color: var(--muted-foreground); font-size: 11px; }
 .field-heading {
   display: flex;
