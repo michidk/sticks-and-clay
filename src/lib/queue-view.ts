@@ -5,7 +5,6 @@ export const queueKindLabels: Record<string, string> = {
   "design-update": "Design revision",
   "design-from-model": "Design update from model",
   "project-name": "Project name draft",
-  "idea-title": "Idea title draft",
   "project-brief": "Project brief draft",
   "model-brief": "Model brief draft",
   "graphic-brief": "Graphic brief draft",

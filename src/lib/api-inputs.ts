@@ -27,13 +27,6 @@ export const generationInput = z.object({
 });
 export type GenerationInput = z.infer<typeof generationInput>;
 
-/** Saved ideas need a brief; a blank title is written by AI from it. Started batches keep the looser contract. */
-export const ideaInput = generationInput.extend({
-  prompt: z.string().trim().min(1, "Write a brief for this idea").max(12000),
-  title: z.string().trim().max(100).default(""),
-});
-export type IdeaInput = z.infer<typeof ideaInput>;
-
 export const branchInput = z.object({
   kind: z.enum(["iterate", "fork"]),
   useCurrentStyle: z.boolean().default(false),

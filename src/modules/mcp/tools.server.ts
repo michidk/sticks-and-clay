@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
-  acceptInput, agentInput, assetBriefInput, branchInput, exportInput, ideaInput, readyInput, designInput, designUpdateInput,
+  acceptInput, agentInput, assetBriefInput, branchInput, exportInput, readyInput, designInput, designUpdateInput,
   visualTargetDecisionInput, generationInput, materialAssignmentInput, materialInput, presentationInput,
 } from "../../lib/api-inputs";
 import { runtimeSettingsPatchSchema, runtimeSettingsSchema } from "../../lib/contracts";
@@ -90,7 +90,7 @@ export function createStudioMcpServer(options: {
           const list = (key: string) => (Array.isArray(record[key]) ? record[key] : []) as never[];
           const columns = boardColumns(list("ideas"), list("models"), list("batches"));
           const board = Object.fromEntries(Object.entries(columns).map(([stage, cards]) => [stage, cards.map((card: any) =>
-            card.kind === "idea" ? { kind: "idea", ideaId: card.idea.id, title: card.idea.title, readyAt: card.idea.readyAt, input: card.idea.input }
+            card.kind === "idea" ? { kind: "idea", ideaId: card.idea.id, readyAt: card.idea.readyAt, input: card.idea.input }
             : card.kind === "pending" ? { kind: "pending", batchId: card.batch.id, status: card.batch.status, owed: card.owed, error: card.batch.error }
             : { kind: "asset", modelId: card.asset.id, name: card.asset.name, status: card.asset.status, verdict: card.asset.verdict,
               acceptedAt: card.asset.acceptedAt, attempts: card.attempts })]));
@@ -116,10 +116,10 @@ export function createStudioMcpServer(options: {
   register("generate_assets", "Queue a batch from the approved design. Returns batch id, not a completed asset. Paid AI. Every asset type supports judgeIterations review rounds; 3D also supports spriteTarget and uses square imageSize. Visual targets require user approval unless visualTargetMode is skip.", write,
     generationInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/generate`, method: "POST", body: input }), { paid: true });
   const ideaId = projectId.extend({ ideaId: uuid });
-  register("save_idea", "Save an idea for later, like Save idea in the UI. A brief (prompt) is required. Omit title to have AI write one from the brief (a small paid request); the design need not be approved yet. Returns the idea id and title; list ideas with get_project section ideas.", write,
-    ideaInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/ideas`, method: "POST", body: input }));
-  register("update_idea", "Replace the brief, title and settings of an unstarted idea. A brief is required. An empty title is rewritten by AI from the brief (a small paid request); pass the current title to keep it.", write,
-    ideaInput.extend(ideaId.shape), (input) => ({ path: `projects/${input.projectId}/ideas/${input.ideaId}`, method: "PUT", body: input }));
+  register("save_idea", "Save generation settings as an idea for later, like Save idea in the UI. No AI charge; the design need not be approved yet. Returns the idea id; list ideas with get_project section ideas.", write,
+    generationInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/ideas`, method: "POST", body: input }));
+  register("update_idea", "Replace the settings of an unstarted idea. No AI charge.", write,
+    generationInput.extend(ideaId.shape), (input) => ({ path: `projects/${input.projectId}/ideas/${input.ideaId}`, method: "PUT", body: input }));
   register("discard_idea", "Discard an unstarted idea. Started ideas remain as their batch.", write,
     ideaId, ({ projectId, ideaId }) => ({ path: `projects/${projectId}/ideas/${ideaId}`, method: "DELETE" }), { destructive: true });
   register("mark_idea_ready", "Mark an unstarted idea as Ready (ready=true) or move it back to Ideas (ready=false). A marker only; it does not start generation.", write,

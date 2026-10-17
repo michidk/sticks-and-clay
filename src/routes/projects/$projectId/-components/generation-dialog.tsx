@@ -104,7 +104,6 @@ export function GenerationDialog({
       !idea &&
       ready &&
       (e.nativeEvent as SubmitEvent).submitter?.getAttribute("name") === "start";
-    if (!modelBrief.trim()) return setError("Write a brief for this idea, or draft one with AI.");
     setBusy(start ? "start" : "save");
     setError("");
     try {
@@ -113,7 +112,6 @@ export function GenerationDialog({
         `projects/${projectId}/ideas${idea ? `/${idea.id}` : ""}`,
         json({
           prompt: f.get("prompt"),
-          title: f.get("title"),
           visualTargetMode: skipVisualMock ? "skip" : "review",
           spriteTarget:
             f.get("spriteTarget") === "on"
@@ -182,7 +180,7 @@ export function GenerationDialog({
           <div className="setup-fields">
             <div className="brief-field">
               <div className="field-heading flex-wrap">
-                <Label htmlFor="model-brief">Brief</Label>
+                <Label htmlFor="model-brief">Brief (optional)</Label>
                 <Button
                   variant="outline"
                   size="sm"
@@ -208,7 +206,7 @@ export function GenerationDialog({
                 disabled={locked}
                 maxLength={12000}
                 rows={5}
-                placeholder={`Describe the ${assetPlural} you want.`}
+                placeholder={`Describe the ${assetPlural} you want. Leave blank to let AI propose a set from the design.`}
               />
               <p
                 className="m-0 text-xs text-muted-foreground"
@@ -217,20 +215,6 @@ export function GenerationDialog({
                 {briefing
                   ? "Writing a brief from the approved design…"
                   : "Drafting with AI is a paid request recorded in Activity."}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="idea-title">Title</Label>
-              <Input
-                id="idea-title"
-                name="title"
-                maxLength={100}
-                defaultValue={idea?.title ?? ""}
-                disabled={locked}
-                placeholder="AI writes it from the brief"
-              />
-              <p className="m-0 text-xs text-muted-foreground">
-                Leave empty and AI writes a short title from the brief, a small paid request recorded in Activity.
               </p>
             </div>
             <fieldset disabled={locked} className="idea-settings">

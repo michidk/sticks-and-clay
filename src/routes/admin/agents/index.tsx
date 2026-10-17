@@ -35,7 +35,6 @@ type AgentSettings = {
 
 const roleDescriptions: Record<string, string> = {
   "project-name": "Creates a concise collection name from the project brief.",
-  "idea-title": "Writes a short title for a saved idea from its brief.",
   "project-brief": "Turns a project name, notes, and references into an editable creative brief.",
   "model-brief": "Develops a focused brief for a specific model before production begins.",
   designer: "Defines the collection-wide visual language, materials, and construction rules.",

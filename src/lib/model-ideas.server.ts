@@ -1,8 +1,7 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../db/client";
 import { modelIdeas, projects } from "../db/schema";
-import { generationInput, type IdeaInput } from "./api-inputs";
-import { roleInput, runRole } from "../modules/ai/index.server";
+import { generationInput, type GenerationInput } from "./api-inputs";
 import { insertGeneration, validateGeneration } from "./generation.server";
 
 export async function listModelIdeas(projectId: string) {
@@ -11,32 +10,19 @@ export async function listModelIdeas(projectId: string) {
   )).orderBy(desc(modelIdeas.createdAt));
 }
 
-/** The owner's title wins; a blank one is written by a small paid AI call from the brief.
- * A provider failure rejects the save, so no new idea is stored untitled. */
-async function resolveTitle(projectId: string, title: string, brief: string) {
-  if (title) return title;
-  const { result } = await runRole({ projectId, role: "idea-title", input: await roleInput("idea-title", { brief }) });
-  return result.title;
-}
-
-export async function saveModelIdea(project: typeof projects.$inferSelect, { title: requested, ...input }: IdeaInput) {
+export async function saveModelIdea(project: typeof projects.$inferSelect, input: GenerationInput) {
   validateGeneration(project, input);
   const id = crypto.randomUUID();
-  const title = await resolveTitle(project.id, requested, input.prompt);
-  await db.insert(modelIdeas).values({ id, projectId: project.id, title, input });
-  return { id, title };
+  await db.insert(modelIdeas).values({ id, projectId: project.id, input });
+  return id;
 }
 
-export async function updateModelIdea(project: typeof projects.$inferSelect, ideaId: string, { title: requested, ...input }: IdeaInput) {
+export async function updateModelIdea(project: typeof projects.$inferSelect, ideaId: string, input: GenerationInput) {
   validateGeneration(project, input);
-  const unstarted = and(eq(modelIdeas.id, ideaId), eq(modelIdeas.projectId, project.id), isNull(modelIdeas.batchId));
-  // Check first so a started or foreign idea never costs an AI call.
-  if (!(await db.select({ id: modelIdeas.id }).from(modelIdeas).where(unstarted)).length)
-    throw new Error("Idea is no longer available for editing");
-  const title = await resolveTitle(project.id, requested, input.prompt);
-  const updated = await db.update(modelIdeas).set({ title, input }).where(unstarted).returning({ id: modelIdeas.id });
+  const updated = await db.update(modelIdeas).set({ input }).where(and(
+    eq(modelIdeas.id, ideaId), eq(modelIdeas.projectId, project.id), isNull(modelIdeas.batchId),
+  )).returning({ id: modelIdeas.id });
   if (!updated.length) throw new Error("Idea is no longer available for editing");
-  return { id: ideaId, title };
 }
 
 export async function discardModelIdea(projectId: string, ideaId: string) {

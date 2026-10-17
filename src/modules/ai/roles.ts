@@ -6,7 +6,6 @@ import {
 } from "../../lib/materials";
 import {
   projectNameResult,
-  ideaTitleResult,
   briefResult,
   designResult,
   planResult,
@@ -68,7 +67,6 @@ export const roles = {
     "high",
   ),
   "project-name": role("tanstack", "project-name", projectNameResult),
-  "idea-title": role("tanstack", "idea-title", ideaTitleResult, "gpt-6-sol", "low"),
   "project-brief": role("tanstack", "project-brief", briefResult),
   "model-brief": role("tanstack", "model-brief", briefResult),
   "graphic-brief": role("tanstack", "graphic-brief", briefResult),
@@ -108,7 +106,7 @@ export const roles = {
   ]),
 } as const;
 export type Role = keyof typeof roles;
-export const immediateRoles: Role[] = ["project-name", "idea-title", "project-brief", "model-brief", "graphic-brief"];
+export const immediateRoles: Role[] = ["project-name", "project-brief", "model-brief", "graphic-brief"];
 export type RoleResult<R extends Role> = z.infer<(typeof roles)[R]["schema"]>;
 export type RunInput<R extends Role = Role> = {
   role: R;
