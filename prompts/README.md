@@ -14,7 +14,7 @@ All authored agent instructions and input templates live here.
 - `svg-designer.md`, `svg.md`: vector design direction and static SVG generation through the text model (a short plan, then the markup). SVG planning uses the graphic planner instructions.
 - `svg-judge.md`, `graphic-judge.md`, `graphic-judge-input.md`: the reviewers for SVG and raster graphics. They inspect renders and measurements, then return the same verdict contract as the 3D judge, which drives revision rounds.
 - `graphic.md`: the final prompt sent to the configured Image API for each planned graphic.
-- `design-mockup.md`: optional collection concept images from an approved design and its visual references, before final asset generation.
+- `design-mockup.md`: optional collection concept images from an approved design and its visual references, before final asset generation. When the request leaves the subject open it also receives a few unstarted saved ideas to pick from.
 - `builder.md`, `photographer.md`, `judge.md`: build, photograph the exported GLB, and visually review assets.
 - `*-input.md`: task-specific input templates, with `{{placeholders}}` populated by the app.
 - `modeling-pass.md`, `modeling-review.md`: required v4 modeling passes and review of their recorded changes.

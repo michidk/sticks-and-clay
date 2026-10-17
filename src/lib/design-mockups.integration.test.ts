@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { events, jobs, projects, runs } from "../db/schema";
+import { events, jobs, modelIdeas, projects, runs } from "../db/schema";
 import { api } from "./api.server";
 import { jobContext } from "./checkpoint.server";
 import { mockupSnapshot } from "./design-mockups";
@@ -208,6 +208,20 @@ integration("mockups can be uploaded, used as references, frozen into batches, r
     const direction = mockupSnapshot.parse(JSON.parse(fresh.checkpoint.input));
     expect(direction.references).toEqual([key]);
     expect(direction.prompts[0]).toContain("project reference 1: Love the thin outlines");
+
+    // With no instruction, a few unstarted saved ideas are offered; an instruction or a revision leaves them out.
+    const idea = (title: string, prompt: string) => ({ id: crypto.randomUUID(), projectId: id, title, input: { prompt, count: 1, judgeIterations: 2, imageSize: "1024x1024" as const } });
+    await db.insert(modelIdeas).values([idea("Harbour crane", "A small harbour crane"), ...[1, 2, 3, 4, 5].map((n) => idea(`Filler ${n}`, `Filler brief ${n}`))]);
+    const queuedPrompt = async (body: object) => {
+      await db.delete(jobs).where(eq(jobs.targetId, id));
+      expect((await call("/mockups", { version: 2, count: 1, ...body })).status).toBe(201);
+      const [saved] = await db.select().from(jobs).where(eq(jobs.targetId, id));
+      return mockupSnapshot.parse(JSON.parse(saved.checkpoint.input)).prompts[0];
+    };
+    const open = await queuedPrompt({});
+    expect(open).toContain("Pick one of the saved ideas");
+    expect((open.match(/^- (Harbour crane|Filler)/gm) ?? []).length).toBe(4);
+    expect(await queuedPrompt({ hint: "A red kettle" })).not.toContain("Filler brief");
 
     expect((await call(`/mockups/${mockupId}`, undefined, "DELETE")).status).toBe(200);
     expect(await db.select().from(mockups).where(eq(mockups.projectId, id))).toHaveLength(0);

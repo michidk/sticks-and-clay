@@ -1,6 +1,6 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../db/client";
-import { jobs, mockups, projects } from "../db/schema";
+import { jobs, mockups, modelIdeas, projects } from "../db/schema";
 import { runImageRole } from "../modules/ai/index.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { mockupInput, mockupImage, mockupSnapshot } from "./design-mockups";
@@ -11,6 +11,9 @@ import { assertJobActive } from "./queue.server";
 import { upload } from "./storage.server";
 import { referenceNotesFor, workshopContext, workshopSchema } from "./workshop";
 import type { z } from "zod";
+
+/** How many saved ideas a mockup request may draw from. */
+const MOCKUP_IDEAS = 4;
 
 const revisionRequest = (hint: string) =>
   `Revise the first supplied image, an earlier mockup, and keep what already works. ${hint || "Offer a different take on it."}`;
@@ -33,6 +36,13 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
       ? await tx.select().from(mockups).where(and(eq(mockups.id, input.baseId), eq(mockups.projectId, projectId)))
       : [];
     if (input.baseId && !base) throw new Error("The mockup to revise no longer exists");
+    // With no instruction from the owner, a few saved ideas that were not started yet give the concepts something real to show.
+    const ideas = input.hint || base
+      ? []
+      : await tx.select().from(modelIdeas)
+        .where(and(eq(modelIdeas.projectId, projectId), isNull(modelIdeas.batchId)))
+        .orderBy(desc(modelIdeas.createdAt)).limit(MOCKUP_IDEAS);
+    const ideaList = ideas.map((idea) => `- ${idea.title ? `${idea.title}: ` : ""}${idea.input.prompt.slice(0, 400)}`).join("\n");
     // Mockups see what a real batch would: the project's references with the owner's notes on them.
     const direction = {
       ...workshopSchema.parse(project.workshop || {}),
@@ -46,7 +56,10 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
         assetType: project.assetType !== "model" ? "2D graphics" : "3D assets",
         request: base
           ? revisionRequest(input.hint)
-          : input.hint || "Choose a useful example from the design reference.",
+          : input.hint || (ideas.length
+            ? "Pick one of the saved ideas listed below and show it; give each numbered concept a different idea."
+            : "Choose a useful example from the design reference."),
+        ideas: ideaList || "None",
         variation: index + 1,
         count: input.count,
       }).then((text) => text + workshopContext(direction, false)),
