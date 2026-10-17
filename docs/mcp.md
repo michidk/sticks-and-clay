@@ -28,6 +28,12 @@ Start a new agent session after registration. Check the connection with `codex m
 
 No companion skill is required. Server instructions, tool descriptions, the `sticks-and-clay://workflow` resource, and the `create_collection` prompt provide the workflow through MCP itself. A client that cannot read resources can still use the tool descriptions and server instructions.
 
+## ChatGPT and the settings panel
+
+Behind Hodor, no `MCP_*` variables are needed: with `HODOR_SECRET` set (32+ characters) the endpoint is `https://<workshop host>/api/mcp`, derived from the proxy's `Host`/`X-Forwarded-*` headers, which Hodor must overwrite. Hodor owner consent and signing with `HODOR_SECRET` are the defaults. Add `https://chatgpt.com` as a custom connector with that URL and OAuth; it is allowed as a browser origin by default (override with `MCP_ALLOWED_ORIGINS`). Setting `MCP_PUBLIC_URL` pins the URL instead.
+
+**Admin → Settings → AI access** shows the endpoint, connected clients with revoke buttons, and recent tool activity.
+
 ## Owner setup
 
 Run the additive database migrations and configure these variables in the app's private environment before starting it:

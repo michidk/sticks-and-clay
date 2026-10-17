@@ -18,13 +18,25 @@ type McpEnvironment = Partial<
     | "MCP_OWNER_AUTH"
     | "MCP_SECRET"
     | "MCP_ALLOWED_ORIGINS"
+    | "HODOR_SECRET"
   >
 >;
 
-export function resolveMcpConfig(environment: McpEnvironment): McpConfig {
-  if (!environment.MCP_PUBLIC_URL)
-    throw new Error("MCP_PUBLIC_URL is required");
-  const serverUrl = new URL(environment.MCP_PUBLIC_URL);
+const first = (value: string | null) => value?.split(",")[0]?.trim();
+
+// Without MCP_PUBLIC_URL the endpoint follows the public origin the request arrived on.
+// The deployment's proxy must overwrite Host and X-Forwarded-* before they reach the app.
+function publicUrl(environment: McpEnvironment, request?: Request) {
+  if (environment.MCP_PUBLIC_URL) return environment.MCP_PUBLIC_URL;
+  if (!request) throw new Error("MCP_PUBLIC_URL is required");
+  const { protocol, host } = new URL(request.url);
+  const proto = first(request.headers.get("x-forwarded-proto"));
+  const origin = `${proto === "http" || proto === "https" ? proto : protocol.slice(0, -1)}://${first(request.headers.get("x-forwarded-host")) ?? request.headers.get("host") ?? host}`;
+  return `${origin}/api/mcp`;
+}
+
+export function resolveMcpConfig(environment: McpEnvironment, request?: Request): McpConfig {
+  const serverUrl = new URL(publicUrl(environment, request));
   const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(
     serverUrl.hostname,
   );
@@ -43,16 +55,20 @@ export function resolveMcpConfig(environment: McpEnvironment): McpConfig {
     throw new Error(
       "MCP_PUBLIC_URL must identify /api/mcp without credentials, query or fragment",
     );
-  const ownerMode = environment.MCP_OWNER_AUTH ?? "password";
+  // A Hodor deployment needs no MCP-specific secrets: Hodor already authenticates the owner.
+  const hodorSecret = environment.HODOR_SECRET ?? "";
+  const ownerMode =
+    environment.MCP_OWNER_AUTH ??
+    (!environment.MCP_OWNER_PASSWORD && hodorSecret ? "hodor" : "password");
   if (ownerMode !== "password" && ownerMode !== "hodor")
     throw new Error("MCP_OWNER_AUTH must be password or hodor");
   const ownerPassword = environment.MCP_OWNER_PASSWORD ?? "";
   if (ownerMode === "password" && ownerPassword.length < 32)
     throw new Error("MCP_OWNER_PASSWORD must contain at least 32 characters");
-  const signingSecret = environment.MCP_SECRET ?? (ownerMode === "password" ? ownerPassword : "");
+  const signingSecret = environment.MCP_SECRET ?? (ownerMode === "password" ? ownerPassword : hodorSecret);
   if (signingSecret.length < 32)
     throw new Error("MCP_SECRET must contain at least 32 characters");
-  const allowedOrigins = (environment.MCP_ALLOWED_ORIGINS ?? "")
+  const allowedOrigins = (environment.MCP_ALLOWED_ORIGINS ?? "https://chatgpt.com")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean)
@@ -80,12 +96,13 @@ export function resolveMcpConfig(environment: McpEnvironment): McpConfig {
   };
 }
 
-export function getMcpConfig() {
+export function getMcpConfig(request?: Request) {
   return resolveMcpConfig({
+    HODOR_SECRET: process.env.HODOR_SECRET,
     MCP_PUBLIC_URL: process.env.MCP_PUBLIC_URL,
     MCP_OWNER_PASSWORD: process.env.MCP_OWNER_PASSWORD,
     MCP_OWNER_AUTH: process.env.MCP_OWNER_AUTH,
     MCP_SECRET: process.env.MCP_SECRET,
     MCP_ALLOWED_ORIGINS: process.env.MCP_ALLOWED_ORIGINS,
-  });
+  }, request);
 }

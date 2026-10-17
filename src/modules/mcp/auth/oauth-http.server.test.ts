@@ -314,6 +314,18 @@ describe("MCP OAuth", () => {
     expect((await s.approve(binding, {}, s.url, "null")).status).toBe(403);
   });
 
+  test("Hodor deployments derive the endpoint, secrets and ChatGPT origin from the request", () => {
+    const derived = resolveMcpConfig(
+      { HODOR_SECRET: ownerPassword },
+      new Request("http://app:3000/x", { headers: { "x-forwarded-proto": "https", "x-forwarded-host": "studio.example.com" } }),
+    );
+    expect(derived.serverUrl.href).toBe("https://studio.example.com/api/mcp");
+    expect(derived.ownerAuth.kind).toBe("hodor");
+    expect(derived.signingSecret).toBe(ownerPassword);
+    expect(derived.allowedOrigins).toEqual(["https://chatgpt.com"]);
+    expect(() => resolveMcpConfig({ HODOR_SECRET: ownerPassword })).toThrow("MCP_PUBLIC_URL");
+  });
+
   test("configuration uses canonical HTTPS or loopback URL and strong owner credentials", () => {
     expect(config.signingSecret).toBe(ownerPassword);
     expect(() =>

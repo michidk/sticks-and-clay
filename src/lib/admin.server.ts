@@ -1,7 +1,9 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
-import { jobs, models, batches, projects, runs } from "../db/schema";
+import { jobs, models, batches, projects, runs, oauthClients, mcpAuditEvents } from "../db/schema";
+import { getMcpConfig } from "../modules/mcp/auth/config.server";
+import { DrizzleOAuthStore } from "../modules/mcp/auth/oauth-store.server";
 import { agentInput, type AgentInput } from "./api-inputs";
 import { cancelJob } from "./queue.server";
 import { agentSettings, immediateRoles } from "../modules/ai/index.server";
@@ -140,6 +142,23 @@ export async function adminAction(request: Request, path: string[]) {
       return reply({
         settings: await updateRuntimeSettings(await request.json()),
       });
+  }
+  if (path[0] === "mcp") {
+    if (request.method === "GET") {
+      let endpoint: string | null = null;
+      let configurationError: string | null = null;
+      try { endpoint = getMcpConfig(request).serverUrl.href; }
+      catch (error) { configurationError = (error as Error).message; }
+      const [clients, audit] = await Promise.all([
+        db.select().from(oauthClients).orderBy(desc(oauthClients.createdAt)),
+        db.select().from(mcpAuditEvents).orderBy(desc(mcpAuditEvents.createdAt)).limit(25),
+      ]);
+      return reply({ endpoint, configurationError, clients, audit });
+    }
+    if (request.method === "POST" && path[1] === "revoke") {
+      await new DrizzleOAuthStore().revokeClient(uuid.parse((await request.json()).clientId));
+      return reply({ ok: true });
+    }
   }
   if (path[0] === "diagnostics" && request.method === "GET")
     return reply(await diagnosticsSnapshot());

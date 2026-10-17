@@ -127,12 +127,14 @@ export function createMcpHttpHandler(config: McpConfig, store: OAuthStore, optio
   };
 }
 
-let liveHandler: ReturnType<typeof createMcpHttpHandler> | undefined;
+const liveHandlers = new Map<string, ReturnType<typeof createMcpHttpHandler>>();
 export async function handleMcpHttpRequest(request: Request): Promise<Response | null> {
   if (!handlesMcpHttpPath(new URL(request.url).pathname)) return null;
   try {
-    liveHandler ??= createMcpHttpHandler(getMcpConfig(), new DrizzleOAuthStore());
-    return await liveHandler(request);
+    const config = getMcpConfig(request);
+    let handler = liveHandlers.get(config.serverUrl.href);
+    if (!handler) liveHandlers.set(config.serverUrl.href, handler = createMcpHttpHandler(config, new DrizzleOAuthStore()));
+    return await handler(request);
   } catch {
     console.error("[Sticks & Clay] MCP service unavailable");
     return Response.json({ error: "server_error", error_description: "MCP service is unavailable; check owner configuration and database migrations" }, {
