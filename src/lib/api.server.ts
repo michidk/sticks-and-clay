@@ -11,6 +11,7 @@ import {
 } from "./api-inputs";
 import { recordedAnalysis } from "../modules/model-analysis/report";
 import { workshopSchema } from "./workshop";
+import { thumbnail } from "./thumbnail.server";
 import { snapshotWorkshop } from "./workshop.server";
 import { workshopAction } from "./workshop-actions.server";
 import { materialAction } from "./materials.server";
@@ -135,6 +136,16 @@ export async function api(request: Request) {
     }
     if (path[0] === "files" && request.method === "GET") {
       const key = path.slice(1).map(decodeURIComponent).join("/");
+      const width = Number(new URL(request.url).searchParams.get("w"));
+      const small = width ? await thumbnail(key, width) : null;
+      if (small)
+        return new Response(small, {
+          headers: {
+            "Content-Type": "image/webp",
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, max-age=604800",
+          },
+        });
       return new Response(await readStoredFile(key), {
         headers: {
           "Content-Type": fileMimeType(key),

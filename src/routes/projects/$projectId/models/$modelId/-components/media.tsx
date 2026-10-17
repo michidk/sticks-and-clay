@@ -56,7 +56,7 @@ export function ModelMedia({
         className="model-detail-target"
         onClick={() => openLightbox([image])}
       >
-        <AssetImage src={image.src} alt={name + " visual target"} />
+        <AssetImage src={image.src} width={1280} alt={name + " visual target"} />
         <span>
           Visual target · design reference <Maximize2 size={14} />
         </span>
