@@ -13,3 +13,19 @@ Reviewed 2026-09-30. These focused instructions adapt ideas from the following M
 Excluded upstream conventions: triangle quotas, mandatory LODs/rigs, new approval/validation gates, exact pixel matching, universal modifier recipes, automatic external asset/API acquisition, and unvalidated generated normal maps. The UV density expression here includes world-space length, correcting the dimensionally incomplete expression in the upstream UV skill. Render comparison infrastructure is not added; agents use the existing images and reports.
 
 Upstream quality claims have not been benchmarked locally. These references provide methods, not evidence that a generated asset meets the design. Sources and licenses are documentation only and are not injected into agent context.
+
+## Pixel art prompts
+
+Reviewed 2026-10-17. The `pixel/` and `design/pixel-designer` prompts adapt ideas, rewritten in our own words for a text-drawn grid; nothing is copied or executed from these projects.
+
+| Source | Adapted guidance |
+| --- | --- |
+| [Sprite skill (melodic-software)](https://www.skillsdirectory.com/skills/melodic-software-sprite) | Palette-locked grid spec with a single key per color and `.` as transparent; named palette presets are never retyped by hand; a render-review loop that checks silhouette at 1x, part separation, light consistency, outline, stray pixels and palette discipline; keep the spec so a revision edits source rather than pixels |
+| [Pixel Art Generator skill (mcpmarket)](https://mcpmarket.com/tools/skills/pixel-art-generator) | Grid size by subject complexity, a small palette ("fewer colors = better pixel art"), layered construction (silhouette, base, details, shading), double-checking coordinates |
+| [pixel-art-sprites skill (omer-metin)](https://www.claudemarketplace.net/skills/pixel-art-sprites) and its [sharp edges](https://raw.githubusercontent.com/omer-metin/skills-for-antigravity/main/skills/pixel-art-sprites/references/sharp_edges.md) and [patterns](https://raw.githubusercontent.com/omer-metin/skills-for-antigravity/main/skills/pixel-art-sprites/references/patterns.md) | Palette budgets per subject (props 4-6, characters 8-12, large 12-16), near-duplicate colors (distance under 30), pillow shading, anti-aliasing halos, one outline rule at one cell, near-black or darkest-shade outlines, character proportions, silhouette test, integer scaling and no lossy formats |
+| [Pixel Art Professional skill (willibrandon)](https://www.skill-gallery.jp/en/skills/willibrandon/pixel-art-professional) | Hue-shifted ramps (cool shadows, warm highlights), 5-step ramps, no pure black or white, no anti-aliasing at 16x16 and below, ordered over random dithering |
+| [Pixel Art Bench](https://huggingface.co/blog/AINovice2005/pixel-art-bench) | Palette plus index-grid output and the finding that structure (row and cell counts) fails more often than syntax, which is why a malformed drawing gets one corrected retry |
+| [Aseprite MCP servers](https://github.com/diivi/aseprite-mcp), [pixel-mcp](https://github.com/willibrandon/pixel-mcp) | Character-grid drawing, retro palette presets and palette-conformance measurements; we keep the measurements and presets and skip the editor itself |
+| Pixel art tutorials ([Pixel Joint](https://pixeljoint.com/forum/forum_posts.asp?TID=11299&PID=139318), [sprite-ai.art](https://www.sprite-ai.art/guides/pixel-art-fundamentals), [GraphicsGale core techniques](https://amp.ca/learning/pixel-art/pixel-art-2-core-techniques-in-graphicsgale/)) | Jaggies as irregular step lengths, even diagonal runs, banding, orphan cells, workflow order, sizes by canvas |
+
+The classic palettes in `src/lib/pixel-palettes.ts` (Game Boy, PICO-8, DawnBringer 16, Sweetie 16) are widely published value lists. Excluded: animation, tilesets, auto-tiling, engine export and automatic palette quantization of other images.

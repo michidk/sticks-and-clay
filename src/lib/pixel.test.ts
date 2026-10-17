@@ -37,3 +37,27 @@ test("rendering keeps one pixel per cell and enlarges the preview without smooth
   expect(at(192 * 2 - 1, 192 + 1)).toEqual([0x10, 0x20, 0x30]); // the cell's far edge is still the same color
   expect(at(5, 5)).toEqual([255, 255, 255]); // transparent shows white
 });
+
+test("measurements flag what wastes a palette: near-duplicates, pure black or white, halos and off-palette colors", () => {
+  const rows = ["abcd", "abcd", "abcd", "abce"];
+  const palette = [
+    { key: "a", color: "#000000" }, { key: "b", color: "#102030" }, { key: "c", color: "#112233" },
+    { key: "d", color: "#ffffff" }, { key: "e", color: "#ff000080" },
+  ];
+  const stats = analyzePixels(grid(rows, palette), [{ colors: ["#102030", "#ffffff"] }]);
+  expect(stats.nearDuplicateColors).toEqual([{ keys: ["b", "c"], distance: 4 }]);
+  expect(stats.pureBlackOrWhiteKeys).toEqual(["a", "d"]);
+  expect(stats.semiTransparentCells).toBe(1);
+  expect(stats.colorsOutsideNamedPalette).toEqual(["a", "c", "e"]);
+  expect(analyzePixels(heart).nearDuplicateColors).toBeUndefined();
+  expect(analyzePixels(heart).colorsOutsideNamedPalette).toBeUndefined();
+});
+
+test("a named classic palette in the brief is expanded to its exact colors", async () => {
+  const { namedPalettes, palettePromptText } = await import("./pixel-palettes");
+  expect(namedPalettes("A 16x16 icon set in the Game Boy palette").map((p) => p.id)).toEqual(["game boy"]);
+  expect(namedPalettes("PICO-8 colors, or maybe DB16").map((p) => p.id)).toEqual(["pico8", "db16"]);
+  expect(namedPalettes("a warm custom palette")).toEqual([]);
+  expect(palettePromptText([])).toBe("None");
+  expect(palettePromptText(namedPalettes("game boy"))).toContain("#0f380f #306230 #8bac0f #9bbc0f");
+});

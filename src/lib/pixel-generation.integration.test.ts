@@ -20,7 +20,8 @@ const verdict = (passed: boolean, summary: string) => ({
   improvements: passed ? [] : [{ priority: "major", issue: "Too small", action: "Increase r to 36", view: "full" }],
 });
 
-async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[]) {
+// `passes` > 1 replays the finished job to prove resume is idempotent; a retried drawing leaves a failed run, so retries run once.
+async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2) {
   const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
   await db.insert(projects).values({ id: projectId, name: "Review fixture", description: "test", assetType: "pixel", status: "ready" });
   await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design: "Green circles", designVersion: 1, status: "building" });
@@ -38,7 +39,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
   await db.insert(jobs).values({ id: jobId, kind: "model", targetId: modelId, status: "running", checkpoint });
   const base = `graphics/${modelId}/${jobId}`;
   const run = async () => {
-    for (let i = 0; i < 2; i++) await jobContext.run({ id: jobId, checkpoint }, () => executeAssetVersionJob(modelId));
+    for (let i = 0; i < passes; i++) await jobContext.run({ id: jobId, checkpoint }, () => executeAssetVersionJob(modelId));
     const [model] = await db.select().from(assetVersions).where(eq(assetVersions.id, modelId));
     return model;
   };
@@ -75,10 +76,33 @@ integration("pixel art is drawn on a grid, rendered exactly, and revised after a
   }
 });
 
-integration("a drawing that does not fit its grid fails the version with the first problem named", async () => {
-  const t = await scenario(0, [{ step: "pixel", role: "pixel", iteration: 0, result: { ...drawing(1), rows: ["....", "o...", "....", "....", "...."] } }]);
+const tooManyRows = { ...drawing(1), rows: ["....", "o...", "....", "....", "...."] };
+
+integration("a drawing that does not fit its grid is retried once with the problem named, then accepted", async () => {
+  const t = await scenario(0, [
+    { step: "pixel", role: "pixel", iteration: 0, result: tooManyRows },
+    { step: "pixel:fix1", role: "pixel", iteration: 0, result: drawing(2) },
+  ], 1);
   try {
-    await expect(t.run()).rejects.toThrow("Expected 4 rows, got 5");
+    const model = await t.run();
+    expect(model.status).toBe("done");
+    const grid = JSON.parse(await (await getStorage().download(`${t.base}/grid.json`)).text());
+    expect(grid.rows[1]).toBe("oo..");
+    const failed = (await db.select().from(runs).where(eq(runs.modelId, model.id))).filter((run) => run.status === "failed");
+    expect(failed).toHaveLength(1);
+    expect(failed[0].error).toContain("Expected 4 rows, got 5");
+  } finally {
+    await t.cleanup();
+  }
+});
+
+integration("a drawing that is wrong twice fails the version with the first problem named", async () => {
+  const t = await scenario(0, [
+    { step: "pixel", role: "pixel", iteration: 0, result: tooManyRows },
+    { step: "pixel:fix1", role: "pixel", iteration: 0, result: { ...drawing(1), rows: ["....", "o..", "....", "...."] } },
+  ], 1);
+  try {
+    await expect(t.run()).rejects.toThrow("Row 2 has 3 cells; expected 4");
   } finally {
     await t.cleanup();
   }
