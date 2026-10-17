@@ -65,7 +65,8 @@ integration(
       const workspace = await (
         await api(new Request(`http://localhost/api/projects/${projectId}`))
       ).json();
-      expect(workspace.activeJobs).toHaveLength(4);
+      // The design job plus every immediate role except the finished project-name draft.
+      expect(workspace.activeJobs).toHaveLength(immediateRoles.length);
       await api(
         new Request("http://localhost/api/queue/cancel-pending", {
           method: "POST",
