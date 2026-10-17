@@ -46,6 +46,7 @@ import { request, json, fileUrl, costSummary } from "@/lib/client";
 import { collectionAssetGroups } from "@/lib/project-summary";
 import { History } from "../../-components/history";
 import { DeleteAsset } from "../../-components/delete-asset";
+import { ReturnToIdea } from "../../-components/return-to-idea";
 import { GraphicDetail } from "./-components/graphic-detail";
 import { ModelPipeline } from "./-components/pipeline";
 import { ModelConversation } from "./-components/model-conversation";
@@ -317,6 +318,15 @@ function ModelPage() {
               ))}
               {model.name !== name && (
                 <span className="model-detail-filename">{model.name}</span>
+              )}
+              {!data.project.archivedAt && (
+                <ReturnToIdea
+                  id={model.id}
+                  name={name}
+                  noun="model"
+                  canDelete={["done", "failed", "cancelled"].includes(model.status)}
+                  onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "ideas" } })}
+                />
               )}
               {!data.project.archivedAt && (
                 <DeleteAsset

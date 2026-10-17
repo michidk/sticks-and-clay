@@ -100,27 +100,28 @@ export function assertNotArchived(project: { archivedAt: Date | null }) {
 }
 
 /** Removes a generated asset and the iterations built on it. Its files and AI request records stay,
- * so cost history is unchanged. Forks are separate collection entries and are kept. */
-export async function deleteAsset(modelId: string) {
-  await db.transaction(async (tx) => {
-    const [model] = await tx.select().from(models).where(eq(models.id, modelId));
-    if (!model) throw new Error("Asset not found");
-    const [project] = await tx.select().from(projects).where(eq(projects.id, model.projectId)).for("update");
-    assertNotArchived(project);
-    const all = await tx.select().from(models).where(eq(models.projectId, model.projectId));
-    const doomed = new Set([model.id]);
-    for (let grew = true; grew;) {
-      grew = false;
-      for (const item of all)
-        if (!doomed.has(item.id) && item.branchKind === "iterate" && item.parentModelId && doomed.has(item.parentModelId))
-          grew = !!doomed.add(item.id);
-    }
-    const ids = [...doomed];
-    const running = all.some((item) => doomed.has(item.id) && !["done", "failed", "cancelled"].includes(item.status));
-    const [active] = await tx.select({ id: jobs.id }).from(jobs).where(and(
-      inArray(jobs.targetId, ids), inArray(jobs.status, ["queued", "running", "cancelling"]),
-    ));
-    if (running || active) throw new Error("This asset is still being generated. Cancel it or wait for it to finish first.");
-    await tx.delete(models).where(inArray(models.id, ids));
-  });
+ * so cost history is unchanged. Forks are separate collection entries and are kept. Runs inside the
+ * caller's transaction so it can combine with other changes. */
+export async function deleteAssetIn(tx: Transaction, modelId: string) {
+  const [model] = await tx.select().from(models).where(eq(models.id, modelId));
+  if (!model) throw new Error("Asset not found");
+  const [project] = await tx.select().from(projects).where(eq(projects.id, model.projectId)).for("update");
+  assertNotArchived(project);
+  const all = await tx.select().from(models).where(eq(models.projectId, model.projectId));
+  const doomed = new Set([model.id]);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const item of all)
+      if (!doomed.has(item.id) && item.branchKind === "iterate" && item.parentModelId && doomed.has(item.parentModelId))
+        grew = !!doomed.add(item.id);
+  }
+  const ids = [...doomed];
+  const running = all.some((item) => doomed.has(item.id) && !["done", "failed", "cancelled"].includes(item.status));
+  const [active] = await tx.select({ id: jobs.id }).from(jobs).where(and(
+    inArray(jobs.targetId, ids), inArray(jobs.status, ["queued", "running", "cancelling"]),
+  ));
+  if (running || active) throw new Error("This asset is still being generated. Cancel it or wait for it to finish first.");
+  await tx.delete(models).where(inArray(models.id, ids));
 }
+
+export const deleteAsset = (modelId: string) => db.transaction((tx) => deleteAssetIn(tx, modelId));

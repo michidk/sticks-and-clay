@@ -50,6 +50,7 @@ export const exportInput = z.object({
 });
 export type ExportInput = z.infer<typeof exportInput>;
 export const readyInput = z.object({ ready: z.boolean() });
+export const returnToIdeaInput = z.object({ deleteModel: z.boolean().default(false) });
 export const acceptInput = z.object({ accepted: z.boolean() });
 
 export const designPromptInput = z.object({

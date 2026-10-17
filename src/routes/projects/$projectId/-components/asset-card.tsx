@@ -14,6 +14,7 @@ import { costSummary, fileUrl, json, request } from "@/lib/client";
 import { GraphicVariant } from "./graphic-variant";
 import { queueKindLabels } from "@/lib/queue-view";
 import { DeleteAsset } from "./delete-asset";
+import { ReturnToIdea } from "./return-to-idea";
 
 const finished = ["done", "failed", "cancelled"];
 
@@ -36,6 +37,7 @@ export function AssetCard({
   onPreview,
   onRefresh,
   onError,
+  onReturnedToIdea,
   activeJobs = [],
 }: {
   projectId: string;
@@ -58,6 +60,8 @@ export function AssetCard({
   onPreview: (id: string | null) => void;
   onRefresh: () => Promise<unknown>;
   onError: (message: string) => void;
+  /** Called after the asset was returned to ideas, once the project is refreshed. */
+  onReturnedToIdea?: () => void;
   activeJobs?: { id: string; kind: string; status: string }[];
 }) {
   const [resuming, setResuming] = useState(false);
@@ -260,6 +264,10 @@ export function AssetCard({
                 </a>
               </Button>
             </>
+          )}
+          {deleteTarget && !archived && (
+            <ReturnToIdea id={deleteTarget.id} name={name} noun={isGraphics ? "graphic" : "model"} versions={deleteTarget.versions}
+              canDelete={!working} onDone={async () => { await onRefresh(); onReturnedToIdea?.(); }} />
           )}
           {deleteTarget && !archived && (
             <DeleteAsset id={deleteTarget.id} name={name} versions={deleteTarget.versions}

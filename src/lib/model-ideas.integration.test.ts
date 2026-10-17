@@ -4,7 +4,7 @@ import { db } from "../db/client";
 import { batches, jobs, modelIdeas, models, projects } from "../db/schema";
 import { api } from "./api.server";
 import { ideaInput } from "./api-inputs";
-import { saveModelIdea, startModelIdea, updateModelIdea } from "./model-ideas.server";
+import { returnModelToIdea, saveModelIdea, startModelIdea, updateModelIdea } from "./model-ideas.server";
 
 // Use an isolated migrated database with no worker.
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
@@ -164,5 +164,78 @@ integration("a blank title is written from the brief, and an AI failure stores n
     await startModelIdea(id, generated.id);
     await expect(updateModelIdea(project, generated.id, ideaInput.parse(body), writer)).rejects.toThrow("no longer available");
     expect(calls).toHaveLength(2);
+  } finally { await cleanup([id]); }
+});
+
+integration("a generated asset returns to the idea it was started from, optionally deleting it atomically", async () => {
+  const id = crypto.randomUUID();
+  const [root, iteration, running, direct] = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+  const post = (path: string, body?: unknown) => api(new Request(`http://localhost/api/${path}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  }));
+  const ideas = async () => (await db.select().from(modelIdeas).where(eq(modelIdeas.projectId, id))).filter((idea) => !idea.batchId);
+  const setReady = (ideaId: string) => db.update(modelIdeas).set({ readyAt: new Date() }).where(eq(modelIdeas.id, ideaId));
+  try {
+    await db.insert(projects).values({ id, name: "Return fixture", description: "test", design, designVersion: 1, status: "ready" });
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    const sprite = { size: 64, directions: 8, frameCount: 2, pixel: true, loop: true };
+    const original = await saveModelIdea(project, ideaInput.parse({ ...input, title: "Oak chair", count: 3, spriteTarget: sprite }), async () => "unused");
+    await setReady(original.id);
+    const batchId = await startModelIdea(id, original.id);
+    await db.insert(models).values([
+      { id: root, projectId: id, batchId, name: "Oak_Chair", prompt: "planner prompt for the chair", status: "done" },
+      { id: running, projectId: id, batchId, name: "Oak_Table", prompt: "planner prompt for the table", status: "building" },
+    ]);
+    const iterationBatch = crypto.randomUUID();
+    await db.insert(batches).values({ id: iterationBatch, projectId: id, prompt: "x", count: 1, judgeIterations: 0, design, designVersion: 1, status: "done" });
+    await db.insert(models).values({ id: iteration, projectId: id, batchId: iterationBatch, name: "Oak_Chair", prompt: "x", status: "done", parentModelId: root, branchKind: "iterate" });
+
+    // An iteration returns the idea its entry was started from, not its own throwaway batch.
+    const copy = await returnModelToIdea(iteration, false);
+    expect(copy).toMatchObject({ title: "Oak chair", deleted: false });
+    const [created] = (await ideas()).filter((idea) => idea.id === copy.id);
+    expect(created).toMatchObject({ title: "Oak chair", input: { prompt: "A small sedan", count: 3, spriteTarget: sprite } });
+    expect(created.readyAt).not.toBeNull();
+    expect(created.batchId).toBeNull();
+    expect((await db.select().from(models).where(eq(models.projectId, id)))).toHaveLength(3);
+    expect((await db.select().from(modelIdeas).where(eq(modelIdeas.id, original.id)))[0].batchId).toBe(batchId);
+
+    // Over the API; an unknown asset is rejected and nothing is created.
+    expect((await post(`models/${crypto.randomUUID()}/idea`, {})).status).toBe(400);
+    const api201 = await post(`models/${iteration}/idea`);
+    expect(api201.status).toBe(201);
+    expect(await api201.json()).toMatchObject({ title: "Oak chair", deleted: false });
+    expect(await ideas()).toHaveLength(2);
+
+    // A still-generating asset cannot be deleted, and the failed attempt must not leave an idea behind.
+    const before = (await ideas()).length;
+    await expect(returnModelToIdea(running, true)).rejects.toThrow("still being generated");
+    expect(await ideas()).toHaveLength(before);
+    expect((await returnModelToIdea(running, false)).deleted).toBe(false);
+
+    // Returning the root with deletion removes its iterations too, in one step.
+    const removed = await returnModelToIdea(root, true);
+    expect(removed.deleted).toBe(true);
+    expect((await db.select().from(models).where(eq(models.projectId, id))).map((m) => m.id)).toEqual([running]);
+    expect((await ideas()).some((idea) => idea.id === removed.id)).toBe(true);
+
+    // Assets that never came from an idea get one built from the asset; legacy ideas fall back the same way.
+    const directBatch = crypto.randomUUID();
+    await db.insert(batches).values({ id: directBatch, projectId: id, prompt: "five props", count: 5, judgeIterations: 1, design, designVersion: 1, status: "done", visualTargetMode: "auto" });
+    await db.insert(models).values({ id: direct, projectId: id, batchId: directBatch, name: "Mossy_Lantern", prompt: "A mossy iron lantern with a cracked glass pane", status: "done" });
+    const built = await returnModelToIdea(direct, false);
+    expect(built.title).toBe("Mossy Lantern");
+    expect((await ideas()).find((idea) => idea.id === built.id)).toMatchObject({
+      readyAt: null,
+      input: { prompt: "A mossy iron lantern with a cracked glass pane", count: 1, judgeIterations: 1, visualTargetMode: "review", imageSize: "1024x1024" },
+    });
+    await db.update(modelIdeas).set({ batchId: directBatch, title: null, input: { ...input, imageSize: "1024x1024" as const, prompt: "" } }).where(eq(modelIdeas.id, built.id));
+    const legacy = await returnModelToIdea(direct, false);
+    expect(legacy.title).toBe("Mossy Lantern");
+    expect((await ideas()).find((idea) => idea.id === legacy.id)?.input.prompt).toBe("A mossy iron lantern with a cracked glass pane");
+
+    // An archived project is read-only.
+    await db.update(projects).set({ archivedAt: new Date() }).where(eq(projects.id, id));
+    await expect(returnModelToIdea(direct, false)).rejects.toThrow();
   } finally { await cleanup([id]); }
 });

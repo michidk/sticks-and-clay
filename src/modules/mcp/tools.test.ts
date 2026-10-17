@@ -63,6 +63,7 @@ const actions: {
   { name: "generate_material", scope: write, method: "POST", path: `projects/${id}/materials`, args: { projectId: id, parameters: {} } },
   { name: "branch_asset", scope: write, method: "POST", path: `models/${id}/branch`, args: { modelId: id, kind: "iterate", sourceRunId, prompt: "Fix the handle", judgeIterations: 0 } },
   { name: "accept_asset", scope: write, method: "POST", path: `models/${id}/accept`, args: { modelId: id, accepted: true } },
+  { name: "return_asset_to_idea", scope: write, method: "POST", path: `models/${id}/idea`, args: { modelId: id } },
   { name: "export_assets", scope: write, method: "POST", path: `projects/${id}/export`, args: { projectId: id, acceptedOnly: true } },
   { name: "update_design_from_asset", scope: write, method: "POST", path: `models/${id}/design-update`, args: { modelId: id, sourceRunId, view: 0 } },
   { name: "approve_visual_target", scope: write, method: "POST", path: `models/${id}/visual-target`, args: { modelId: id, target: "models/target.png" } },
@@ -124,12 +125,12 @@ test("modern SDK clients discover every human action with the correct HTTP metho
       expect(result.isError).not.toBe(true);
       expect(requests.at(-1)).toEqual({ method: action.method, path: action.path });
     }
-    expect(requests).toHaveLength(43);
+    expect(requests).toHaveLength(44);
     const clients = await connected.client.callTool({ name: "list_mcp_clients", arguments: {} });
     expect(clients.structuredContent).toEqual({ data: [{ id: "client-1", name: "Test client", redirectUris: ["http://localhost/callback"], revokedAt: null }] });
     await connected.client.callTool({ name: "revoke_mcp_client", arguments: { clientId: "client-1" } });
     expect(revoked).toEqual(["client-1"]);
-    expect(requests).toHaveLength(43);
+    expect(requests).toHaveLength(44);
   } finally { await connected.close(); }
 });
 

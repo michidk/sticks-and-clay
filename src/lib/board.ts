@@ -17,6 +17,8 @@ type Asset = {
   createdAt?: Date | string;
 };
 type Batch = { id: string; status: string; count: number };
+/** An asset card is its newest attempt; the root is the entry's first attempt, which holds its origin. */
+type AssetCard<A> = { kind: "asset"; asset: A; root: A; attempts: number };
 
 /** Where an asset is in its life: the newest iteration of each collection entry decides. */
 export function assetStage(asset: Pick<Asset, "status" | "acceptedAt">): BoardStage {
@@ -34,9 +36,9 @@ export function boardColumns<I extends Idea, A extends Asset, B extends Batch>(
   const columns = {
     idea: [] as { kind: "idea"; idea: I }[],
     ready: [] as { kind: "idea"; idea: I }[],
-    progress: [] as ({ kind: "asset"; asset: A; attempts: number } | { kind: "pending"; batch: B; owed: number })[],
-    review: [] as { kind: "asset"; asset: A; attempts: number }[],
-    done: [] as { kind: "asset"; asset: A; attempts: number }[],
+    progress: [] as (AssetCard<A> | { kind: "pending"; batch: B; owed: number })[],
+    review: [] as AssetCard<A>[],
+    done: [] as AssetCard<A>[],
   };
   for (const idea of ideas) columns[idea.readyAt ? "ready" : "idea"].push({ kind: "idea", idea });
   for (const batch of batches) {
@@ -45,7 +47,7 @@ export function boardColumns<I extends Idea, A extends Asset, B extends Batch>(
     if (owed > 0) columns.progress.push({ kind: "pending", batch, owed });
   }
   for (const group of collectionAssetGroups(assets)) {
-    const card = { kind: "asset" as const, asset: group.representative, attempts: group.assets.length };
+    const card = { kind: "asset" as const, asset: group.representative, root: group.root, attempts: group.assets.length };
     columns[assetStage(group.representative) as "progress" | "review" | "done"].push(card);
   }
   return columns;

@@ -25,7 +25,7 @@
 <a href="https://github.com/michidk/sticks-and-clay/actions/workflows/image.yml">
 <img alt="Image" src="https://github.com/michidk/sticks-and-clay/actions/workflows/image.yml/badge.svg"></a>
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-<img alt="MCP: 47 tools" src="https://img.shields.io/badge/MCP-47%20tools-264d3c.svg">
+<img alt="MCP: 48 tools" src="https://img.shields.io/badge/MCP-48%20tools-264d3c.svg">
 <img alt="Blender 4.5 LTS" src="https://img.shields.io/badge/Blender-4.5%20LTS-e87d0d.svg">
 </p>
 
@@ -109,7 +109,7 @@ claude mcp login sticks-and-clay
 codex mcp add sticks-and-clay --url https://your-workshop.example/api/mcp
 ```
 
-- **47 tools** cover the workshop: projects, designs, ideas, generation,
+- **48 tools** cover the workshop: projects, designs, ideas, generation,
   visual-target approval, branching, materials, renders, sprites, imports,
   exports, recovery, settings, and diagnostics.
 - **Agents keep the human in the loop too.** Server instructions, the

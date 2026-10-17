@@ -9,6 +9,7 @@ import { assetStage, boardColumns, boardStages, boardStageTitles, latestSourceRu
 import { fileUrl, json, request } from "@/lib/client";
 import { GenerationDialog } from "./generation-dialog";
 import { GraphicVariant } from "./graphic-variant";
+import { ReturnToIdea } from "./return-to-idea";
 import { ideaBrief, ideaSettings, ideaTitle, useIdeaActions, type ModelIdea } from "./model-ideas";
 
 /** Every idea and asset in its stage: Ideas, Ready, In progress, Review and Done. */
@@ -45,7 +46,7 @@ export function Board({ projectId, project, ideas, models, batches, runs, onRefr
     const brief = ideaBrief(idea);
     return <li key={idea.id} className="board-card">
       <button type="button" className="board-card-title idea-brief" title={`Edit: ${brief}`} onClick={() => setEditing(idea)}>{ideaTitle(idea)}</button>
-      <p className="muted">{idea.input.count} × · {ideaSettings(idea, isGraphics)}</p>
+      <p className="muted">{idea.input.count > 1 && `${idea.input.count} × · `}{ideaSettings(idea, isGraphics)}</p>
       <div className="board-card-actions">
         {idea.readyAt ? <>
           <Button size="sm" disabled={!ready || locked} onClick={() => ideaActions.act(idea, "generate")}><Play size={14} /> Start</Button>
@@ -55,7 +56,7 @@ export function Board({ projectId, project, ideas, models, batches, runs, onRefr
       </div>
     </li>;
   };
-  const assetCard = (m: any, attempts: number) => {
+  const assetCard = (m: any, root: any, attempts: number) => {
     const name = m.name.replaceAll("_", " ");
     const cover = m.artifacts?.image || m.artifacts?.renders?.[0] || m.visualTarget;
     const link = { to: "/projects/$projectId/models/$modelId" as const, params: { projectId, modelId: m.id } };
@@ -82,6 +83,8 @@ export function Board({ projectId, project, ideas, models, batches, runs, onRefr
         </Button>}
         {m.status === "failed" && <Button size="sm" variant="outline" disabled={locked} onClick={() => send(m.id, `models/${m.id}/retry`, {})}>Resume</Button>}
         {m.status === "awaiting_approval" && <Button size="sm" variant="outline" asChild><Link {...link} search={{ view: "target", section: "review" }}>Review target</Link></Button>}
+        {!project.archivedAt && <ReturnToIdea id={root.id} name={name} noun={isGraphics ? "graphic" : "model"} versions={attempts}
+          canDelete={["done", "failed", "cancelled"].includes(m.status)} onDone={onRefresh} />}
       </div>
     </li>;
   };
@@ -102,7 +105,7 @@ export function Board({ projectId, project, ideas, models, batches, runs, onRefr
                 <Button size="sm" variant="outline" disabled={locked} onClick={() => send(card.batch.id, `batches/${card.batch.id}/resume`, {})}>Resume</Button>
               </div>}
             </li>
-            : assetCard(card.asset, card.attempts))}
+            : assetCard(card.asset, card.root, card.attempts))}
         </ul>
         {!columns[stage].length && <p className="board-empty muted">Nothing here</p>}
       </section>)}

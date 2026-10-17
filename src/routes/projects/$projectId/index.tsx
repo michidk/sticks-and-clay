@@ -575,6 +575,7 @@ function ProjectPage() {
                         onPreview={setPreviewModelId}
                         onRefresh={load}
                         onError={setError}
+                        onReturnedToIdea={() => setTab("ideas")}
                       />
                     );
                   })}

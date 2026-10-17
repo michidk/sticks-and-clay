@@ -1,9 +1,10 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "../db/client";
-import { modelIdeas, projects } from "../db/schema";
+import { batches, modelIdeas, models, projects } from "../db/schema";
 import { generationInput, type IdeaInput } from "./api-inputs";
 import { roleInput, runRole } from "../modules/ai/index.server";
 import { insertGeneration, validateGeneration } from "./generation.server";
+import { assertNotArchived, deleteAssetIn } from "./project-lifecycle.server";
 
 export async function listModelIdeas(projectId: string) {
   return db.select().from(modelIdeas).where(and(
@@ -71,4 +72,47 @@ export async function setModelIdeaReady(projectId: string, ideaId: string, ready
     eq(modelIdeas.id, ideaId), eq(modelIdeas.projectId, projectId), isNull(modelIdeas.batchId),
   )).returning({ id: modelIdeas.id });
   if (!updated.length) throw new Error("Idea is no longer available");
+}
+
+/**
+ * Turns a generated asset back into an unstarted idea, optionally deleting the asset in the same step.
+ * The idea is the one the asset's collection entry was started from (its root attempt, so iterations
+ * share it), copied with its title, brief, settings and Ready marker. Assets that never came from an
+ * idea (direct generation, forks, imports) get one built from the asset itself: its name, its own
+ * prompt, one deliverable and its batch's settings. No AI request is made.
+ */
+export async function returnModelToIdea(modelId: string, deleteModel: boolean) {
+  return db.transaction(async (tx) => {
+    const [model] = await tx.select().from(models).where(eq(models.id, modelId));
+    if (!model) throw new Error("Asset not found");
+    const [project] = await tx.select().from(projects).where(eq(projects.id, model.projectId));
+    assertNotArchived(project);
+    const all = await tx.select().from(models).where(eq(models.projectId, model.projectId));
+    const byId = new Map(all.map((item) => [item.id, item]));
+    let root = model;
+    for (const seen = new Set([root.id]); root.branchKind === "iterate" && root.parentModelId;) {
+      const parent = byId.get(root.parentModelId);
+      if (!parent || seen.has(parent.id)) break;
+      seen.add(parent.id);
+      root = parent;
+    }
+    const [original] = await tx.select().from(modelIdeas).where(and(
+      eq(modelIdeas.projectId, model.projectId), eq(modelIdeas.batchId, root.batchId),
+    ));
+    const [batch] = await tx.select().from(batches).where(eq(batches.id, root.batchId));
+    const name = root.name.replaceAll("_", " ");
+    // Ideas need a title and a brief; ones saved before that was required fall back to the asset's own.
+    const title = original?.title?.trim() || name;
+    const input = original
+      ? { ...original.input, prompt: original.input.prompt?.trim() || root.prompt }
+      : {
+        prompt: root.prompt, count: 1, judgeIterations: batch?.judgeIterations ?? 2,
+        imageSize: batch?.imageSize ?? "1024x1024", visualTargetMode: batch?.visualTargetMode === "skip" ? "skip" as const : "review" as const,
+        spriteTarget: batch?.spriteTarget ?? undefined,
+      };
+    const id = crypto.randomUUID();
+    await tx.insert(modelIdeas).values({ id, projectId: model.projectId, title, input, readyAt: original?.readyAt ?? null });
+    if (deleteModel) await deleteAssetIn(tx, model.id);
+    return { id, title, deleted: deleteModel };
+  });
 }

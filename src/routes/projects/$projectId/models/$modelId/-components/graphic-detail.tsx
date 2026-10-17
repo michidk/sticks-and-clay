@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { costSummary, fileUrl, json, request } from "@/lib/client";
 import { describeError } from "@/lib/error-message";
 import { DeleteAsset } from "../../../-components/delete-asset";
+import { ReturnToIdea } from "../../../-components/return-to-idea";
 import { GraphicVariant } from "../../../-components/graphic-variant";
 import type { Workspace } from "../-lib/model";
 
@@ -115,6 +116,10 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
               })}>
               Regenerate on v{data.project.designVersion}
             </Button>
+          )}
+          {!archived && (
+            <ReturnToIdea id={modelId} name={name} noun="graphic" canDelete={!working}
+              onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "ideas" } })} />
           )}
           {!archived && (
             <DeleteAsset id={modelId} name={name} disabled={working}
