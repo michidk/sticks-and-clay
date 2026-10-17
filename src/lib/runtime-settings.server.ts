@@ -72,6 +72,7 @@ export async function updateRuntimeSettings(
     return saveRuntimeSettings(
       {
         ...current,
+        textPreset: patch.textPreset ?? current.textPreset,
         timeouts: { ...current.timeouts, ...patch.timeouts },
         queue: { ...current.queue, ...patch.queue },
         agents: mergeOverrides(current.agents, patch.agents),

@@ -6,7 +6,7 @@ test("usage limits name the model and the next step", () => {
     "Error: 429 All credentials for model gpt-6-sol are cooling down (last error: usage_limit_reached: The usage limit has been reached)",
   );
   expect(message).toContain("usage limit for gpt-6-sol");
-  expect(message).toContain("Admin → Agents");
+  expect(message).toContain("Admin → Settings");
   expect(message).not.toContain("cooling down");
 });
 

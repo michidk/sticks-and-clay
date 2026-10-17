@@ -110,3 +110,15 @@ test("concurrent partial updates retain each caller's settings", async () => {
     agents: { builder: { model: "custom-builder", effort: "high" } },
   });
 });
+
+test("the model preset persists, defaults to gpt for saved files, and is patchable", async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), "studio-settings-"));
+  temporary.push(directory);
+  const path = resolve(directory, "settings.json");
+  const { textPreset: _omitted, ...saved } = runtimeSettingsDefaults();
+  await writeFile(path, JSON.stringify(saved));
+  expect((await loadRuntimeSettings(path)).textPreset).toBe("gpt");
+  expect((await updateRuntimeSettings({ textPreset: "claude" }, path)).textPreset).toBe("claude");
+  expect((await updateRuntimeSettings({ queue: { paused: true } }, path)).textPreset).toBe("claude");
+  await expect(updateRuntimeSettings({ textPreset: "other" }, path)).rejects.toThrow();
+});

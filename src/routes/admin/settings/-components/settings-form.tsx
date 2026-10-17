@@ -46,6 +46,7 @@ export function SettingsForm() {
       const response = await request<{ settings: RuntimeSettings }>(
         "settings",
         json({
+          textPreset: settings.textPreset,
           timeouts: settings.timeouts,
           generationDefaults: settings.generationDefaults,
         }, "PATCH"),
@@ -71,6 +72,25 @@ export function SettingsForm() {
       {error && <Alert variant="destructive" className="error"><AlertDescription>{error}</AlertDescription></Alert>}
       {saved && <Alert className="border-[#d3e0bd] bg-[#e5efcf] text-[#466630]"><AlertDescription className="text-inherit">Runtime settings saved.</AlertDescription></Alert>}
       {settings && <>
+        <Card className="panel settings-section">
+          <div className="settings-section-heading">
+            <h2>AI models</h2>
+            <p>New runs use the preset's models for every text role. Per-role overrides on the Agents page still win, image generation always uses GPT Image, and running work keeps its model.</p>
+          </div>
+          <div className="settings-grid">
+            <Label>Model preset
+              <Select value={settings.textPreset}
+                onValueChange={(textPreset: RuntimeSettings["textPreset"]) =>
+                  setSettings({ ...settings, textPreset })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gpt">GPT (default)</SelectItem>
+                  <SelectItem value="claude">Claude</SelectItem>
+                </SelectContent>
+              </Select>
+            </Label>
+          </div>
+        </Card>
         <Card className="panel settings-section">
           <div className="settings-section-heading">
             <h2>Timeouts</h2>

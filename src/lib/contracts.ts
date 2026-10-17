@@ -32,9 +32,11 @@ const generationDefaultsSchema = z.object({
   judgeIterations: z.number().int().min(0).max(5),
   imageSize: imageSizeSchema,
 });
+export const textPresetSchema = z.enum(["gpt", "claude"]);
 export const runtimeSettingsSchema = z
   .object({
     version: z.literal(3),
+    textPreset: textPresetSchema.default("gpt"),
     timeouts: timeoutSettingsSchema,
     queue: queueSettingsSchema,
     agents: z.record(z.string(), agentOverrideSchema),
@@ -50,6 +52,7 @@ export const runtimeSettingsSchema = z
       });
   });
 export const runtimeSettingsPatchSchema = z.object({
+  textPreset: textPresetSchema.optional(),
   timeouts: timeoutSettingsSchema.partial().optional(),
   queue: queueSettingsSchema.partial().optional(),
   agents: z.record(z.string(), agentOverrideSchema.nullable()).optional(),
