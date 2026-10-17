@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { batches, jobs, models, projects } from "../db/schema";
+import { batches, jobs, models, projects, runs } from "../db/schema";
 import type { GenerationInput } from "./api-inputs";
 import { assertNotArchived } from "./project-lifecycle.server";
 import { snapshotWorkshop } from "./workshop.server";
@@ -38,8 +38,8 @@ export async function queueGeneration(projectId: string, input: GenerationInput)
   });
 }
 
-/** Builds the same asset again against the project's current design. The saved name and prompt are kept,
- * so the planner is skipped and cannot invent a different idea. */
+/** Iterates an asset on the project's current design: a new version inside the same collection entry,
+ * built from its latest saved result and its own prompt, so the planner never reinterprets it. */
 export async function regenerateAsset(modelId: string) {
   return db.transaction(async (tx) => {
     const [model] = await tx.select().from(models).where(eq(models.id, modelId));
@@ -48,21 +48,42 @@ export async function regenerateAsset(modelId: string) {
     if (!project || project.status !== "ready")
       throw new Error("Approve the design before generating assets");
     assertNotArchived(project);
+    const saved = await tx.select().from(runs).where(and(
+      eq(runs.modelId, modelId), eq(runs.status, "done"), inArray(runs.role, ["builder", "graphic", "svg"]),
+    )).orderBy(desc(runs.createdAt));
+    const source = saved.find((run) => {
+      const result = run.result as { key?: string; artifacts?: { blend?: string } } | null;
+      return run.role === "builder" ? result?.artifacts?.blend : result?.key;
+    });
+    if (!source) throw new Error("This asset has no saved version to build on");
     const [previous] = await tx.select().from(batches).where(eq(batches.id, model.batchId));
     const batchId = crypto.randomUUID();
     const id = crypto.randomUUID();
+    const change = `Update this asset for design version ${project.designVersion}. Keep its subject and purpose, and follow the current design and references.`;
     await tx.insert(batches).values({
-      id: batchId, projectId: project.id, prompt: model.prompt, count: 1,
+      id: batchId, projectId: project.id, prompt: change, count: 1,
       judgeIterations: previous?.judgeIterations ?? 2,
       imageSize: previous?.imageSize ?? "1024x1024",
       spriteTarget: previous?.spriteTarget,
-      visualTargetMode: previous?.visualTargetMode ?? "review",
+      visualTargetMode: "review",
       design: project.design, designVersion: project.designVersion,
       workshop: snapshotWorkshop(project, project.workshop),
       status: "building",
     });
-    await tx.insert(models).values({ id, projectId: project.id, batchId, name: model.name, prompt: model.prompt });
-    await tx.insert(jobs).values({ id: crypto.randomUUID(), kind: "model", targetId: id });
+    await tx.insert(models).values({
+      id, projectId: project.id, batchId, name: model.name,
+      prompt: `${model.prompt}\n\nRequested change from saved version:\n${change}`,
+      parentModelId: model.id, sourceRunId: source.id, changePrompt: change, branchKind: "iterate",
+    });
+    await tx.insert(jobs).values({
+      id: crypto.randomUUID(), kind: "model", targetId: id,
+      checkpoint: {
+        "branch-references": JSON.stringify([
+          ...(source.role === "builder" ? [] : [(source.result as { key: string }).key]),
+          ...project.references,
+        ]),
+      },
+    });
     return id;
   });
 }
