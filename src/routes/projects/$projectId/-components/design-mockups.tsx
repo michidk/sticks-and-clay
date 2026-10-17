@@ -1,5 +1,7 @@
 import { describeError } from "@/lib/error-message";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { PictureUploader } from "@/components/picture-uploader";
+import { useImageUpload } from "@/hooks/use-image-upload";
 import { Check, Download, ImagePlus, LoaderCircle, Send, Trash2, Upload, Wand2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,7 +45,8 @@ export function DesignMockupStep({
   const [note, setNote] = useState("");
   const [deleting, setDeleting] = useState<MockupItem | null>(null);
   const feed = useRef<HTMLDivElement>(null);
-  const file = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const uploader = useImageUpload();
   const openLightbox = useLightbox();
   const active = mockups.some((job) => running(job.status));
   const base = items.find((item) => item.id === baseId);
@@ -81,13 +84,17 @@ export function DesignMockupStep({
       version, count: base ? Math.min(count, 4) : count, hint, ...(base ? { baseId: base.id } : {}),
     })), () => { setHint(""); setBaseId(null); });
   }
-  function upload(files: FileList | null) {
-    const image = files?.[0];
-    if (!image) return;
-    const form = new FormData();
-    form.set("image", image);
-    void act("upload", () => request(`projects/${projectId}/mockups/upload`, { method: "POST", body: form }));
-    if (file.current) file.current.value = "";
+  function upload() {
+    const pending = uploader.images.filter((image) => image.file);
+    if (!pending.length) return;
+    void act("upload", async () => {
+      for (const image of pending) {
+        const form = new FormData();
+        form.set("image", image.file!);
+        await request(`projects/${projectId}/mockups/upload`, { method: "POST", body: form });
+        uploader.remove(image.id); // a retry after a failure only sends what is left
+      }
+    }, () => setUploading(false));
   }
   const urlFor = (item: MockupItem, action: string) => `projects/${projectId}/mockups/${item.id}/${action}`;
 
@@ -187,10 +194,8 @@ export function DesignMockupStep({
             </p>
           </div>
           <div>
-            <input ref={file} type="file" hidden accept="image/png,image/jpeg,image/webp" aria-label="Upload a mockup"
-              onChange={(event) => upload(event.target.files)} />
-            <Button variant="outline" disabled={Boolean(busy)} onClick={() => file.current?.click()}>
-              {busy === "upload" ? <LoaderCircle size={15} className="spin" /> : <Upload size={15} />} Upload mockup
+            <Button variant="outline" disabled={Boolean(busy)} onClick={() => setUploading(true)}>
+              <Upload size={15} /> Upload mockup
             </Button>
           </div>
         </div>
@@ -242,6 +247,23 @@ export function DesignMockupStep({
         )}
       </section>
 
+      <Dialog open={uploading} onOpenChange={(open) => { if (busy) return; setUploading(open); if (!open) uploader.reset(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload mockups</DialogTitle>
+            <DialogDescription>Add your own concept images. They join the gallery and can be accepted like generated ones.</DialogDescription>
+          </DialogHeader>
+          <PictureUploader title="Mockup images" images={uploader.images} onFilesAdded={uploader.addFiles}
+            onImportFromUrl={uploader.importFromUrl} onRemove={uploader.remove} disabled={Boolean(busy)} isBusy={uploader.isBusy} />
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline" disabled={Boolean(busy)}>Cancel</Button></DialogClose>
+            <Button disabled={Boolean(busy) || uploader.isBusy || !uploader.images.length} onClick={upload}>
+              {busy === "upload" ? <LoaderCircle size={15} className="spin" /> : <Upload size={15} />}
+              {busy === "upload" ? "Uploading…" : `Add ${uploader.images.length || ""} mockup${uploader.images.length === 1 ? "" : "s"}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={Boolean(accepting)} onOpenChange={(open) => !busy && !open && setAccepting(null)}>
         <DialogContent>
           <DialogHeader>

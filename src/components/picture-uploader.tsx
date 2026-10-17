@@ -38,6 +38,8 @@ type Props = {
   onRemove: (id: string) => void;
   disabled?: boolean;
   isBusy?: boolean;
+  /** Replaces the default "Reference images (optional)" heading. */
+  title?: string;
 };
 
 // Uppy owns local intake; saved files and URL imports share the app's file model.
@@ -48,6 +50,7 @@ export function PictureUploader({
   onRemove,
   disabled,
   isBusy,
+  title,
 }: Props) {
   const [urlOpen, setUrlOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
@@ -149,8 +152,12 @@ export function PictureUploader({
     >
       <div className="reference-uploader-heading">
         <span id={id + "-title"}>
-          Reference images{" "}
-          <span className="text-muted-foreground font-normal">(optional)</span>
+          {title ?? (
+            <>
+              Reference images{" "}
+              <span className="text-muted-foreground font-normal">(optional)</span>
+            </>
+          )}
         </span>
         <span className="text-muted-foreground" aria-live="polite">
           {images.length} / 6
