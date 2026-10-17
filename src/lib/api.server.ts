@@ -354,12 +354,10 @@ export async function api(request: Request) {
         .from(projects)
         .where(eq(projects.id, draftId));
       try {
-        const briefRole =
-          type === "graphic" ? "graphic-brief" : "project-brief";
         const result = await draftBrief({
           projectId: draftId,
-          role: briefRole,
-          input: await roleInput(briefRole, { name, description }),
+          role: "project-brief",
+          input: await roleInput("project-brief", { name, description }),
           images: draft.references,
         });
         await db
