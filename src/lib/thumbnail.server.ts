@@ -6,12 +6,15 @@ import { DATA, readStoredFile } from "./storage.server";
 import { fileMimeType } from "./storage/path";
 
 export const THUMBNAIL_WIDTHS = [320, 640, 1280] as const;
-/** Longest side, in pixels, up to which an image is compressed losslessly. */
+/** Longest side, in pixels, up to which an image counts as pixel art: it is enlarged by whole numbers with no
+ * smoothing, and compressed losslessly, so every cell stays a sharp square at any size it is shown. */
 const TINY = 256;
+/** Bump when the way thumbnails are made changes, so older cached copies are not reused. */
+const RECIPE = 2;
 const raster = new Set(["image/png", "image/jpeg", "image/webp"]);
 const isRaster = (key: string) => raster.has(fileMimeType(key));
 const fileFor = (key: string, width: number) =>
-  resolve(DATA, ".thumbnails", `${createHash("sha1").update(key).digest("hex")}-${width}.webp`);
+  resolve(DATA, ".thumbnails", `${createHash("sha1").update(key).digest("hex")}-${width}-${RECIPE}.webp`);
 
 const making = new Map<string, Promise<void>>();
 let active = 0;
@@ -35,12 +38,13 @@ function make(key: string) {
     pending = slot(async () => {
       const source = sharp(Buffer.from(await (await readStoredFile(key)).arrayBuffer())).rotate();
       const { width: native = 0, height = 0 } = await source.metadata();
-      // Tiny images (pixel art) are kept exact: lossy compression would smudge their cells.
-      const lossless = Math.max(native, height) <= TINY;
+      const pixelArt = Math.max(native, height) <= TINY;
       await mkdir(resolve(DATA, ".thumbnails"), { recursive: true });
       for (const width of THUMBNAIL_WIDTHS) {
-        const bytes = await source.clone().resize({ width, withoutEnlargement: true })
-          .webp(lossless ? { lossless: true } : { quality: 78 }).toBuffer();
+        const scale = Math.max(1, Math.floor(width / Math.max(native, height)));
+        const bytes = pixelArt
+          ? await source.clone().resize(native * scale, height * scale, { kernel: "nearest" }).webp({ lossless: true }).toBuffer()
+          : await source.clone().resize({ width, withoutEnlargement: true }).webp({ quality: 78 }).toBuffer();
         const file = fileFor(key, width);
         const temporary = `${file}.${crypto.randomUUID()}`;
         await writeFile(temporary, bytes);

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import sharp from "sharp";
-import { analyzePixels, validatePixelGrid, type PixelGrid } from "./pixel";
+import { analyzePixels, enlarged, validatePixelGrid, type PixelGrid } from "./pixel";
 import { renderPixels } from "./pixel-render.server";
 
 const grid = (rows: string[], palette = [{ key: ".", color: "transparent" }, { key: "o", color: "#102030" }, { key: "h", color: "#ffd060" }]): PixelGrid =>
@@ -60,4 +60,9 @@ test("a named classic palette in the brief is expanded to its exact colors", asy
   expect(namedPalettes("a warm custom palette")).toEqual([]);
   expect(palettePromptText([])).toBe("None");
   expect(palettePromptText(namedPalettes("game boy"))).toContain("#0f380f #306230 #8bac0f #9bbc0f");
+});
+
+test("a saved pixel image is shown to vision models through its enlarged copy", () => {
+  expect(enlarged("graphics/m/a/iteration-1/pixel.png")).toBe("graphics/m/a/iteration-1/preview.png");
+  expect(enlarged("references/photo.png")).toBe("references/photo.png");
 });

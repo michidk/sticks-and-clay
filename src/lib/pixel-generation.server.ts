@@ -5,7 +5,7 @@ import { runRole, roleInput } from "../modules/ai/index.server";
 import type { AssetKind } from "./reviewed-asset.server";
 import { getStorage, readStoredFile } from "./storage.server";
 import { ZodError } from "zod";
-import { analyzePixels, MAX_PIXELS, PixelGridError, pixelGridSchema, type PixelGrid } from "./pixel";
+import { analyzePixels, enlarged, MAX_PIXELS, PixelGridError, pixelGridSchema, type PixelGrid } from "./pixel";
 import { namedPalettes, palettePromptText } from "./pixel-palettes";
 import { renderPixels } from "./pixel-render.server";
 import { viewableReferences } from "./svg";
@@ -56,7 +56,7 @@ export const pixelKind: AssetKind = {
     const sources = (await Promise.all(ctx.references.filter((key) => key.endsWith("/pixel.png")).map(savedGrid))).filter(Boolean);
     const shown = [
       ...(previous ? [{ key: previous.previews[0].key, note: "enlarged render of the PREVIOUS ATTEMPT, on white" }] : []),
-      ...viewableReferences(ctx.references).map((key) => ({ key, note: "style reference, not the artwork to copy" })),
+      ...viewableReferences(ctx.references).map((key) => ({ key: enlarged(key), note: "style reference, not the artwork to copy" })),
     ];
     const palettes = namedPalettes(batch.design, ctx.request);
     // Models most often fail the strict row/column format, so a malformed drawing gets one corrected retry

@@ -135,6 +135,6 @@ Every image the interface shows is a compressed WebP, never the stored original.
 shares or limits the work so a cold project cannot starve the server. A project request warms the thumbnails
 of the images it mentions before the browser asks. The lightbox, "open in a new tab" links and review sheets show 1280 px (`previewUrl` in `src/lib/client.ts`); only
 the explicit download buttons use the original (`fileUrl`). Use `AssetImage`, or `previewUrl` for a raw `<img>`;
-`src/components/image-previews.test.ts` fails on an `<img>` given an original URL. Images of at most 256 px (pixel art) are compressed losslessly, and `AssetImage` takes `pixelated` to scale them up without smoothing. Two views deliberately keep the
+`src/components/image-previews.test.ts` fails on an `<img>` given an original URL. Images of at most 256 px (pixel art) are enlarged by the server with nearest-neighbour scaling to the largest whole multiple that fits the requested width (a 16 px sprite becomes 640 px for `?w=640`) and compressed losslessly, so every cell is a sharp square wherever the image is used; `AssetImage` also takes `pixelated`, which keeps cells sharp when the browser scales a thumbnail to a layout size that is not a whole multiple. Two views deliberately keep the
 original: the sprite player (it animates exact pixels) and textures loaded into the 3D viewer. The project overview polls `?summary=true&versions=false`, which leaves out the per-version
 history that only the model page reads.

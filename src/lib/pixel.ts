@@ -107,3 +107,7 @@ export function analyzePixels(grid: PixelGrid, presets: { colors: string[] }[] =
       : { empty: true }),
   };
 }
+
+/** A saved pixel image is stored at one image pixel per cell, too small for a vision model to read; its
+ * enlarged copy sits beside it. Other images are returned unchanged. */
+export const enlarged = (key: string) => (key.endsWith("/pixel.png") ? key.replace(/pixel\.png$/, "preview.png") : key);
