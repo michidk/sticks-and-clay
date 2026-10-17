@@ -10,6 +10,7 @@ import {
   generationInput,
   acceptInput,
   exportInput,
+  ideaInput,
   readyInput,
 } from "./api-inputs";
 import { exportAssets, setModelAccepted } from "./asset-export.server";
@@ -662,13 +663,10 @@ export async function api(request: Request) {
       }
       if (path[2] === "ideas") {
         if (path.length === 3 && request.method === "POST") {
-          const input = generationInput.parse(await request.json());
-          return reply({ id: await saveModelIdea(project, input) }, 201);
+          return reply(await saveModelIdea(project, ideaInput.parse(await request.json())), 201);
         }
-        if (path.length === 4 && request.method === "PUT") {
-          await updateModelIdea(project, uuid.parse(path[3]), generationInput.parse(await request.json()));
-          return reply({ ok: true });
-        }
+        if (path.length === 4 && request.method === "PUT")
+          return reply({ ok: true, ...(await updateModelIdea(project, uuid.parse(path[3]), ideaInput.parse(await request.json()))) });
         if (path.length === 4 && request.method === "DELETE") {
           await discardModelIdea(id, uuid.parse(path[3]));
           return reply({ ok: true });
