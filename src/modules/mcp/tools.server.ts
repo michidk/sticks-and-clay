@@ -1,11 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
-  agentInput, assetBriefInput, branchInput, designInput, designUpdateInput,
+  acceptInput, agentInput, assetBriefInput, branchInput, exportInput, readyInput, designInput, designUpdateInput,
   visualTargetDecisionInput, generationInput, materialAssignmentInput, materialInput, presentationInput,
 } from "../../lib/api-inputs";
 import { runtimeSettingsPatchSchema, runtimeSettingsSchema } from "../../lib/contracts";
 import { workshopSchema } from "../../lib/workshop";
+import { boardColumns } from "../../lib/board";
 import { type McpScope } from "./catalog";
 import { callApi, paginate, pageInput, toolOutput, workflow, result, type ApiRequest, type AppApi, type ToolData, type JsonValue } from "./api.server";
 import { assetForm, assetUploadSchema, projectForm, projectSetupInput } from "./uploads";
@@ -21,7 +22,7 @@ const empty = z.object({});
 const read: McpScope = "sticks-and-clay:read";
 const write: McpScope = "sticks-and-clay:write";
 const admin: McpScope = "sticks-and-clay:admin";
-const projectSections = ["overview", "models", "ideas", "versions", "runs", "revisions", "batches", "photographs", "designUpdates"] as const;
+const projectSections = ["overview", "models", "ideas", "versions", "runs", "revisions", "batches", "photographs", "designUpdates", "board"] as const;
 
 export function createStudioMcpServer(options: {
   scopes: readonly string[];
@@ -85,6 +86,17 @@ export function createStudioMcpServer(options: {
         if (args.section === "overview") return {
           data: { project: record.project, counts: Object.fromEntries(Object.entries(record).flatMap(([key, value]) => Array.isArray(value) ? [[key, value.length]] : [])) },
         };
+        if (args.section === "board") {
+          const list = (key: string) => (Array.isArray(record[key]) ? record[key] : []) as never[];
+          const columns = boardColumns(list("ideas"), list("models"), list("batches"));
+          const board = Object.fromEntries(Object.entries(columns).map(([stage, cards]) => [stage, cards.map((card: any) =>
+            card.kind === "idea" ? { kind: "idea", ideaId: card.idea.id, readyAt: card.idea.readyAt, input: card.idea.input }
+            : card.kind === "pending" ? { kind: "pending", batchId: card.batch.id, status: card.batch.status, owed: card.owed, error: card.batch.error }
+            : { kind: "asset", modelId: card.asset.id, name: card.asset.name, status: card.asset.status, verdict: card.asset.verdict,
+              acceptedAt: card.asset.acceptedAt, attempts: card.attempts })]));
+          // Round-trip drops undefined fields so the board stays valid JSON.
+          return { data: z.json().parse(JSON.parse(JSON.stringify(board))) };
+        }
         return paginate(record[args.section], args);
       },
     });
@@ -110,6 +122,8 @@ export function createStudioMcpServer(options: {
     generationInput.extend(ideaId.shape), (input) => ({ path: `projects/${input.projectId}/ideas/${input.ideaId}`, method: "PUT", body: input }));
   register("discard_idea", "Discard an unstarted idea. Started ideas remain as their batch.", write,
     ideaId, ({ projectId, ideaId }) => ({ path: `projects/${projectId}/ideas/${ideaId}`, method: "DELETE" }), { destructive: true });
+  register("mark_idea_ready", "Mark an unstarted idea as Ready (ready=true) or move it back to Ideas (ready=false). A marker only; it does not start generation.", write,
+    readyInput.extend(ideaId.shape), ({ projectId, ideaId, ready }) => ({ path: `projects/${projectId}/ideas/${ideaId}/ready`, method: "POST", body: { ready } }));
   register("start_idea", "Queue paid generation from a saved idea using the approved design. Returns the batch id; repeating it returns the same batch.", write,
     ideaId, ({ projectId, ideaId }) => ({ path: `projects/${projectId}/ideas/${ideaId}/generate`, method: "POST" }), { paid: true });
   register("retry_project_design", "Continue a failed project setup using its checkpoints. Only failed setup is eligible; paid work may continue.", write,
@@ -125,6 +139,10 @@ export function createStudioMcpServer(options: {
     materialInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/materials`, method: "POST", body: input }), { paid: true });
   register("branch_asset", "Iterate or fork a saved model/graphic sourceRunId. Describe selected repairs in prompt. Set useCurrentStyle to revise with the project's current reference-image notes. Fork requires name. Paid AI; source history remains intact.", write,
     branchInput.extend(modelId.shape), (input) => ({ path: `models/${input.modelId}/branch`, method: "POST", body: input }), { paid: true });
+  register("accept_asset", "Accept a finished asset after the user reviews it, moving it from Review to Done (accepted=false moves it back). A marker only; the AI verdict and files are unchanged. Iterating later creates a new unaccepted attempt.", write,
+    acceptInput.extend(modelId.shape), ({ modelId, accepted }) => ({ path: `models/${modelId}/accept`, method: "POST", body: { accepted } }));
+  register("export_assets", "Zip every saved file of finished assets (GLB, Blender source, scripts, renders, LODs, sprites, images, visual targets) plus a manifest. Omit modelIds to export each collection entry's latest finished attempt; acceptedOnly limits it to Done items. Returns an artifact key for read_artifact.", write,
+    exportInput.extend(projectId.shape), ({ projectId, ...input }) => ({ path: `projects/${projectId}/export`, method: "POST", body: input }));
   register("update_design_from_asset", "Queue a draft design from a saved 3D render index. Paid AI. Choose replaceReference when the project already has six references. Approval is still required before generation.", write,
     designUpdateInput.extend(modelId.shape), (input) => ({ path: `models/${input.modelId}/design-update`, method: "POST", body: input }), { paid: true });
   register("approve_visual_target", "Approve the exact current visual target after the user reviews it, then queue the paid 3D build.", write,

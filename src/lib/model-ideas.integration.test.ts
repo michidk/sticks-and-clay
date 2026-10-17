@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { batches, jobs, modelIdeas, projects } from "../db/schema";
+import { batches, jobs, modelIdeas, models, projects } from "../db/schema";
 import { api } from "./api.server";
 
 // Use an isolated migrated database with no worker.
@@ -18,6 +18,7 @@ async function cleanup(ids: string[]) {
   const savedBatches = await db.select({ id: batches.id }).from(batches).where(inArray(batches.projectId, ids));
   if (savedBatches.length) await db.delete(jobs).where(inArray(jobs.targetId, savedBatches.map(({ id }) => id)));
   await db.delete(modelIdeas).where(inArray(modelIdeas.projectId, ids));
+  await db.delete(models).where(inArray(models.projectId, ids));
   await db.delete(batches).where(inArray(batches.projectId, ids));
   await db.delete(projects).where(inArray(projects.id, ids));
 }
@@ -47,6 +48,11 @@ integration("ideas persist without jobs, require approval to start, and queue on
     const afterEdit = await (await api(new Request(`http://localhost/api/projects/${id}`))).json();
     expect(afterEdit.ideas).toMatchObject([{ id: ideaId, input: edited }]);
     expect(afterEdit.batches).toEqual([]);
+    expect((await send(id, `/${ideaId}/ready`, { ready: true })).status).toBe(200);
+    expect((await send(other, `/${ideaId}/ready`, { ready: false })).status).toBe(400);
+    const marked = await (await api(new Request(`http://localhost/api/projects/${id}`))).json();
+    expect(marked.ideas[0].readyAt).toBeString();
+    expect(marked.batches).toEqual([]);
     expect((await send(other, `/${ideaId}`, undefined, "DELETE")).status).toBe(400);
     expect((await send(other, `/${ideaId}/generate`, {})).status).toBe(400);
     expect((await send(id, `/${ideaId}/generate`, {})).status).toBe(400);
@@ -62,6 +68,7 @@ integration("ideas persist without jobs, require approval to start, and queue on
     expect(await db.select().from(jobs).where(eq(jobs.targetId, batch.id))).toMatchObject([{ kind: "plan", status: "queued" }]);
     expect((await send(id, `/${ideaId}`, input, "PUT")).status).toBe(400);
     expect((await send(id, `/${ideaId}`, undefined, "DELETE")).status).toBe(400);
+    expect((await send(id, `/${ideaId}/ready`, { ready: false })).status).toBe(400);
     expect((await (await api(new Request(`http://localhost/api/projects/${id}`))).json()).ideas).toEqual([]);
     await db.update(projects).set({ design: "Later " + design, designVersion: 3 }).where(eq(projects.id, id));
     expect((await db.select().from(batches).where(eq(batches.id, batch.id)))[0].designVersion).toBe(2);
@@ -85,4 +92,37 @@ integration("discard removes only an unstarted idea and graphics retain canvas v
     expect((await send(id, `/${keptId}/generate`, {})).status).toBe(201);
     expect((await db.select().from(batches).where(eq(batches.projectId, id)))[0]).toMatchObject(ideaInput);
   } finally { await cleanup([id]); }
+});
+
+integration("accept marks only finished assets and export zips accepted entries of this project", async () => {
+  const id = crypto.randomUUID();
+  const other = crypto.randomUUID();
+  const batchId = crypto.randomUUID();
+  const [done, building, foreign] = [crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID()];
+  const post = (path: string, body: unknown) => api(new Request(`http://localhost/api/${path}`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+  }));
+  try {
+    await db.insert(projects).values([
+      { id, name: "Accept fixture", description: "test", design, designVersion: 1, status: "ready" },
+      { id: other, name: "Other fixture", description: "test", design, designVersion: 1, status: "ready" },
+    ]);
+    await db.insert(batches).values({ id: batchId, projectId: id, prompt: "x", count: 2, judgeIterations: 0, design, designVersion: 1, status: "done" });
+    await db.insert(models).values([
+      { id: done, projectId: id, batchId, name: "Chair", prompt: "x", status: "done" },
+      { id: building, projectId: id, batchId, name: "Table", prompt: "x", status: "building" },
+    ]);
+    const otherBatch = crypto.randomUUID();
+    await db.insert(batches).values({ id: otherBatch, projectId: other, prompt: "x", count: 1, judgeIterations: 0, design, designVersion: 1, status: "done" });
+    await db.insert(models).values({ id: foreign, projectId: other, batchId: otherBatch, name: "Lamp", prompt: "x", status: "done" });
+    expect((await post(`models/${building}/accept`, { accepted: true })).status).toBe(400);
+    expect((await post(`projects/${id}/export`, { acceptedOnly: true })).status).toBe(400);
+    expect((await post(`models/${done}/accept`, { accepted: true })).status).toBe(200);
+    expect((await post(`projects/${id}/export`, { modelIds: [foreign] })).status).toBe(400);
+    const exported = await post(`projects/${id}/export`, { acceptedOnly: true });
+    expect(exported.status).toBe(201);
+    expect(await exported.json()).toMatchObject({ assets: 1, files: 0 });
+    expect((await post(`models/${done}/accept`, { accepted: false })).status).toBe(200);
+    expect((await db.select().from(models).where(eq(models.id, done)))[0].acceptedAt).toBeNull();
+  } finally { await cleanup([id, other]); }
 });

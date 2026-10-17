@@ -46,3 +46,10 @@ export async function startModelIdea(projectId: string, ideaId: string) {
     return batchId;
   });
 }
+
+export async function setModelIdeaReady(projectId: string, ideaId: string, ready: boolean) {
+  const updated = await db.update(modelIdeas).set({ readyAt: ready ? new Date() : null }).where(and(
+    eq(modelIdeas.id, ideaId), eq(modelIdeas.projectId, projectId), isNull(modelIdeas.batchId),
+  )).returning({ id: modelIdeas.id });
+  if (!updated.length) throw new Error("Idea is no longer available");
+}

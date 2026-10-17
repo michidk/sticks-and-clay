@@ -54,6 +54,7 @@ const actions: {
   { name: "save_idea", scope: write, method: "POST", path: `projects/${id}/ideas`, args: { projectId: id, count: 1, judgeIterations: 0 } },
   { name: "update_idea", scope: write, method: "PUT", path: `projects/${id}/ideas/${sourceRunId}`, args: { projectId: id, ideaId: sourceRunId, count: 2, judgeIterations: 0 } },
   { name: "discard_idea", scope: write, method: "DELETE", path: `projects/${id}/ideas/${sourceRunId}`, args: { projectId: id, ideaId: sourceRunId } },
+  { name: "mark_idea_ready", scope: write, method: "POST", path: `projects/${id}/ideas/${sourceRunId}/ready`, args: { projectId: id, ideaId: sourceRunId, ready: true } },
   { name: "start_idea", scope: write, method: "POST", path: `projects/${id}/ideas/${sourceRunId}/generate`, args: { projectId: id, ideaId: sourceRunId } },
   { name: "retry_project_design", scope: write, method: "POST", path: `projects/${id}/retry-design`, args: { projectId: id } },
   { name: "photograph_project", scope: write, method: "POST", path: `projects/${id}/photograph`, args: { projectId: id } },
@@ -61,6 +62,8 @@ const actions: {
   { name: "list_materials", scope: read, method: "GET", path: `projects/${id}/materials`, args: { projectId: id } },
   { name: "generate_material", scope: write, method: "POST", path: `projects/${id}/materials`, args: { projectId: id, parameters: {} } },
   { name: "branch_asset", scope: write, method: "POST", path: `models/${id}/branch`, args: { modelId: id, kind: "iterate", sourceRunId, prompt: "Fix the handle", judgeIterations: 0 } },
+  { name: "accept_asset", scope: write, method: "POST", path: `models/${id}/accept`, args: { modelId: id, accepted: true } },
+  { name: "export_assets", scope: write, method: "POST", path: `projects/${id}/export`, args: { projectId: id, acceptedOnly: true } },
   { name: "update_design_from_asset", scope: write, method: "POST", path: `models/${id}/design-update`, args: { modelId: id, sourceRunId, view: 0 } },
   { name: "approve_visual_target", scope: write, method: "POST", path: `models/${id}/visual-target`, args: { modelId: id, target: "models/target.png" } },
   { name: "revise_visual_target", scope: write, method: "POST", path: `models/${id}/visual-target`, args: { modelId: id, target: "models/target.png", prompt: "Make it taller" } },
@@ -121,12 +124,12 @@ test("modern SDK clients discover every human action with the correct HTTP metho
       expect(result.isError).not.toBe(true);
       expect(requests.at(-1)).toEqual({ method: action.method, path: action.path });
     }
-    expect(requests).toHaveLength(40);
+    expect(requests).toHaveLength(43);
     const clients = await connected.client.callTool({ name: "list_mcp_clients", arguments: {} });
     expect(clients.structuredContent).toEqual({ data: [{ id: "client-1", name: "Test client", redirectUris: ["http://localhost/callback"], revokedAt: null }] });
     await connected.client.callTool({ name: "revoke_mcp_client", arguments: { clientId: "client-1" } });
     expect(revoked).toEqual(["client-1"]);
-    expect(requests).toHaveLength(40);
+    expect(requests).toHaveLength(43);
   } finally { await connected.close(); }
 });
 
@@ -182,6 +185,11 @@ test("projects, selected history, queue and transcripts paginate without losing 
     expect(overview.structuredContent).toEqual({ data: { project: { id, status: "ready" }, counts: { models: 2, revisions: 3, runs: 0 } } });
     const revisions = await connected.client.callTool({ name: "get_project", arguments: { projectId: id, section: "revisions", offset: 2, limit: 1 } });
     expect(revisions.structuredContent).toEqual({ data: [{ version: 3 }], page: { offset: 2, total: 3, nextOffset: null } });
+    const board = await connected.client.callTool({ name: "get_project", arguments: { projectId: id, section: "board" } });
+    expect(board.structuredContent).toEqual({ data: {
+      idea: [], ready: [], review: [], done: [],
+      progress: [{ kind: "asset", modelId: "m1", attempts: 1 }, { kind: "asset", modelId: "m2", attempts: 1 }],
+    } });
     const queue = await connected.client.callTool({ name: "get_queue", arguments: { offset: 0, limit: 1 } });
     expect(queue.structuredContent).toEqual({ data: { control: { paused: true }, jobs: [{ id: "j1" }] }, page: { offset: 0, total: 3, nextOffset: 1 } });
     const events = await connected.client.callTool({ name: "get_run_events", arguments: { runId: id, offset: 1, limit: 2 } });

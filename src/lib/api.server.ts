@@ -8,7 +8,11 @@ import {
   designPromptInput,
   designUpdateInput,
   generationInput,
+  acceptInput,
+  exportInput,
+  readyInput,
 } from "./api-inputs";
+import { exportAssets, setModelAccepted } from "./asset-export.server";
 import { recordedAnalysis } from "../modules/model-analysis/report";
 import { workshopSchema } from "./workshop";
 import { thumbnail } from "./thumbnail.server";
@@ -63,7 +67,7 @@ import {
   startDesign,
 } from "./project-lifecycle.server";
 import { queueGeneration, regenerateAsset } from "./generation.server";
-import { discardModelIdea, listModelIdeas, saveModelIdea, startModelIdea, updateModelIdea } from "./model-ideas.server";
+import { discardModelIdea, listModelIdeas, saveModelIdea, setModelIdeaReady, startModelIdea, updateModelIdea } from "./model-ideas.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   kinds: string[],
@@ -670,7 +674,13 @@ export async function api(request: Request) {
         }
         if (path.length === 5 && path[4] === "generate" && request.method === "POST")
           return reply({ id: await startModelIdea(id, uuid.parse(path[3])) }, 201);
+        if (path.length === 5 && path[4] === "ready" && request.method === "POST") {
+          await setModelIdeaReady(id, uuid.parse(path[3]), readyInput.parse(await request.json()).ready);
+          return reply({ ok: true });
+        }
       }
+      if (path[2] === "export" && path.length === 3 && request.method === "POST")
+        return reply(await exportAssets(id, exportInput.parse(await request.json())), 201);
       if (path[2] === "mockups" && path.length === 3 && request.method === "POST") {
         assertNotArchived(project);
         const input = mockupInput.parse(await request.json());
@@ -955,6 +965,10 @@ export async function api(request: Request) {
         });
       });
       return reply({ id: modelId }, 201);
+    }
+    if (path[0] === "models" && path[1] && path[2] === "accept" && request.method === "POST") {
+      await setModelAccepted(uuid.parse(path[1]), acceptInput.parse(await request.json()).accepted);
+      return reply({ ok: true });
     }
     if (path[0] === "models" && path[1] && path[2] === "regenerate" && request.method === "POST")
       return reply({ id: await regenerateAsset(uuid.parse(path[1])) }, 201);

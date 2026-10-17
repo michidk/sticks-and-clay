@@ -14,15 +14,19 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { request, json } from "@/lib/client";
+/** Fork a graphic into a new one, or iterate it into a new attempt of the same graphic. */
 export function GraphicVariant({
   model,
   sourceRunId,
   onSaved,
+  kind = "fork",
 }: {
   model: any;
   sourceRunId?: string;
   onSaved: () => Promise<unknown>;
+  kind?: "fork" | "iterate";
 }) {
+  const iterate = kind === "iterate";
   const [open, setOpen] = useState(false),
     [name, setName] = useState(model.name + " variant"),
     [prompt, setPrompt] = useState(""),
@@ -35,12 +39,12 @@ export function GraphicVariant({
     try {
       await request(
         `models/${model.id}/branch`,
-        json({ kind: "fork", sourceRunId, name, prompt, judgeIterations: 2 }),
+        json({ kind, sourceRunId, ...(iterate ? {} : { name }), prompt, judgeIterations: 2 }),
       );
       setOpen(false);
       void onSaved().catch(() => {
         setError(
-          "Variant queued, but refreshing the list failed. Reload to see it.",
+          `${iterate ? "Iteration" : "Variant"} queued, but refreshing the list failed. Reload to see it.`,
         );
       });
     } catch (e) {
@@ -53,19 +57,21 @@ export function GraphicVariant({
     <>
       <Button
         variant="outline"
+        size={iterate ? "sm" : undefined}
         disabled={!sourceRunId}
         onClick={() => setOpen(true)}
       >
-        New variant
+        {iterate ? "Iterate" : "New variant"}
       </Button>
       {!open && error && <p role="status">{error}</p>}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New variant</DialogTitle>
+            <DialogTitle>{iterate ? "Iterate" : "New variant"}</DialogTitle>
             <DialogDescription>
-              Edits this graphic into a new one. The original is kept. Paid
-              generation request.
+              {iterate
+                ? "Revises this graphic into a new attempt that returns to Review. The current attempt is kept. Paid generation request."
+                : "Edits this graphic into a new one. The original is kept. Paid generation request."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-4">
@@ -74,19 +80,21 @@ export function GraphicVariant({
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Label htmlFor={`variant-name-${model.id}`}>Name</Label>
-            <Input
-              id={`variant-name-${model.id}`}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              maxLength={100}
-            />
-            <Label htmlFor={`variant-prompt-${model.id}`}>
+            {!iterate && <>
+              <Label htmlFor={`variant-name-${model.id}`}>Name</Label>
+              <Input
+                id={`variant-name-${model.id}`}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                maxLength={100}
+              />
+            </>}
+            <Label htmlFor={`variant-prompt-${model.id}-${kind}`}>
               Requested change
             </Label>
             <Textarea
-              id={`variant-prompt-${model.id}`}
+              id={`variant-prompt-${model.id}-${kind}`}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               required
@@ -100,7 +108,7 @@ export function GraphicVariant({
                 </Button>
               </DialogClose>
               <Button disabled={busy}>
-                {busy ? "Queuing…" : "Generate variant"}
+                {busy ? "Queuing…" : iterate ? "Generate iteration" : "Generate variant"}
               </Button>
             </DialogFooter>
           </form>

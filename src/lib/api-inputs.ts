@@ -37,6 +37,14 @@ export const branchInput = z.object({
   judgeIterations: z.number().int().min(0).max(5),
 });
 
+export const exportInput = z.object({
+  modelIds: z.array(uuid).min(1).max(500).optional(),
+  acceptedOnly: z.boolean().default(false),
+});
+export type ExportInput = z.infer<typeof exportInput>;
+export const readyInput = z.object({ ready: z.boolean() });
+export const acceptInput = z.object({ accepted: z.boolean() });
+
 export const designPromptInput = z.object({
   prompt: z.string().trim().min(3).max(12000),
   version: z.number().int().nonnegative(),

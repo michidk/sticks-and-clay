@@ -1,5 +1,7 @@
 import { GenerationDialog } from "./-components/generation-dialog";
 import { ModelIdeas } from "./-components/model-ideas";
+import { Board } from "./-components/board";
+import { ExportPanel } from "./-components/export";
 import { ProjectActionsMenu } from "@/components/project-actions-menu";
 import { DesignMockupStep } from "./-components/design-mockups";
 import { DesignReference } from "./-components/design-reference";
@@ -36,7 +38,7 @@ import { failedBatchFor, pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
 import { queueKindLabels } from "@/lib/queue-view";
 
-const tabs = ["design", "mockups", "ideas", "models", "materials", "collection", "history"] as const;
+const tabs = ["design", "mockups", "ideas", "board", "models", "materials", "export", "collection", "history"] as const;
 export type ProjectTab = (typeof tabs)[number];
 // Style was removed in the tab rework.
 const legacyTabs = { style: "design" } as const;
@@ -220,10 +222,12 @@ function ProjectPage() {
     ["design", "Design"],
     ...(ready ? [["mockups", "Mockups"] as [ProjectTab, string]] : []),
     ["ideas", "Ideas", ideas.length],
+    ["board", "Board"],
     ["models", isGraphics ? "Graphics" : "Models", counts.all],
     ...(!isGraphics && ready
       ? [["materials", "Materials"] as [ProjectTab, string]]
       : []),
+    ...(counts.finished ? [["export", "Export"] as [ProjectTab, string]] : []),
     ...(hasRenders ? [["collection", "Collection"] as [ProjectTab, string]] : []),
     ["history", "Activity", rs.length],
   ];
@@ -428,6 +432,20 @@ function ProjectPage() {
           </>
         )}
         {activeTab === "history" && <History runs={rs} models={data.models} />}
+        {activeTab === "board" && (
+          <Board
+            projectId={projectId}
+            project={p}
+            ideas={ideas}
+            models={data.models}
+            batches={data.batches}
+            runs={rs}
+            onRefresh={load}
+          />
+        )}
+        {activeTab === "export" && (
+          <ExportPanel projectId={projectId} projectName={p.name} models={data.models} />
+        )}
         {activeTab === "ideas" && (
           <>
             <ModelIdeas

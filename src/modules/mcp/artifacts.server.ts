@@ -6,7 +6,7 @@ import { result } from "./api.server";
 
 const artifactRoots = new Set([
   "references", "models", "versions", "graphics", "collections", "photographs",
-  "project-photographs", "imports", "materials", "presentations", "assignments",
+  "project-photographs", "imports", "materials", "presentations", "assignments", "exports",
 ]);
 export const artifactKey = z.string().min(1).max(1024).refine((key) => {
   try { assertStoragePath(key); } catch { return false; }

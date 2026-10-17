@@ -79,6 +79,8 @@ export const modelIdeas = pgTable("model_ideas", {
   projectId: text().notNull().references(() => projects.id, { onDelete: "cascade" }),
   input: jsonb().$type<GenerationInput>().notNull(),
   batchId: text().references(() => batches.id),
+  /** The owner's marker that the brief is final; starting stays a separate, paid action. */
+  readyAt: timestamp("ready_at", { withTimezone: true }),
   createdAt: created(),
 }, (table) => [index("model_ideas_project_id_idx").on(table.projectId)]);
 export const batches = pgTable("batches", {
@@ -127,6 +129,8 @@ export const models = pgTable("models", {
   visualTarget: text("visual_target"),
   artifacts: jsonb().$type<Record<string, unknown>>(),
   error: text(),
+  /** The owner accepted this finished attempt; separate from the AI judge's verdict. */
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
   createdAt: created(),
 });
 export const runs = pgTable(

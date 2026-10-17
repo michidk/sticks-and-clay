@@ -1400,6 +1400,40 @@ pre {
 .idea-table td:first-child { width: 100%; max-width: 0; min-width: 220px; }
 .idea-brief { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; text-align: left; }
 .idea-brief:hover { text-decoration: underline; }
+.idea-brief-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.idea-brief-cell .badge { position: static; flex-shrink: 0; }
+
+/* Board: one column per stage, scrolling sideways when the page is narrow. */
+.board-section { margin-top: 18px; display: grid; gap: 12px; }
+.board { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 14px; overflow-x: auto; padding-bottom: 6px; scroll-snap-type: x mandatory; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+.board-column { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--muted); scroll-snap-align: start; }
+.board-column h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; font-weight: 600; }
+.board-column ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.board-card { display: grid; gap: 8px; min-width: 0; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+.board-card > p { margin: 0; font-size: 11px; }
+.board-card-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 550; text-align: left; }
+a.board-card-title:hover { text-decoration: underline; }
+.board-cover { display: grid; place-items: center; height: 120px; overflow: hidden; border-radius: calc(var(--radius) - 2px); background: var(--muted); color: var(--muted-foreground); }
+.board-cover .asset-image, .board-cover img { width: 100%; height: 100%; object-fit: contain; }
+.board-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 11px; }
+.board-card-meta .badge, .export-list .badge { position: static; }
+.board-card-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.board-empty { margin: 0; padding: 18px 0; text-align: center; font-size: 12px; }
+@media (max-width: 680px) {
+  .board { grid-template-columns: repeat(5, 82%); }
+}
+
+/* Export: a toolbar over a checklist of finished assets. */
+.export-section { margin-top: 18px; display: grid; gap: 12px; }
+.export-section > p { margin: 0; }
+.export-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.export-toolbar > :last-child { margin-left: auto; }
+.export-list { margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+.export-list li { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-top: 1px solid var(--border); }
+.export-list li:first-child { border-top: 0; }
+.export-list label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.export-thumb { display: block; flex-shrink: 0; width: 44px; height: 44px; overflow: hidden; border-radius: 6px; background: var(--muted); }
+.export-thumb .asset-image, .export-thumb img { width: 100%; height: 100%; object-fit: contain; }
 @media (max-width: 680px) {
   .idea-table :is(th, td):is(:nth-child(2), :nth-child(3)) { display: none; }
   .idea-table td:first-child { min-width: 0; }
