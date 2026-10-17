@@ -82,6 +82,8 @@ export type Workspace = {
     id: string;
     name: string;
     designVersion: number;
+    assetType?: "model" | "graphic" | "svg";
+    archivedAt?: string | null;
     status: string;
     references: string[];
   };

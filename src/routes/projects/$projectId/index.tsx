@@ -551,6 +551,7 @@ function ProjectPage() {
                         batch={data.batches.find((b: any) => b.id === m.batchId)}
                         currentDesignVersion={p.designVersion}
                         archived={!!p.archivedAt}
+                        deleteTarget={{ id: root.id, versions: group?.assets.length ?? 1 }}
                         renderFailure={renderFailureByRepresentative.get(m.id)}
                         resumingBatch={busy}
                         onResumeBatch={resumeBatch}

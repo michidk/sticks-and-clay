@@ -45,6 +45,7 @@ import { LightboxProvider } from "@/components/image-lightbox";
 import { request, json, fileUrl, costSummary } from "@/lib/client";
 import { collectionAssetGroups } from "@/lib/project-summary";
 import { History } from "../../-components/history";
+import { GraphicDetail } from "./-components/graphic-detail";
 import { ModelPipeline } from "./-components/pipeline";
 import { ModelConversation } from "./-components/model-conversation";
 import { ModelMedia } from "./-components/media";
@@ -146,6 +147,15 @@ function ModelPage() {
           </LoadingRegion>
         )}
       </main>
+    );
+  if (data.project.assetType !== "model")
+    return (
+      <GraphicDetail
+        data={data}
+        projectId={projectId}
+        modelId={modelId}
+        reload={async () => setData(await request<Workspace>(`projects/${projectId}?summary=true`))}
+      />
     );
   if (!model || !selected)
     return (

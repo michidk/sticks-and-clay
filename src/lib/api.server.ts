@@ -61,6 +61,7 @@ import {
 import {
   approveDesign,
   assertNotArchived,
+  deleteAsset,
   deleteProject,
   revertDesign,
   setArchived,
@@ -968,6 +969,10 @@ export async function api(request: Request) {
     }
     if (path[0] === "models" && path[1] && path[2] === "accept" && request.method === "POST") {
       await setModelAccepted(uuid.parse(path[1]), acceptInput.parse(await request.json()).accepted);
+      return reply({ ok: true });
+    }
+    if (path[0] === "models" && path[1] && path.length === 2 && request.method === "DELETE") {
+      await deleteAsset(uuid.parse(path[1]));
       return reply({ ok: true });
     }
     if (path[0] === "models" && path[1] && path[2] === "regenerate" && request.method === "POST")

@@ -13,6 +13,7 @@ import { Progress, StatusBadge } from "@/components/status";
 import { costSummary, fileUrl, json, request } from "@/lib/client";
 import { GraphicVariant } from "./graphic-variant";
 import { queueKindLabels } from "@/lib/queue-view";
+import { DeleteAsset } from "./delete-asset";
 
 const finished = ["done", "failed", "cancelled"];
 
@@ -27,6 +28,7 @@ export function AssetCard({
   batch,
   currentDesignVersion,
   archived = false,
+  deleteTarget,
   renderFailure,
   resumingBatch = false,
   onResumeBatch,
@@ -46,6 +48,8 @@ export function AssetCard({
   batch?: { designVersion: number };
   currentDesignVersion: number;
   archived?: boolean;
+  /** The collection entry to delete (its root asset) and how many versions it holds. */
+  deleteTarget?: { id: string; versions: number };
   /** The batch whose collection render failed after this model finished. */
   renderFailure?: { id: string; error?: string };
   resumingBatch?: boolean;
@@ -92,14 +96,9 @@ export function AssetCard({
     <Card className="model-card">
       <div className={`model-cover${isGraphics ? " graphic-cover" : ""}`}>
         {isGraphics && m.artifacts?.image ? (
-          <a
-            className="model-cover-image"
-            href={fileUrl(m.artifacts.image)}
-            target="_blank"
-            rel="noreferrer"
-          >
+          <Link className="model-cover-image" {...modelLink} search={{ view: "3d", section: "review" }}>
             <AssetImage src={fileUrl(m.artifacts.image)} alt={name} />
-          </a>
+          </Link>
         ) : previewing && m.artifacts ? (
           <ModelViewer
             src={fileUrl(m.artifacts.glb)}
@@ -156,7 +155,7 @@ export function AssetCard({
           </StatusBadge>
         )}
         <h3>
-          {isGraphics ? name : <Link {...modelLink} search={{ view: "3d", section: "review" }}>{name}</Link>}
+          <Link {...modelLink} search={{ view: "3d", section: "review" }}>{name}</Link>
         </h3>
         {lineage && <span className="model-branch-label">{lineage}</span>}
         <p>{m.prompt}</p>
@@ -229,13 +228,11 @@ export function AssetCard({
               Retry renders
             </Button>
           )}
-          {!isGraphics && (
-            <Button variant="outline" asChild>
-              <Link {...modelLink} search={{ view: "3d", section: "review" }}>
-                Open model
-              </Link>
-            </Button>
-          )}
+          <Button variant="outline" asChild>
+            <Link {...modelLink} search={{ view: "3d", section: "review" }}>
+              {isGraphics ? "Open" : "Open model"}
+            </Link>
+          </Button>
           {isGraphics && m.artifacts?.image && (
             <>
               <Button variant="outline" asChild>
@@ -263,6 +260,10 @@ export function AssetCard({
                 </a>
               </Button>
             </>
+          )}
+          {deleteTarget && !archived && (
+            <DeleteAsset id={deleteTarget.id} name={name} versions={deleteTarget.versions}
+              disabled={working} onDeleted={onRefresh} />
           )}
         </div>
       </div>
