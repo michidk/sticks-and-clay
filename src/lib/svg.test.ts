@@ -58,3 +58,15 @@ test("analysis reports structure, palette and stroke widths for the judge", () =
 test("SVG sources are not sent to vision models as images", () => {
   expect(viewableReferences(["graphics/a.svg", "references/b.png", "references/c.jpg"])).toEqual(["references/b.png", "references/c.jpg"]);
 });
+
+test("the SVG model is shown renders of the earlier versions before the style references", async () => {
+  const { attachedImages } = await import("./svg-generation.server");
+  const shown = attachedImages("g/preview.png", ["s/preview.png"], ["s/source.svg", "references/a.png"]);
+  expect(shown.keys).toEqual(["g/preview.png", "s/preview.png", "references/a.png"]);
+  expect(shown.notes.split("\n")).toEqual([
+    "Image 1: render of the PREVIOUS ATTEMPT SVG, on white",
+    "Image 2: render of the SAVED SOURCE SVG, on white",
+    "Image 3: style reference, not the artwork to copy",
+  ]);
+  expect(attachedImages(undefined, [], []).notes).toBe("None");
+});

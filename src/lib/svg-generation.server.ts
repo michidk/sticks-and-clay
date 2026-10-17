@@ -9,6 +9,29 @@ import { renderSvg } from "./svg-render.server";
 
 const png = (data: Buffer) => new Blob([new Uint8Array(data)], { type: "image/png" });
 
+/** The images shown to the SVG model, with a line telling it what each one is. Renders come first,
+ * so the model sees what the earlier markup actually looks like instead of reading code alone. */
+export function attachedImages(previousRender: string | undefined, sourceRenders: string[], references: string[]) {
+  const entries = [
+    ...(previousRender ? [{ key: previousRender, note: "render of the PREVIOUS ATTEMPT SVG, on white" }] : []),
+    ...sourceRenders.map((key) => ({ key, note: "render of the SAVED SOURCE SVG, on white" })),
+    ...viewableReferences(references).map((key) => ({ key, note: "style reference, not the artwork to copy" })),
+  ];
+  return {
+    keys: entries.map((entry) => entry.key),
+    notes: entries.map((entry, index) => `Image ${index + 1}: ${entry.note}`).join("\n") || "None",
+  };
+}
+
+/** A PNG render saved beside an SVG, made now for sources that have none. */
+async function renderOf(svgKey: string) {
+  const key = svgKey.replace(/[^/]+$/, "preview.png");
+  const storage = getStorage();
+  if (!(await storage.exists(key)))
+    await storage.upload(png((await renderSvg(await (await readStoredFile(svgKey)).text())).full), key);
+  return key;
+}
+
 /** SVG: the model writes markup; the "workshop" is a sanitizer plus a rasterizer, so the
  * judge reviews pixels and measurements of the actual artwork.
  */
@@ -20,9 +43,9 @@ export const svgKind: AssetKind = {
     // Iteration 0 keeps the one-shot layout so jobs saved before review rounds resume unchanged.
     const base = `graphics/${model.id}/${ctx.attempt}`;
     const directory = node.iteration ? `${base}/iteration-${node.iteration}` : base;
-    const source = await Promise.all(
-      ctx.references.filter((key) => key.endsWith(".svg")).map(async (key) => (await readStoredFile(key)).text()),
-    );
+    const sourceKeys = ctx.references.filter((key) => key.endsWith(".svg"));
+    const source = await Promise.all(sourceKeys.map(async (key) => (await readStoredFile(key)).text()));
+    const images = attachedImages(previous?.previews[0]?.key, await Promise.all(sourceKeys.map(renderOf)), ctx.references);
     const { result, runId } = await runRole({
       role: "svg",
       stepId: node.iteration ? node.id : "svg",
@@ -36,10 +59,11 @@ export const svgKind: AssetKind = {
         request: ctx.request,
         size: batch.imageSize,
         source: source.join("\n\n"),
+        images: images.notes,
         previous: previous ? await (await readStoredFile(previous.key)).text() : "None",
         feedback: feedback ? JSON.stringify(feedback, null, 2) : "None",
       }),
-      images: viewableReferences(ctx.references),
+      images: images.keys,
     });
     let svg: string;
     try {

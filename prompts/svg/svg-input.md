@@ -18,3 +18,6 @@ PREVIOUS ATTEMPT SVG, if this is a revision
 
 REVIEWER FEEDBACK ON THE PREVIOUS ATTEMPT, if any
 {{feedback}}
+
+ATTACHED IMAGES (renders of the SVGs above, plus any style references; judge the drawing by looking at them, not only by reading the markup)
+{{images}}
