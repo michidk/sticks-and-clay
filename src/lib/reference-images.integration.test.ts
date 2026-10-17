@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { eq } from "drizzle-orm";
 import { api } from "./api.server";
 import { db } from "../db/client";
-import { projects, jobs } from "../db/schema";
+import { projects, jobs, revisions } from "../db/schema";
 import { upload, getStorage, imagePart } from "./storage.server";
 // This test enqueues a design job. Run ONLY against an isolated migrated test DB
 // with no worker attached, never against the workshop's live database.
@@ -64,7 +64,7 @@ integration(
       expect(stored.references).toHaveLength(2);
       expect(stored.references[0]).toBe(saved);
       expect(await getStorage().exists(stored.references[1])).toBe(true);
-      await db.delete(jobs).where(eq(jobs.targetId, id));
+      await db.delete(revisions).where(eq(revisions.projectId, id));
       await db
         .update(projects)
         .set({ status: "draft" })
@@ -78,6 +78,7 @@ integration(
         .where(eq(projects.id, id));
       expect(cleared.references).toEqual([]);
     } finally {
+      await db.delete(revisions).where(eq(revisions.projectId, id));
       await db.delete(jobs).where(eq(jobs.targetId, id));
       await db.delete(projects).where(eq(projects.id, id));
       for (const key of created) await getStorage().delete(key);
