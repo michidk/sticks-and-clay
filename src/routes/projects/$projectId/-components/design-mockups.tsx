@@ -14,7 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MarkdownTextarea } from "@/components/markdown-textarea";
+import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AssetImage } from "@/components/asset-image";
 import { useLightbox } from "@/components/image-lightbox";
@@ -154,7 +154,7 @@ export function DesignMockupStep({
           )}
           <Label htmlFor="mockup-hint">{base ? "What should change?" : "What should the mockups show? (optional)"}</Label>
           <div className="studio-compose-box">
-            <MarkdownTextarea id="mockup-hint" value={hint} maxLength={12000} disabled={Boolean(busy) || active}
+            <Textarea id="mockup-hint" value={hint} maxLength={12000} disabled={Boolean(busy) || active}
               placeholder={base ? "Make the outlines thinner and the palette warmer…" : "Describe a few examples, or let the design guide the images."}
               onChange={(event) => setHint(event.target.value)}
               onKeyDown={(event) => {
@@ -253,7 +253,7 @@ export function DesignMockupStep({
           {accepting && <AssetImage src={fileUrl(accepting.key)} alt="Mockup being accepted" className="mockup-accept-preview" style={{ objectFit: "contain" }} />}
           <div className="space-y-2">
             <Label htmlFor="mockup-note">Context (optional)</Label>
-            <MarkdownTextarea id="mockup-note" value={note} maxLength={2000} rows={4}
+            <Textarea id="mockup-note" value={note} maxLength={2000} rows={4}
               placeholder="I like the thin outlines and the warm background, but keep the icons less detailed."
               onChange={(event) => setNote(event.target.value)} />
           </div>

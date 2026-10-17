@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MarkdownTextarea } from "@/components/markdown-textarea";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -85,7 +85,7 @@ export function GraphicVariant({
             <Label htmlFor={`variant-prompt-${model.id}`}>
               Requested change
             </Label>
-            <MarkdownTextarea
+            <Textarea
               id={`variant-prompt-${model.id}`}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
