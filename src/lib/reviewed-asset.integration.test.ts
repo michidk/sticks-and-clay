@@ -1,9 +1,9 @@
 import { test, expect } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, batches, models, runs, jobs } from "../db/schema";
+import { projects, batches, assetVersions, runs, jobs } from "../db/schema";
 import { jobContext } from "./checkpoint.server";
-import { executeModelJob } from "./model-pipeline.server";
+import { executeAssetVersionJob } from "./model-pipeline.server";
 import { getStorage } from "./storage.server";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
@@ -20,7 +20,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
   const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
   await db.insert(projects).values({ id: projectId, name: "Review fixture", description: "test", assetType: "svg", status: "ready" });
   await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design: "Green circles", designVersion: 1, status: "building" });
-  await db.insert(models).values({ id: modelId, projectId, batchId, name: "Circle", prompt: "A green circle" });
+  await db.insert(assetVersions).values({ id: modelId, projectId, batchId, name: "Circle", prompt: "A green circle" });
   const checkpoint: Record<string, string> = {};
   for (const item of saved) {
     const id = crypto.randomUUID();
@@ -34,8 +34,8 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
   await db.insert(jobs).values({ id: jobId, kind: "model", targetId: modelId, status: "running", checkpoint });
   const base = `graphics/${modelId}/${jobId}`;
   const run = async () => {
-    for (let i = 0; i < 2; i++) await jobContext.run({ id: jobId, checkpoint }, () => executeModelJob(modelId));
-    const [model] = await db.select().from(models).where(eq(models.id, modelId));
+    for (let i = 0; i < 2; i++) await jobContext.run({ id: jobId, checkpoint }, () => executeAssetVersionJob(modelId));
+    const [model] = await db.select().from(assetVersions).where(eq(assetVersions.id, modelId));
     return model;
   };
   const cleanup = async () => {
@@ -44,7 +44,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
         if (await getStorage().exists(`${dir}/${file}`)) await getStorage().delete(`${dir}/${file}`);
     await db.delete(jobs).where(eq(jobs.id, jobId));
     await db.delete(runs).where(eq(runs.projectId, projectId));
-    await db.delete(models).where(eq(models.projectId, projectId));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
     await db.delete(batches).where(eq(batches.projectId, projectId));
     await db.delete(projects).where(eq(projects.id, projectId));
   };

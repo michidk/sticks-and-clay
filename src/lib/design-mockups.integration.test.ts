@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { events, jobs, modelIdeas, projects, runs } from "../db/schema";
+import { events, jobs, assetEntries, assetVersions, projects, runs } from "../db/schema";
 import { api } from "./api.server";
 import { jobContext } from "./checkpoint.server";
 import { mockupSnapshot } from "./design-mockups";
@@ -211,7 +211,7 @@ integration("mockups can be uploaded, used as references, frozen into batches, r
 
     // With no instruction, a few unstarted saved ideas are offered; an instruction or a revision leaves them out.
     const idea = (title: string, prompt: string) => ({ id: crypto.randomUUID(), projectId: id, title, input: { prompt, count: 1, judgeIterations: 2, imageSize: "1024x1024" as const } });
-    await db.insert(modelIdeas).values([idea("Harbour crane", "A small harbour crane"), ...[1, 2, 3, 4, 5].map((n) => idea(`Filler ${n}`, `Filler brief ${n}`))]);
+    await db.insert(assetEntries).values([idea("Harbour crane", "A small harbour crane"), ...[1, 2, 3, 4, 5].map((n) => idea(`Filler ${n}`, `Filler brief ${n}`))]);
     const queuedPrompt = async (body: object) => {
       await db.delete(jobs).where(eq(jobs.targetId, id));
       expect((await call("/mockups", { version: 2, count: 1, ...body })).status).toBe(201);
@@ -230,6 +230,7 @@ integration("mockups can be uploaded, used as references, frozen into batches, r
     const rows = await db.select().from(batches).where(eq(batches.projectId, id));
     for (const row of rows) await db.delete(jobs).where(eq(jobs.targetId, row.id));
     await db.delete(jobs).where(eq(jobs.targetId, id));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, id));
     await db.delete(batches).where(eq(batches.projectId, id));
     await db.delete(projects).where(eq(projects.id, id));
     if (key) await getStorage().delete(key);

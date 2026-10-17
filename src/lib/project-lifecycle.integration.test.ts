@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { batches, jobs, models, projects, revisions, runs } from "../db/schema";
+import { batches, jobs, assetVersions, projects, revisions, runs } from "../db/schema";
 import { api } from "./api.server";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
@@ -81,6 +81,7 @@ integration("approve, AI draft revert and archive keep revisions, approval and g
   } finally {
     const rows = await db.select().from(batches).where(eq(batches.projectId, id));
     for (const row of rows) await db.delete(jobs).where(eq(jobs.targetId, row.id));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, id));
     await db.delete(batches).where(eq(batches.projectId, id));
     await remove(id);
   }
@@ -104,7 +105,7 @@ integration("only projects without generated work can be deleted", async () => {
   } finally {
     const rows = await db.select().from(batches).where(eq(batches.projectId, busy));
     for (const row of rows) await db.delete(jobs).where(eq(jobs.targetId, row.id));
-    await db.delete(models).where(eq(models.projectId, busy));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, busy));
     await db.delete(batches).where(eq(batches.projectId, busy));
     await remove(busy);
     await remove(empty);

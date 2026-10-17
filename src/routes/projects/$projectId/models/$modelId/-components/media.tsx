@@ -121,8 +121,8 @@ export function ModelMedia({
       <h3>{title}</h3>
       <p>
         {view === "textures"
-          ? "Geometry previews and older versions may not include separate texture files."
-          : "The files for this version will appear here when they are available."}
+          ? "Geometry previews and older builds may not include separate texture files."
+          : "The files for this build will appear here when they are available."}
       </p>
     </div>
   );

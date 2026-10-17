@@ -4,7 +4,7 @@ import { DATA } from "./storage.server";
 import { expect, test, spyOn } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { batches, events, jobs, models, projects, runs } from "../db/schema";
+import { batches, events, jobs, assetVersions, projects, runs } from "../db/schema";
 import { api } from "./api.server";
 import { jobContext } from "./checkpoint.server";
 import { prepareVisualTarget } from "./visual-target.server";
@@ -17,7 +17,7 @@ async function fixture(mode: "review" | "skip" | "auto", body: (ids: { p: string
   const p = crypto.randomUUID(), b = crypto.randomUUID(), m = crypto.randomUUID(), j = crypto.randomUUID();
   await db.insert(projects).values({ id: p, name: "Target review fixture", description: "test", status: "ready", design: "Approved design", designVersion: 1 });
   await db.insert(batches).values({ id: b, projectId: p, prompt: "test", count: 1, judgeIterations: 0, design: "Approved design", designVersion: 1, status: "building", visualTargetMode: mode });
-  await db.insert(models).values({ id: m, projectId: p, batchId: b, name: "fixture", prompt: "test" });
+  await db.insert(assetVersions).values({ id: m, projectId: p, batchId: b, name: "fixture", prompt: "test" });
   await db.insert(jobs).values({ id: j, kind: "model", targetId: m, status: "running", checkpoint: { "visual-target": "models/original.png" } });
   try { await body({ p, b, m, j }); }
   finally {
@@ -25,16 +25,17 @@ async function fixture(mode: "review" | "skip" | "auto", body: (ids: { p: string
     await db.delete(runs).where(eq(runs.projectId, p));
     await rm(resolve(DATA, "models", m), { recursive: true, force: true });
     await db.delete(jobs).where(eq(jobs.id, j));
-    await db.delete(models).where(eq(models.id, m));
+    await db.delete(assetVersions).where(eq(assetVersions.id, m));
     const allBatches = await db.select().from(batches).where(eq(batches.projectId, p));
     for (const batch of allBatches) await db.delete(jobs).where(eq(jobs.targetId, batch.id));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, p));
     await db.delete(batches).where(eq(batches.projectId, p));
     await db.delete(projects).where(eq(projects.id, p));
   }
 }
 async function prepare(id: string) {
   const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
-  const [model] = await db.select().from(models).where(eq(models.id, job.targetId));
+  const [model] = await db.select().from(assetVersions).where(eq(assetVersions.id, job.targetId));
   const [batch] = await db.select().from(batches).where(eq(batches.id, model.batchId));
   const [project] = await db.select().from(projects).where(eq(projects.id, model.projectId));
   return jobContext.run({ id, checkpoint: job.checkpoint }, () => prepareVisualTarget({ model, batch, project, request: model.prompt, attempt: id, legacy: false }));
@@ -44,7 +45,7 @@ const decide = (modelId: string, body: unknown) => api(new Request(`http://local
 integration("target approval releases the worker, survives recovery and queues exactly one continuation", () => fixture("review", async ({ p, b, m, j }) => {
   await expect(prepare(j)).rejects.toBeInstanceOf(JobWaiting);
   expect((await db.select().from(jobs).where(eq(jobs.id, j)))[0].status).toBe("waiting");
-  expect((await db.select().from(models).where(eq(models.id, m)))[0]).toMatchObject({ status: "awaiting_approval", visualTarget: "models/original.png" });
+  expect((await db.select().from(assetVersions).where(eq(assetVersions.id, m)))[0]).toMatchObject({ status: "awaiting_approval", visualTarget: "models/original.png" });
   expect(await deferInterruptedJob(j)).toHaveLength(0);
   await settleBatch(b);
   expect((await db.select().from(batches).where(eq(batches.id, b)))[0].status).toBe("building");
@@ -69,7 +70,7 @@ integration("revision keeps previous checkpoints, requires fresh approval and re
   await expect(prepare(j)).rejects.toBeInstanceOf(JobWaiting);
   expect((await decide(m, { action: "approve", target: "models/original.png" })).status).toBe(400);
   expect(await cancelJob(j)).toBe("cancelled");
-  expect((await db.select().from(models).where(eq(models.id, m)))[0].status).toBe("cancelled");
+  expect((await db.select().from(assetVersions).where(eq(assetVersions.id, m)))[0].status).toBe("cancelled");
   expect((await decide(m, { action: "approve", target: "models/revised.png" })).status).toBe(400);
 }));
 
@@ -102,11 +103,11 @@ integration("image revisions use the previous image, retain history and resume w
   try {
     await db.update(jobs).set({ checkpoint: {} }).where(eq(jobs.id, j));
     await expect(prepare(j)).rejects.toBeInstanceOf(JobWaiting);
-    const [initial] = await db.select().from(models).where(eq(models.id, m));
+    const [initial] = await db.select().from(assetVersions).where(eq(assetVersions.id, m));
     expect((await decide(m, { action: "revise", target: initial.visualTarget, prompt: "Widen the canopy" })).status).toBe(200);
     await db.update(jobs).set({ status: "running" }).where(eq(jobs.id, j));
     await expect(prepare(j)).rejects.toBeInstanceOf(JobWaiting);
-    const [revised] = await db.select().from(models).where(eq(models.id, m));
+    const [revised] = await db.select().from(assetVersions).where(eq(assetVersions.id, m));
     expect(revised.visualTarget).not.toBe(initial.visualTarget);
     expect(requests).toHaveLength(2);
     const edit = requests[1].body;

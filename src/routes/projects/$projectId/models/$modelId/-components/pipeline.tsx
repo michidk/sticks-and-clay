@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/status";
 import { money } from "@/lib/client";
-import { modelStatus, type Model, type Version } from "../-lib/model";
+import { modelStatus, type Model, type Build } from "../-lib/model";
 import { pipelineSteps, type PipelineRun } from "../-lib/pipeline";
 import { ReviewNotes } from "./review";
 
@@ -35,7 +35,7 @@ export function ModelPipeline({
 }: {
   model: Model;
   runs: PipelineRun[];
-  versions: Version[];
+  versions: Build[];
   onInspect: (
     version: string | undefined,
     view: "3d" | "target",
@@ -138,7 +138,7 @@ export function ModelPipeline({
                 variant="outline"
                 onClick={() => onInspect(selected.version!.id, "3d", "review")}
               >
-                Inspect this version <ArrowRight size={14} />
+                Inspect this build <ArrowRight size={14} />
               </Button>
             )}
             <Button

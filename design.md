@@ -143,3 +143,17 @@ PBR material controls live in a dedicated tab within approved 3D collections, us
 Selecting a mesh in the 3D view or scene inspector adds a removable object reference above the change composer. Show its name and parent path. Tie it to the displayed saved GLB version and clear it when that version changes. Submitted changes retain a reference link to the exact source version in the build story.
 
 New 3D ideas include a Skip visual mock checkbox. By default, the build story shows the current target with Approve & build and a feedback field for Revise visual target. Waiting targets use the amber Awaiting approval status and appear under Needs attention. Keep the approval card inside the scrollable conversation, with the complete image visible and no cropped preview.
+
+## Asset vocabulary and boards
+
+Use Asset for the item throughout Ideas, Ready, In progress, Review, and Done.
+Use Version for one generation attempt and Review round for an AI repair cycle.
+The project board and global board share cards and actions. Global cards always
+show a project label, with a project filter above the board. At phone widths,
+keep stages horizontally scrollable without widening the page.
+
+Asset forms edit one asset, with optional named parts and reference images.
+New versions freeze those inputs. Three-dimensional parts share one file;
+image parts have separate named files. Returning to Ideas preserves history.
+Ready is an owner's marker and starting generation remains a separate paid
+action. Done requires the owner's acceptance after reviewing the result.

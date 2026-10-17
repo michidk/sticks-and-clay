@@ -1,8 +1,9 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FolderOpen, Settings } from "lucide-react";
+import { FolderOpen, Settings, Columns3 } from "lucide-react";
 
 const sections = [
   { to: "/", label: "Projects", icon: FolderOpen },
+  { to: "/board", label: "Board", icon: Columns3 },
   { to: "/admin", label: "Admin", icon: Settings },
 ] as const;
 

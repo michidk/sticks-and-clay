@@ -1,4 +1,6 @@
+import { AssetReferences } from "@/components/asset-references";
 import { useState } from "react";
+import { z } from "zod";
 import { useNavigate } from "@tanstack/react-router";
 import { Download, LoaderCircle } from "lucide-react";
 import { AssetImage } from "@/components/asset-image";
@@ -14,6 +16,8 @@ import { DeleteAsset } from "../../../-components/delete-asset";
 import { ReturnToIdea } from "../../../-components/return-to-idea";
 import { GraphicVariant } from "../../../-components/graphic-variant";
 import type { Workspace } from "../-lib/model";
+
+const namedParts = z.array(z.object({ name: z.string(), key: z.string() }));
 
 type Review = { score?: number; passed?: boolean; summary?: string; improvements?: { priority: string; issue: string }[] };
 
@@ -41,7 +45,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
   const [picked, setPicked] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const model: any = data.models.find((item) => item.id === modelId);
+  const model: any = data.assetVersions.find((item) => item.id === modelId);
   const back = (
     <Breadcrumbs items={[
       { label: "Projects", link: { to: "/" } },
@@ -58,13 +62,22 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
   const name = model.name.replaceAll("_", " ");
   const runs = data.runs.filter((run) => run.modelId === modelId);
   const builds = runs
-    .filter((run: any) => ["graphic", "svg"].includes(run.role) && run.status === "done" && run.result?.key)
+    .filter((run: any) => {
+      if (!["graphic", "svg"].includes(run.role) || run.status !== "done" || !run.result?.key) return false;
+      const parts = namedParts.safeParse(run.result.parts);
+      return !parts.success || !parts.data.length || parts.data[0]?.key === run.result.key;
+    })
     .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   const reviewOf = (build: any): Review | undefined =>
     (runs.find((run: any) => run.role.endsWith("-judge") && run.status === "done" && run.iteration === build.iteration
       && new Date(run.createdAt) >= new Date(build.createdAt)) as any)?.result;
   const current = builds.find((build) => build.id === picked) ?? builds.at(-1);
   const currentKey = (current?.result as { key?: string } | undefined)?.key ?? model.artifacts?.image;
+  const selectedParts = z.object({ parts: namedParts }).safeParse(current?.result);
+  const latestParts = namedParts.safeParse(currentKey === model.artifacts?.image ? model.artifacts?.parts : undefined);
+  const parts = selectedParts.success ? selectedParts.data.parts
+    : (!current || current.id === builds.at(-1)?.id) && latestParts.success ? latestParts.data : [];
+  const partGallery = parts.map((part) => ({ src: fileUrl(part.key), title: `${name} · ${part.name}` }));
   const review: Review | undefined = current ? reviewOf(current) : model.feedback;
   const batch = (data.batches as any[]).find((item) => item.id === model.batchId);
   const outdated = !!batch && batch.designVersion < data.project.designVersion;
@@ -73,7 +86,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
   const cost = runs.reduce((sum, run) => sum + (run.estimatedCost || 0), 0);
   const format = (key?: string) => (key?.endsWith(".svg") ? "SVG" : "PNG");
   const gallery = builds.map((build: any, index) => ({
-    src: fileUrl(build.result.key), title: `${name} · version ${index + 1}`, caption: reviewOf(build)?.summary,
+    src: fileUrl(build.result.key), title: `${name} · review round ${index + 1}`, caption: reviewOf(build)?.summary,
   }));
 
   async function act(action: () => Promise<unknown>) {
@@ -107,11 +120,14 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
               <a href={fileUrl(currentKey)} download><Download size={14} /> {format(currentKey)}</a>
             </Button>
           )}
-          {current && <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} />}
+          {current && !archived && !working && <>
+            <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} kind="iterate" />
+            <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} />
+          </>}
           {outdated && !archived && !working && builds.length > 0 && (
             <Button variant="outline" disabled={busy}
               onClick={() => void act(async () => {
-                await request(`models/${modelId}/regenerate`, json({}));
+                await request(`asset-versions/${modelId}/regenerate`, json({}));
                 void navigate({ to: "/projects/$projectId", params: { projectId } });
               })}>
               Regenerate on v{data.project.designVersion}
@@ -133,7 +149,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
         </Alert>
       )}
       {model.status === "failed" && (
-        <Button variant="outline" disabled={busy} onClick={() => void act(() => request(`models/${modelId}/retry`, json({})))}>
+        <Button variant="outline" disabled={busy} onClick={() => void act(() => request(`asset-versions/${modelId}/retry`, json({})))}>
           {busy && <LoaderCircle className="spin" size={16} />} Resume
         </Button>
       )}
@@ -148,11 +164,33 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
           ) : (
             <p className="muted">{working ? "Generating. The image appears here when it is ready." : "No image was saved for this graphic."}</p>
           )}
+          {parts.length > 0 && (
+            <section className="mt-6" aria-label="Named asset parts">
+              <h2>Parts</h2>
+              <ul className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {parts.map((part, index) => (
+                  <li key={part.name} className="overflow-hidden rounded-lg border bg-card">
+                    <button type="button" className="block w-full" aria-label={`Open ${part.name} full size`}
+                      onClick={() => openLightbox(partGallery, index)}>
+                      <AssetImage src={fileUrl(part.key)} width={640} alt={part.name}
+                        className="aspect-square w-full bg-white" style={{ objectFit: "contain" }} />
+                    </button>
+                    <div className="flex items-center justify-between gap-2 p-3">
+                      <span className="min-w-0 break-words">{part.name}</span>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={fileUrl(part.key)} download aria-label={`Download ${part.name}`}><Download size={14} /> {format(part.key)}</a>
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           {builds.length > 1 && (
-            <ul className="mt-4 flex flex-wrap gap-2" aria-label="Versions">
+            <ul className="mt-4 flex flex-wrap gap-2" aria-label="Review rounds">
               {builds.map((build: any, index) => (
                 <li key={build.id}>
-                  <button type="button" aria-pressed={build.id === current?.id} aria-label={`Version ${index + 1}`}
+                  <button type="button" aria-pressed={build.id === current?.id} aria-label={`Review round ${index + 1}`}
                     className="block size-20 overflow-hidden rounded-md border bg-white aria-pressed:ring-2 aria-pressed:ring-primary"
                     onClick={() => setPicked(build.id)}>
                     <AssetImage src={fileUrl(build.result.key)} width={320} alt="" className="size-full" style={{ objectFit: "contain" }} />
@@ -176,7 +214,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
                 )}
               </>
             ) : (
-              <p className="muted">{working ? "The review appears when the first version is judged." : "This version was not reviewed."}</p>
+              <p className="muted">{working ? "The review appears when the first build is judged." : "This round was not reviewed."}</p>
             )}
           </Card>
           <Card className="panel">
@@ -185,6 +223,10 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
           </Card>
         </div>
       </div>
+      {!archived && data.assets?.filter((asset) => asset.id === model.assetId).map((asset) => <details key={asset.id} className="panel p-4">
+        <summary className="cursor-pointer">Asset references</summary>
+        <AssetReferences projectId={projectId} assetId={asset.id} references={asset.references} referenceNotes={asset.referenceNotes} onRefresh={reload} />
+      </details>)}
     </main>
   );
 }

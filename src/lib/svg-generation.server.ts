@@ -6,6 +6,7 @@ import type { AssetKind } from "./reviewed-asset.server";
 import { getStorage, readStoredFile } from "./storage.server";
 import { analyzeSvg, validateSvg, viewableReferences } from "./svg";
 import { renderSvg } from "./svg-render.server";
+import { workshopContext } from "./workshop";
 
 const png = (data: Buffer) => new Blob([new Uint8Array(data)], { type: "image/png" });
 
@@ -56,7 +57,7 @@ export const svgKind: AssetKind = {
       input: await roleInput("svg", {
         design: batch.design,
         name: model.name,
-        request: ctx.request,
+        request: ctx.request + workshopContext(batch.workshop, false),
         size: batch.imageSize,
         source: source.join("\n\n"),
         images: images.notes,

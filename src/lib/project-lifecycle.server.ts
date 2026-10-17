@@ -1,6 +1,6 @@
 import { and, count, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { batches, events, jobs, models, projects, revisions, runs } from "../db/schema";
+import { batches, events, jobs, assetVersions, projects, revisions, runs } from "../db/schema";
 import { assertDesignIdle } from "./design-updates.server";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -78,7 +78,7 @@ export async function deleteProject(projectId: string) {
   await db.transaction(async (tx) => {
     const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
     if (!project) throw new Error("Project not found");
-    const [{ assets }] = await tx.select({ assets: count() }).from(models).where(eq(models.projectId, projectId));
+    const [{ assets }] = await tx.select({ assets: count() }).from(assetVersions).where(eq(assetVersions.projectId, projectId));
     const [{ requests }] = await tx.select({ requests: count() }).from(batches).where(eq(batches.projectId, projectId));
     if (assets || requests)
       throw new Error("This project has generated work. Archive it instead of deleting it.");
@@ -103,11 +103,11 @@ export function assertNotArchived(project: { archivedAt: Date | null }) {
  * so cost history is unchanged. Forks are separate collection entries and are kept. Runs inside the
  * caller's transaction so it can combine with other changes. */
 export async function deleteAssetIn(tx: Transaction, modelId: string) {
-  const [model] = await tx.select().from(models).where(eq(models.id, modelId));
+  const [model] = await tx.select().from(assetVersions).where(eq(assetVersions.id, modelId));
   if (!model) throw new Error("Asset not found");
   const [project] = await tx.select().from(projects).where(eq(projects.id, model.projectId)).for("update");
   assertNotArchived(project);
-  const all = await tx.select().from(models).where(eq(models.projectId, model.projectId));
+  const all = await tx.select().from(assetVersions).where(eq(assetVersions.projectId, model.projectId));
   const doomed = new Set([model.id]);
   for (let grew = true; grew;) {
     grew = false;
@@ -121,7 +121,7 @@ export async function deleteAssetIn(tx: Transaction, modelId: string) {
     inArray(jobs.targetId, ids), inArray(jobs.status, ["queued", "running", "cancelling"]),
   ));
   if (running || active) throw new Error("This asset is still being generated. Cancel it or wait for it to finish first.");
-  await tx.delete(models).where(inArray(models.id, ids));
+  await tx.delete(assetVersions).where(inArray(assetVersions.id, ids));
 }
 
 export const deleteAsset = (modelId: string) => db.transaction((tx) => deleteAssetIn(tx, modelId));

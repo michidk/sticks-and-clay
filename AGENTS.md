@@ -11,6 +11,7 @@ GLBs. An OAuth-protected MCP server exposes the workshop to external agents.
 - Product overview, setup, and entry points: `README.md`
 - Services, deployment, persistence, and verification: `docs/development.md`
 - MCP tools, scopes, OAuth, and deployment: `docs/mcp.md`
+- Asset identity, versions, board stages, and terminology: `docs/asset-lifecycle.md`
 - Generation passes, reviews, and recovery: `docs/quality-pipeline.md`
 - AI roles, providers, accounting, and durable execution: `docs/ai-architecture.md`
 - Materials, sprites, imports, and source bundles: `docs/asset-workshop.md`
@@ -80,6 +81,10 @@ restructuring.
   Never delete volumes, projects, or history as cleanup.
 
 ## Behavior to preserve
+
+- Use Asset for the stable item, Version for a generation attempt, and Review
+  round for an AI review/repair cycle. Ideas and Ready are Asset states.
+  Keep persisted legacy job kinds and checkpoint keys compatible with saved jobs.
 
 - **Human checkpoints stay human.** Design approval, visual-target approval
   (unless the owner chose to skip it), and accepting assets are explicit

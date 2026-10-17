@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { materialAssignmentInput } from "../../lib/api-inputs";
 import { db } from "../../db/client";
-import { jobs, models } from "../../db/schema";
+import { jobs, assetVersions } from "../../db/schema";
 import { checkpointMany, jobContext } from "../../lib/checkpoint.server";
 import { DATA, publishFiles } from "../../lib/storage.server";
 import { assertJobActive } from "../../lib/queue.server";
@@ -19,8 +19,8 @@ export async function createAssignment(modelId: string, value: unknown) {
   const input = materialAssignmentInput.parse(value);
   const [model] = await db
     .select()
-    .from(models)
-    .where(eq(models.id, z.string().uuid().parse(modelId)));
+    .from(assetVersions)
+    .where(eq(assetVersions.id, z.string().uuid().parse(modelId)));
   const [material] = await db
     .select()
     .from(jobs)

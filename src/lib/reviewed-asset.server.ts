@@ -1,25 +1,28 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { batches, jobs, models, projects } from "../db/schema";
+import { batches, jobs, assetVersions, projects, runs } from "../db/schema";
 import { assertJobActive } from "./queue.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { settleBatch } from "./batch-state.server";
 import { runRole, roleInput } from "../modules/ai/index.server";
 import { runPipeline, reviewPipeline } from "../modules/pipelines";
 import type { judgeResult } from "./contracts";
-import type { z } from "zod";
+import { z } from "zod";
 import { viewableReferences } from "./svg";
+import { workshopContext } from "./workshop";
 
 export type Review = z.infer<typeof judgeResult>;
 /** One produced version of an asset plus what the judge needs to see of it. */
 export type Candidate = {
   key: string;
+  /** Named files that together form this version; `key` remains its cover image. */
+  parts?: { name: string; key: string }[];
   /** Raster images of the candidate, in the order the judge is told about them. */
   previews: { key: string; label: string }[];
   analysis: unknown;
 };
 export type AssetContext = {
-  model: typeof models.$inferSelect;
+  model: typeof assetVersions.$inferSelect;
   batch: typeof batches.$inferSelect;
   project: typeof projects.$inferSelect;
   request: string;
@@ -53,6 +56,19 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
     Math.round(5 + ((iteration + fraction) / builds) * 95);
   const reviewed = batch.judgeIterations > 0;
   let candidate: Candidate | undefined;
+  if (model.sourceRunId && model.parentModelId) {
+    const [source] = await db.select({ result: runs.result }).from(runs).where(and(
+      eq(runs.id, model.sourceRunId), eq(runs.modelId, model.parentModelId),
+    ));
+    const saved = z.object({
+      key: z.string(), parts: z.array(z.object({ name: z.string(), key: z.string() })),
+    }).safeParse(source?.result);
+    if (saved.success) candidate = {
+      ...saved.data,
+      previews: saved.data.parts.map(({ name, key }) => ({ key, label: name })),
+      analysis: {},
+    };
+  }
   let review: Review | undefined;
   let passed = false;
 
@@ -61,26 +77,26 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
     {
       builder: async (node) => {
         await db
-          .update(models)
+          .update(assetVersions)
           .set({
             status: "building",
             phase: review ? "Revising from review feedback" : "Generating final graphic",
             iteration: node.iteration,
             progress: progress(node.iteration),
           })
-          .where(eq(models.id, model.id));
+          .where(eq(assetVersions.id, model.id));
         candidate = await kind.build(ctx, { node, previous: candidate, feedback: review });
         await assertJobActive();
         await db
-          .update(models)
+          .update(assetVersions)
           .set({
-            artifacts: { image: candidate.key, stage: "final", format: kind.format },
+            artifacts: { image: candidate.key, stage: "final", format: kind.format, ...(candidate.parts ? { parts: candidate.parts } : {}) },
             visualTarget: candidate.key,
             phase: reviewed ? "Reviewing rendered preview" : "Graphic ready",
             progress: progress(node.iteration, 0.6),
             status: reviewed ? "judging" : "building",
           })
-          .where(eq(models.id, model.id));
+          .where(eq(assetVersions.id, model.id));
       },
       judge: async (node) => {
         if (!candidate) throw new Error("Nothing to review");
@@ -97,7 +113,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
           input: await roleInput(kind.judge, {
             design: batch.design,
             name: model.name,
-            request: ctx.request,
+            request: ctx.request + workshopContext(batch.workshop, false),
             size: batch.imageSize,
             images:
               candidate.previews.map((p, i) => `Image ${i + 1}: ${p.label}`).join("\n") +
@@ -110,9 +126,9 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
         review = result;
         passed = result.passed;
         await db
-          .update(models)
+          .update(assetVersions)
           .set({ feedback: result, verdict: passed ? "approved" : "changes_requested" })
-          .where(eq(models.id, model.id));
+          .where(eq(assetVersions.id, model.id));
         return { passed };
       },
     },
@@ -124,7 +140,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
   const verdict = !reviewed ? "unreviewed" : passed ? "approved" : "limit_reached";
   await db.transaction(async (tx) => {
     await tx
-      .update(models)
+      .update(assetVersions)
       .set({
         status: "done",
         progress: 100,
@@ -136,9 +152,9 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
               : "Complete · review limit reached",
         verdict,
         visualTarget: candidate!.key,
-        artifacts: { image: candidate!.key, stage: "final", format: kind.format },
+        artifacts: { image: candidate!.key, stage: "final", format: kind.format, ...(candidate!.parts ? { parts: candidate!.parts } : {}) },
       })
-      .where(eq(models.id, model.id));
+      .where(eq(assetVersions.id, model.id));
     await tx
       .update(jobs)
       .set({ checkpoint: { ...job.checkpoint, applied: "yes" } })

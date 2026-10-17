@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, batches, models, runs, jobs } from "../db/schema";
+import { projects, batches, assetVersions, runs, jobs } from "../db/schema";
 import { jobContext } from "./checkpoint.server";
 import {
   photographProject,
@@ -69,7 +69,7 @@ integration(
         });
         const modelId = crypto.randomUUID();
         if (i === 0) originalModelId = modelId;
-        await db.insert(models).values({
+        await db.insert(assetVersions).values({
           id: modelId,
           projectId: id,
           batchId,
@@ -89,7 +89,7 @@ integration(
         design: "test",
         designVersion: 1,
       });
-      await db.insert(models).values({
+      await db.insert(assetVersions).values({
         id: iterationModelId,
         projectId: id,
         batchId: iterationBatchId,
@@ -144,7 +144,7 @@ integration(
     } finally {
       await db.delete(jobs).where(eq(jobs.id, jobId));
       await db.delete(runs).where(eq(runs.projectId, id));
-      await db.delete(models).where(eq(models.projectId, id));
+      await db.delete(assetVersions).where(eq(assetVersions.projectId, id));
       await db.delete(batches).where(eq(batches.projectId, id));
       await db.delete(projects).where(eq(projects.id, id));
       for (const key of await getStorage().list(`project-photographs/${id}`))

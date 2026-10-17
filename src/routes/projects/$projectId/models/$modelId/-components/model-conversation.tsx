@@ -27,9 +27,9 @@ import { request, json, fileUrl } from "@/lib/client";
 import { AssetImage } from "@/components/asset-image";
 import { pipelineSteps } from "../-lib/pipeline";
 import {
-  versionLabel,
+  buildLabel,
   type Model,
-  type Version,
+  type Build,
   type Workspace,
 } from "../-lib/model";
 
@@ -56,7 +56,7 @@ export function ModelConversation({
   projectId: string;
   model: Model;
   workspace: Workspace;
-  versions: Version[];
+  versions: Build[];
   selectedVersionId?: string;
   objectReference: ObjectReference | null;
   onClearObject: () => void;
@@ -83,10 +83,10 @@ export function ModelConversation({
     : versions.find((v) => v.artifacts?.blend);
   useEffect(() => setView(0), [source?.id]);
   const steps = pipelineSteps(model, workspace.runs, versions);
-  const children = workspace.models.filter(
+  const children = workspace.assetVersions.filter(
     (item) => item.parentModelId === model.id,
   );
-  const parent = workspace.models.find(
+  const parent = workspace.assetVersions.find(
     (item) => item.id === model.parentModelId,
   );
   const updates =
@@ -259,7 +259,7 @@ export function ModelConversation({
                     size="sm"
                     onClick={() => onInspect(step.version!.id)}
                   >
-                    Inspect {versionLabel(step.version)}{" "}
+                    Inspect {buildLabel(step.version)}{" "}
                     <ArrowUpRight size={13} />
                   </Button>
                 </div>
@@ -276,7 +276,7 @@ export function ModelConversation({
           <div key={child.id} className="chat-message is-note">
             <GitBranch size={13} />
             <span>
-              {child.branchKind === "fork" ? "Fork" : "Iteration"}:{" "}
+              {child.branchKind === "fork" ? "Fork" : "Version"}:{" "}
               <Link
                 to="/projects/$projectId/models/$modelId"
                 params={{ projectId, modelId: child.id }}
@@ -296,7 +296,7 @@ export function ModelConversation({
       {model.status !== "awaiting_approval" && <div className="studio-chat-compose">
         <p className="studio-compose-source">
           {source
-            ? `${kind === "fork" ? "Forking" : "Continuing"} from ${versionLabel(source)} · Ctrl or ⌘ + Enter sends`
+            ? `${kind === "fork" ? "Forking" : "Continuing"} from ${buildLabel(source)} · Ctrl or ⌘ + Enter sends`
             : "Needs a saved Blender version to continue from."}
         </p>
         {objectReference ? (
@@ -367,7 +367,7 @@ export function ModelConversation({
                 aria-pressed={kind === "fork"}
                 onClick={() => setKind("fork")}
               >
-                Fork variant
+                Fork asset
               </Button>
             </div>
             <Label
@@ -410,7 +410,7 @@ export function ModelConversation({
               value={String(view)}
               onChange={(value) => setView(Number(value))}
               disabled={busy}
-              emptyText="No renders are archived for this version yet."
+              emptyText="No renders are archived for this build yet."
               options={
                 source?.artifacts?.renders?.map((key, index) => ({
                   value: String(index),

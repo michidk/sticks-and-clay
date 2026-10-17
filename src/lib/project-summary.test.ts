@@ -85,3 +85,23 @@ test("run results drop the repeated artifact record but keep the files other vie
   expect(slimResult({ key: "k.png" })).toEqual({ key: "k.png" });
   expect(slimResult(null)).toBeNull();
 });
+
+test("asset identity groups versions without requiring their parent chain", () => {
+  const versions = [
+    { id: "v3", assetId: "asset-a", status: "done", parentModelId: "missing", branchKind: "iterate" as const, createdAt: "2026-01-03T00:00:00Z" },
+    { id: "v1", assetId: "asset-a", status: "done", createdAt: "2026-01-01T00:00:00Z" },
+    { id: "fork", assetId: "asset-b", status: "done", parentModelId: "v3", branchKind: "fork" as const, createdAt: "2026-01-04T00:00:00Z" },
+  ];
+  expect(collectionAssetGroups(versions).map((group) => ({ root: group.root.id, latest: group.representative.id, versions: group.assets.map((version) => version.id) }))).toEqual([
+    { root: "v1", latest: "v3", versions: ["v3", "v1"] },
+    { root: "fork", latest: "fork", versions: ["fork"] },
+  ]);
+});
+
+test("an asset ID prevents legacy parent metadata from joining another asset", () => {
+  const groups = collectionAssetGroups([
+    { id: "a", assetId: "asset-a", status: "done" },
+    { id: "b", assetId: "asset-b", status: "building", parentModelId: "a", branchKind: "iterate" as const },
+  ]);
+  expect(groups.map((group) => group.assets.map((version) => version.id))).toEqual([["a"], ["b"]]);
+});

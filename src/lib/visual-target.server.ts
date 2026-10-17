@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "../db/client";
-import { batches, jobs, models, projects } from "../db/schema";
+import { batches, jobs, assetVersions, projects } from "../db/schema";
 import { runImageRole } from "../modules/ai/index.server";
 import { visualTargetDecisionInput } from "./api-inputs";
 import { checkpoint, jobContext } from "./checkpoint.server";
@@ -10,7 +10,7 @@ import { mockupReferences } from "./workshop";
 import { assertJobActive, JobCancelled, JobWaiting } from "./queue.server";
 
 export async function prepareVisualTarget({ model, batch, project, request, attempt, legacy }: {
-  model: typeof models.$inferSelect;
+  model: typeof assetVersions.$inferSelect;
   batch: typeof batches.$inferSelect;
   project: typeof projects.$inferSelect;
   request: string;
@@ -22,8 +22,8 @@ export async function prepareVisualTarget({ model, batch, project, request, atte
   const references: string[] = job.checkpoint["visual-target-input"]
     ? JSON.parse(job.checkpoint["visual-target-input"]).images
     : [
-        ...(job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : project.references),
-        ...mockupReferences(batch.workshop),
+        ...(job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : (batch.workshop?.references ?? project.references)),
+        ...(batch.workshop?.references ? [] : mockupReferences(batch.workshop)),
       ];
   if (legacy)
     return { target: model.visualTarget, visualReferences: references };
@@ -34,7 +34,7 @@ export async function prepareVisualTarget({ model, batch, project, request, atte
   const inputKey = `${key}-input`;
   let target = job.checkpoint[key];
   if (!target) {
-    await db.update(models).set({ status: "building", phase: revision ? "Revising visual target" : "Creating visual target", progress: 2 }).where(eq(models.id, model.id));
+    await db.update(assetVersions).set({ status: "building", phase: revision ? "Revising visual target" : "Creating visual target", progress: 2 }).where(eq(assetVersions.id, model.id));
     if (!job.checkpoint[inputKey]) {
       const base = await prompt("models/visual-target", { design: batch.design, name: model.name, request });
       await checkpoint(inputKey, JSON.stringify({
@@ -58,11 +58,11 @@ export async function prepareVisualTarget({ model, batch, project, request, atte
       const [waiting] = await tx.update(jobs).set({ status: "waiting" })
         .where(and(eq(jobs.id, job.id), eq(jobs.status, "running"))).returning({ id: jobs.id });
       if (!waiting) throw new JobCancelled();
-      await tx.update(models).set({ visualTarget: target, status: "awaiting_approval", phase: "Review visual target", progress: 5, error: null }).where(eq(models.id, model.id));
+      await tx.update(assetVersions).set({ visualTarget: target, status: "awaiting_approval", phase: "Review visual target", progress: 5, error: null }).where(eq(assetVersions.id, model.id));
     });
     throw new JobWaiting("Visual target awaits approval");
   }
-  await db.update(models).set({ visualTarget: target }).where(eq(models.id, model.id));
+  await db.update(assetVersions).set({ visualTarget: target }).where(eq(assetVersions.id, model.id));
   const visualReferences: string[] = job.checkpoint[inputKey] ? JSON.parse(job.checkpoint[inputKey]).images : references;
   return { target, visualReferences };
 }
@@ -71,7 +71,7 @@ export async function decideVisualTarget(modelId: string, decision: z.infer<type
   await db.transaction(async (tx) => {
     const [job] = await tx.select().from(jobs).where(and(eq(jobs.kind, "model"), eq(jobs.targetId, modelId)))
       .orderBy(desc(jobs.createdAt)).limit(1).for("update");
-    const [model] = await tx.select().from(models).where(eq(models.id, modelId)).for("update");
+    const [model] = await tx.select().from(assetVersions).where(eq(assetVersions.id, modelId)).for("update");
     if (!job || !model || job.status !== "waiting" || model.status !== "awaiting_approval")
       throw new Error("This model is not waiting for visual target approval");
     if (model.visualTarget !== decision.target)
@@ -84,6 +84,6 @@ export async function decideVisualTarget(modelId: string, decision: z.infer<type
       next[`visual-target:${revision}-feedback`] = decision.prompt;
     }
     await tx.update(jobs).set({ status: "queued", checkpoint: next, error: null, finishedAt: null }).where(eq(jobs.id, job.id));
-    await tx.update(models).set({ status: "queued", phase: decision.action === "approve" ? "Visual target approved; queued for build" : "Queued for visual target revision", error: null }).where(eq(models.id, modelId));
+    await tx.update(assetVersions).set({ status: "queued", phase: decision.action === "approve" ? "Visual target approved; queued for build" : "Queued for visual target revision", error: null }).where(eq(assetVersions.id, modelId));
   });
 }

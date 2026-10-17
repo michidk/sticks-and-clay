@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, batches, jobs, models, runs } from "../db/schema";
+import { projects, batches, jobs, assetVersions, runs } from "../db/schema";
 import { api } from "./api.server";
 import { readFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -47,7 +47,7 @@ integration(
       design: "Approved original",
       designVersion: 1,
     });
-    await db.insert(models).values({
+    await db.insert(assetVersions).values({
       id: modelId,
       projectId,
       batchId,
@@ -88,8 +88,8 @@ integration(
       expect(fork.status).toBe(201);
       const [variant] = await db
         .select()
-        .from(models)
-        .where(eq(models.id, (await fork.json()).id));
+        .from(assetVersions)
+        .where(eq(assetVersions.id, (await fork.json()).id));
       const [newBatch] = await db
         .select()
         .from(batches)
@@ -122,8 +122,8 @@ integration(
       expect((await status.json()).status).toBe("cancelled");
       const [unchanged] = await db
         .select()
-        .from(models)
-        .where(eq(models.id, modelId));
+        .from(assetVersions)
+        .where(eq(assetVersions.id, modelId));
       expect(unchanged.status).toBe("done");
       const [savedRun] = await db.select().from(runs).where(eq(runs.id, runId));
       expect(savedRun.result).toEqual(source);
@@ -167,8 +167,8 @@ integration(
       expect(job.kind).toBe("model");
       const [baseline] = await db
         .select()
-        .from(models)
-        .where(eq(models.id, job.targetId));
+        .from(assetVersions)
+        .where(eq(assetVersions.id, job.targetId));
       const [importBatch] = await db
         .select()
         .from(batches)
@@ -178,8 +178,8 @@ integration(
     } finally {
       const assets = await db
         .select()
-        .from(models)
-        .where(eq(models.projectId, projectId));
+        .from(assetVersions)
+        .where(eq(assetVersions.projectId, projectId));
       await db.delete(jobs).where(
         inArray(
           jobs.targetId,
@@ -187,7 +187,8 @@ integration(
         ),
       );
       await db.delete(runs).where(eq(runs.projectId, projectId));
-      await db.delete(models).where(eq(models.projectId, projectId));
+      await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
+      await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
       await db.delete(batches).where(eq(batches.projectId, projectId));
       await db.delete(projects).where(eq(projects.id, projectId));
       if (importedKey) {
@@ -272,6 +273,7 @@ integration(
             rows.map((b) => b.id),
           ),
         );
+      await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
       await db.delete(batches).where(eq(batches.projectId, projectId));
       await db.delete(projects).where(eq(projects.id, projectId));
     }
@@ -303,7 +305,7 @@ for (const assetType of ["graphic", "svg"] as const) integration(
       design: "Approved graphic design",
       designVersion: 1,
     });
-    await db.insert(models).values({
+    await db.insert(assetVersions).values({
       id: modelId,
       projectId,
       batchId,
@@ -336,8 +338,8 @@ for (const assetType of ["graphic", "svg"] as const) integration(
       expect(reviewed.status).toBe(201);
       const [reviewedModel] = await db
         .select()
-        .from(models)
-        .where(eq(models.id, (await reviewed.json()).id));
+        .from(assetVersions)
+        .where(eq(assetVersions.id, (await reviewed.json()).id));
       expect(
         (await db.select().from(batches).where(eq(batches.id, reviewedModel.batchId)))[0].judgeIterations,
       ).toBe(1);
@@ -354,7 +356,7 @@ for (const assetType of ["graphic", "svg"] as const) integration(
       expect(JSON.parse(job.checkpoint["branch-references"])[0]).toBe(
         `graphics/source.${assetType === "svg" ? "svg" : "png"}`,
       );
-      const [variant] = await db.select().from(models).where(eq(models.id, id));
+      const [variant] = await db.select().from(assetVersions).where(eq(assetVersions.id, id));
       expect(variant.sourceRunId).toBe(runId);
       const [variantBatch] = await db
         .select()
@@ -364,8 +366,8 @@ for (const assetType of ["graphic", "svg"] as const) integration(
     } finally {
       const ms = await db
         .select()
-        .from(models)
-        .where(eq(models.projectId, projectId));
+        .from(assetVersions)
+        .where(eq(assetVersions.projectId, projectId));
       await db.delete(jobs).where(
         inArray(
           jobs.targetId,
@@ -373,7 +375,8 @@ for (const assetType of ["graphic", "svg"] as const) integration(
         ),
       );
       await db.delete(runs).where(eq(runs.projectId, projectId));
-      await db.delete(models).where(eq(models.projectId, projectId));
+      await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
+      await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
       await db.delete(batches).where(eq(batches.projectId, projectId));
       await db.delete(projects).where(eq(projects.id, projectId));
     }

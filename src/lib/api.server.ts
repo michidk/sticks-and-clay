@@ -1,3 +1,7 @@
+import { plannerReservations } from "./queue.server";
+import { getGlobalBoard } from "./global-board.server";
+import { assetSnapshot } from "./asset-snapshot.server";
+import { updateAssetReferences, attachMockupToAsset } from "./asset-references.server";
 import { decideVisualTarget } from "./visual-target.server";
 import { visualTargetDecisionInput } from "./api-inputs";
 import { adminAction } from "./admin.server";
@@ -18,7 +22,6 @@ import { exportAssets, setModelAccepted } from "./asset-export.server";
 import { recordedAnalysis } from "../modules/model-analysis/report";
 import { workshopSchema } from "./workshop";
 import { imageKeys, thumbnail, warmThumbnails } from "./thumbnail.server";
-import { snapshotWorkshop } from "./workshop.server";
 import { workshopAction } from "./workshop-actions.server";
 import { materialAction } from "./materials.server";
 import { collectionSummary, slimResult } from "./project-summary";
@@ -32,7 +35,8 @@ import {
   projects,
   revisions,
   batches,
-  models,
+  assetVersions,
+  assetEntries,
   runs,
   events,
   jobs,
@@ -70,7 +74,7 @@ import {
   startDesign,
 } from "./project-lifecycle.server";
 import { queueGeneration, regenerateAsset } from "./generation.server";
-import { discardModelIdea, listModelIdeas, returnModelToIdea, saveModelIdea, setModelIdeaReady, startModelIdea, updateModelIdea } from "./model-ideas.server";
+import { discardAssetDraft, listAssetDrafts, returnVersionToIdea, createAsset, setAssetReady, startAsset, updateAsset } from "./assets.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   kinds: string[],
@@ -100,6 +104,7 @@ export async function api(request: Request) {
     const path = new URL(request.url).pathname
       .replace(/^\/api\/?/, "")
       .split("/");
+    if (path[0] === "asset-versions") path[0] = "models";
     if (request.method !== "GET") {
       const origin = request.headers.get("origin");
       if (
@@ -112,6 +117,10 @@ export async function api(request: Request) {
         ].includes(new URL(origin).host)
       )
         return reply({ error: "Invalid request origin" }, 403);
+    }
+    if (path[0] === "board" && request.method === "GET") {
+      const filter = new URL(request.url).searchParams.get("projectId");
+      return reply(await getGlobalBoard(filter ? uuid.parse(filter) : undefined));
     }
     const materialResult = await materialAction(request, path);
     if (materialResult) return materialResult;
@@ -177,8 +186,8 @@ export async function api(request: Request) {
       const photos = await projectPhotographs();
       const generated = await db
         .select()
-        .from(models)
-        .orderBy(desc(models.createdAt));
+        .from(assetVersions)
+        .orderBy(desc(assetVersions.createdAt));
       const collections = await db
         .select({
           id: batches.id,
@@ -518,9 +527,9 @@ export async function api(request: Request) {
           await Promise.all([
             db
               .select()
-              .from(models)
-              .where(eq(models.projectId, id))
-              .orderBy(models.createdAt, models.name, models.id),
+              .from(assetVersions)
+              .where(eq(assetVersions.projectId, id))
+              .orderBy(assetVersions.createdAt, assetVersions.name, assetVersions.id),
             db
               .select({
                 ...getTableColumns(runs),
@@ -555,7 +564,7 @@ export async function api(request: Request) {
               inArray(jobs.status, ["queued", "running", "cancelling"]),
               or(
                 eq(jobs.targetId, id),
-                inArray(jobs.targetId, db.select({ id: models.id }).from(models).where(eq(models.projectId, id))),
+                inArray(jobs.targetId, db.select({ id: assetVersions.id }).from(assetVersions).where(eq(assetVersions.projectId, id))),
                 inArray(jobs.targetId, db.select({ id: batches.id }).from(batches).where(eq(batches.projectId, id))),
               ),
             )).orderBy(jobs.createdAt),
@@ -565,8 +574,9 @@ export async function api(request: Request) {
           photographs: await projectPhotographs(id),
           mockups: await designMockups(id),
           mockupItems: await listMockups(id),
-          ideas: await listModelIdeas(id),
-          models: assets,
+          ideas: await listAssetDrafts(id),
+          assets: await db.select().from(assetEntries).where(eq(assetEntries.projectId, id)).orderBy(assetEntries.createdAt, assetEntries.id),
+          assetVersions: assets,
           versions: history
             .filter((r) => r.role === "builder" && r.modelId)
             .map((r) => {
@@ -669,20 +679,27 @@ export async function api(request: Request) {
         await setMockupReference(id, uuidOrJob.parse(path[3]), use, use ? referenceNoteInput.parse(await request.json().catch(() => ({}))).note : "");
         return reply({ ok: true });
       }
-      if (path[2] === "ideas") {
+      if (path[2] === "assets" && path[3] && path[4] === "references" && request.method === "POST") {
+        return reply(await updateAssetReferences(id, uuid.parse(path[3]), await request.formData()));
+      }
+      if (path[2] === "assets" && path[3] && path[4] === "mockups" && path[5] && request.method === "POST") {
+        const { note } = referenceNoteInput.parse(await request.json());
+        return reply(await attachMockupToAsset(id, uuid.parse(path[3]), uuidOrJob.parse(path[5]), note));
+      }
+      if (path[2] === "ideas" || path[2] === "assets") {
         if (path.length === 3 && request.method === "POST") {
-          return reply(await saveModelIdea(project, ideaInput.parse(await request.json())), 201);
+          return reply(await createAsset(project, ideaInput.parse(await request.json())), 201);
         }
         if (path.length === 4 && request.method === "PUT")
-          return reply({ ok: true, ...(await updateModelIdea(project, uuid.parse(path[3]), ideaInput.parse(await request.json()))) });
+          return reply({ ok: true, ...(await updateAsset(project, uuid.parse(path[3]), ideaInput.parse(await request.json()))) });
         if (path.length === 4 && request.method === "DELETE") {
-          await discardModelIdea(id, uuid.parse(path[3]));
+          await discardAssetDraft(id, uuid.parse(path[3]));
           return reply({ ok: true });
         }
         if (path.length === 5 && path[4] === "generate" && request.method === "POST")
-          return reply({ id: await startModelIdea(id, uuid.parse(path[3])) }, 201);
+          return reply({ id: await startAsset(id, uuid.parse(path[3])) }, 201);
         if (path.length === 5 && path[4] === "ready" && request.method === "POST") {
-          await setModelIdeaReady(id, uuid.parse(path[3]), readyInput.parse(await request.json()).ready);
+          await setAssetReady(id, uuid.parse(path[3]), readyInput.parse(await request.json()).ready);
           return reply({ ok: true });
         }
       }
@@ -698,9 +715,9 @@ export async function api(request: Request) {
           throw new Error("Approve the design first");
         const input = assetBriefInput.parse(await request.json());
         const existing = await db
-          .select({ name: models.name, prompt: models.prompt })
-          .from(models)
-          .where(eq(models.projectId, id));
+          .select({ name: assetVersions.name, prompt: assetVersions.prompt })
+          .from(assetVersions)
+          .where(eq(assetVersions.projectId, id));
         const briefRole =
           project.assetType !== "model" ? "graphic-brief" : "model-brief";
         const text = await roleInput(briefRole, {
@@ -881,7 +898,7 @@ export async function api(request: Request) {
     ) {
       const id = uuid.parse(path[1]);
       const input = branchInput.parse(await request.json());
-      const [parent] = await db.select().from(models).where(eq(models.id, id));
+      const [parent] = await db.select().from(assetVersions).where(eq(assetVersions.id, id));
       if (!parent) return reply({ error: "Model not found" }, 404);
       const [source] = await db
         .select()
@@ -928,9 +945,9 @@ export async function api(request: Request) {
         }
       }
       const fullPrompt = `${parent.prompt}\n\nRequested change from saved version:\n${input.prompt}`;
-      const workshop = input.useCurrentStyle
-        ? snapshotWorkshop(project, project.workshop)
-        : parentBatch.workshop;
+      const [asset] = await db.select().from(assetEntries).where(eq(assetEntries.id, parent.assetId));
+      const workshop = assetSnapshot(project, asset, input.useCurrentStyle ? undefined : parentBatch.workshop ?? undefined);
+      assertNotArchived(project);
       await db.transaction(async (tx) => {
         await tx.insert(batches).values({
           id: batchId,
@@ -945,8 +962,15 @@ export async function api(request: Request) {
           workshop,
           status: "building",
         });
-        await tx.insert(models).values({
+        const assetId = input.kind === "iterate" ? parent.assetId : crypto.randomUUID();
+        if (input.kind === "fork") await tx.insert(assetEntries).values({
+          id: assetId, projectId: parent.projectId, title: name, batchId, inIdea: false,
+          input: { ...asset.input, prompt: fullPrompt, count: 1, judgeIterations: input.judgeIterations },
+          references: asset.references, referenceNotes: asset.referenceNotes,
+        });
+        await tx.insert(assetVersions).values({
           id: modelId,
+          assetId,
           projectId: parent.projectId,
           batchId,
           name,
@@ -966,7 +990,7 @@ export async function api(request: Request) {
               ...((source.role === "graphic" || source.role === "svg")
                 ? [(source.result as any).key]
                 : []),
-              ...project.references,
+              ...(workshop.references || []),
             ]),
           },
         });
@@ -979,7 +1003,7 @@ export async function api(request: Request) {
     }
     if (path[0] === "models" && path[1] && path[2] === "idea" && request.method === "POST") {
       const { deleteModel } = returnToIdeaInput.parse(await request.json().catch(() => ({})));
-      return reply(await returnModelToIdea(uuid.parse(path[1]), deleteModel), 201);
+      return reply(await returnVersionToIdea(uuid.parse(path[1]), deleteModel), 201);
     }
     if (path[0] === "models" && path[1] && path.length === 2 && request.method === "DELETE") {
       await deleteAsset(uuid.parse(path[1]));
@@ -995,7 +1019,7 @@ export async function api(request: Request) {
     ) {
       const id = uuid.parse(path[1]);
       const input = designUpdateInput.parse(await request.json());
-      const [model] = await db.select().from(models).where(eq(models.id, id));
+      const [model] = await db.select().from(assetVersions).where(eq(assetVersions.id, id));
       if (!model) return reply({ error: "Model not found" }, 404);
       const [source] = await db
         .select()
@@ -1070,25 +1094,33 @@ export async function api(request: Request) {
       const id = uuid.parse(path[1]);
       await db.transaction(async (tx) => {
         const [model] = await tx
-          .update(models)
+          .update(assetVersions)
           .set({
             status: "queued",
             phase: "Queued for retry",
             progress: 0,
             error: null,
           })
-          .where(and(eq(models.id, id), eq(models.status, "failed")))
+          .where(and(eq(assetVersions.id, id), eq(assetVersions.status, "failed")))
           .returning();
         if (!model) throw new Error("Only failed models can be retried");
-        await tx
-          .update(batches)
-          .set({ status: "building", error: null })
-          .where(eq(batches.id, model.batchId));
-        const resumed = await resumeJob(tx, ["model"], id);
-        if (!resumed)
-          await tx
-            .insert(jobs)
-            .values({ id: crypto.randomUUID(), kind: "model", targetId: id });
+        const [builderJob] = await tx.select({ id: jobs.id }).from(jobs)
+          .where(and(eq(jobs.kind, "model"), eq(jobs.targetId, id))).limit(1);
+        const [plannerJob] = !builderJob ? await tx.select().from(jobs)
+          .where(and(eq(jobs.kind, "plan"), eq(jobs.targetId, model.batchId))).orderBy(desc(jobs.createdAt)).limit(1) : [];
+        if (!builderJob && plannerJob?.status === "failed") {
+          const planner = await resumeJob(tx, ["plan"], model.batchId);
+          if (!planner) throw new Error("No failed planning work to resume");
+          await tx.update(assetVersions).set({ status: "queued", phase: "Queued for planning", progress: 0, error: null })
+            .where(plannerReservations(model.batchId));
+          await tx.update(batches).set({ status: "queued", error: null }).where(eq(batches.id, model.batchId));
+        } else {
+          if (!builderJob && plannerJob && ["queued", "running", "cancelling"].includes(plannerJob.status))
+            throw new Error("Wait for planning to finish before retrying this version");
+          await tx.update(batches).set({ status: "building", error: null }).where(eq(batches.id, model.batchId));
+          const resumed = await resumeJob(tx, ["model"], id);
+          if (!resumed) await tx.insert(jobs).values({ id: crypto.randomUUID(), kind: "model", targetId: id });
+        }
       });
       return reply({ ok: true });
     }
@@ -1101,6 +1133,9 @@ export async function api(request: Request) {
       await db.transaction(async (tx) => {
         const resumed = await resumeJob(tx, ["plan", "demo"], id);
         if (!resumed) throw new Error("No failed batch work to resume");
+        if (resumed.kind === "plan") await tx.update(assetVersions)
+          .set({ status: "queued", phase: "Queued for planning", progress: 0, error: null })
+          .where(plannerReservations(id));
         await tx
           .update(batches)
           .set({

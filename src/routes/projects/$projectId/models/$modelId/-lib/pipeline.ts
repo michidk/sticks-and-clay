@@ -1,4 +1,4 @@
-import type { Model, Review, Version } from "./model";
+import type { Model, Review, Build } from "./model";
 
 export type PipelineRun = {
   id: string;
@@ -22,7 +22,7 @@ export type PipelineStep = {
   run: PipelineRun;
   label: string;
   state: string;
-  version?: Version;
+  version?: Build;
   review?: Review;
 };
 const labels: Record<string, string> = {
@@ -35,7 +35,7 @@ const labels: Record<string, string> = {
 export function pipelineSteps(
   model: Model,
   runs: PipelineRun[],
-  versions: Version[],
+  versions: Build[],
 ): PipelineStep[] {
   const terminal = ["done", "failed", "cancelled"].includes(model.status);
   const ordered = runs

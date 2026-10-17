@@ -44,36 +44,39 @@ const actions: {
 }[] = [
   { name: "list_projects", scope: read, method: "GET", path: "projects", args: {} },
   { name: "get_project", scope: read, method: "GET", path: `projects/${id}`, args: { projectId: id } },
+  { name: "get_board", scope: read, method: "GET", path: "board", args: {} },
+  { name: "update_asset_references", scope: write, method: "POST", path: `projects/${id}/assets/${sourceRunId}/references`, args: { projectId: id, assetId: sourceRunId, references: [], referenceNotes: {}, expected: { references: [], referenceNotes: {} } } },
+  { name: "attach_asset_mockup", scope: write, method: "POST", path: `projects/${id}/assets/${sourceRunId}/mockups/${sourceRunId}`, args: { projectId: id, assetId: sourceRunId, mockupId: sourceRunId } },
   { name: "draft_project_name", scope: write, method: "POST", path: "projects/name", args: { description: "Forest tools" } },
   { name: "draft_project_brief", scope: write, method: "POST", path: "projects/brief", args: { name: "Forest tools" } },
   { name: "create_project", scope: write, method: "POST", path: "projects", args: { name: "Forest tools" } },
   { name: "draft_asset_brief", scope: write, method: "POST", path: `projects/${id}/model-brief`, args: { projectId: id, count: 1 } },
   { name: "save_design", scope: write, method: "PUT", path: `projects/${id}/design`, args: { projectId: id, design: "A".repeat(100), version: 0, approve: true } },
   { name: "update_workshop", scope: write, method: "PUT", path: `projects/${id}/workshop`, args: { projectId: id } },
-  { name: "generate_assets", scope: write, method: "POST", path: `projects/${id}/generate`, args: { projectId: id, count: 1, judgeIterations: 0 } },
-  { name: "save_idea", scope: write, method: "POST", path: `projects/${id}/ideas`, args: { projectId: id, prompt: "A small sedan", title: "Small sedan", count: 1, judgeIterations: 0 } },
-  { name: "update_idea", scope: write, method: "PUT", path: `projects/${id}/ideas/${sourceRunId}`, args: { projectId: id, ideaId: sourceRunId, prompt: "A yellow cab", count: 2, judgeIterations: 0 } },
-  { name: "discard_idea", scope: write, method: "DELETE", path: `projects/${id}/ideas/${sourceRunId}`, args: { projectId: id, ideaId: sourceRunId } },
-  { name: "mark_idea_ready", scope: write, method: "POST", path: `projects/${id}/ideas/${sourceRunId}/ready`, args: { projectId: id, ideaId: sourceRunId, ready: true } },
-  { name: "start_idea", scope: write, method: "POST", path: `projects/${id}/ideas/${sourceRunId}/generate`, args: { projectId: id, ideaId: sourceRunId } },
+  { name: "generate_asset", scope: write, method: "POST", path: `projects/${id}/generate`, args: { projectId: id, prompt: "A stone lamp", judgeIterations: 0 } },
+  { name: "create_asset", scope: write, method: "POST", path: `projects/${id}/assets`, args: { projectId: id, prompt: "A small sedan", title: "Small sedan", judgeIterations: 0 } },
+  { name: "update_asset", scope: write, method: "PUT", path: `projects/${id}/assets/${sourceRunId}`, args: { projectId: id, assetId: sourceRunId, prompt: "A yellow cab", judgeIterations: 0 } },
+  { name: "discard_asset", scope: write, method: "DELETE", path: `projects/${id}/assets/${sourceRunId}`, args: { projectId: id, assetId: sourceRunId } },
+  { name: "mark_asset_ready", scope: write, method: "POST", path: `projects/${id}/assets/${sourceRunId}/ready`, args: { projectId: id, assetId: sourceRunId, ready: true } },
+  { name: "start_asset", scope: write, method: "POST", path: `projects/${id}/assets/${sourceRunId}/generate`, args: { projectId: id, assetId: sourceRunId } },
   { name: "retry_project_design", scope: write, method: "POST", path: `projects/${id}/retry-design`, args: { projectId: id } },
   { name: "photograph_project", scope: write, method: "POST", path: `projects/${id}/photograph`, args: { projectId: id } },
   { name: "import_asset", scope: write, method: "POST", path: `projects/${id}/import`, args: { projectId: id, name: "Axe", prompt: "Polish this axe", file: { filename: "axe.glb", base64: glb.toString("base64") } } },
   { name: "list_materials", scope: read, method: "GET", path: `projects/${id}/materials`, args: { projectId: id } },
   { name: "generate_material", scope: write, method: "POST", path: `projects/${id}/materials`, args: { projectId: id, parameters: {} } },
-  { name: "branch_asset", scope: write, method: "POST", path: `models/${id}/branch`, args: { modelId: id, kind: "iterate", sourceRunId, prompt: "Fix the handle", judgeIterations: 0 } },
-  { name: "accept_asset", scope: write, method: "POST", path: `models/${id}/accept`, args: { modelId: id, accepted: true } },
-  { name: "return_asset_to_idea", scope: write, method: "POST", path: `models/${id}/idea`, args: { modelId: id } },
+  { name: "branch_asset_version", scope: write, method: "POST", path: `asset-versions/${id}/branch`, args: { versionId: id, kind: "iterate", sourceRunId, prompt: "Fix the handle", judgeIterations: 0 } },
+  { name: "accept_asset_version", scope: write, method: "POST", path: `asset-versions/${id}/accept`, args: { versionId: id, accepted: true } },
+  { name: "return_asset_to_idea", scope: write, method: "POST", path: `asset-versions/${id}/idea`, args: { versionId: id } },
   { name: "export_assets", scope: write, method: "POST", path: `projects/${id}/export`, args: { projectId: id, acceptedOnly: true } },
-  { name: "update_design_from_asset", scope: write, method: "POST", path: `models/${id}/design-update`, args: { modelId: id, sourceRunId, view: 0 } },
-  { name: "approve_visual_target", scope: write, method: "POST", path: `models/${id}/visual-target`, args: { modelId: id, target: "models/target.png" } },
-  { name: "revise_visual_target", scope: write, method: "POST", path: `models/${id}/visual-target`, args: { modelId: id, target: "models/target.png", prompt: "Make it taller" } },
-  { name: "retry_asset", scope: write, method: "POST", path: `models/${id}/retry`, args: { modelId: id } },
-  { name: "list_animation_clips", scope: read, method: "GET", path: `models/${id}/sprite-clips?sourceRunId=${sourceRunId}`, args: { modelId: id, sourceRunId } },
-  { name: "render_asset", scope: write, method: "POST", path: `models/${id}/presentation`, args: { modelId: id, sourceRunId } },
-  { name: "list_asset_exports", scope: read, method: "GET", path: `models/${id}/workshop-jobs`, args: { modelId: id } },
+  { name: "update_design_from_asset", scope: write, method: "POST", path: `asset-versions/${id}/design-update`, args: { versionId: id, sourceRunId, view: 0 } },
+  { name: "approve_visual_target", scope: write, method: "POST", path: `asset-versions/${id}/visual-target`, args: { versionId: id, target: "models/target.png" } },
+  { name: "revise_visual_target", scope: write, method: "POST", path: `asset-versions/${id}/visual-target`, args: { versionId: id, target: "models/target.png", prompt: "Make it taller" } },
+  { name: "retry_asset_version", scope: write, method: "POST", path: `asset-versions/${id}/retry`, args: { versionId: id } },
+  { name: "list_animation_clips", scope: read, method: "GET", path: `asset-versions/${id}/sprite-clips?sourceRunId=${sourceRunId}`, args: { versionId: id, sourceRunId } },
+  { name: "render_asset", scope: write, method: "POST", path: `asset-versions/${id}/presentation`, args: { versionId: id, sourceRunId } },
+  { name: "list_asset_exports", scope: read, method: "GET", path: `asset-versions/${id}/workshop-jobs`, args: { versionId: id } },
   { name: "get_export_job", scope: read, method: "GET", path: `workshop-jobs/${id}`, args: { jobId: id } },
-  { name: "assign_material", scope: write, method: "POST", path: `models/${id}/material-assignment`, args: { modelId: id, materialVersionId: sourceRunId, slot: "Wood", repeat: 2 } },
+  { name: "assign_material", scope: write, method: "POST", path: `asset-versions/${id}/material-assignment`, args: { versionId: id, materialVersionId: sourceRunId, slot: "Wood", repeat: 2 } },
   { name: "get_queue", scope: read, method: "GET", path: "queue", args: {} },
   { name: "cancel_job", scope: write, method: "POST", path: `queue/${id}/cancel`, args: { jobId: id } },
   { name: "cancel_pending_jobs", scope: write, method: "POST", path: "queue/cancel-pending", args: {} },
@@ -117,7 +120,7 @@ test("modern SDK clients discover every human action with the correct HTTP metho
       "read_artifact", "view_image", "list_mcp_clients", "revoke_mcp_client",
     ].sort());
     expect(catalog.tools.some((tool) => /texture|execute|shell/.test(tool.name))).toBe(false);
-    expect(catalog.tools.find((tool) => tool.name === "generate_assets")?.annotations)
+    expect(catalog.tools.find((tool) => tool.name === "generate_asset")?.annotations)
       .toEqual({ readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true });
     expect(catalog.tools.find((tool) => tool.name === "cancel_pending_jobs")?.annotations?.destructiveHint).toBe(true);
     for (const action of actions) {
@@ -125,12 +128,12 @@ test("modern SDK clients discover every human action with the correct HTTP metho
       expect(result.isError).not.toBe(true);
       expect(requests.at(-1)).toEqual({ method: action.method, path: action.path });
     }
-    expect(requests).toHaveLength(44);
+    expect(requests).toHaveLength(actions.length);
     const clients = await connected.client.callTool({ name: "list_mcp_clients", arguments: {} });
     expect(clients.structuredContent).toEqual({ data: [{ id: "client-1", name: "Test client", redirectUris: ["http://localhost/callback"], revokedAt: null }] });
     await connected.client.callTool({ name: "revoke_mcp_client", arguments: { clientId: "client-1" } });
     expect(revoked).toEqual(["client-1"]);
-    expect(requests).toHaveLength(44);
+    expect(requests).toHaveLength(actions.length);
   } finally { await connected.close(); }
 });
 
@@ -162,7 +165,7 @@ test("shared validation rejects malformed mutation input before calling the appl
       { projectId: id, count: 1, judgeIterations: -1 },
       { projectId: id, count: 1, judgeIterations: 0, unexpected: true },
     ]) {
-      const result = await connected.client.callTool({ name: "generate_assets", arguments: args });
+      const result = await connected.client.callTool({ name: "generate_asset", arguments: args });
       expect(result.isError).toBe(true);
     }
     const material = await connected.client.callTool({ name: "generate_material", arguments: { projectId: id, parameters: { roughness: 2 } } });
@@ -183,13 +186,13 @@ test("projects, selected history, queue and transcripts paginate without losing 
     const projects = await connected.client.callTool({ name: "list_projects", arguments: { offset: 1, limit: 1 } });
     expect(projects.structuredContent).toEqual({ data: { projects: [{ id: "p2" }] }, page: { offset: 1, total: 3, nextOffset: 2 } });
     const overview = await connected.client.callTool({ name: "get_project", arguments: { projectId: id } });
-    expect(overview.structuredContent).toEqual({ data: { project: { id, status: "ready" }, counts: { models: 2, revisions: 3, runs: 0 } } });
+    expect(overview.structuredContent).toEqual({ data: { project: { id, status: "ready" }, counts: { assetVersions: 2, revisions: 3, runs: 0 } } });
     const revisions = await connected.client.callTool({ name: "get_project", arguments: { projectId: id, section: "revisions", offset: 2, limit: 1 } });
     expect(revisions.structuredContent).toEqual({ data: [{ version: 3 }], page: { offset: 2, total: 3, nextOffset: null } });
     const board = await connected.client.callTool({ name: "get_project", arguments: { projectId: id, section: "board" } });
     expect(board.structuredContent).toEqual({ data: {
       idea: [], ready: [], review: [], done: [],
-      progress: [{ kind: "asset", modelId: "m1", attempts: 1 }, { kind: "asset", modelId: "m2", attempts: 1 }],
+      progress: [{ kind: "asset", versionId: "m1", status: "queued", versions: 1 }, { kind: "asset", versionId: "m2", status: "queued", versions: 1 }],
     } });
     const queue = await connected.client.callTool({ name: "get_queue", arguments: { offset: 0, limit: 1 } });
     expect(queue.structuredContent).toEqual({ data: { control: { paused: true }, jobs: [{ id: "j1" }] }, page: { offset: 0, total: 3, nextOffset: 1 } });
@@ -207,7 +210,7 @@ test("paid operations return identifiers once and failed drafting preserves reco
       : Response.json({ id }, { status: 201 });
   } });
   try {
-    const generated = await connected.client.callTool({ name: "generate_assets", arguments: { projectId: id, count: 1, judgeIterations: 0 } });
+    const generated = await connected.client.callTool({ name: "generate_asset", arguments: { projectId: id, prompt: "A stone lamp", judgeIterations: 0 } });
     expect(generated.structuredContent).toEqual({ data: { id } });
     const draft = await connected.client.callTool({ name: "draft_project_brief", arguments: { name: "Forest tools" } });
     expect(draft.isError).toBe(true);
@@ -248,7 +251,7 @@ test("legacy HTTP initialization and discovery remain available alongside modern
     expect(listed.status).toBe(200);
     const body = await listed.text();
     expect(body).toContain('"name":"list_projects"');
-    expect(body).not.toContain('"name":"generate_assets"');
+    expect(body).not.toContain('"name":"generate_asset"');
   } finally { await handler.close(); }
 });
 
@@ -267,7 +270,48 @@ test("the settings catalog lists every tool with its required scope", () => {
   const catalog = studioToolCatalog();
   const scopeOf = (name: string) => catalog.find((tool) => tool.name === name)?.scope;
   expect(scopeOf("list_projects")).toBe(read);
-  expect(scopeOf("generate_assets")).toBe(write);
+  expect(scopeOf("generate_asset")).toBe(write);
   expect(scopeOf("update_settings")).toBe(admin);
   expect(scopeOf("revoke_mcp_client")).toBe(admin);
+});
+
+test("asset references preserve optimistic state and upload images through the shared API", async () => {
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  let received: { references: unknown; notes: unknown; expected: unknown; image: boolean } | undefined;
+  const connected = await session({ api: async (request) => {
+    expect(new URL(request.url).pathname).toBe(`/api/projects/${id}/assets/${sourceRunId}/references`);
+    const form = await request.formData();
+    received = {
+      references: JSON.parse(String(form.get("references"))),
+      notes: JSON.parse(String(form.get("referenceNotes"))),
+      expected: JSON.parse(String(form.get("expected"))),
+      image: form.get("images") instanceof File,
+    };
+    return Response.json({ references: ["references/retained.png", "references/new.png"] });
+  } });
+  try {
+    const response = await connected.client.callTool({ name: "update_asset_references", arguments: {
+      projectId: id, assetId: sourceRunId, references: ["references/retained.png"],
+      images: [{ filename: "direction.png", mimeType: "image/png", base64: png.toString("base64") }],
+      referenceNotes: { "references/retained.png": "Keep the proportions" },
+      expected: { references: ["references/retained.png"], referenceNotes: {} },
+    } });
+    expect(response.isError).not.toBe(true);
+    expect(received).toEqual({ references: ["references/retained.png"], notes: { "references/retained.png": "Keep the proportions" }, expected: { references: ["references/retained.png"], referenceNotes: {} }, image: true });
+  } finally { await connected.close(); }
+});
+
+test("global board filters by project and removed model terminology is rejected", async () => {
+  const paths: string[] = [];
+  const connected = await session({ api: async (request) => { paths.push(new URL(request.url).pathname + new URL(request.url).search); return Response.json({ projects: [] }); } });
+  try {
+    expect((await connected.client.callTool({ name: "get_board", arguments: { projectId: id } })).isError).not.toBe(true);
+    expect(paths).toEqual([`/api/board?projectId=${id}`]);
+    expect((await connected.client.callTool({ name: "accept_asset_version", arguments: { modelId: id, accepted: true } })).isError).toBe(true);
+    expect(paths).toHaveLength(1);
+    const names = (await connected.client.listTools()).tools.map((tool) => tool.name);
+    expect(names).not.toContain("save_idea");
+    expect(names).not.toContain("generate_assets");
+    expect(names).not.toContain("accept_asset");
+  } finally { await connected.close(); }
 });

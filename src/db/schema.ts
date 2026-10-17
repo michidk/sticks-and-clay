@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import type { ObjectReference } from "../lib/object-reference";
 import {
   pgTable,
@@ -74,17 +75,20 @@ export const mockups = pgTable("mockups", {
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),
   createdAt: created(),
 }, (table) => [index("mockups_project_id_idx").on(table.projectId)]);
-export const modelIdeas = pgTable("model_ideas", {
+export const assetEntries = pgTable("assets", {
   id: text().primaryKey(),
   projectId: text().notNull().references(() => projects.id, { onDelete: "cascade" }),
   /** Written by the owner or by AI from the brief; null only on ideas saved before titles existed. */
   title: text(),
   input: jsonb().$type<GenerationInput>().notNull(),
-  batchId: text().references(() => batches.id),
+  inIdea: boolean("in_idea").default(true).notNull(),
+  references: jsonb().$type<string[]>().default([]).notNull(),
+  referenceNotes: jsonb("reference_notes").$type<Record<string, string>>().default({}).notNull(),
+  batchId: text().references(() => batches.id, { onDelete: "set null" }),
   /** The owner's marker that the brief is final; starting stays a separate, paid action. */
   readyAt: timestamp("ready_at", { withTimezone: true }),
   createdAt: created(),
-}, (table) => [index("model_ideas_project_id_idx").on(table.projectId)]);
+}, (table) => [index("assets_project_id_idx").on(table.projectId)]);
 export const batches = pgTable("batches", {
   visualTargetMode: text("visual_target_mode").$type<"auto" | "review" | "skip">().default("auto").notNull(),
   id: text().primaryKey(),
@@ -107,8 +111,10 @@ export const batches = pgTable("batches", {
   preview: jsonb().$type<{ lineup: string; scene: string; blend: string } | { sheet: string }>(),
   createdAt: created(),
 });
-export const models = pgTable("models", {
+export const assetVersions = pgTable("asset_versions", {
   id: text().primaryKey(),
+  // The ownership trigger also assigns assets to imported and legacy version inserts.
+  assetId: text("asset_id").notNull().default(sql`NULL`).references(() => assetEntries.id, { onDelete: "cascade" }),
   projectId: text()
     .notNull()
     .references(() => projects.id),

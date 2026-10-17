@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, batches, models, jobs } from "../db/schema";
+import { projects, batches, assetVersions, jobs } from "../db/schema";
 import { jobContext } from "./checkpoint.server";
 import { settleBatch } from "./batch-state.server";
 import { executeJob } from "./pipeline.server";
@@ -20,7 +20,7 @@ async function batchOf(count: number) {
     const key = `graphics/${crypto.randomUUID()}/${crypto.randomUUID()}/graphic.svg`;
     await getStorage().upload(new Blob([svg(i ? "#8a5a3c" : "#284e3c")], { type: "image/svg+xml" }), key);
     keys.push(key);
-    await db.insert(models).values({
+    await db.insert(assetVersions).values({
       id: crypto.randomUUID(), projectId, batchId, name: `Circle ${i + 1}`, prompt: "p", status: "done",
       artifacts: { image: key, stage: "final", format: "svg" },
     });
@@ -28,7 +28,7 @@ async function batchOf(count: number) {
   const cleanup = async (extra: string[] = []) => {
     for (const key of [...keys, ...extra]) if (await getStorage().exists(key)) await getStorage().delete(key);
     await db.delete(jobs).where(inArray(jobs.targetId, [projectId, batchId]));
-    await db.delete(models).where(eq(models.projectId, projectId));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
     await db.delete(batches).where(eq(batches.projectId, projectId));
     await db.delete(projects).where(eq(projects.id, projectId));
   };

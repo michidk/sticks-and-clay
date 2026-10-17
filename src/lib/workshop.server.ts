@@ -6,6 +6,9 @@ export function snapshotWorkshop(
 ): WorkshopSnapshot {
   return {
     ...workshopSchema.parse(value || {}),
+    references: [...project.references],
+    projectReferences: [...project.references],
+    projectReferenceNotes: { ...project.referenceNotes },
     referenceNotes: referenceNotesFor(project.references, project.referenceNotes),
   };
 }

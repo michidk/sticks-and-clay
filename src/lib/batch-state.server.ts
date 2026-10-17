@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { models, batches, projects, jobs } from "../db/schema";
+import { assetVersions, batches, projects, jobs } from "../db/schema";
 export async function settleBatch(id: string) {
-  const rows = await db.select().from(models).where(eq(models.batchId, id));
+  const rows = await db.select().from(assetVersions).where(eq(assetVersions.batchId, id));
   if (
     !rows.length ||
     !rows.every((m) => ["done", "failed", "cancelled"].includes(m.status))
@@ -43,8 +43,8 @@ export async function settleBatch(id: string) {
     if (claimed) {
       const available = await tx
         .select()
-        .from(models)
-        .where(eq(models.projectId, claimed.projectId));
+        .from(assetVersions)
+        .where(eq(assetVersions.projectId, claimed.projectId));
       if (available.some((m) => m.artifacts?.glb))
         await tx.insert(jobs).values({
           id: crypto.randomUUID(),

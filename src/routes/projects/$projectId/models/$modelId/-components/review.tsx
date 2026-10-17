@@ -29,7 +29,7 @@ export function ReviewNotes({
         <ClipboardCheck size={30} />
         <h3>No review recorded</h3>
         <p>
-          This version has no judge feedback yet. A build without judging will
+          This build has no judge feedback yet. A build without judging will
           not receive a judge score.
         </p>
       </div>

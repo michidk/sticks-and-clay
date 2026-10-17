@@ -3,7 +3,7 @@ import { z } from "zod";
 import { mkdir, writeFile, readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { db } from "../db/client";
-import { projects, batches, runs, models, jobs } from "../db/schema";
+import { projects, batches, runs, assetVersions, jobs } from "../db/schema";
 import { DATA, publishFiles } from "./storage.server";
 import { snapshotWorkshop } from "./workshop.server";
 import { jobContext, checkpoint } from "./checkpoint.server";
@@ -152,7 +152,7 @@ export async function workshopAction(
         status: "building",
       });
       await tx
-        .insert(models)
+        .insert(assetVersions)
         .values({ id, projectId: project.id, batchId, name, prompt });
       await tx.insert(jobs).values({
         id: crypto.randomUUID(),

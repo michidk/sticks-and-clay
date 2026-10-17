@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile, rename, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { db } from "../db/client";
-import { models, projects, runs } from "../db/schema";
+import { assetVersions, projects, runs } from "../db/schema";
 import { DATA, publishFiles, readStoredFile } from "./storage.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { assertJobActive } from "./queue.server";
@@ -45,8 +45,8 @@ export async function photographProject(projectId: string) {
     if (!project) throw new Error("Project not found");
     const projectModels = await db
       .select()
-      .from(models)
-      .where(eq(models.projectId, projectId));
+      .from(assetVersions)
+      .where(eq(assetVersions.projectId, projectId));
     const assets = collectionAssetGroups(projectModels)
       .flatMap((group) => {
         const latest = group.assets
@@ -141,7 +141,7 @@ export async function photographProject(projectId: string) {
         .map((a: any) => `${a.name}: ${a.glb} (${a.stage || "complete"})`)
         .join("\n"),
       directory: resolve(DATA, directory),
-      metrics: JSON.stringify({ models: input.assets.length }),
+      metrics: JSON.stringify({ assetVersions: input.assets.length }),
     }),
   });
   const [run] = await db.select().from(runs).where(eq(runs.id, runId));

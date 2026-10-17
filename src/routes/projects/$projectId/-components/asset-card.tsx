@@ -1,3 +1,4 @@
+import { AssetReferences } from "@/components/asset-references";
 import { describeError } from "@/lib/error-message";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -21,6 +22,7 @@ const finished = ["done", "failed", "cancelled"];
 /** One collection entry: a model or graphic with its current state and files. */
 export function AssetCard({
   projectId,
+  asset,
   model,
   isGraphics,
   cost,
@@ -41,6 +43,7 @@ export function AssetCard({
   activeJobs = [],
 }: {
   projectId: string;
+  asset?: { id: string; references: string[]; referenceNotes: Record<string, string> };
   model: any;
   isGraphics: boolean;
   cost: number;
@@ -77,7 +80,7 @@ export function AssetCard({
     if (!batch) return;
     setResuming(true);
     try {
-      await request(`models/${m.id}/regenerate`, json({}));
+      await request(`asset-versions/${m.id}/regenerate`, json({}));
       await onRefresh();
     } catch (e) {
       onError((e as Error).message);
@@ -88,7 +91,7 @@ export function AssetCard({
   async function resume() {
     setResuming(true);
     try {
-      await request("models/" + m.id + "/retry", json({}));
+      await request("asset-versions/" + m.id + "/retry", json({}));
       await onRefresh();
     } catch (e) {
       onError((e as Error).message);
@@ -275,6 +278,7 @@ export function AssetCard({
           )}
         </div>
       </div>
-    </Card>
+    {asset && !archived && <details className="m-4"><summary className="cursor-pointer">Asset references</summary><AssetReferences projectId={projectId} assetId={asset.id} references={asset.references} referenceNotes={asset.referenceNotes} onRefresh={onRefresh} /></details>}
+      </Card>
   );
 }

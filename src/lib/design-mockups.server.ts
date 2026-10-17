@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../db/client";
-import { jobs, mockups, modelIdeas, projects } from "../db/schema";
+import { jobs, mockups, assetEntries, projects } from "../db/schema";
 import { runImageRole } from "../modules/ai/index.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { mockupInput, mockupImage, mockupSnapshot } from "./design-mockups";
@@ -39,9 +39,9 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
     // With no instruction from the owner, a few saved ideas that were not started yet give the concepts something real to show.
     const ideas = input.hint || base
       ? []
-      : await tx.select().from(modelIdeas)
-        .where(and(eq(modelIdeas.projectId, projectId), isNull(modelIdeas.batchId)))
-        .orderBy(desc(modelIdeas.createdAt)).limit(MOCKUP_IDEAS);
+      : await tx.select().from(assetEntries)
+        .where(and(eq(assetEntries.projectId, projectId), isNull(assetEntries.batchId)))
+        .orderBy(desc(assetEntries.createdAt)).limit(MOCKUP_IDEAS);
     const ideaList = ideas.map((idea) => `- ${idea.title ? `${idea.title}: ` : ""}${idea.input.prompt.slice(0, 400)}`).join("\n");
     // Mockups see what a real batch would: the project's references with the owner's notes on them.
     const direction = {

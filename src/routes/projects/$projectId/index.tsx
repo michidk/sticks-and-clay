@@ -1,5 +1,5 @@
 import { GenerationDialog } from "./-components/generation-dialog";
-import { ModelIdeas } from "./-components/model-ideas";
+import { AssetDrafts } from "./-components/asset-drafts";
 import { Board } from "./-components/board";
 import { ExportPanel } from "./-components/export";
 import { ProjectActionsMenu } from "@/components/project-actions-menu";
@@ -146,8 +146,8 @@ function ProjectPage() {
     }),
     { cost: 0, unpriced: 0 },
   );
-  const collection = collectionSummary(data.models, data.batches);
-  const modelGroups = collectionAssetGroups(data.models);
+  const collection = collectionSummary(data.assetVersions, data.batches);
+  const modelGroups = collectionAssetGroups(data.assetVersions);
   const collectionModels = modelGroups.map((group) => group.representative);
   const modelGroupByRepresentative = new Map(
     modelGroups.map((group) => [group.representative.id, group]),
@@ -157,7 +157,7 @@ function ProjectPage() {
   const state = activeWork
     ? { label: `${queueKindLabels[activeWork.kind] || activeWork.kind} · ${activeWork.status}`, tone: activeWork.status === "queued" ? "queued" : "running" }
     : projectState(p.status, collection);
-  const pending = pendingCollectionItems(data.batches, data.models);
+  const pending = pendingCollectionItems(data.batches, data.assetVersions);
   // Collection renders that failed after the models existed belong on those models' cards.
   const renderFailureByRepresentative = new Map(
     modelGroups.map((group) => [
@@ -211,7 +211,7 @@ function ProjectPage() {
       setBusy(false);
     }
   }
-  const hasCollection = data.models.length || data.batches.length;
+  const hasCollection = data.assetVersions.length || data.batches.length;
   // Unapproved projects open on the design; mockups need an approved version.
   const activeTab: ProjectTab =
     !ready && (!search.tab || search.tab === "mockups")
@@ -272,7 +272,7 @@ function ProjectPage() {
           {ready && !isGraphics && !p.archivedAt && <ImportModel projectId={projectId} />}
           {ready ? (
             <Button disabled={Boolean(p.archivedAt)} onClick={() => setGenerate(true)}>
-              <Plus size={17} /> Add {assetSingular} ideas
+              <Plus size={17} /> Add asset
             </Button>
           ) : (
             activeTab !== "design" && (
@@ -332,6 +332,7 @@ function ProjectPage() {
         {activeTab === "mockups" && ready && (
           <LightboxProvider>
             <DesignMockupStep
+              assets={data.assets}
               key={projectId}
               projectId={projectId}
               version={p.designVersion}
@@ -431,24 +432,25 @@ function ProjectPage() {
                 ))}
           </>
         )}
-        {activeTab === "history" && <History runs={rs} models={data.models} />}
+        {activeTab === "history" && <History runs={rs} models={data.assetVersions} />}
         {activeTab === "board" && (
           <Board
+            assets={data.assets}
             projectId={projectId}
             project={p}
             ideas={ideas}
-            models={data.models}
+            models={data.assetVersions}
             batches={data.batches}
             runs={rs}
             onRefresh={load}
           />
         )}
         {activeTab === "export" && (
-          <ExportPanel projectId={projectId} projectName={p.name} models={data.models} />
+          <ExportPanel projectId={projectId} projectName={p.name} models={data.assetVersions} />
         )}
         {activeTab === "ideas" && (
           <>
-            <ModelIdeas
+            <AssetDrafts
               key={projectId}
               projectId={projectId}
               ideas={ideas}
@@ -469,7 +471,7 @@ function ProjectPage() {
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button onClick={() => setGenerate(true)}>
-                    <Plus size={17} /> Add {assetSingular} ideas
+                    <Plus size={17} /> Add asset
                   </Button>
                   {ready && (
                     <Button variant="outline" onClick={() => setTab("mockups")}>
@@ -531,7 +533,7 @@ function ProjectPage() {
                     const root: any = group?.root || m;
                     const forkParent =
                       root.branchKind === "fork" &&
-                      data.models.find((x: any) => x.id === root.parentModelId);
+                      data.assetVersions.find((x: any) => x.id === root.parentModelId);
                     const lineage = [
                       group && group.assets.length > 1
                         ? `Iteration ${group.assets.length}`
@@ -544,6 +546,7 @@ function ProjectPage() {
                       .join(" · ");
                     return (
                       <AssetCard
+                        asset={data.assets?.find((asset: { id: string }) => asset.id === m.assetId)}
                         key={m.id}
                         projectId={projectId}
                         model={m}

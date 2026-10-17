@@ -1,5 +1,6 @@
 type Asset = {
   id?: string;
+  assetId?: string | null;
   batchId?: string;
   status: string;
   verdict?: string | null;
@@ -18,6 +19,15 @@ export function collectionAssetGroups<T extends Asset>(assets: T[]) {
   const byId = new Map(
     indexed.flatMap((item) => (item.asset.id ? [[item.asset.id, item]] : [])),
   );
+  const rootsByAsset = new Map<string, (typeof indexed)[number]>();
+  for (const item of indexed) {
+    if (!item.asset.assetId) continue;
+    const previous = rootsByAsset.get(item.asset.assetId);
+    if (!previous || (item.asset.branchKind !== "iterate" && previous.asset.branchKind === "iterate") ||
+        (new Date(item.asset.createdAt || 0).getTime() < new Date(previous.asset.createdAt || 0).getTime())) {
+      rootsByAsset.set(item.asset.assetId, item);
+    }
+  }
   const groups = new Map<
     string,
     { root: T; representative: T; assets: T[]; latestIndex: number }
@@ -25,8 +35,12 @@ export function collectionAssetGroups<T extends Asset>(assets: T[]) {
 
   for (const item of indexed) {
     let root = item;
+    if (item.asset.assetId) {
+      root = rootsByAsset.get(item.asset.assetId) ?? item;
+    }
     const visited = new Set<string>();
     while (
+      !item.asset.assetId &&
       root.asset.branchKind === "iterate" &&
       root.asset.parentModelId &&
       !visited.has(root.asset.parentModelId)
@@ -37,7 +51,7 @@ export function collectionAssetGroups<T extends Asset>(assets: T[]) {
       root = parent;
     }
 
-    const key = root.asset.id || `asset:${root.index}`;
+    const key = item.asset.assetId || root.asset.id || `asset:${root.index}`;
     const group = groups.get(key);
     if (!group) {
       groups.set(key, {

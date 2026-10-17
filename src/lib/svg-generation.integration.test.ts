@@ -1,9 +1,9 @@
 import { test, expect } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, batches, models, runs, jobs } from "../db/schema";
+import { projects, batches, assetVersions, runs, jobs } from "../db/schema";
 import { jobContext } from "./checkpoint.server";
-import { executeModelJob } from "./model-pipeline.server";
+import { executeAssetVersionJob } from "./model-pipeline.server";
 import { getStorage } from "./storage.server";
 import { api } from "./api.server";
 
@@ -41,7 +41,7 @@ integration(
         status: "building",
       });
     await db
-      .insert(models)
+      .insert(assetVersions)
       .values({
         id: modelId,
         projectId,
@@ -79,12 +79,12 @@ integration(
     try {
       for (let i = 0; i < 2; i++)
         await jobContext.run({ id: jobId, checkpoint }, () =>
-          executeModelJob(modelId),
+          executeAssetVersionJob(modelId),
         );
       const [model] = await db
         .select()
-        .from(models)
-        .where(eq(models.id, modelId));
+        .from(assetVersions)
+        .where(eq(assetVersions.id, modelId));
       expect(model.status).toBe("done");
       expect(model.artifacts).toEqual({
         image: key,
@@ -116,7 +116,7 @@ integration(
       if (await getStorage().exists(key)) await getStorage().delete(key);
       await db.delete(jobs).where(eq(jobs.id, jobId));
       await db.delete(runs).where(eq(runs.projectId, projectId));
-      await db.delete(models).where(eq(models.projectId, projectId));
+      await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
       await db.delete(batches).where(eq(batches.projectId, projectId));
       await db.delete(projects).where(eq(projects.id, projectId));
     }

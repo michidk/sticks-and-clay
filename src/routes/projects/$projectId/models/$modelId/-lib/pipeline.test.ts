@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { pipelineSteps, type PipelineRun } from "./pipeline";
-import type { Model, Version } from "./model";
+import type { Model, Build } from "./model";
 const model: Model = {
   id: "m",
   name: "Model",
@@ -46,7 +46,7 @@ describe("recorded pipeline graph", () => {
     ]);
   });
   test("uses judge IDs to associate versions even when iterations repeat", () => {
-    const versions: Version[] = ["1", "2"].map((id) => ({
+    const versions: Build[] = ["1", "2"].map((id) => ({
       id,
       modelId: "m",
       iteration: 0,
@@ -84,7 +84,7 @@ describe("recorded pipeline graph", () => {
 });
 
 test("photography links only to its explicitly recorded builder version", () => {
-  const version: Version = {
+  const version: Build = {
     id: "build",
     modelId: "m",
     iteration: 0,

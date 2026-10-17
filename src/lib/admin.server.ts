@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
-import { jobs, models, batches, projects, runs } from "../db/schema";
+import { jobs, assetVersions, batches, projects, runs } from "../db/schema";
 import { loadMcpAdminState, loadMcpAuditPage, revokeMcpClient, saveMcpPolicy } from "../modules/mcp/settings.server";
 import { agentInput, type AgentInput } from "./api-inputs";
 import { cancelJob } from "./queue.server";
@@ -27,7 +27,7 @@ export async function adminAction(request: Request, path: string[]) {
             .select()
             .from(jobs)
             .orderBy(desc(jobs.createdAt)),
-          db.select().from(models),
+          db.select().from(assetVersions),
           db.select().from(batches),
           db.select().from(projects),
           db.select().from(runs).where(inArray(runs.role, immediateRoles))

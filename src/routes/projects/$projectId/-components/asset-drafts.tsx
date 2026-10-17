@@ -8,17 +8,20 @@ import { json, request } from "@/lib/client";
 import { usePending } from "@/hooks/use-pending";
 import type { GenerationInput } from "@/lib/api-inputs";
 
-export type ModelIdea = {
+export type AssetDraft = {
   id: string;
   /** Null only on ideas saved before titles existed. */
   title?: string | null;
   input: GenerationInput;
   readyAt?: string | null;
+  references?: string[];
+  referenceNotes?: Record<string, string>;
+  inIdea?: boolean;
 };
 
-export const ideaBrief = (idea: ModelIdea) => idea.input.prompt?.trim() || "AI proposes assets from the approved design.";
-export const ideaTitle = (idea: ModelIdea) => idea.title?.trim() || ideaBrief(idea).split("\n")[0];
-export const ideaSettings = (idea: ModelIdea, isGraphics: boolean) =>
+export const ideaBrief = (idea: AssetDraft) => idea.input.prompt?.trim() || "AI proposes assets from the approved design.";
+export const ideaTitle = (idea: AssetDraft) => idea.title?.trim() || ideaBrief(idea).split("\n")[0];
+export const ideaSettings = (idea: AssetDraft, isGraphics: boolean) =>
   `${isGraphics ? `Canvas ${idea.input.imageSize} · ` : ""}${idea.input.judgeIterations} review rounds`
   + (isGraphics ? "" : idea.input.visualTargetMode === "skip" ? " · No visual mock" : " · Visual target approval")
   + (idea.input.spriteTarget ? ` · Sprites ${idea.input.spriteTarget.size}px` : "");
@@ -29,16 +32,16 @@ export function useIdeaActions(projectId: string, onRefresh: () => Promise<unkno
   const pending = usePending();
   const [error, setError] = useState("");
   const isPending = (idea: { id: string }, action: IdeaAction) => pending.has(`${idea.id}:${action}`);
-  const act = (idea: ModelIdea, action: IdeaAction) => pending.run(`${idea.id}:${action}`, async () => {
+  const act = (idea: AssetDraft, action: IdeaAction) => pending.run(`${idea.id}:${action}`, async () => {
     setError("");
     try {
-      const base = `projects/${projectId}/ideas/${idea.id}`;
+      const base = `projects/${projectId}/assets/${idea.id}`;
       if (action === "generate") await request(`${base}/generate`, json({}));
       else if (action === "discard") await request(base, { method: "DELETE" });
       else await request(`${base}/ready`, json({ ready: !idea.readyAt }));
       await onRefresh();
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Could not update this idea");
+      setError(error instanceof Error ? error.message : "Could not update this asset");
     }
   });
   return { isPending, error, act };
@@ -46,15 +49,15 @@ export function useIdeaActions(projectId: string, onRefresh: () => Promise<unkno
 type IdeaAction = "generate" | "discard" | "ready";
 
 /** Saved briefs waiting to start, in their own tab before the collection. */
-export function ModelIdeas({ projectId, designVersion, ideas, isGraphics, ready, onRefresh }: {
+export function AssetDrafts({ projectId, designVersion, ideas, isGraphics, ready, onRefresh }: {
   projectId: string;
   designVersion: number;
-  ideas: ModelIdea[];
+  ideas: AssetDraft[];
   isGraphics: boolean;
   ready: boolean;
   onRefresh: () => Promise<unknown>;
 }) {
-  const [editing, setEditing] = useState<ModelIdea | null>(null);
+  const [editing, setEditing] = useState<AssetDraft | null>(null);
   const { isPending, error, act } = useIdeaActions(projectId, onRefresh);
   const noun = isGraphics ? "graphic" : "model";
   if (!ideas.length) return null;
@@ -68,7 +71,7 @@ export function ModelIdeas({ projectId, designVersion, ideas, isGraphics, ready,
     <div className="idea-table">
       <table>
         <thead>
-          <tr><th>Idea</th><th>Count</th><th>Settings</th><th><span className="sr-only">Actions</span></th></tr>
+          <tr><th>Asset</th><th>Settings</th><th><span className="sr-only">Actions</span></th></tr>
         </thead>
         <tbody>
           {ideas.map((idea) => {
@@ -84,7 +87,6 @@ export function ModelIdeas({ projectId, designVersion, ideas, isGraphics, ready,
                   {idea.readyAt && <StatusBadge tone="done">Ready</StatusBadge>}
                 </div>
               </td>
-              <td className="tabular-nums">{idea.input.count}</td>
               <td className="muted">{ideaSettings(idea, isGraphics)}</td>
               <td>
                 <div className="flex justify-end gap-1">
@@ -95,10 +97,10 @@ export function ModelIdeas({ projectId, designVersion, ideas, isGraphics, ready,
                   <Button size="sm" variant="outline" aria-pressed={!!idea.readyAt} disabled={isPending(idea, "ready")} onClick={() => act(idea, "ready")}>
                     <Check size={15} /> {idea.readyAt ? "Ready" : "Mark ready"}
                   </Button>
-                  <Button size="icon-sm" variant="ghost" aria-label="Edit idea" onClick={() => setEditing(idea)}>
+                  <Button size="icon-sm" variant="ghost" aria-label="Edit asset" onClick={() => setEditing(idea)}>
                     <Pencil size={15} />
                   </Button>
-                  <Button size="icon-sm" variant="ghost" aria-label="Discard idea" disabled={isPending(idea, "discard")} onClick={() => act(idea, "discard")}>
+                  <Button size="icon-sm" variant="ghost" aria-label="Discard asset" disabled={isPending(idea, "discard")} onClick={() => act(idea, "discard")}>
                     <Trash2 size={15} />
                   </Button>
                 </div>

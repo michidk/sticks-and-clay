@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { resolveVersion, modelStatus, type Model, type Version } from "./model";
+import { resolveBuild, modelStatus, type Model, type Build } from "./model";
 const artifacts = {
   glb: "versions/latest/asset.glb",
   blend: "versions/latest/source.blend",
@@ -18,7 +18,7 @@ const model: Model = {
   visualTarget: "current.png",
 };
 test("an unavailable or failed historical version never borrows latest exports or target", () => {
-  const versions: Version[] = [
+  const versions: Build[] = [
     {
       id: "failed",
       modelId: "model",
@@ -28,17 +28,17 @@ test("an unavailable or failed historical version never borrows latest exports o
       judges: [],
     },
   ];
-  expect(resolveVersion(model, versions, "missing")).toMatchObject({
+  expect(resolveBuild(model, versions, "missing")).toMatchObject({
     missing: true,
     artifacts: undefined,
     target: undefined,
   });
-  expect(resolveVersion(model, versions, "failed")).toMatchObject({
+  expect(resolveBuild(model, versions, "failed")).toMatchObject({
     missing: false,
     artifacts: undefined,
     target: undefined,
   });
-  expect(resolveVersion(model, versions).artifacts).toBe(artifacts);
+  expect(resolveBuild(model, versions).artifacts).toBe(artifacts);
 });
 test("historical media and feedback stay associated with their own model and iteration", () => {
   const old = {
@@ -52,7 +52,7 @@ test("historical media and feedback stay associated with their own model and ite
     summary: "old review",
     improvements: [],
   };
-  const versions: Version[] = [
+  const versions: Build[] = [
     {
       id: "old",
       modelId: "model",
@@ -63,13 +63,13 @@ test("historical media and feedback stay associated with their own model and ite
       judges: [{ id: "judge", status: "done", result: review }],
     },
   ];
-  expect(resolveVersion(model, versions, "old")).toMatchObject({
+  expect(resolveBuild(model, versions, "old")).toMatchObject({
     artifacts: old,
     feedback: review,
     target: "old.png",
   });
   expect(
-    resolveVersion({ ...model, id: "another" }, versions, "old").missing,
+    resolveBuild({ ...model, id: "another" }, versions, "old").missing,
   ).toBe(true);
   expect(modelStatus(model)).toBe("Completed with issues");
 });

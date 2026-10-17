@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import sharp from "sharp";
 import { db } from "../db/client";
-import { batches, models } from "../db/schema";
+import { batches, assetVersions } from "../db/schema";
 import { assertJobActive } from "./queue.server";
 import { getStorage, readStoredFile } from "./storage.server";
 
@@ -45,7 +45,7 @@ export async function composeSheet(tiles: { name: string; image: Buffer }[]) {
 
 /** Graphic and SVG counterpart of the 3D scale lineup: every finished asset on one sheet. */
 export async function renderGraphicSheet(batchId: string) {
-  const assets = await db.select().from(models).where(eq(models.batchId, batchId));
+  const assets = await db.select().from(assetVersions).where(eq(assetVersions.batchId, batchId));
   const ready = assets.filter((m) => m.status === "done" && typeof m.artifacts?.image === "string");
   if (!ready.length) throw new Error("No completed assets to render");
   const sheet = await composeSheet(

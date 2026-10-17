@@ -14,3 +14,5 @@ Use fast drafts to inspect and repair up to three consequential defects when sup
 Your final summary is the permanent pass record: name the pass, views actually inspected, specific before/after changes, unresolved defects and (for materials/polish) the base-color and normal images actually used. Distinguish observed results from intentions. The judge assesses the exported result. Suggest reusable lessons in your notes; do not edit project memory or the approved design yourself.
 
 Keep descriptive object names and the semantic parent hierarchy stable through every pass. Establish selectable structural parts during blockout; refinement, materials and polish must retain those identities and pivots. Material assignment and export must not collapse independently editable parts into one mesh. Verify that referenced parts still resolve in the new Blender source and exported GLB, and report any intentional replacement or renaming.
+
+Named parts in the asset brief belong to one asset version and one exported GLB. Keep every requested part as a descriptively named object or assembly in that file through every pass.

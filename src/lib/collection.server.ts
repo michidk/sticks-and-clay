@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { db } from "../db/client";
-import { batches, models, projects } from "../db/schema";
+import { batches, assetVersions, projects } from "../db/schema";
 import { renderGraphicSheet } from "./graphic-sheet.server";
 import { DATA, filePath, publishFiles } from "./storage.server";
 import { loadRuntimeSettings } from "./runtime-settings.server";
@@ -43,8 +43,8 @@ export async function renderCollection(batchId: string) {
   const settings = await loadRuntimeSettings();
   const assets = await db
     .select()
-    .from(models)
-    .where(eq(models.batchId, batchId));
+    .from(assetVersions)
+    .where(eq(assetVersions.batchId, batchId));
   const ready = assets.filter(
     (m) =>
       m.status === "done" && m.artifacts && m.artifacts.stage !== "geometry",

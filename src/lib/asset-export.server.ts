@@ -1,21 +1,23 @@
+import { z } from "zod";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { models } from "../db/schema";
+import { assetVersions } from "../db/schema";
 import { collectionAssetGroups } from "./project-summary";
 import { sourceZip } from "./source-bundle.server";
 import { getStorage, readStoredFile } from "./storage.server";
 import { assertStoragePath, storageUrl } from "./storage/path";
 import type { ExportInput } from "./api-inputs";
 
-type Asset = typeof models.$inferSelect;
+type Asset = typeof assetVersions.$inferSelect;
+const partFiles = z.array(z.object({ name: z.string(), key: z.string() }));
 const fileKey = /^[a-z-]+\/\S+\.[a-z0-9]+$/i;
 
 /** Accept marks a finished attempt as done; it never changes the AI verdict or files. */
 export async function setModelAccepted(modelId: string, accepted: boolean) {
-  const [model] = await db.select({ status: models.status }).from(models).where(eq(models.id, modelId));
+  const [model] = await db.select({ status: assetVersions.status }).from(assetVersions).where(eq(assetVersions.id, modelId));
   if (!model) throw new Error("Model not found");
   if (accepted && model.status !== "done") throw new Error("Only finished assets can be accepted");
-  await db.update(models).set({ acceptedAt: accepted ? new Date() : null }).where(eq(models.id, modelId));
+  await db.update(assetVersions).set({ acceptedAt: accepted ? new Date() : null }).where(eq(assetVersions.id, modelId));
 }
 
 const slug = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "asset";
@@ -28,10 +30,10 @@ export function exportEntries<T extends Pick<Asset, "id" | "name" | "artifacts" 
     for (let n = 2; folders.has(folder); n++) folder = `${slug(asset.name)}-${n}`;
     folders.add(folder);
     const files = new Map<string, string>();
-    const add = (key: string, group?: string) => {
+    const add = (key: string, group?: string, filename?: string) => {
       if (!fileKey.test(key) || [...files.values()].includes(key)) return;
       try { assertStoragePath(key); } catch { return; }
-      const base = `${folder}/${group ? `${group}/` : ""}${key.split("/").pop()}`;
+      const base = `${folder}/${group ? `${group}/` : ""}${filename ?? key.split("/").pop()}`;
       let name = base;
       for (let n = 2; files.has(name); n++) name = base.replace(/(\.[^.]+)$/, `-${n}$1`);
       files.set(name, key);
@@ -42,17 +44,24 @@ export function exportEntries<T extends Pick<Asset, "id" | "name" | "artifacts" 
       else if (value && typeof value === "object") for (const [field, item] of Object.entries(value))
         walk(item, group ?? (typeof item === "string" ? undefined : field));
     };
-    walk(asset.artifacts);
+    const parsedParts = partFiles.safeParse(asset.artifacts?.parts);
+    const parts = parsedParts.success ? parsedParts.data : [];
+    for (const part of parts) add(part.key, "parts", `${slug(part.name)}.${part.key.split(".").pop()}`);
+    for (const [field, value] of Object.entries(asset.artifacts ?? {}))
+      if (field !== "parts") walk(value, typeof value === "string" ? undefined : field);
     if (asset.visualTarget) add(asset.visualTarget, "visual-target");
-    return { asset, folder, files };
+    return {
+      asset, folder, files,
+      parts: parts.map((part) => ({ ...part, file: [...files].find(([, key]) => key === part.key)?.[0] ?? null })),
+    };
   });
 }
 
 /** Zip the chosen finished assets into storage and return the archive key. */
 export async function exportAssets(projectId: string, input: ExportInput) {
-  const all = await db.select().from(models).where(and(
-    eq(models.projectId, projectId), eq(models.status, "done"),
-    ...(input.modelIds ? [inArray(models.id, input.modelIds)] : []),
+  const all = await db.select().from(assetVersions).where(and(
+    eq(assetVersions.projectId, projectId), eq(assetVersions.status, "done"),
+    ...(input.modelIds ? [inArray(assetVersions.id, input.modelIds)] : []),
   ));
   // Without a selection, export the collection's current entries rather than every past iteration.
   const chosen = (input.modelIds ? all : collectionAssetGroups(all).map((group) => group.representative))
@@ -63,7 +72,7 @@ export async function exportAssets(projectId: string, input: ExportInput) {
   const archive: { name: string; bytes: Uint8Array }[] = [];
   const manifest = [];
   // shortcut: the zip is assembled in memory; stream it if exports grow past a few hundred MiB.
-  for (const { asset, folder, files } of exportEntries(chosen)) {
+  for (const { asset, folder, files, parts } of exportEntries(chosen)) {
     const missing: string[] = [];
     for (const [name, key] of files) {
       try { archive.push({ name, bytes: new Uint8Array(await (await readStoredFile(key)).arrayBuffer()) }); }
@@ -71,6 +80,7 @@ export async function exportAssets(projectId: string, input: ExportInput) {
     }
     manifest.push({
       id: asset.id, name: asset.name, folder, prompt: asset.prompt, verdict: asset.verdict,
+      ...(parts.length ? { parts: parts.map((part) => ({ ...part, file: missing.includes(part.key) ? null : part.file })) } : {}),
       acceptedAt: asset.acceptedAt, files: [...files.keys()].filter((name) => !missing.includes(files.get(name)!)), missing,
     });
   }

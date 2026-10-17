@@ -8,7 +8,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { db } from "../db/client";
-import { projects, batches, models, runs } from "../db/schema";
+import { projects, batches, assetVersions, runs } from "../db/schema";
 import { assertJobActive } from "./queue.server";
 import { REVIEW_VIEWS, judgeImageLabels } from "./photo-views";
 import { GlbHandoverError } from "../modules/glb/handover";
@@ -32,12 +32,12 @@ async function one<T>(rows: T[]) {
   if (!rows[0]) throw new Error("Record not found");
   return rows[0];
 }
-export async function executeModelJob(targetId: string) {
+export async function executeAssetVersionJob(targetId: string) {
   const job = jobContext.getStore();
   if (!job) throw new Error("Missing durable job context");
 
   const model = await one(
-    await db.select().from(models).where(eq(models.id, targetId)),
+    await db.select().from(assetVersions).where(eq(assetVersions.id, targetId)),
   );
   const batch = await one(
     await db.select().from(batches).where(eq(batches.id, model.batchId)),
@@ -53,9 +53,9 @@ export async function executeModelJob(targetId: string) {
     await runReviewedAsset(assetKinds[project.assetType], {
       model, batch, project, request, attempt,
       references: [
-        ...(job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : project.references),
+        ...(job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : (batch.workshop?.references ?? project.references)),
         ...(batch.workshop?.examples?.flatMap((e) => e.renders.slice(0, 1)) || []),
-        ...mockupReferences(batch.workshop),
+        ...(batch.workshop?.references ? [] : mockupReferences(batch.workshop)),
       ],
     });
     return;
@@ -149,7 +149,7 @@ export async function executeModelJob(targetId: string) {
           }),
         );
         await db
-          .update(models)
+          .update(assetVersions)
           .set({
             status: "building",
             phase: workPass
@@ -162,7 +162,7 @@ export async function executeModelJob(targetId: string) {
             iteration,
             progress: modelProgress(iteration),
           })
-          .where(eq(models.id, model.id));
+          .where(eq(assetVersions.id, model.id));
         let buildProgress = modelProgress(iteration);
         const exampleContext = await Promise.all(
           (batch.workshop?.examples || []).map(async (e) => ({
@@ -218,7 +218,7 @@ export async function executeModelJob(targetId: string) {
                 ? 0.15
                 : 0.05;
             await db
-              .update(models)
+              .update(assetVersions)
               .set({
                 phase,
                 progress: (buildProgress = Math.max(
@@ -226,7 +226,7 @@ export async function executeModelJob(targetId: string) {
                   modelProgress(iteration, fraction),
                 )),
               })
-              .where(eq(models.id, model.id));
+              .where(eq(assetVersions.id, model.id));
           },
           projectId: model.projectId,
           batchId: batch.id,
@@ -337,9 +337,9 @@ export async function executeModelJob(targetId: string) {
         }
         await assertJobActive();
         await db
-          .update(models)
+          .update(assetVersions)
           .set({ phase: "Preparing GLB for handover" })
-          .where(eq(models.id, model.id));
+          .where(eq(assetVersions.id, model.id));
         try {
           artifacts = {
             ...(await archiveVersion(builderRunId, directory, !photography)),
@@ -388,7 +388,7 @@ export async function executeModelJob(targetId: string) {
         previousScript = artifacts.script;
         if (photography) return;
         await db
-          .update(models)
+          .update(assetVersions)
           .set({
             artifacts,
             phase: batch.judgeIterations
@@ -397,7 +397,7 @@ export async function executeModelJob(targetId: string) {
             progress: modelProgress(iteration, 0.6),
             status: batch.judgeIterations ? "judging" : "building",
           })
-          .where(eq(models.id, model.id));
+          .where(eq(assetVersions.id, model.id));
       },
       photographer: async ({ iteration, stage }) => {
         const coverageKey = `photo-views:${iteration}`;
@@ -427,13 +427,13 @@ export async function executeModelJob(targetId: string) {
           }),
         );
         await db
-          .update(models)
+          .update(assetVersions)
           .set({
             status: "building",
             phase: "Photographing exported model",
             progress: modelProgress(iteration, 0.55),
           })
-          .where(eq(models.id, model.id));
+          .where(eq(assetVersions.id, model.id));
         const { runId } = await runRole({
           role: "photographer",
           projectId: model.projectId,
@@ -473,7 +473,7 @@ export async function executeModelJob(targetId: string) {
         }
         images = artifacts.renders as string[];
         await db
-          .update(models)
+          .update(assetVersions)
           .set({
             artifacts,
             phase: batch.judgeIterations
@@ -482,7 +482,7 @@ export async function executeModelJob(targetId: string) {
             progress: modelProgress(iteration, 0.75),
             status: batch.judgeIterations ? "judging" : "building",
           })
-          .where(eq(models.id, model.id));
+          .where(eq(assetVersions.id, model.id));
       },
       judge: async ({ iteration, stage, stopOnFail, workPass }) => {
         const analysis = await analyzeModel(
@@ -571,7 +571,7 @@ export async function executeModelJob(targetId: string) {
         geometryBlocked =
           stage === "geometry" && Boolean(stopOnFail) && !passed;
         await db
-          .update(models)
+          .update(assetVersions)
           .set({
             feedback: result,
             verdict: passed
@@ -580,7 +580,7 @@ export async function executeModelJob(targetId: string) {
                 : "approved"
               : "changes_requested",
           })
-          .where(eq(models.id, model.id));
+          .where(eq(assetVersions.id, model.id));
         return { passed };
       },
     },
@@ -593,7 +593,7 @@ export async function executeModelJob(targetId: string) {
       ? "approved"
       : "limit_reached";
   await db
-    .update(models)
+    .update(assetVersions)
     .set({
       status: "done",
       progress: 100,
@@ -608,7 +608,7 @@ export async function executeModelJob(targetId: string) {
       verdict,
       artifacts,
     })
-    .where(eq(models.id, model.id));
+    .where(eq(assetVersions.id, model.id));
   await settleBatch(batch.id);
   await checkpoint("applied", "yes");
 }

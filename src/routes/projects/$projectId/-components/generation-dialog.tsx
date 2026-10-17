@@ -21,12 +21,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LoaderCircle, Play } from "lucide-react";
+import { PictureUploader } from "@/components/picture-uploader";
+import { useImageUpload } from "@/hooks/use-image-upload";
+import { appendReferenceImages } from "@/lib/image-file";
 import { request, json } from "@/lib/client";
-import type { ModelIdea } from "./model-ideas";
+import type { AssetDraft } from "./asset-drafts";
 import type { RuntimeSettings } from "@/lib/contracts";
 
 type GenerationDialogProps = {
-  idea?: ModelIdea;
+  idea?: AssetDraft;
   projectId: string;
   designVersion: number;
   ready: boolean;
@@ -51,7 +54,11 @@ export function GenerationDialog({
   const [busy, setBusy] = useState<false | "save" | "start">(false);
   const [error, setError] = useState("");
   const [modelBrief, setModelBrief] = useState(idea?.input.prompt || "");
-  const [modelCount, setModelCount] = useState(idea?.input.count ?? 1);
+  const [parts, setParts] = useState(idea?.input.parts ?? []);
+  const uploader = useImageUpload();
+  const [referenceNotes, setReferenceNotes] = useState(idea?.referenceNotes ?? {});
+  const [savedAssetId, setSavedAssetId] = useState(idea?.id);
+  const [expectedReferences, setExpectedReferences] = useState({ references: idea?.references ?? [], referenceNotes: idea?.referenceNotes ?? {} });
   const [skipVisualMock, setSkipVisualMock] = useState(idea?.input.visualTargetMode === "skip");
   const [spriteEnabled, setSpriteEnabled] = useState(Boolean(idea?.input.spriteTarget));
   const [judgeIterations, setJudgeIterations] = useState(idea?.input.judgeIterations ?? 2);
@@ -59,11 +66,16 @@ export function GenerationDialog({
     useState<RuntimeSettings["generationDefaults"]["imageSize"]>(idea?.input.imageSize ?? "1024x1024");
   const [briefing, setBriefing] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
-  const assetPlural = isGraphics ? "graphics" : "models";
+  const assetPlural = "asset";
   useEffect(() => {
     setModelBrief(idea?.input.prompt || "");
     setSpriteEnabled(Boolean(idea?.input.spriteTarget));
     setSkipVisualMock(idea?.input.visualTargetMode === "skip");
+    setParts(idea?.input.parts ?? []);
+    uploader.reset(idea?.references ?? []);
+    setReferenceNotes(idea?.referenceNotes ?? {});
+    setSavedAssetId(idea?.id);
+    setExpectedReferences({ references: idea?.references ?? [], referenceNotes: idea?.referenceNotes ?? {} });
   }, [projectId, idea]);
   useEffect(() => {
     if (idea) return;
@@ -71,7 +83,6 @@ export function GenerationDialog({
     void request<{ settings: RuntimeSettings }>("settings")
       .then(({ settings }) => {
         if (!active) return;
-        setModelCount(settings.generationDefaults.count);
         setJudgeIterations(settings.generationDefaults.judgeIterations);
         setImageSize(settings.generationDefaults.imageSize);
       })
@@ -88,7 +99,7 @@ export function GenerationDialog({
     try {
       const result = await request<{ brief: string }>(
         `projects/${projectId}/model-brief`,
-        json({ count: modelCount, hint: modelBrief }),
+        json({ count: 1, hint: modelBrief }),
       );
       setModelBrief(result.brief);
       await onRefresh();
@@ -104,13 +115,13 @@ export function GenerationDialog({
       !idea &&
       ready &&
       (e.nativeEvent as SubmitEvent).submitter?.getAttribute("name") === "start";
-    if (!modelBrief.trim()) return setError("Write a brief for this idea, or draft one with AI.");
+    if (!modelBrief.trim()) return setError("Write a brief for this asset, or draft one with AI.");
     setBusy(start ? "start" : "save");
     setError("");
     try {
       const f = new FormData(e.currentTarget);
       const saved = await request<{ id?: string }>(
-        `projects/${projectId}/ideas${idea ? `/${idea.id}` : ""}`,
+        `projects/${projectId}/assets${savedAssetId ? `/${savedAssetId}` : ""}`,
         json({
           prompt: f.get("prompt"),
           title: f.get("title"),
@@ -126,13 +137,24 @@ export function GenerationDialog({
                   loop: idea?.input.spriteTarget?.loop ?? true,
                 }
               : undefined,
-          count: Number(f.get("count")),
+          count: 1,
+          parts: parts.length ? parts : undefined,
           judgeIterations: Number(f.get("iterations")),
           imageSize: isGraphics ? f.get("imageSize") : "1024x1024",
-        }, idea ? "PUT" : "POST"),
+        }, savedAssetId ? "PUT" : "POST"),
       );
-      if (start && saved.id)
-        await request(`projects/${projectId}/ideas/${saved.id}/generate`, json({}));
+      const assetId = saved.id ?? savedAssetId;
+      if (!assetId) throw new Error("Asset save returned no identifier");
+      setSavedAssetId(assetId);
+      const references = new FormData();
+      appendReferenceImages(references, uploader.images);
+      references.set("referenceNotes", JSON.stringify(referenceNotes));
+      references.set("expected", JSON.stringify(expectedReferences));
+      const updatedReferences = await request<{ references: string[]; referenceNotes: Record<string, string> }>(`projects/${projectId}/assets/${assetId}/references`, { method: "POST", body: references });
+      setExpectedReferences(updatedReferences);
+      uploader.reset(updatedReferences.references);
+      setReferenceNotes(updatedReferences.referenceNotes);
+      if (start) await request(`projects/${projectId}/assets/${assetId}/generate`, json({}));
       setModelBrief("");
       onOpenChange(false);
       await onSaved(start);
@@ -142,7 +164,7 @@ export function GenerationDialog({
       setBusy(false);
     }
   }
-  const locked = Boolean(busy) || briefing;
+  const locked = Boolean(busy) || briefing || uploader.isBusy;
   return (
     <Dialog
       open={open}
@@ -169,13 +191,13 @@ export function GenerationDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>{idea ? "Edit" : "Add"} {isGraphics ? "graphic" : "model"} {idea ? "idea" : "ideas"}</DialogTitle>
+          <DialogTitle>{idea ? "Edit asset" : "Add asset"}</DialogTitle>
           <DialogDescription>
             {idea
-              ? "Changes apply to this unstarted idea only."
+              ? "Changes apply to future versions of this asset."
               : ready
-                ? `Start generation now, or save the idea and start it later from the Ideas tab. Generation uses design v${designVersion}.`
-                : "Saved ideas wait in the Ideas tab until the design is approved."}
+                ? `Start generation now, or save the asset in Ideas and start it later. Generation uses design v${designVersion}.`
+                : "Assets wait in Ideas until the design is approved."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={saveIdea} className="setup-form">
@@ -189,10 +211,7 @@ export function GenerationDialog({
                   type="button"
                   disabled={
                     locked ||
-                    !ready ||
-                    !Number.isInteger(modelCount) ||
-                    modelCount < 1 ||
-                    modelCount > 20
+                    !ready
                   }
                   onClick={() => generateBrief()}
                 >
@@ -233,24 +252,25 @@ export function GenerationDialog({
                 Leave empty and AI writes a short title from the brief, a small paid request recorded in Activity.
               </p>
             </div>
+            <fieldset disabled={locked} className="space-y-3">
+              <legend>Parts (optional)</legend>
+              <p className="muted">{isGraphics ? "Each named part is delivered as its own image in this version." : "Related parts stay together as named objects in one 3D file."}</p>
+              {parts.map((part, index) => <div key={index} className="space-y-2 rounded border p-3">
+                <Label htmlFor={`part-name-${index}`}>Part name</Label>
+                <Input id={`part-name-${index}`} value={part.name} maxLength={80} required onChange={(event) => setParts(parts.map((value, position) => position === index ? { ...value, name: event.target.value } : value))} />
+                <Label htmlFor={`part-brief-${index}`}>Part brief</Label>
+                <Input id={`part-brief-${index}`} value={part.brief} maxLength={2000} required onChange={(event) => setParts(parts.map((value, position) => position === index ? { ...value, brief: event.target.value } : value))} />
+                <Button type="button" variant="ghost" onClick={() => setParts(parts.filter((_, position) => position !== index))}>Remove part</Button>
+              </div>)}
+              <Button type="button" variant="outline" disabled={parts.length >= 8} onClick={() => setParts([...parts, { name: "", brief: "" }])}>Add part</Button>
+            </fieldset>
+            <PictureUploader title="Asset references" images={uploader.images} onFilesAdded={uploader.addFiles}
+              onImportFromUrl={uploader.importFromUrl} onRemove={uploader.remove} disabled={locked} isBusy={uploader.isBusy}
+              notes={referenceNotes} onNoteChange={(key, note) => setReferenceNotes((current) => ({ ...current, [key]: note }))} />
+            <p className="muted">New versions freeze the project and asset references with their notes.</p>
             <fieldset disabled={locked} className="idea-settings">
               <legend>Generation settings</legend>
               <div className="idea-settings-grid">
-                <div className="space-y-2">
-                  <Label htmlFor="idea-count">Number of {assetPlural}</Label>
-                  <Input
-                    id="idea-count"
-                    name="count"
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={modelCount}
-                    onChange={(event) =>
-                      setModelCount(event.target.valueAsNumber)
-                    }
-                    required
-                  />
-                </div>
                 <div className="space-y-2">
                   {isGraphics ? (
                     <>
@@ -397,7 +417,7 @@ export function GenerationDialog({
               disabled={locked}
             >
               {busy === "save" && <LoaderCircle size={17} className="spin" />}
-              {busy === "save" ? "Saving…" : idea ? "Save changes" : ready ? "Save for later" : "Save idea"}
+              {busy === "save" ? "Saving…" : idea ? "Save asset" : ready ? "Save for later" : "Save asset"}
             </Button>
             {!idea && ready && (
               <Button name="start" disabled={locked}>

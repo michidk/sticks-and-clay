@@ -44,6 +44,7 @@ import { TriangleCount } from "@/components/triangle-count";
 import { LightboxProvider } from "@/components/image-lightbox";
 import { request, json, fileUrl, costSummary } from "@/lib/client";
 import { collectionAssetGroups } from "@/lib/project-summary";
+import { AssetReferences } from "@/components/asset-references";
 import { History } from "../../-components/history";
 import { DeleteAsset } from "../../-components/delete-asset";
 import { ReturnToIdea } from "../../-components/return-to-idea";
@@ -53,8 +54,8 @@ import { ModelConversation } from "./-components/model-conversation";
 import { ModelMedia } from "./-components/media";
 import { ReviewNotes } from "./-components/review";
 import {
-  resolveVersion,
-  versionLabel,
+  resolveBuild,
+  buildLabel,
   type Workspace,
 } from "./-lib/model";
 
@@ -82,9 +83,9 @@ function ModelPage() {
     value: ModelInspection;
   } | null>(null);
   const [objectReference, setObjectReference] = useState<ObjectReference | null>(null);
-  const model = data?.models.find((item) => item.id === modelId);
+  const model = data?.assetVersions.find((item) => item.id === modelId);
   const versions = data?.versions.filter((item) => item.modelId === modelId) ?? [];
-  const selected = model ? resolveVersion(model, versions, search.version) : undefined;
+  const selected = model ? resolveBuild(model, versions, search.version) : undefined;
   const displayedGlb = selected?.artifacts?.glb;
   const reportInspection = useCallback((value: ModelInspection) => {
     setInspection({ glb: displayedGlb, value });
@@ -182,7 +183,7 @@ function ModelPage() {
   const cost = runs.reduce((sum, run) => sum + (run.estimatedCost || 0), 0);
   const unpriced = runs.filter((run) => run.estimatedCost === null).length;
   // Paginate over collection entries so the count matches the project page.
-  const groups = collectionAssetGroups(data.models);
+  const groups = collectionAssetGroups(data.assetVersions);
   const position = groups.findIndex((group) =>
     group.assets.some((item) => item.id === modelId),
   );
@@ -338,6 +339,11 @@ function ModelPage() {
               )}
             </div>
           </header>
+          {!data.project.archivedAt && data.assets?.filter((asset) => asset.id === model.assetId).map((asset) => <details key={asset.id} className="m-4">
+            <summary className="cursor-pointer">Asset references</summary>
+            <AssetReferences projectId={projectId} assetId={asset.id} references={asset.references} referenceNotes={asset.referenceNotes}
+              onRefresh={async () => setData(await request<Workspace>(`projects/${projectId}?summary=true`))} />
+          </details>)}
           <ModelConversation
             key={"story-" + model.id}
             projectId={projectId}
@@ -416,10 +422,10 @@ function ModelPage() {
                     <SelectValue placeholder="Choose version" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="latest">Latest version</SelectItem>
+                    <SelectItem value="latest">Latest build</SelectItem>
                     {versions.map((version) => (
                       <SelectItem key={version.id} value={version.id}>
-                        {versionLabel(version)} · {savedAt(version.createdAt)}
+                        {buildLabel(version)} · {savedAt(version.createdAt)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -475,7 +481,7 @@ function ModelPage() {
               {selected.missing && (
                 <Alert variant="destructive">
                   <AlertDescription>
-                    This version is no longer available for this model.{" "}
+                    This build is no longer available for this version.{" "}
                     <Button
                       variant="link"
                       onClick={() => updateSearch({ version: undefined })}
@@ -507,7 +513,7 @@ function ModelPage() {
                     }}
                   />
                 </TabsContent>
-                <dl className="model-facts" aria-label="Version facts">
+                <dl className="model-facts" aria-label="Build facts">
                   <div>
                     <dt>Triangles</dt>
                     <dd>
@@ -531,10 +537,10 @@ function ModelPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt>Version</dt>
+                    <dt>Build</dt>
                     <dd>
                       {selected.version
-                        ? versionLabel(selected.version)
+                        ? buildLabel(selected.version)
                         : selected.missing
                           ? "Unavailable"
                           : "Latest"}
@@ -542,7 +548,7 @@ function ModelPage() {
                         {selected.version
                           ? `Saved ${savedAt(selected.version.createdAt)}`
                           : selected.missing
-                            ? "This version could not be found"
+                            ? "This build could not be found"
                             : "Most recent model export"}
                       </small>
                     </dd>
@@ -596,7 +602,7 @@ function ModelPage() {
                     <TabsTrigger value="checks">Analysis</TabsTrigger>
                     <TabsTrigger value="tools">Tools</TabsTrigger>
                     <TabsTrigger value="versions">
-                      Versions <span>{versions.length}</span>
+                      Builds <span>{versions.length}</span>
                     </TabsTrigger>
                     <TabsTrigger value="activity">Activity</TabsTrigger>
                   </TabsList>
@@ -646,7 +652,7 @@ function ModelPage() {
                               }
                             >
                               <div className="model-version-title">
-                                <h3>{versionLabel(version)}</h3>
+                                <h3>{buildLabel(version)}</h3>
                                 <StatusBadge status={version.status} />
                               </div>
                               <time dateTime={version.createdAt}>
@@ -697,7 +703,7 @@ function ModelPage() {
                                   scrollToWorkbench("model-preview");
                                 }}
                               >
-                                Inspect version <ArrowUpRight size={15} />
+                                Inspect build <ArrowUpRight size={15} />
                               </Button>
                             </article>
                           ))}

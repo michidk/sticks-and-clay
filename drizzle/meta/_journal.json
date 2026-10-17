@@ -169,6 +169,20 @@
       "when": 1792248560666,
       "tag": "0023_faulty_warpath",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792269659319,
+      "tag": "0024_many_iron_lad",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792269835711,
+      "tag": "0025_short_retro_girl",
+      "breakpoints": true
     }
   ]
 }

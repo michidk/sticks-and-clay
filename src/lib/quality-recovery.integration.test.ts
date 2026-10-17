@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, batches, models, jobs } from "../db/schema";
+import { projects, batches, assetVersions, jobs } from "../db/schema";
 import { renderCollection } from "./collection.server";
 import { deferInterruptedJob } from "./queue.server";
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
@@ -64,7 +64,7 @@ integration(
       designVersion: 1,
       status: "building",
     });
-    await db.insert(models).values({
+    await db.insert(assetVersions).values({
       id: m,
       projectId: p,
       batchId: b,
@@ -78,15 +78,15 @@ integration(
       let [batch] = await db.select().from(batches).where(eq(batches.id, b));
       expect(batch.status).toBe("building");
       await db
-        .update(models)
+        .update(assetVersions)
         .set({ status: "done", verdict: "limit_reached" })
-        .where(eq(models.id, m));
+        .where(eq(assetVersions.id, m));
       await renderCollection(b);
       [batch] = await db.select().from(batches).where(eq(batches.id, b));
       expect(batch.status).toBe("completed_with_errors");
       expect(batch.preview).toBeNull();
     } finally {
-      await db.delete(models).where(eq(models.id, m));
+      await db.delete(assetVersions).where(eq(assetVersions.id, m));
       await db.delete(batches).where(eq(batches.id, b));
       await db.delete(projects).where(eq(projects.id, p));
     }

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { batches, jobs, models, projects, runs } from "../db/schema";
+import { batches, jobs, assetVersions, projects, runs } from "../db/schema";
 import { api } from "./api.server";
 
 // Use an isolated migrated database with no worker.
@@ -11,11 +11,11 @@ integration("deleting an asset removes its iterations, keeps forks and request r
   const id = crypto.randomUUID(), batchId = crypto.randomUUID();
   const [root, iteration, fork, busy] = [1, 2, 3, 4].map(() => crypto.randomUUID());
   const remove = (modelId: string) => api(new Request(`http://localhost/api/models/${modelId}`, { method: "DELETE" }));
-  const remaining = async () => (await db.select({ id: models.id }).from(models).where(eq(models.projectId, id))).map((m) => m.id).sort();
+  const remaining = async () => (await db.select({ id: assetVersions.id }).from(assetVersions).where(eq(assetVersions.projectId, id))).map((m) => m.id).sort();
   try {
     await db.insert(projects).values({ id, name: "Delete assets", description: "t", design: "d", designVersion: 1, status: "ready", assetType: "graphic" });
     await db.insert(batches).values({ id: batchId, projectId: id, prompt: "x", count: 1, judgeIterations: 0, design: "d", designVersion: 1, status: "done" });
-    await db.insert(models).values([
+    await db.insert(assetVersions).values([
       { id: root, projectId: id, batchId, name: "root", prompt: "p", status: "done" },
       { id: iteration, projectId: id, batchId, name: "root", prompt: "p", status: "done", parentModelId: root, branchKind: "iterate" },
       { id: fork, projectId: id, batchId, name: "fork", prompt: "p", status: "done", parentModelId: root, branchKind: "fork" },
@@ -35,7 +35,7 @@ integration("deleting an asset removes its iterations, keeps forks and request r
   } finally {
     await db.delete(runs).where(eq(runs.projectId, id));
     await db.delete(jobs).where(inArray(jobs.targetId, [root, iteration, fork, busy]));
-    await db.delete(models).where(eq(models.projectId, id));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, id));
     await db.delete(batches).where(eq(batches.projectId, id));
     await db.delete(projects).where(eq(projects.id, id));
   }

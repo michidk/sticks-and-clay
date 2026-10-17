@@ -215,9 +215,9 @@ export function MaterialViewer({ files, projectId, materialId }: Props) {
   useEffect(() => {
     if (!open) return;
     let alive = true;
-    request<{ models: SavedModel[] }>(`projects/${projectId}`)
+    request<{ assetVersions: SavedModel[] }>(`projects/${projectId}`)
       .then((data) => {
-        if (alive) setModels(data.models.filter((m) => m.artifacts?.glb));
+        if (alive) setModels(data.assetVersions.filter((m) => m.artifacts?.glb));
       })
       .catch((e) => alive && setError(e.message));
     return () => {

@@ -45,6 +45,13 @@ charge at every step that matters.
     width="1200">
 </p>
 
+Assets keep one identity from Ideas through Ready, In progress, Review, and
+Done. Each generation creates a version; accepting the result is your decision.
+Use the global board to review all projects, with project labels and filtering.
+Assets can contain named parts and carry their own reference images. New
+versions freeze their design and references. See [the asset vocabulary and
+lifecycle](docs/asset-lifecycle.md).
+
 Every model is a real Blender file you can open, edit, and rebuild. Every
 attempt, review, render, and dollar spent stays in its history, including the
 ones that failed.
@@ -109,7 +116,7 @@ claude mcp login sticks-and-clay
 codex mcp add sticks-and-clay --url https://your-workshop.example/api/mcp
 ```
 
-- **48 tools** cover the workshop: projects, designs, ideas, generation,
+- **51 tools** cover the workshop: projects, designs, assets, versions, generation,
   visual-target approval, branching, materials, renders, sprites, imports,
   exports, recovery, settings, and diagnostics.
 - **Agents keep the human in the loop too.** Server instructions, the

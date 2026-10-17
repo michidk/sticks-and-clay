@@ -43,6 +43,7 @@ export type Artifacts = {
 };
 export type Model = {
   id: string;
+  assetId?: string | null;
   batchId?: string;
   name: string;
   prompt: string;
@@ -60,7 +61,7 @@ export type Model = {
   artifacts?: Artifacts;
   feedback?: Review;
 };
-export type Version = {
+export type Build = {
   id: string;
   modelId: string;
   iteration: number;
@@ -87,9 +88,10 @@ export type Workspace = {
     status: string;
     references: string[];
   };
-  models: Model[];
+  assets?: { id: string; title?: string | null; references: string[]; referenceNotes: Record<string, string> }[];
+  assetVersions: Model[];
   batches: { id: string; judgeIterations: number }[];
-  versions: Version[];
+  versions: Build[];
   activeJobs?: { id: string; kind: string; status: string; modelId?: string }[];
   designUpdates?: {
     id: string;
@@ -106,13 +108,13 @@ export type Workspace = {
     [key: string]: unknown;
   })[];
 };
-export function versionLabel(version: Version) {
+export function buildLabel(version: Build) {
   const stage = version.artifacts?.stage;
-  return `Iteration ${version.iteration + 1}${stage === "geometry" ? " · Geometry" : stage === "surface" ? " · Materials" : ""}`;
+  return `Build ${version.iteration + 1}${stage === "geometry" ? " · Geometry" : stage === "surface" ? " · Materials" : ""}`;
 }
-export function resolveVersion(
+export function resolveBuild(
   model: Model,
-  versions: Version[],
+  versions: Build[],
   versionId?: string,
 ) {
   if (!versionId)

@@ -73,9 +73,9 @@ integration("authenticated HTTP challenges, host/origin checks, download boundar
     expect((await connected.send("/api/mcp/files/runtime-settings.json")).status).toBe(400);
     expect((await connected.send("/api/mcp/files/references/a.png", { headers: { Authorization: "" } })).status).toBe(401);
     const tools = await connected.client.listTools();
-    expect(tools.tools.some((tool) => tool.name === "generate_assets")).toBe(false);
+    expect(tools.tools.some((tool) => tool.name === "generate_asset")).toBe(false);
     expect(tools.tools.some((tool) => tool.name === "get_settings")).toBe(false);
-    await expect(connected.client.callTool({ name: "generate_assets", arguments: { projectId: crypto.randomUUID(), count: 1, judgeIterations: 0 } })).rejects.toThrow();
+    await expect(connected.client.callTool({ name: "generate_asset", arguments: { projectId: crypto.randomUUID(), prompt: "A small lamp", judgeIterations: 0 } })).rejects.toThrow();
     const oversized = await connected.send("/api/mcp", { method: "POST", body: " ".repeat(4 * 1024 * 1024 + 1) });
     expect(oversized.status).toBe(413);
     await connected.store.revokeClient(connected.clientId);
@@ -90,7 +90,7 @@ integration("MCP mutations retain design approval, optimistic conflicts, immutab
   const design = "# Integration design\nWarm clay props with consistent meter scale. ".repeat(3);
   await db.insert(projects).values({ id, name: "MCP fixture", description: "", status: "review", design, designVersion: 1 });
   try {
-    const unapproved = await connected.client.callTool({ name: "generate_assets", arguments: { projectId: id, count: 1, judgeIterations: 0 } });
+    const unapproved = await connected.client.callTool({ name: "generate_asset", arguments: { projectId: id, prompt: "A small lamp", judgeIterations: 0 } });
     expect(unapproved.isError).toBe(true);
     expect(unapproved.structuredContent).toMatchObject({ data: { error: expect.any(String) } });
     const saved = await connected.client.callTool({ name: "save_design", arguments: { projectId: id, design, version: 1, approve: true } });
@@ -105,7 +105,7 @@ integration("MCP mutations retain design approval, optimistic conflicts, immutab
     expect(history).toHaveLength(1);
     const audits = await db.select().from(mcpAuditEvents).where(eq(mcpAuditEvents.clientId, connected.clientId));
     expect(audits.map(({ toolName, outcome }) => ({ toolName, outcome }))).toEqual([
-      { toolName: "generate_assets", outcome: "failure" },
+      { toolName: "generate_asset", outcome: "failure" },
       { toolName: "save_design", outcome: "success" },
       { toolName: "save_design", outcome: "failure" },
     ]);

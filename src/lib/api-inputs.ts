@@ -24,11 +24,13 @@ export const generationInput = z.object({
   judgeIterations: z.number().int().min(0).max(5),
   spriteTarget: spriteOptionsSchema.optional(),
   imageSize: imageSizeSchema.default("1024x1024"),
+  parts: z.array(z.object({ name: z.string().trim().min(1).max(80), brief: z.string().trim().min(1).max(2000) })).min(1).max(8).refine((parts) => new Set(parts.map((part) => part.name.toLowerCase())).size === parts.length, "Part names must be unique").optional(),
 });
 export type GenerationInput = z.infer<typeof generationInput>;
 
 /** Saved ideas need a brief; a blank title is written by AI from it. Started batches keep the looser contract. */
 export const ideaInput = generationInput.extend({
+  count: z.literal(1).default(1),
   prompt: z.string().trim().min(1, "Write a brief for this idea").max(12000),
   title: z.string().trim().max(100).default(""),
 });

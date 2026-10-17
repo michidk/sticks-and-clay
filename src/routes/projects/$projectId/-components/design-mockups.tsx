@@ -28,7 +28,7 @@ const running = (status: string) => ["queued", "running", "cancelling"].includes
 
 /** Concept images beside a chat: generate, revise any mockup, accept the ones that set the direction, upload your own. */
 export function DesignMockupStep({
-  projectId, version, mockups, items, references, onRefresh,
+  projectId, version, mockups, items, references, assets = [], onRefresh,
 }: {
   projectId: string;
   version: number;
@@ -36,6 +36,7 @@ export function DesignMockupStep({
   items: MockupItem[];
   /** The project's reference images; a mockup is one when its key is listed here. */
   references: string[];
+  assets?: { id: string; title?: string | null }[];
   onRefresh: () => Promise<unknown>;
 }) {
   const [busy, setBusy] = useState("");
@@ -45,6 +46,7 @@ export function DesignMockupStep({
   const [count, setCount] = useState(3);
   const [referencing, setReferencing] = useState<MockupItem | null>(null);
   const [note, setNote] = useState("");
+  const [referenceTarget, setReferenceTarget] = useState("design");
   const [deleting, setDeleting] = useState<MockupItem | null>(null);
   const feed = useRef<HTMLDivElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -267,9 +269,16 @@ export function DesignMockupStep({
           <DialogHeader>
             <DialogTitle>Use as reference</DialogTitle>
             <DialogDescription>
-              The image joins the project's reference images and goes to the AI with every new mockup and batch. Say what to take from it.
+              Choose the project design or a specific asset. Future versions freeze this image and your context.
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="mockup-reference-target">Use for</Label>
+            <select id="mockup-reference-target" className="w-full rounded-md border bg-background p-2" value={referenceTarget} onChange={(event) => setReferenceTarget(event.target.value)} disabled={Boolean(busy)}>
+              <option value="design">Project design</option>
+              {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.title || "Untitled asset"}</option>)}
+            </select>
+          </div>
           {referencing && <AssetImage src={fileUrl(referencing.key)} alt="Mockup being used as a reference" className="w-full rounded-lg bg-muted" style={{ objectFit: "contain", maxHeight: 260 }} />}
           <div className="space-y-2">
             <Label htmlFor="mockup-note">Context (optional)</Label>
@@ -281,7 +290,7 @@ export function DesignMockupStep({
           <DialogFooter>
             <DialogClose asChild><Button variant="outline" disabled={Boolean(busy)}>Cancel</Button></DialogClose>
             <Button disabled={Boolean(busy)}
-              onClick={() => referencing && void act(`reference-${referencing.id}`, () => request(urlFor(referencing, "reference"), json({ note })), () => setReferencing(null))}>
+              onClick={() => referencing && void act(`reference-${referencing.id}`, () => request(referenceTarget === "design" ? urlFor(referencing, "reference") : `projects/${projectId}/assets/${referenceTarget}/mockups/${referencing.id}`, json({ note })), () => setReferencing(null))}>
               <Check size={16} /> {busy.startsWith("reference-") ? "Saving…" : "Use as reference"}
             </Button>
           </DialogFooter>

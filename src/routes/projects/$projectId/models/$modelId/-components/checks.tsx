@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { fileUrl } from "@/lib/client";
-import type { Artifacts, Version } from "../-lib/model";
+import type { Artifacts, Build } from "../-lib/model";
 
 const labels: Record<string, string> = {
   "weld-exact-vertices": "Merged identical vertices",
@@ -13,7 +13,7 @@ export function ModelChecks({
   judges = [],
 }: {
   artifacts?: Artifacts;
-  judges?: Version["judges"];
+  judges?: Build["judges"];
 }) {
   const receipt = artifacts?.handover,
     cleanup = receipt?.cleanup;
@@ -96,7 +96,7 @@ export function ModelChecks({
         </p>
         {!reports.length && (
           <p>
-            No analysis report recorded for this version yet. Analysis runs
+            No analysis report recorded for this build yet. Analysis runs
             before judging.
           </p>
         )}

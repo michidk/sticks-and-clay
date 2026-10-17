@@ -16,13 +16,13 @@ import type { readStoredFile } from "../../lib/storage.server";
 
 const uuid = z.string().uuid();
 const projectId = z.object({ projectId: uuid });
-const modelId = z.object({ modelId: uuid });
+const versionId = z.object({ versionId: uuid });
 const jobId = z.object({ jobId: uuid });
 const empty = z.object({});
 const read: McpScope = "sticks-and-clay:read";
 const write: McpScope = "sticks-and-clay:write";
 const admin: McpScope = "sticks-and-clay:admin";
-const projectSections = ["overview", "models", "ideas", "versions", "runs", "revisions", "batches", "photographs", "designUpdates", "board"] as const;
+const projectSections = ["overview", "assets", "assetVersions", "ideas", "builds", "runs", "revisions", "batches", "photographs", "designUpdates", "board"] as const;
 
 export function createStudioMcpServer(options: {
   scopes: readonly string[];
@@ -82,24 +82,34 @@ export function createStudioMcpServer(options: {
     projectId.extend({ ...pageInput.shape, section: z.enum(projectSections).default("overview") }),
     ({ projectId }) => ({ path: `projects/${projectId}` }), {
       map(data, args) {
-        const record = z.record(z.string(), z.json()).parse(data);
+        const original = z.record(z.string(), z.json()).parse(data);
+        const record = Object.fromEntries(Object.entries(original).map(([key, value]) => [key === "models" ? "assetVersions" : key === "versions" ? "builds" : key, value]));
         if (args.section === "overview") return {
           data: { project: record.project, counts: Object.fromEntries(Object.entries(record).flatMap(([key, value]) => Array.isArray(value) ? [[key, value.length]] : [])) },
         };
         if (args.section === "board") {
-          const list = (key: string) => (Array.isArray(record[key]) ? record[key] : []) as never[];
-          const columns = boardColumns(list("ideas"), list("models"), list("batches"));
-          const board = Object.fromEntries(Object.entries(columns).map(([stage, cards]) => [stage, cards.map((card: any) =>
-            card.kind === "idea" ? { kind: "idea", ideaId: card.idea.id, title: card.idea.title, readyAt: card.idea.readyAt, input: card.idea.input }
+          const draftSchema = z.object({ id: z.string(), title: z.string().nullable().optional(), readyAt: z.string().nullable().optional(), input: z.json().optional() });
+          const versionSchema = z.object({ id: z.string(), assetId: z.string().optional(), batchId: z.string().default(""), status: z.string().default("queued"), name: z.string().optional(), verdict: z.string().nullable().optional(), acceptedAt: z.string().nullable().optional(), parentModelId: z.string().nullable().optional(), branchKind: z.enum(["iterate", "fork"]).nullable().optional(), createdAt: z.string().optional() });
+          const batchSchema = z.object({ id: z.string(), status: z.string(), count: z.number(), error: z.string().nullable().optional() });
+          const assets = z.array(z.object({ id: z.string(), inIdea: z.boolean().optional() })).parse(record.assets ?? []);
+          const draftIds = new Set(assets.filter((asset) => asset.inIdea).map((asset) => asset.id));
+          const savedVersions = z.array(versionSchema).parse(record.assetVersions ?? []);
+          const versions = savedVersions.filter((version) => !version.assetId || !draftIds.has(version.assetId));
+          const batches = z.array(batchSchema).parse(record.batches ?? []).map((batch) => ({ ...batch, count: batch.count - savedVersions.filter((version) => version.batchId === batch.id && version.assetId && draftIds.has(version.assetId)).length }));
+          const columns = boardColumns(z.array(draftSchema).parse(record.ideas ?? []), versions, batches);
+          const board = Object.fromEntries(Object.entries(columns).map(([stage, cards]) => [stage, cards.map((card) =>
+            card.kind === "idea" ? { kind: "idea", assetId: card.idea.id, title: card.idea.title, readyAt: card.idea.readyAt, input: card.idea.input }
             : card.kind === "pending" ? { kind: "pending", batchId: card.batch.id, status: card.batch.status, owed: card.owed, error: card.batch.error }
-            : { kind: "asset", modelId: card.asset.id, name: card.asset.name, status: card.asset.status, verdict: card.asset.verdict,
-              acceptedAt: card.asset.acceptedAt, attempts: card.attempts })]));
+            : { kind: "asset", assetId: card.asset.assetId, versionId: card.asset.id, name: card.asset.name, status: card.asset.status, verdict: card.asset.verdict,
+              acceptedAt: card.asset.acceptedAt, versions: card.attempts })]));
           // Round-trip drops undefined fields so the board stays valid JSON.
           return { data: z.json().parse(JSON.parse(JSON.stringify(board))) };
         }
         return paginate(record[args.section], args);
       },
     });
+  register("get_board", "Read the global asset board with project labels, optionally filtered to one project. Each asset keeps the same identity across its versions.", read,
+    z.object({ projectId: uuid.optional() }), ({ projectId }) => ({ path: projectId ? `board?projectId=${projectId}` : "board" }));
   register("draft_project_name", "Generate a name from a brief using paid AI. Returns a recoverable draft ID. Pass draftId to continue that draft.", write,
     z.object({ description: z.string().trim().min(1).max(12000), assetType: projectSetupInput.shape.assetType, draftId: projectSetupInput.shape.draftId }),
     async (input) => ({ path: "projects/name", method: "POST", body: await projectForm({ ...input, name: "Untitled project", images: [] }) }), { paid: true });
@@ -113,19 +123,34 @@ export function createStudioMcpServer(options: {
     designInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/design`, method: "PUT", body: input }));
   register("update_workshop", "Save collection variation and 3D self-review effort using the current workshop version. Future batches snapshot them together with the notes on the project's reference images.", write,
     workshopSchema.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/workshop`, method: "PUT", body: input }));
-  register("generate_assets", "Queue a batch from the approved design. Returns batch id, not a completed asset. Paid AI. Every asset type supports judgeIterations review rounds; 3D also supports spriteTarget and uses square imageSize. Visual targets require user approval unless visualTargetMode is skip.", write,
-    generationInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/generate`, method: "POST", body: input }), { paid: true });
-  const ideaId = projectId.extend({ ideaId: uuid });
-  register("save_idea", "Save an idea for later, like Save idea in the UI. A brief (prompt) is required. Omit title to have AI write one from the brief (a small paid request); the design need not be approved yet. Returns the idea id and title; list ideas with get_project section ideas.", write,
-    ideaInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/ideas`, method: "POST", body: input }));
-  register("update_idea", "Replace the brief, title and settings of an unstarted idea. A brief is required. An empty title is rewritten by AI from the brief (a small paid request); pass the current title to keep it.", write,
-    ideaInput.extend(ideaId.shape), (input) => ({ path: `projects/${input.projectId}/ideas/${input.ideaId}`, method: "PUT", body: input }));
-  register("discard_idea", "Discard an unstarted idea. Started ideas remain as their batch.", write,
-    ideaId, ({ projectId, ideaId }) => ({ path: `projects/${projectId}/ideas/${ideaId}`, method: "DELETE" }), { destructive: true });
-  register("mark_idea_ready", "Mark an unstarted idea as Ready (ready=true) or move it back to Ideas (ready=false). A marker only; it does not start generation.", write,
-    readyInput.extend(ideaId.shape), ({ projectId, ideaId, ready }) => ({ path: `projects/${projectId}/ideas/${ideaId}/ready`, method: "POST", body: { ready } }));
-  register("start_idea", "Queue paid generation from a saved idea using the approved design. Returns the batch id; repeating it returns the same batch.", write,
-    ideaId, ({ projectId, ideaId }) => ({ path: `projects/${projectId}/ideas/${ideaId}/generate`, method: "POST" }), { paid: true });
+  register("generate_asset", "Queue one asset from the approved design. Returns an execution batch ID; poll the project instead of repeating it. Paid AI. judgeIterations controls review rounds. Visual targets require user approval unless visualTargetMode is skip.", write,
+    generationInput.omit({ count: true }).extend({ ...projectId.shape, prompt: z.string().trim().min(1).max(12000) }),
+    (input) => ({ path: `projects/${input.projectId}/generate`, method: "POST", body: { ...input, count: 1 } }), { paid: true });
+  const assetId = projectId.extend({ assetId: uuid });
+  register("create_asset", "Create an asset in Ideas with its required brief, optional named parts and generation settings. Omit title for a small paid AI title request. The same asset keeps its identity through Ready, In progress, Review and Done.", write,
+    ideaInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/assets`, method: "POST", body: input }));
+  register("update_asset", "Replace an asset's brief, title, parts and settings for future versions in any stage. An empty title uses a small paid AI request. Saved versions stay unchanged.", write,
+    ideaInput.extend(assetId.shape), (input) => ({ path: `projects/${input.projectId}/assets/${input.assetId}`, method: "PUT", body: input }));
+  register("discard_asset", "Discard an asset that has no saved versions. Generated history cannot be deleted through MCP.", write,
+    assetId, ({ projectId, assetId }) => ({ path: `projects/${projectId}/assets/${assetId}`, method: "DELETE" }), { destructive: true });
+  register("mark_asset_ready", "Mark a draft asset Ready or move it back to Ideas. This does not start paid generation.", write,
+    readyInput.extend(assetId.shape), ({ projectId, assetId, ready }) => ({ path: `projects/${projectId}/assets/${assetId}/ready`, method: "POST", body: { ready } }));
+  register("start_asset", "Queue a version of a draft asset using immutable design and reference snapshots. Requires the user's approved project design. Paid AI; repeating an already-started draft returns its existing execution ID.", write,
+    assetId, ({ projectId, assetId }) => ({ path: `projects/${projectId}/assets/${assetId}/generate`, method: "POST" }), { paid: true });
+  register("update_asset_references", "Replace an asset's references and notes for future versions. Supply its current references and notes in expected to prevent overwriting another edit. Retain only its existing reference keys; attach project mockups with attach_asset_mockup. Images accept public URLs or image bytes.", write,
+    assetId.extend({
+      references: projectSetupInput.shape.references.unwrap(), images: projectSetupInput.shape.images,
+      referenceNotes: z.record(z.string(), z.string().max(1000)),
+      expected: z.object({ references: z.array(z.string()), referenceNotes: z.record(z.string(), z.string()) }),
+    }), async (input) => {
+      const form = await projectForm({ name: "Asset references", description: "", assetType: "model", references: input.references, images: input.images });
+      form.set("referenceNotes", JSON.stringify(input.referenceNotes));
+      form.set("expected", JSON.stringify(input.expected));
+      return { path: `projects/${input.projectId}/assets/${input.assetId}/references`, method: "POST", body: form };
+    });
+  register("attach_asset_mockup", "Attach a project mockup as an asset reference, with an optional note. It affects future versions and preserves saved snapshots.", write,
+    assetId.extend({ mockupId: uuid, note: z.string().max(1000).default("") }),
+    ({ projectId, assetId, mockupId, note }) => ({ path: `projects/${projectId}/assets/${assetId}/mockups/${mockupId}`, method: "POST", body: { note } }));
   register("retry_project_design", "Continue a failed project setup using its checkpoints. Only failed setup is eligible; paid work may continue.", write,
     projectId, ({ projectId }) => ({ path: `projects/${projectId}/retry-design`, method: "POST" }), { paid: true });
   register("photograph_project", "Queue a collection cover using photographer AI and Blender. Reuses active or failed photograph work and returns the job id.", write,
@@ -137,34 +162,34 @@ export function createStudioMcpServer(options: {
     projectId.extend(pageInput.shape), ({ projectId }) => ({ path: `projects/${projectId}/materials` }), { map: paginate });
   register("generate_material", "Create a material version. An empty prompt uses local procedural rendering; a prompt enables paid AI review. parentId and examples must be completed materials from this project.", write,
     materialInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/materials`, method: "POST", body: input }), { paid: true });
-  register("branch_asset", "Iterate or fork a saved model/graphic sourceRunId. Describe selected repairs in prompt. Set useCurrentStyle to revise with the project's current reference-image notes. Fork requires name. Paid AI; source history remains intact.", write,
-    branchInput.extend(modelId.shape), (input) => ({ path: `models/${input.modelId}/branch`, method: "POST", body: input }), { paid: true });
-  register("accept_asset", "Accept a finished asset after the user reviews it, moving it from Review to Done (accepted=false moves it back). A marker only; the AI verdict and files are unchanged. Iterating later creates a new unaccepted attempt.", write,
-    acceptInput.extend(modelId.shape), ({ modelId, accepted }) => ({ path: `models/${modelId}/accept`, method: "POST", body: { accepted } }));
-  register("return_asset_to_idea", "Turn a generated asset back into a new unstarted idea, like Back to ideas in the UI: the idea its collection entry was started from, copied with its title, brief, settings and Ready marker, or for assets that never came from an idea one built from the asset itself. No AI charge. The asset is kept; agents cannot delete assets.", write,
-    modelId, ({ modelId }) => ({ path: `models/${modelId}/idea`, method: "POST", body: { deleteModel: false } }));
-  register("export_assets", "Zip every saved file of finished assets (GLB, Blender source, scripts, renders, LODs, sprites, images, visual targets) plus a manifest. Omit modelIds to export each collection entry's latest finished attempt; acceptedOnly limits it to Done items. Returns an artifact key for read_artifact.", write,
-    exportInput.extend(projectId.shape), ({ projectId, ...input }) => ({ path: `projects/${projectId}/export`, method: "POST", body: input }));
+  register("branch_asset_version", "Iterate or fork a saved model/graphic sourceRunId. Describe selected repairs in prompt. Set useCurrentStyle to revise with the project's current reference-image notes. Fork requires name. Paid AI; source version history remains intact.", write,
+    branchInput.extend(versionId.shape), (input) => ({ path: `asset-versions/${input.versionId}/branch`, method: "POST", body: input }), { paid: true });
+  register("accept_asset_version", "Accept a finished asset after the user reviews it, moving it from Review to Done (accepted=false moves it back). A marker only; the AI verdict and files are unchanged. Iterating later creates a new unaccepted version.", write,
+    acceptInput.extend(versionId.shape), ({ versionId, accepted }) => ({ path: `asset-versions/${versionId}/accept`, method: "POST", body: { accepted } }));
+  register("return_asset_to_idea", "Move the same asset back to Ideas while retaining its identity, title, references and complete version history. No AI charge. Provide one of its version IDs.", write,
+    versionId, ({ versionId }) => ({ path: `asset-versions/${versionId}/idea`, method: "POST", body: {} }));
+  register("export_assets", "Zip every saved file of finished assets (GLB, Blender source, scripts, renders, LODs, sprites, images, visual targets) plus a manifest. Omit versionIds to export each asset's latest finished version; acceptedOnly limits it to Done items. Returns an artifact key for read_artifact.", write,
+    exportInput.omit({ modelIds: true }).extend({ ...projectId.shape, versionIds: exportInput.shape.modelIds }), ({ projectId, versionIds, ...input }) => ({ path: `projects/${projectId}/export`, method: "POST", body: { ...input, modelIds: versionIds } }));
   register("update_design_from_asset", "Queue a draft design from a saved 3D render index. Paid AI. Choose replaceReference when the project already has six references. Approval is still required before generation.", write,
-    designUpdateInput.extend(modelId.shape), (input) => ({ path: `models/${input.modelId}/design-update`, method: "POST", body: input }), { paid: true });
+    designUpdateInput.extend(versionId.shape), (input) => ({ path: `asset-versions/${input.versionId}/design-update`, method: "POST", body: input }), { paid: true });
   register("approve_visual_target", "Approve the exact current visual target after the user reviews it, then queue the paid 3D build.", write,
-    visualTargetDecisionInput.options[0].omit({ action: true }).extend(modelId.shape),
-    ({ modelId, target }) => ({ path: `models/${modelId}/visual-target`, method: "POST", body: { action: "approve", target } }), { paid: true });
+    visualTargetDecisionInput.options[0].omit({ action: true }).extend(versionId.shape),
+    ({ versionId, target }) => ({ path: `asset-versions/${versionId}/visual-target`, method: "POST", body: { action: "approve", target } }), { paid: true });
   register("revise_visual_target", "Request a paid revision of the current visual target. The new image awaits user approval before building.", write,
-    visualTargetDecisionInput.options[1].omit({ action: true }).extend(modelId.shape),
-    ({ modelId, target, prompt }) => ({ path: `models/${modelId}/visual-target`, method: "POST", body: { action: "revise", target, prompt } }), { paid: true });
-  register("retry_asset", "Continue a failed asset with its original checkpoints and Eve session. Paid work may continue; existing attempts remain in history.", write,
-    modelId, ({ modelId }) => ({ path: `models/${modelId}/retry`, method: "POST" }), { paid: true });
+    visualTargetDecisionInput.options[1].omit({ action: true }).extend(versionId.shape),
+    ({ versionId, target, prompt }) => ({ path: `asset-versions/${versionId}/visual-target`, method: "POST", body: { action: "revise", target, prompt } }), { paid: true });
+  register("retry_asset_version", "Continue a failed asset with its original checkpoints and Eve session. Paid work may continue; existing attempts remain in history.", write,
+    versionId, ({ versionId }) => ({ path: `asset-versions/${versionId}/retry`, method: "POST" }), { paid: true });
   register("list_animation_clips", "Read named animations from a saved GLB before selecting a sprite clip.", read,
-    modelId.extend({ sourceRunId: uuid }), ({ modelId, sourceRunId }) => ({ path: `models/${modelId}/sprite-clips?sourceRunId=${sourceRunId}` }));
+    versionId.extend({ sourceRunId: uuid }), ({ versionId, sourceRunId }) => ({ path: `asset-versions/${versionId}/sprite-clips?sourceRunId=${sourceRunId}` }));
   register("render_asset", "Render saved GLB views or a transparent sprite sheet in local Blender. No AI charge. Returns a presentation job id; poll get_export_job. Supplying spriteOptions={} uses current pixel defaults.", write,
-    presentationInput.extend(modelId.shape), (input) => ({ path: `models/${input.modelId}/presentation`, method: "POST", body: input }));
+    presentationInput.extend(versionId.shape), (input) => ({ path: `asset-versions/${input.versionId}/presentation`, method: "POST", body: input }));
   register("list_asset_exports", "Read recent presentation/sprite exports for a model. Material assignment jobs are retrieved by their returned job id.", read,
-    modelId.extend(pageInput.shape), ({ modelId }) => ({ path: `models/${modelId}/workshop-jobs` }), { map: paginate });
+    versionId.extend(pageInput.shape), ({ versionId }) => ({ path: `asset-versions/${versionId}/workshop-jobs` }), { map: paginate });
   register("get_export_job", "Poll a presentation, material or material-assignment job. Files become available when done. This does not retry the job.", read,
     jobId, ({ jobId }) => ({ path: `workshop-jobs/${jobId}` }));
   register("assign_material", "Apply a completed project material to an existing named model slot with UVs, creating an exported variant. Local Blender, no AI charge; returns a job id.", write,
-    materialAssignmentInput.extend(modelId.shape), (input) => ({ path: `models/${input.modelId}/material-assignment`, method: "POST", body: input }));
+    materialAssignmentInput.extend(versionId.shape), (input) => ({ path: `asset-versions/${input.versionId}/material-assignment`, method: "POST", body: input }));
   register("get_queue", "Read worker control and a page of visible generation/export jobs. Use get_project for design setup and design-update jobs.", read,
     pageInput, () => ({ path: "queue" }), { map: (data, args) => paginate(data, args, "jobs") });
   register("cancel_job", "Request cancellation of a queued or running job. Running jobs may return cancelling until stopped. Prior history and already incurred provider costs remain.", write,

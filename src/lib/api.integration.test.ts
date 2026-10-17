@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { api } from "./api.server";
 import { db } from "../db/client";
-import { projects, revisions } from "../db/schema";
+import { assetVersions, projects, revisions } from "../db/schema";
 import { eq } from "drizzle-orm";
 import { getStorage, upload } from "./storage.server";
 // Opt in against an isolated migrated database with no worker; fixtures clean up queued jobs.
@@ -236,6 +236,7 @@ integration("model generation accepts optional briefs and preserves the design s
         expect(queued[0].kind).toBe("plan");
       } finally {
         await db.delete(jobs).where(eq(jobs.targetId, batchId));
+        await db.delete(assetVersions).where(eq(assetVersions.batchId, batchId));
         await db.delete(batches).where(eq(batches.id, batchId));
       }
     }
@@ -307,6 +308,7 @@ for (const assetType of ["graphic", "svg"] as const) integration(`${assetType} p
     for (const batch of projectBatches)
       await db.delete(jobs).where(eq(jobs.targetId, batch.id));
     await db.delete(jobs).where(eq(jobs.targetId, id));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, id));
     await db.delete(batches).where(eq(batches.projectId, id));
     await db.delete(revisions).where(eq(revisions.projectId, id));
     await db.delete(projects).where(eq(projects.id, id));
@@ -315,7 +317,7 @@ for (const assetType of ["graphic", "svg"] as const) integration(`${assetType} p
 
 
 integration("project cards report planned and generated work; queue links identify the failed model", async () => {
-  const { batches, models, jobs } = await import("../db/schema");
+  const { batches, assetVersions: models, jobs } = await import("../db/schema");
   const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
   await db.insert(projects).values({ id: projectId, name: "UI summary fixture", description: "", status: "ready" });
   try {
@@ -329,6 +331,7 @@ integration("project cards report planned and generated work; queue links identi
   } finally {
     await db.delete(jobs).where(eq(jobs.id, jobId));
     await db.delete(models).where(eq(models.projectId, projectId));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
     await db.delete(batches).where(eq(batches.projectId, projectId));
     await db.delete(projects).where(eq(projects.id, projectId));
   }

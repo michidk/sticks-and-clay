@@ -11,23 +11,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { json, request } from "@/lib/client";
 
-/** Turn a generated asset back into a new idea, optionally deleting the asset in the same step. */
+/** Move the same asset back to Ideas while keeping all saved versions. */
 export function ReturnToIdea({
-  id, name, noun, versions = 1, canDelete = true, onDone,
+  id, name, onDone,
 }: {
   id: string;
   name: string;
-  noun: "model" | "graphic";
+  noun: "model" | "graphic" | "asset";
   versions?: number;
   /** False while the asset is still generating, which the server would refuse to delete. */
   canDelete?: boolean;
   onDone: (result: { id: string; title: string; deleted: boolean }) => unknown;
 }) {
   const [open, setOpen] = useState(false);
-  const [deleteModel, setDeleteModel] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function submit() {
@@ -35,7 +33,7 @@ export function ReturnToIdea({
     setError("");
     try {
       const result = await request<{ id: string; title: string; deleted: boolean }>(
-        `models/${id}/idea`, json({ deleteModel: deleteModel && canDelete }),
+        `asset-versions/${id}/idea`, json({}),
       );
       setOpen(false);
       await onDone(result);
@@ -48,7 +46,7 @@ export function ReturnToIdea({
   return (
     <>
       <Button variant="ghost" size="icon-sm" aria-label={`Return ${name} to ideas`} title="Return to ideas"
-        onClick={() => { setError(""); setDeleteModel(false); setOpen(true); }}>
+        onClick={() => { setError(""); setOpen(true); }}>
         <Lightbulb size={15} />
       </Button>
       <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
@@ -56,24 +54,9 @@ export function ReturnToIdea({
           <DialogHeader>
             <DialogTitle>Return {name} to ideas?</DialogTitle>
             <DialogDescription>
-              Creates a new idea with the brief and settings this {noun} was started from, so you can edit
-              and start it again. The {noun} stays in the collection unless you delete it below.
+              Moves this asset to Ideas so you can edit its brief and settings. All saved versions and their history remain available.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-2 py-1">
-            <div className="flex items-center gap-2">
-              <input id={`return-delete-${id}`} type="checkbox" className="workshop-checkbox" checked={deleteModel && canDelete}
-                disabled={busy || !canDelete} onChange={(event) => setDeleteModel(event.target.checked)} />
-              <Label htmlFor={`return-delete-${id}`}>
-                Also delete this {noun}{versions > 1 ? ` and its ${versions} versions` : ""}
-              </Label>
-            </div>
-            <p className="m-0 text-xs text-muted-foreground">
-              {canDelete
-                ? "Deleting cannot be undone. Its AI requests stay in Activity, so recorded costs do not change."
-                : `Deleting is available once this ${noun} has finished generating.`}
-            </p>
-          </div>
           {error && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
           <DialogFooter>
             <DialogClose asChild><Button variant="outline" disabled={busy}>Cancel</Button></DialogClose>

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as BoardRouteImport } from './routes/board'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as AdminAgentsIndexRouteImport } from './routes/admin/agents/index'
@@ -19,6 +20,7 @@ import { Route as AdminMcpIndexRouteImport } from './routes/admin/mcp/index'
 import { Route as AdminQueueIndexRouteImport } from './routes/admin/queue/index'
 import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
+import { Route as ProjectsProjectIdAssetsAssetIdIndexRouteImport } from './routes/projects/$projectId/assets/$assetId/index'
 import { Route as ProjectsProjectIdModelsModelIdIndexRouteImport } from './routes/projects/$projectId/models/$modelId/index'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +31,11 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BoardRoute = BoardRouteImport.update({
+  id: '/board',
+  path: '/board',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -71,6 +78,12 @@ const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
   path: '/projects/$projectId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsProjectIdAssetsAssetIdIndexRoute =
+  ProjectsProjectIdAssetsAssetIdIndexRouteImport.update({
+    id: '/projects/$projectId/assets/$assetId/',
+    path: '/projects/$projectId/assets/$assetId/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ProjectsProjectIdModelsModelIdIndexRoute =
   ProjectsProjectIdModelsModelIdIndexRouteImport.update({
     id: '/projects/$projectId/models/$modelId/',
@@ -81,6 +94,7 @@ const ProjectsProjectIdModelsModelIdIndexRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
+  '/board': typeof BoardRoute
   '/api/$': typeof ApiSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/agents/': typeof AdminAgentsIndexRoute
@@ -89,10 +103,12 @@ export interface FileRoutesByFullPath {
   '/admin/queue/': typeof AdminQueueIndexRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/assets/$assetId/': typeof ProjectsProjectIdAssetsAssetIdIndexRoute
   '/projects/$projectId/models/$modelId/': typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/board': typeof BoardRoute
   '/api/$': typeof ApiSplatRoute
   '/admin': typeof AdminIndexRoute
   '/admin/agents': typeof AdminAgentsIndexRoute
@@ -101,12 +117,14 @@ export interface FileRoutesByTo {
   '/admin/queue': typeof AdminQueueIndexRoute
   '/admin/settings': typeof AdminSettingsIndexRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/assets/$assetId': typeof ProjectsProjectIdAssetsAssetIdIndexRoute
   '/projects/$projectId/models/$modelId': typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
+  '/board': typeof BoardRoute
   '/api/$': typeof ApiSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/agents/': typeof AdminAgentsIndexRoute
@@ -115,6 +133,7 @@ export interface FileRoutesById {
   '/admin/queue/': typeof AdminQueueIndexRoute
   '/admin/settings/': typeof AdminSettingsIndexRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/assets/$assetId/': typeof ProjectsProjectIdAssetsAssetIdIndexRoute
   '/projects/$projectId/models/$modelId/': typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -122,6 +141,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/board'
     | '/api/$'
     | '/admin/'
     | '/admin/agents/'
@@ -130,10 +150,12 @@ export interface FileRouteTypes {
     | '/admin/queue/'
     | '/admin/settings/'
     | '/projects/$projectId/'
+    | '/projects/$projectId/assets/$assetId/'
     | '/projects/$projectId/models/$modelId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/board'
     | '/api/$'
     | '/admin'
     | '/admin/agents'
@@ -142,11 +164,13 @@ export interface FileRouteTypes {
     | '/admin/queue'
     | '/admin/settings'
     | '/projects/$projectId'
+    | '/projects/$projectId/assets/$assetId'
     | '/projects/$projectId/models/$modelId'
   id:
     | '__root__'
     | '/'
     | '/admin'
+    | '/board'
     | '/api/$'
     | '/admin/'
     | '/admin/agents/'
@@ -155,14 +179,17 @@ export interface FileRouteTypes {
     | '/admin/queue/'
     | '/admin/settings/'
     | '/projects/$projectId/'
+    | '/projects/$projectId/assets/$assetId/'
     | '/projects/$projectId/models/$modelId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  BoardRoute: typeof BoardRoute
   ApiSplatRoute: typeof ApiSplatRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
+  ProjectsProjectIdAssetsAssetIdIndexRoute: typeof ProjectsProjectIdAssetsAssetIdIndexRoute
   ProjectsProjectIdModelsModelIdIndexRoute: typeof ProjectsProjectIdModelsModelIdIndexRoute
 }
 
@@ -180,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/board': {
+      id: '/board'
+      path: '/board'
+      fullPath: '/board'
+      preLoaderRoute: typeof BoardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -238,6 +272,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects/$projectId/assets/$assetId/': {
+      id: '/projects/$projectId/assets/$assetId/'
+      path: '/projects/$projectId/assets/$assetId'
+      fullPath: '/projects/$projectId/assets/$assetId/'
+      preLoaderRoute: typeof ProjectsProjectIdAssetsAssetIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects/$projectId/models/$modelId/': {
       id: '/projects/$projectId/models/$modelId/'
       path: '/projects/$projectId/models/$modelId'
@@ -273,8 +314,11 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
+  BoardRoute: BoardRoute,
   ApiSplatRoute: ApiSplatRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
+  ProjectsProjectIdAssetsAssetIdIndexRoute:
+    ProjectsProjectIdAssetsAssetIdIndexRoute,
   ProjectsProjectIdModelsModelIdIndexRoute:
     ProjectsProjectIdModelsModelIdIndexRoute,
 }

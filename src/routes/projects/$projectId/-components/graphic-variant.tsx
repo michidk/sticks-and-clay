@@ -14,7 +14,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { request, json } from "@/lib/client";
-/** Fork a graphic into a new one, or iterate it into a new attempt of the same graphic. */
+/** Fork into another asset, or create a new version of this asset. */
 export function GraphicVariant({
   model,
   sourceRunId,
@@ -38,13 +38,13 @@ export function GraphicVariant({
     setError("");
     try {
       await request(
-        `models/${model.id}/branch`,
+        `asset-versions/${model.id}/branch`,
         json({ kind, sourceRunId, ...(iterate ? {} : { name }), prompt, judgeIterations: 2 }),
       );
       setOpen(false);
       void onSaved().catch(() => {
         setError(
-          `${iterate ? "Iteration" : "Variant"} queued, but refreshing the list failed. Reload to see it.`,
+          `${iterate ? "Version" : "Asset"} queued, but refreshing the list failed. Reload to see it.`,
         );
       });
     } catch (e) {
@@ -61,17 +61,17 @@ export function GraphicVariant({
         disabled={!sourceRunId}
         onClick={() => setOpen(true)}
       >
-        {iterate ? "Iterate" : "New variant"}
+        {iterate ? "Iterate" : "Fork asset"}
       </Button>
       {!open && error && <p role="status">{error}</p>}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{iterate ? "Iterate" : "New variant"}</DialogTitle>
+            <DialogTitle>{iterate ? "Iterate" : "Fork asset"}</DialogTitle>
             <DialogDescription>
               {iterate
-                ? "Revises this graphic into a new attempt that returns to Review. The current attempt is kept. Paid generation request."
-                : "Edits this graphic into a new one. The original is kept. Paid generation request."}
+                ? "Creates a new version of this asset that returns to Review. The current version is kept. Paid generation request."
+                : "Creates a separate asset from this saved build. The original asset and its history are kept. Paid generation request."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-4">
@@ -108,7 +108,7 @@ export function GraphicVariant({
                 </Button>
               </DialogClose>
               <Button disabled={busy}>
-                {busy ? "Queuing…" : iterate ? "Generate iteration" : "Generate variant"}
+                {busy ? "Queuing…" : iterate ? "Generate version" : "Create asset"}
               </Button>
             </DialogFooter>
           </form>

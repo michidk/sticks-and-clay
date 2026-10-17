@@ -2,7 +2,7 @@ import { referencedChange } from "./object-reference";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, batches, models, runs, jobs } from "../db/schema";
+import { projects, batches, assetEntries, assetVersions, runs, jobs } from "../db/schema";
 import { api } from "./api.server";
 import { roleInput } from "../modules/ai/index.server";
 import { jobContext } from "./checkpoint.server";
@@ -54,7 +54,7 @@ integration(
       designVersion: 2,
       status: "done",
     });
-    await db.insert(models).values({
+    await db.insert(assetVersions).values({
       id: modelId,
       projectId,
       batchId,
@@ -62,6 +62,8 @@ integration(
       prompt: "A detailed stone marker",
       status: "done",
     });
+    const [sourceVersion] = await db.select().from(assetVersions).where(eq(assetVersions.id, modelId));
+    await db.update(assetEntries).set({ references: ["references/asset.png"], referenceNotes: { "references/asset.png": "Keep the arch" } }).where(eq(assetEntries.id, sourceVersion.assetId));
     await db.insert(runs).values({
       id: runId,
       projectId,
@@ -97,12 +99,16 @@ integration(
       );
       expect(response.status).toBe(201);
       const { id } = (await response.json()) as { id: string };
-      const [branch] = await db.select().from(models).where(eq(models.id, id));
+      const [branch] = await db.select().from(assetVersions).where(eq(assetVersions.id, id));
       const [batch] = await db
         .select()
         .from(batches)
         .where(eq(batches.id, branch.batchId));
       const queued = await db.select().from(jobs).where(eq(jobs.targetId, id));
+      expect(branch.assetId).not.toBe(sourceVersion.assetId);
+      const [forkAsset] = await db.select().from(assetEntries).where(eq(assetEntries.id, branch.assetId));
+      expect(forkAsset.references).toEqual(["references/asset.png"]);
+      expect(forkAsset.referenceNotes).toEqual({ "references/asset.png": "Keep the arch" });
       expect(branch.parentModelId).toBe(modelId);
       expect(branch.sourceRunId).toBe(runId);
       expect(branch.changePrompt).toBe("Make the arch wider");
@@ -110,7 +116,7 @@ integration(
       expect(batch.design).toBe("# Snapshotted design");
       expect(batch.judgeIterations).toBe(4);
       expect(queued[0].checkpoint["branch-references"]).toBe(
-        '["references/original.png"]',
+        '["references/original.png","references/asset.png"]',
       );
       const objectReference = { glb: "models/source.glb", nodeId: "0/0/1", name: "arch", path: ["Scene", "marker", "arch"] };
       const branchRequest = (glb: string) => api(new Request(`http://localhost/api/models/${modelId}/branch`, {
@@ -122,7 +128,7 @@ integration(
       const referenced = await branchRequest(objectReference.glb);
       expect(referenced.status).toBe(201);
       const referencedId = (await referenced.json()).id;
-      const [referencedModel] = await db.select().from(models).where(eq(models.id, referencedId));
+      const [referencedModel] = await db.select().from(assetVersions).where(eq(assetVersions.id, referencedId));
       expect(referencedModel.objectReference).toEqual(objectReference);
       expect(referencedModel.changePrompt).toBe("Widen this part");
       expect(referencedModel.prompt).toContain("Widen this part");
@@ -135,7 +141,7 @@ integration(
       expect(builderInput).toContain(`Selected object from saved version ${runId}`);
       expect(builderInput).toContain('"path": [');
       const reloaded = await (await api(new Request(`http://localhost/api/projects/${projectId}`))).json();
-      expect(reloaded.models.find((item: { id: string }) => item.id === referencedId).objectReference).toEqual(objectReference);
+      expect(reloaded.assetVersions.find((item: { id: string }) => item.id === referencedId).objectReference).toEqual(objectReference);
       const wrongSource = await api(
         new Request(`http://localhost/api/models/${id}/branch`, {
           method: "POST",
@@ -250,15 +256,15 @@ integration(
       await db.delete(jobs).where(eq(jobs.targetId, projectId));
       const child = await db
         .select()
-        .from(models)
-        .where(eq(models.parentModelId, modelId));
+        .from(assetVersions)
+        .where(eq(assetVersions.parentModelId, modelId));
       for (const item of child) {
         await db.delete(jobs).where(eq(jobs.targetId, item.id));
-        await db.delete(models).where(eq(models.id, item.id));
+        await db.delete(assetVersions).where(eq(assetVersions.id, item.id));
         await db.delete(batches).where(eq(batches.id, item.batchId));
       }
       await db.delete(runs).where(eq(runs.projectId, projectId));
-      await db.delete(models).where(eq(models.id, modelId));
+      await db.delete(assetVersions).where(eq(assetVersions.id, modelId));
       await db.delete(batches).where(eq(batches.id, batchId));
       await db.delete(revisions).where(eq(revisions.projectId, projectId));
       await db.delete(projects).where(eq(projects.id, projectId));

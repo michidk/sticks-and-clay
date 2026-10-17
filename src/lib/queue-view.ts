@@ -1,4 +1,4 @@
-import type { jobs, models, batches, projects, runs } from "../db/schema";
+import type { jobs, assetVersions as models, batches, projects, runs } from "../db/schema";
 
 export const queueKindLabels: Record<string, string> = {
   design: "Design reference",

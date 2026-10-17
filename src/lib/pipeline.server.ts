@@ -1,10 +1,10 @@
-import { executeModelJob } from "./model-pipeline.server";
+import { executeAssetVersionJob } from "./model-pipeline.server";
 import { renderAssignment } from "../modules/materials/assignment.server";
 import { settleBatch } from "./batch-state.server";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, revisions, batches, models, jobs, runs } from "../db/schema";
-import { assertJobActive } from "./queue.server";
+import { projects, revisions, batches, assetVersions, assetEntries, jobs, runs } from "../db/schema";
+import { assertJobActive, plannerReservations } from "./queue.server";
 import { runRole, roleInput } from "../modules/ai/index.server";
 import { photographProject } from "./project-photography.server";
 import { renderCollection } from "./collection.server";
@@ -103,7 +103,7 @@ export async function executeJob(kind: string, targetId: string) {
       .from(projects)
       .where(eq(projects.id, targetId));
     const [model] = kind === "design-from-model"
-      ? await db.select().from(models).where(eq(models.id, snapshot.modelId))
+      ? await db.select().from(assetVersions).where(eq(assetVersions.id, snapshot.modelId))
       : [];
     if (!p || (kind === "design-from-model" && (!model || model.projectId !== p.id)))
       throw new Error("Model or project is missing");
@@ -179,7 +179,7 @@ export async function executeJob(kind: string, targetId: string) {
     if (!job.checkpoint["planner-references"])
       await checkpoint(
         "planner-references",
-        JSON.stringify([...referenceProject.references, ...mockupReferences(batch.workshop)]),
+        JSON.stringify(batch.workshop?.references ?? [...referenceProject.references, ...mockupReferences(batch.workshop)]),
       );
     const plannerRole =
       referenceProject.assetType === "svg" ? "svg-planner" : referenceProject.assetType !== "model" ? "graphic-planner" : "planner";
@@ -210,17 +210,17 @@ export async function executeJob(kind: string, targetId: string) {
         .update(jobs)
         .set({ checkpoint: { ...job.checkpoint, applied: "yes" } })
         .where(eq(jobs.id, job.id));
-      for (const model of result.models) {
-        const id = crypto.randomUUID();
-        await tx.insert(models).values({
-          id,
-          projectId: batch.projectId,
-          batchId: batch.id,
-          ...model,
+      const reserved = await tx.select().from(assetVersions).where(eq(assetVersions.batchId, batch.id)).orderBy(assetVersions.createdAt, assetVersions.id);
+      const slots = await tx.select().from(assetEntries).where(eq(assetEntries.batchId, batch.id)).orderBy(assetEntries.createdAt, assetEntries.id);
+      for (const [index, model] of result.models.entries()) {
+        const existing = reserved[index];
+        const id = existing?.id || crypto.randomUUID();
+        if (existing) await tx.update(assetVersions).set({ prompt: model.prompt, status: "queued", phase: "Queued", progress: 0, error: null }).where(eq(assetVersions.id, id));
+        else await tx.insert(assetVersions).values({
+          id, projectId: batch.projectId, batchId: batch.id,
+          ...(slots[index] ? { assetId: slots[index].id } : {}), ...model,
         });
-        await tx
-          .insert(jobs)
-          .values({ id: crypto.randomUUID(), kind: "model", targetId: id });
+        await tx.insert(jobs).values({ id: crypto.randomUUID(), kind: "model", targetId: id });
       }
       await tx
         .update(batches)
@@ -228,7 +228,7 @@ export async function executeJob(kind: string, targetId: string) {
         .where(eq(batches.id, batch.id));
     });
   } else if (kind === "model") {
-    await executeModelJob(targetId);
+    await executeAssetVersionJob(targetId);
   }
 }
 export async function failJob(kind: string, id: string, error: string) {
@@ -238,6 +238,9 @@ export async function failJob(kind: string, id: string, error: string) {
       .update(projects)
       .set({ status: "failed", phase: "Setup failed", error })
       .where(eq(projects.id, id));
+  if (kind === "plan") await db.update(assetVersions)
+    .set({ status: "failed", phase: "Planning failed", error })
+    .where(plannerReservations(id));
   if (kind === "plan" || kind === "demo")
     await db
       .update(batches)
@@ -245,9 +248,9 @@ export async function failJob(kind: string, id: string, error: string) {
       .where(eq(batches.id, id));
   if (kind === "model") {
     const [m] = await db
-      .update(models)
+      .update(assetVersions)
       .set({ status: "failed", phase: "Generation failed", error })
-      .where(eq(models.id, id))
+      .where(eq(assetVersions.id, id))
       .returning();
     if (m) await settleBatch(m.batchId);
   }

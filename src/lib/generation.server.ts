@@ -1,8 +1,9 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
-import { batches, jobs, models, projects, runs } from "../db/schema";
+import { batches, jobs, assetVersions, assetEntries, projects, runs } from "../db/schema";
 import type { GenerationInput } from "./api-inputs";
 import { assertNotArchived } from "./project-lifecycle.server";
+import { assetSnapshot } from "./asset-snapshot.server";
 import { snapshotWorkshop } from "./workshop.server";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -14,18 +15,31 @@ export function validateGeneration(project: typeof projects.$inferSelect, input:
     throw new Error("Image size applies only to graphic projects");
 }
 
-export async function insertGeneration(tx: Transaction, project: typeof projects.$inferSelect, input: GenerationInput) {
+export async function insertGeneration(tx: Transaction, project: typeof projects.$inferSelect, input: GenerationInput, asset?: typeof assetEntries.$inferSelect) {
   if (project.status !== "ready")
     throw new Error("Approve the design before generating assets");
   assertNotArchived(project);
   validateGeneration(project, input);
   const id = crypto.randomUUID();
-  const workshop = snapshotWorkshop(project, project.workshop);
+  const workshop = asset ? assetSnapshot(project, asset) : { ...snapshotWorkshop(project, project.workshop), ...(input.parts ? { parts: input.parts } : {}) };
   await tx.insert(batches).values({
     id, projectId: project.id, ...input,
     visualTargetMode: input.visualTargetMode ?? "review",
     design: project.design, designVersion: project.designVersion, workshop,
   });
+  if (!asset) {
+    for (let index = 0; index < input.count; index++) {
+      const assetId = crypto.randomUUID();
+      const prompt = input.prompt || project.design;
+      const name = prompt.split("\n")[0].slice(0, 100) || "Asset";
+      await tx.insert(assetEntries).values({ id: assetId, projectId: project.id, title: name, input: { ...input, prompt, count: 1 }, batchId: id, inIdea: false });
+      await tx.insert(assetVersions).values({ id: crypto.randomUUID(), assetId, projectId: project.id, batchId: id, name, prompt });
+    }
+  }
+  if (asset) {
+    await tx.update(assetEntries).set({ batchId: id, inIdea: false }).where(eq(assetEntries.id, asset.id));
+    await tx.insert(assetVersions).values({ id: crypto.randomUUID(), assetId: asset.id, projectId: project.id, batchId: id, name: asset.title || "Asset", prompt: input.prompt });
+  }
   await tx.insert(jobs).values({ id: crypto.randomUUID(), kind: "plan", targetId: id });
   return id;
 }
@@ -42,7 +56,7 @@ export async function queueGeneration(projectId: string, input: GenerationInput)
  * built from its latest saved result and its own prompt, so the planner never reinterprets it. */
 export async function regenerateAsset(modelId: string) {
   return db.transaction(async (tx) => {
-    const [model] = await tx.select().from(models).where(eq(models.id, modelId));
+    const [model] = await tx.select().from(assetVersions).where(eq(assetVersions.id, modelId));
     if (!model) throw new Error("Asset not found");
     const [project] = await tx.select().from(projects).where(eq(projects.id, model.projectId)).for("update");
     if (!project || project.status !== "ready")
@@ -56,6 +70,8 @@ export async function regenerateAsset(modelId: string) {
       return run.role === "builder" ? result?.artifacts?.blend : result?.key;
     });
     if (!source) throw new Error("This asset has no saved version to build on");
+    const [asset] = await tx.select().from(assetEntries).where(eq(assetEntries.id, model.assetId)).for("update");
+    const workshop = assetSnapshot(project, asset);
     const [previous] = await tx.select().from(batches).where(eq(batches.id, model.batchId));
     const batchId = crypto.randomUUID();
     const id = crypto.randomUUID();
@@ -67,11 +83,11 @@ export async function regenerateAsset(modelId: string) {
       spriteTarget: previous?.spriteTarget,
       visualTargetMode: "review",
       design: project.design, designVersion: project.designVersion,
-      workshop: snapshotWorkshop(project, project.workshop),
+      workshop,
       status: "building",
     });
-    await tx.insert(models).values({
-      id, projectId: project.id, batchId, name: model.name,
+    await tx.insert(assetVersions).values({
+      id, assetId: model.assetId, projectId: project.id, batchId, name: asset.title || model.name,
       prompt: `${model.prompt}\n\nRequested change from saved version:\n${change}`,
       parentModelId: model.id, sourceRunId: source.id, changePrompt: change, branchKind: "iterate",
     });
@@ -80,7 +96,7 @@ export async function regenerateAsset(modelId: string) {
       checkpoint: {
         "branch-references": JSON.stringify([
           ...(source.role === "builder" ? [] : [(source.result as { key: string }).key]),
-          ...project.references,
+          ...(workshop.references || []),
         ]),
       },
     });

@@ -1,11 +1,11 @@
 import { evePassword } from "./eve-config.server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notExists } from "drizzle-orm";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { DATA } from "./storage.server";
 import { Client } from "eve/client";
 import { db } from "../db/client";
-import { jobs, models, batches, runs, projects } from "../db/schema";
+import { jobs, assetVersions, batches, runs, projects } from "../db/schema";
 import { jobContext } from "./checkpoint.server";
 export class JobWaiting extends Error {}
 
@@ -24,6 +24,12 @@ export async function assertJobActive() {
   if (!job || ["cancelling", "cancelled"].includes(job.status))
     throw new JobCancelled();
 }
+/** Reserved versions have no builder job until their planner succeeds. */
+export function plannerReservations(batchId: string) {
+  return and(eq(assetVersions.batchId, batchId), notExists(
+    db.select({ id: jobs.id }).from(jobs).where(and(eq(jobs.kind, "model"), eq(jobs.targetId, assetVersions.id))),
+  ));
+}
 export async function finishCancellation(
   job: Pick<typeof jobs.$inferSelect, "id" | "kind" | "targetId">,
 ) {
@@ -37,15 +43,15 @@ export async function finishCancellation(
     .where(eq(jobs.id, job.id));
   if (job.kind === "model") {
     const [m] = await db
-      .update(models)
+      .update(assetVersions)
       .set({ status: "cancelled", phase: "Cancelled by user", error: null })
-      .where(eq(models.id, job.targetId))
+      .where(eq(assetVersions.id, job.targetId))
       .returning();
     if (m) {
       const siblings = await db
         .select()
-        .from(models)
-        .where(eq(models.batchId, m.batchId));
+        .from(assetVersions)
+        .where(eq(assetVersions.batchId, m.batchId));
       if (
         siblings.every((s) =>
           ["done", "failed", "cancelled"].includes(s.status),
@@ -56,12 +62,15 @@ export async function finishCancellation(
           .set({ status: "completed_with_errors" })
           .where(eq(batches.id, m.batchId));
     }
-  } else if (["plan", "demo"].includes(job.kind))
+  } else if (["plan", "demo"].includes(job.kind)) {
+    if (job.kind === "plan") await db.update(assetVersions)
+      .set({ status: "cancelled", phase: "Planning cancelled", error: null })
+      .where(plannerReservations(job.targetId));
     await db
       .update(batches)
       .set({ status: "cancelled", error: "Cancelled by user" })
       .where(eq(batches.id, job.targetId));
-  else if (job.kind === "design")
+  } else if (job.kind === "design")
     await db
       .update(projects)
       .set({
@@ -93,9 +102,9 @@ export async function cancelJob(id: string, queuedOnly = false) {
   if (active.kind === "design-mockups") return "cancelling";
   if (active.kind === "plan") {
     const children = await db
-      .select({ id: models.id })
-      .from(models)
-      .where(eq(models.batchId, active.targetId));
+      .select({ id: assetVersions.id })
+      .from(assetVersions)
+      .where(eq(assetVersions.batchId, active.targetId));
     if (children.length) {
       const childJobs = await db
         .select()

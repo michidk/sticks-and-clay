@@ -9,6 +9,7 @@ export const boardStageTitles: Record<BoardStage, string> = {
 type Idea = { id: string; readyAt?: Date | string | null };
 type Asset = {
   id: string;
+  assetId?: string | null;
   batchId: string;
   status: string;
   acceptedAt?: Date | string | null;
@@ -53,8 +54,13 @@ export function boardColumns<I extends Idea, A extends Asset, B extends Batch>(
   return columns;
 }
 
-/** The latest saved build or graphic an iteration can start from (runs are newest first). */
-export function latestSourceRun(runs: { id: string; modelId?: string | null; status: string; role: string; result?: any }[], modelId: string) {
-  return runs.find((run) => run.modelId === modelId && run.status === "done" &&
-    (["graphic", "svg"].includes(run.role) || (run.role === "builder" && run.result?.artifacts?.blend)))?.id;
+/** The latest saved build or graphic an iteration can start from, newest first. */
+export function latestSourceRun(runs: { id: string; modelId?: string | null; status: string; role: string; result?: unknown }[], modelId: string) {
+  return runs.find((run) => {
+    if (run.modelId !== modelId || run.status !== "done") return false;
+    if (["graphic", "svg"].includes(run.role)) return true;
+    if (run.role !== "builder" || !run.result || typeof run.result !== "object" || !("artifacts" in run.result)) return false;
+    const artifacts = run.result.artifacts;
+    return artifacts && typeof artifacts === "object" && "blend" in artifacts && typeof artifacts.blend === "string";
+  })?.id;
 }
