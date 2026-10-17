@@ -1,3 +1,4 @@
+import { describeError } from "@/lib/error-message";
 import { useState } from "react";
 import {
   ArrowRight,
@@ -148,7 +149,7 @@ export function ModelPipeline({
             </Button>
           </div>
           {selected.run.error && (
-            <p className="pipeline-error">{selected.run.error}</p>
+            <p className="pipeline-error">{describeError(selected.run.error)}</p>
           )}
           {selected.review ? (
             <ReviewNotes

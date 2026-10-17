@@ -21,14 +21,19 @@ export async function settleBatch(id: string) {
         ? Boolean(m.artifacts.image)
         : m.artifacts.stage !== "geometry"),
   );
+  // A grid of one asset is pointless, so graphic batches render a sheet only from two up.
+  const needsSheet =
+    graphics && rows.filter((m) => m.status === "done" && m.artifacts?.image).length >= 2;
   await db.transaction(async (tx) => {
     const [claimed] = await tx
       .update(batches)
       .set({
         status: graphics
-          ? rows.every((m) => m.status === "done")
-            ? "done"
-            : "completed_with_errors"
+          ? needsSheet
+            ? "rendering"
+            : rows.every((m) => m.status === "done")
+              ? "done"
+              : "completed_with_errors"
           : hasFinalAsset
             ? "rendering"
             : "completed_with_errors",
@@ -47,7 +52,7 @@ export async function settleBatch(id: string) {
           targetId: claimed.projectId,
         });
     }
-    if (claimed && hasFinalAsset && !graphics)
+    if (claimed && hasFinalAsset && (!graphics || needsSheet))
       await tx
         .insert(jobs)
         .values({ id: crypto.randomUUID(), kind: "demo", targetId: id });

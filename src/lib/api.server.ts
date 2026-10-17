@@ -44,8 +44,24 @@ import { fileMimeType } from "./storage/path";
 import { prepareReferences } from "./reference-images.server";
 import { readWorkerHeartbeat } from "./worker-control.server";
 import { downloadImage } from "./remote-image.server";
-import { mockupInput } from "./design-mockups";
-import { designMockups, queueDesignMockups } from "./design-mockups.server";
+import { mockupInput, mockupNoteInput } from "./design-mockups";
+import {
+  acceptMockup,
+  deleteMockup,
+  designMockups,
+  listMockups,
+  queueDesignMockups,
+  unacceptMockup,
+  uploadMockup,
+} from "./design-mockups.server";
+import {
+  approveDesign,
+  assertNotArchived,
+  deleteProject,
+  revertDesign,
+  setArchived,
+  startDesign,
+} from "./project-lifecycle.server";
 import { queueGeneration } from "./generation.server";
 import { discardModelIdea, listModelIdeas, saveModelIdea, startModelIdea, updateModelIdea } from "./model-ideas.server";
 async function resumeJob(
@@ -68,6 +84,8 @@ async function resumeJob(
   return resumed || null;
 }
 const uuid = z.string().uuid();
+// Generated mockups are `<job uuid>:<index>`, uploaded ones are plain uuids.
+const uuidOrJob = z.string().regex(/^[0-9a-f-]{36}(:[0-3])?$/);
 const assetType = z.enum(["model", "graphic", "svg"]);
 const reply = (v: unknown, status = 200) => Response.json(v, { status });
 export async function api(request: Request) {
@@ -430,9 +448,6 @@ export async function api(request: Request) {
                 assetType: type,
                 description,
                 references,
-                status: "queued",
-                phase: "Waiting for designer",
-                progress: 0,
               })
               .where(and(eq(projects.id, id), eq(projects.status, "draft")))
               .returning();
@@ -442,9 +457,7 @@ export async function api(request: Request) {
             await tx
               .insert(projects)
               .values({ id, name, assetType: type, description, references });
-          await tx
-            .insert(jobs)
-            .values({ id: crypto.randomUUID(), kind: "design", targetId: id });
+          await startDesign(tx, id, name, description);
         })
         .catch(async (error) => {
           await rollback();
@@ -533,6 +546,7 @@ export async function api(request: Request) {
           project,
           photographs: await projectPhotographs(id),
           mockups: await designMockups(id),
+          mockupItems: await listMockups(id),
           ideas: await listModelIdeas(id),
           models: assets,
           versions: history
@@ -598,6 +612,42 @@ export async function api(request: Request) {
           ),
         });
       }
+      if (request.method === "DELETE" && path.length === 2) {
+        await deleteProject(id);
+        return reply({ ok: true });
+      }
+      if (path[2] === "archive" && request.method === "POST") {
+        const { archived } = z.object({ archived: z.boolean() }).parse(await request.json());
+        await setArchived(id, archived);
+        return reply({ ok: true });
+      }
+      if (path[2] === "design" && path[3] === "approve" && request.method === "POST") {
+        await approveDesign(id, z.object({ version: z.number().int().nonnegative() }).parse(await request.json()).version);
+        return reply({ ok: true });
+      }
+      if (path[2] === "design" && path[3] === "revert" && request.method === "POST") {
+        const input = z.object({ version: z.number().int().nonnegative(), toVersion: z.number().int().positive() })
+          .parse(await request.json());
+        await revertDesign(id, input.version, input.toVersion);
+        return reply({ ok: true });
+      }
+      if (path[2] === "mockups" && path[3] === "upload" && request.method === "POST") {
+        const file = (await request.formData()).get("image");
+        if (!(file instanceof File)) throw new Error("Choose an image to upload");
+        return reply({ id: await uploadMockup(id, file) }, 201);
+      }
+      if (path[2] === "mockups" && path[3] && request.method === "DELETE") {
+        await deleteMockup(id, uuidOrJob.parse(path[3]));
+        return reply({ ok: true });
+      }
+      if (path[2] === "mockups" && path[3] && path[4] === "accept" && request.method === "POST") {
+        await acceptMockup(id, uuidOrJob.parse(path[3]), mockupNoteInput.parse(await request.json()).note);
+        return reply({ ok: true });
+      }
+      if (path[2] === "mockups" && path[3] && path[4] === "unaccept" && request.method === "POST") {
+        await unacceptMockup(id, uuidOrJob.parse(path[3]));
+        return reply({ ok: true });
+      }
       if (path[2] === "ideas") {
         if (path.length === 3 && request.method === "POST") {
           const input = generationInput.parse(await request.json());
@@ -614,7 +664,8 @@ export async function api(request: Request) {
         if (path.length === 5 && path[4] === "generate" && request.method === "POST")
           return reply({ id: await startModelIdea(id, uuid.parse(path[3])) }, 201);
       }
-      if (path[2] === "mockups" && request.method === "POST") {
+      if (path[2] === "mockups" && path.length === 3 && request.method === "POST") {
+        assertNotArchived(project);
         const input = mockupInput.parse(await request.json());
         return reply({ id: await queueDesignMockups(id, input) }, 201);
       }
@@ -651,6 +702,7 @@ export async function api(request: Request) {
             .where(eq(projects.id, id)).for("update");
           if (!current || !current.design || !["ready", "review"].includes(current.status))
             throw new Error("The design must be available before updating it");
+          assertNotArchived(current);
           if (current.designVersion !== input.version)
             throw new Error("Design changed. Load the latest revision before requesting an update.");
           await assertDesignIdle(id, tx);
@@ -724,6 +776,7 @@ export async function api(request: Request) {
               version: input.version + 1,
               content: input.design,
               author: "user",
+              approved: input.approve,
             });
           });
         } catch (error) {

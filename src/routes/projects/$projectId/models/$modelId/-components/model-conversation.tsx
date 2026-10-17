@@ -1,3 +1,4 @@
+import { describeError } from "@/lib/error-message";
 import { VisualTargetReview } from "./visual-target-review";
 import type { ObjectReference } from "@/lib/object-reference";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -227,7 +228,7 @@ export function ModelConversation({
               <p>
                 {step.review?.summary ||
                   step.run.result?.summary ||
-                  step.run.error ||
+                  (step.run.error ? describeError(step.run.error) : "") ||
                   (step.state === "Running"
                     ? model.phase
                     : "Recorded in Activity.")}

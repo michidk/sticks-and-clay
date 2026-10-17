@@ -99,7 +99,7 @@ export function createStudioMcpServer(options: {
     assetBriefInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/model-brief`, method: "POST", body: input }), { paid: true });
   register("save_design", "Save a new design revision using the current version from get_project. approve=true approves it for generation. To restore history, save the selected old revision with the current version.", write,
     designInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/design`, method: "PUT", body: input }));
-  register("update_workshop", "Save collection memory, style, variation and completed examples using its current workshop version. Future batches snapshot this guidance.", write,
+  register("update_workshop", "Save collection variation and 3D self-review effort using the current workshop version. Future batches snapshot them together with the accepted mockups.", write,
     workshopSchema.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/workshop`, method: "PUT", body: input }));
   register("generate_assets", "Queue a batch from the approved design. Returns batch id, not a completed asset. Paid AI. Every asset type supports judgeIterations review rounds; 3D also supports spriteTarget and uses square imageSize. Visual targets require user approval unless visualTargetMode is skip.", write,
     generationInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/generate`, method: "POST", body: input }), { paid: true });
@@ -123,7 +123,7 @@ export function createStudioMcpServer(options: {
     projectId.extend(pageInput.shape), ({ projectId }) => ({ path: `projects/${projectId}/materials` }), { map: paginate });
   register("generate_material", "Create a material version. An empty prompt uses local procedural rendering; a prompt enables paid AI review. parentId and examples must be completed materials from this project.", write,
     materialInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/materials`, method: "POST", body: input }), { paid: true });
-  register("branch_asset", "Iterate or fork a saved model/graphic sourceRunId. Describe selected repairs in prompt. Set useCurrentStyle to revise with collection style. Fork requires name. Paid AI; source history remains intact.", write,
+  register("branch_asset", "Iterate or fork a saved model/graphic sourceRunId. Describe selected repairs in prompt. Set useCurrentStyle to revise with the accepted mockups. Fork requires name. Paid AI; source history remains intact.", write,
     branchInput.extend(modelId.shape), (input) => ({ path: `models/${input.modelId}/branch`, method: "POST", body: input }), { paid: true });
   register("update_design_from_asset", "Queue a draft design from a saved 3D render index. Paid AI. Choose replaceReference when the project already has six references. Approval is still required before generation.", write,
     designUpdateInput.extend(modelId.shape), (input) => ({ path: `models/${input.modelId}/design-update`, method: "POST", body: input }), { paid: true });

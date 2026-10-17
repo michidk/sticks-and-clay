@@ -55,6 +55,8 @@ Every non-3D asset type runs through `runReviewedAsset` (`src/lib/reviewed-asset
 
 SVG's equivalent of the Blender workshop is `src/lib/svg.ts` (allowlist sanitizer, structural analysis) plus `src/lib/svg-render.server.ts` (sharp/librsvg rasterizer and ink-bounds measurement). The judge sees a 768 px render, a 64 px legibility render and the measurements. Iteration 0 keeps the original step ID and file layout so jobs saved before review rounds resume unchanged. Raster graphics use the image API for builds and the generated PNG as the judge's evidence. 3D keeps its own staged pipelines in `model-pipeline.server.ts`.
 
+Collection output follows the same per-type split. When a graphic or SVG batch settles with two or more finished assets, the batch moves to `rendering` and queues the usual `demo` job; `renderCollection` dispatches by asset type, and graphics compose every finished asset into one labelled grid (`sheet.png`, stored as `batch.preview.sheet`). A single-asset batch skips the sheet. Retry and failure handling are the 3D collection-render paths.
+
 ## Filesystem and enforcement
 
 Eve and TanStack adapters live in `src/modules/ai/internal`. Only the public AI entrypoint imports them. An architecture test rejects external imports of internal modules. Pipeline traversal has no provider, database, or filesystem dependency. Asset handlers own those effects.

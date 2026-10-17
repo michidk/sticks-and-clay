@@ -1,3 +1,5 @@
+import { describeError } from "./error-message";
+
 export async function request<T = any>(
   url: string,
   init?: RequestInit,
@@ -6,7 +8,7 @@ export async function request<T = any>(
   if (!response.ok) {
     const data: unknown = await response.json().catch(() => null);
     const message = data && typeof data === "object" && "error" in data && typeof data.error === "string"
-      ? data.error : `Request failed (HTTP ${response.status})`;
+      ? describeError(data.error) : `Request failed (HTTP ${response.status})`;
     throw Object.assign(new Error(message), { data, status: response.status });
   }
   return response.json();

@@ -12,7 +12,7 @@ export const assetBriefInput = z.object({
 });
 
 export const designInput = z.object({
-  design: z.string().min(100).max(50000),
+  design: z.string().min(1).max(50000),
   version: z.number().int().nonnegative(),
   approve: z.boolean().default(false),
 });

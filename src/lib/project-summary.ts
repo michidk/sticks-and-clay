@@ -104,7 +104,11 @@ export function projectState(
   if (status !== "ready")
     return {
       label:
-        status === "review" ? "Review design" : status.replaceAll("_", " "),
+        status === "review"
+          ? "Review design"
+          : status === "draft"
+            ? "Draft"
+            : status.replaceAll("_", " "),
       tone: status,
     };
   if (collection.active)

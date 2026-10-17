@@ -137,3 +137,67 @@ integration("partial mockups reuse completed runs, generate remaining images onc
     await rm(resolve(DATA, "mockups", projectId), { recursive: true, force: true });
   }
 });
+
+integration("mockups can be uploaded, accepted with context, frozen into batches, revised and deleted", async () => {
+  const { batches, mockups } = await import("../db/schema");
+  const { getStorage } = await import("./storage.server");
+  const id = crypto.randomUUID();
+  const call = (path: string, body?: unknown, method = body === undefined ? "GET" : "POST") =>
+    api(new Request(`http://localhost/api/projects/${id}${path}`, {
+      method, headers: { "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    }));
+  const png = Uint8Array.from(Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==", "base64"));
+  let key = "";
+  try {
+    await db.insert(projects).values({ id, name: "Mockup curation", description: "test", design, designVersion: 2, status: "ready" });
+    const form = new FormData();
+    form.set("image", new File([png], "mock.png", { type: "image/png" }));
+    const uploaded = await api(new Request(`http://localhost/api/projects/${id}/mockups/upload`, { method: "POST", body: form }));
+    expect(uploaded.status).toBe(201);
+    const mockupId = (await uploaded.json()).id as string;
+    [{ key }] = await db.select().from(mockups).where(eq(mockups.id, mockupId));
+    const bad = new FormData();
+    bad.set("image", new File(["not an image"], "x.png", { type: "image/png" }));
+    expect((await api(new Request(`http://localhost/api/projects/${id}/mockups/upload`, { method: "POST", body: bad }))).status).toBe(400);
+
+    const generate = async () => {
+      const response = await call("/generate", { count: 1, judgeIterations: 0 });
+      expect(response.status).toBe(201);
+      const [batch] = await db.select().from(batches).where(eq(batches.id, (await response.json()).id));
+      return batch;
+    };
+    expect((await generate()).workshop?.mockups).toEqual([]);
+
+    expect((await call(`/mockups/${mockupId}/accept`, { note: "Love the thin outlines" })).status).toBe(200);
+    expect((await generate()).workshop?.mockups).toEqual([{ key, note: "Love the thin outlines" }]);
+    const detail = await (await call("")).json();
+    expect(detail.mockupItems[0]).toMatchObject({ id: mockupId, source: "uploaded", note: "Love the thin outlines" });
+
+    // Batches already started keep their snapshot when the direction changes later.
+    const frozen = await generate();
+    expect((await call(`/mockups/${mockupId}/unaccept`, {})).status).toBe(200);
+    expect((await generate()).workshop?.mockups).toEqual([]);
+    expect((await db.select().from(batches).where(eq(batches.id, frozen.id)))[0].workshop?.mockups).toHaveLength(1);
+
+    expect((await call("/mockups", { version: 2, count: 1, baseId: crypto.randomUUID() })).status).toBe(400);
+    // A revision freezes the chosen mockup as the first reference, ahead of the project's own.
+    expect((await call("/mockups", { version: 2, count: 1, hint: "Thinner", baseId: mockupId })).status).toBe(201);
+    const [job] = await db.select().from(jobs).where(eq(jobs.targetId, id));
+    const snapshot = mockupSnapshot.parse(JSON.parse(job.checkpoint.input));
+    expect(snapshot.baseId).toBe(mockupId);
+    expect(snapshot.references[0]).toBe(key);
+    expect(snapshot.prompts[0]).toContain("Revise the first supplied image");
+
+    expect((await call(`/mockups/${mockupId}`, undefined, "DELETE")).status).toBe(200);
+    expect(await db.select().from(mockups).where(eq(mockups.projectId, id))).toHaveLength(0);
+    expect((await call(`/mockups/${mockupId}`, undefined, "DELETE")).status).toBe(400);
+  } finally {
+    const rows = await db.select().from(batches).where(eq(batches.projectId, id));
+    for (const row of rows) await db.delete(jobs).where(eq(jobs.targetId, row.id));
+    await db.delete(jobs).where(eq(jobs.targetId, id));
+    await db.delete(batches).where(eq(batches.projectId, id));
+    await db.delete(projects).where(eq(projects.id, id));
+    if (key) await getStorage().delete(key);
+  }
+});

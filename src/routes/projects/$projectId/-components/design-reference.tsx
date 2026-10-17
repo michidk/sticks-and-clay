@@ -1,36 +1,31 @@
-import { DesignConversation, type DesignUpdate } from "./design-conversation";
+import { DesignConversation, type DesignRevision, type DesignUpdate } from "./design-conversation";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { diffLines } from "diff";
 import { Check, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "@/components/ui/accordion";
 import { TextSkeleton } from "@/components/loading";
 import { PictureUploader } from "@/components/picture-uploader";
 import { useImageUpload } from "@/hooks/use-image-upload";
 import { appendReferenceImages } from "@/lib/image-file";
-import { request } from "@/lib/client";
+import { json, request } from "@/lib/client";
 
 /** Design document editor with references and revision history. */
 export function DesignReference({
   project,
   revisions,
   onSaved,
+  onOpenMockups,
   updating = false,
   updates = [],
 }: {
   project: any;
-  revisions: any[];
+  revisions: DesignRevision[];
   onSaved: (approved: boolean) => Promise<unknown>;
+  onOpenMockups: () => void;
   updating?: boolean;
   updates?: DesignUpdate[];
 }) {
@@ -74,6 +69,13 @@ export function DesignReference({
     setBusy(true);
     setError("");
     try {
+      if (approve && !changed) {
+        // Nothing to save: accept the current revision instead of writing a duplicate.
+        await request(`projects/${project.id}/design/approve`, json({ version }));
+        setEditing(false);
+        await onSaved(true);
+        return;
+      }
       const form = new FormData();
       form.set("design", design);
       form.set("version", String(version));
@@ -93,7 +95,19 @@ export function DesignReference({
     }
   }
   return (
-    <div className="design-layout">
+    <div className="design-studio">
+      <DesignConversation
+        project={project}
+        revisions={revisions}
+        updates={updates}
+        locked={saving || stale || changed || !project.design || !["ready", "review"].includes(project.status)}
+        blockedReason={updating ? "A design update is in progress. Follow it in the queue."
+          : stale ? "Load the latest design revision before sending changes."
+          : changed ? "Save or discard your document and reference edits before sending changes."
+          : "Wait for the design to become available."}
+        onChanged={() => onSaved(false)}
+        onOpenMockups={onOpenMockups}
+      />
       <div className="design-document-column">
       <Card className="panel">
         <div className="section-title">
@@ -195,14 +209,14 @@ export function DesignReference({
             )}
             <Button
               variant="outline"
-              disabled={saving || stale || !changed || design.length < 100}
+              disabled={saving || stale || !changed || !design.trim()}
               onClick={() => save(false)}
             >
               Save draft
             </Button>
             <Button
               variant="default"
-              disabled={saving || stale || design.length < 100}
+              disabled={saving || stale || !design.trim()}
               onClick={() => save(true)}
             >
               <Check size={17} />
@@ -211,19 +225,6 @@ export function DesignReference({
           </div>
         )}
       </Card>
-      <DesignConversation
-        projectId={project.id}
-        version={version}
-        updates={updates}
-        disabled={saving || stale || changed || !project.design || !["ready", "review"].includes(project.status)}
-        blockedReason={updating ? "A design update is in progress. Follow it in the queue."
-          : stale ? "Load the latest design revision before sending changes."
-          : changed ? "Save or discard your document and reference edits before sending changes."
-          : "Wait for the design to become available."}
-        onQueued={() => onSaved(false)}
-      />
-      </div>
-      <aside>
         <Card className="panel">
           <PictureUploader
             images={uploader.images}
@@ -238,68 +239,7 @@ export function DesignReference({
             it.
           </p>
         </Card>
-        {!!revisions.length && (
-          <Card className="panel">
-            <h3>Revisions</h3>
-            {revisions.map((r: any) => (
-              <Accordion type="single" collapsible key={r.id}>
-                <AccordionItem value="content">
-                  <AccordionTrigger>
-                    Version {r.version} · {r.author}
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="markdown">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {r.content}
-                      </ReactMarkdown>
-                    </div>
-                    <Accordion type="single" collapsible>
-                      <AccordionItem value="content">
-                        <AccordionTrigger>Compare with current</AccordionTrigger>
-                        <AccordionContent>
-                          <pre className="revision-diff">
-                            {diffLines(r.content, project.design).map(
-                              (part, i) => (
-                                <span
-                                  key={i}
-                                  className={
-                                    part.added
-                                      ? "diff-added"
-                                      : part.removed
-                                        ? "diff-removed"
-                                        : ""
-                                  }
-                                >
-                                  {part.value}
-                                </span>
-                              ),
-                            )}
-                          </pre>
-                          <small>
-                            Green: in the current version. Red: only in this
-                            version.
-                          </small>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                    <Button
-                      variant="outline"
-                      disabled={saving}
-                      onClick={() => {
-                        setDesign(r.content);
-                        setVersion(project.designVersion);
-                        setEditing(true);
-                      }}
-                    >
-                      Restore as draft
-                    </Button>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            ))}
-          </Card>
-        )}
-      </aside>
+      </div>
     </div>
   );
 }

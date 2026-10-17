@@ -1,3 +1,4 @@
+import { describeError } from "@/lib/error-message";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Boxes, Download } from "lucide-react";
@@ -154,16 +155,16 @@ export function AssetCard({
         )}
         {m.error && (
           <Alert variant="destructive" className="error">
-            <AlertDescription>{m.error}</AlertDescription>
+            <AlertDescription>{describeError(m.error)}</AlertDescription>
           </Alert>
         )}
         {renderFailure && (
           <Alert variant="destructive" className="error">
             <AlertTitle>Collection renders failed</AlertTitle>
             <AlertDescription>
-              <p>The lineup and demo scene for this {isGraphics ? "graphic" : "model"} did not render.</p>
+              <p>{isGraphics ? "The collection sheet for this batch did not render." : "The lineup and demo scene for this model did not render."}</p>
               <p className="break-all">
-                {renderFailure.error ||
+                {describeError(renderFailure.error) ||
                   "Rendering stopped before it finished."}
               </p>
             </AlertDescription>

@@ -1,5 +1,6 @@
 import { GenerationDialog } from "./-components/generation-dialog";
 import { ModelIdeas } from "./-components/model-ideas";
+import { ProjectActionsMenu } from "@/components/project-actions-menu";
 import { DesignMockupStep } from "./-components/design-mockups";
 import { DesignReference } from "./-components/design-reference";
 import { AssetCard } from "./-components/asset-card";
@@ -11,7 +12,6 @@ import {
 import { ProjectSetup } from "./-components/project-setup";
 import { ImportModel } from "./-components/import-model";
 import { WorkerNotice } from "@/components/worker-notice";
-import { WorkshopPanel } from "./-components/workshop";
 import { MaterialPanel } from "./-components/materials";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,18 +36,18 @@ import { failedBatchFor, pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
 import { queueKindLabels } from "@/lib/queue-view";
 
-const tabs = [
-  "ideas",
-  "models",
-  "design",
-  "mockups",
-  "style",
-  "materials",
-  "history",
-] as const;
+const tabs = ["design", "mockups", "ideas", "materials", "history"] as const;
 export type ProjectTab = (typeof tabs)[number];
+// Links from before the tab rework: the collection became Ideas and Style was removed.
+const legacyTabs = { models: "ideas", style: "design" } as const;
 export const Route = createFileRoute("/projects/$projectId/")({
-  validateSearch: z.object({ tab: z.enum(tabs).optional().catch(undefined) }),
+  validateSearch: z.object({
+    tab: z
+      .enum([...tabs, ...Object.keys(legacyTabs)] as [string, ...string[]])
+      .transform((tab) => (legacyTabs as Record<string, ProjectTab>)[tab] ?? (tab as ProjectTab))
+      .optional()
+      .catch(undefined),
+  }),
   component: ProjectPage,
 });
 const finished = ["done", "failed", "cancelled"];
@@ -213,16 +213,12 @@ function ProjectPage() {
   const activeTab: ProjectTab =
     !ready && (!search.tab || search.tab === "mockups")
       ? "design"
-      : search.tab === "ideas" && !ideas.length
-        ? "models"
-        : search.tab || "models";
+      : search.tab || "ideas";
   const hasCollection = data.models.length || data.batches.length;
   const tabList: [ProjectTab, string, number?][] = [
-    ...(ideas.length ? [["ideas", "Ideas", ideas.length] as [ProjectTab, string, number]] : []),
-    ["models", isGraphics ? "Graphics" : "Models", counts.all],
     ["design", "Design"],
     ...(ready ? [["mockups", "Mockups"] as [ProjectTab, string]] : []),
-    ["style", "Style"],
+    ["ideas", "Ideas", counts.all + ideas.length],
     ...(!isGraphics && ready
       ? [["materials", "Materials"] as [ProjectTab, string]]
       : []),
@@ -259,9 +255,16 @@ function ProjectPage() {
           )}
         </div>
         <div className="page-actions">
-          {ready && !isGraphics && <ImportModel projectId={projectId} />}
+          <ProjectActionsMenu
+            className="project-header-menu"
+            project={p}
+            canDelete={!hasCollection && !designUpdating}
+            onChanged={load}
+            onDeleted={() => navigate({ to: "/" })}
+          />
+          {ready && !isGraphics && !p.archivedAt && <ImportModel projectId={projectId} />}
           {ready ? (
-            <Button onClick={() => setGenerate(true)}>
+            <Button disabled={Boolean(p.archivedAt)} onClick={() => setGenerate(true)}>
               <Plus size={17} /> Add {assetSingular} ideas
             </Button>
           ) : (
@@ -271,6 +274,13 @@ function ProjectPage() {
           )}
         </div>
       </section>
+      {p.archivedAt && (
+        <Alert className="mb-4">
+          <AlertDescription>
+            This project is archived. It stays readable, but generation is paused until you unarchive it from the actions menu.
+          </AlertDescription>
+        </Alert>
+      )}
       {!ready && (
         <p className="note">
           Approve the design reference to start generating {assetPlural}.
@@ -299,7 +309,7 @@ function ProjectPage() {
       >
         <TabsList variant="line" className="tabs" aria-label="Project views">
           {tabList.map(([id, title, count]) => (
-            <TabsTrigger value={id} key={id}>
+            <TabsTrigger value={id} key={id} className={id === "history" ? "tab-end" : undefined}>
               {title}
               {!!count && (
                 <Badge variant="secondary" className="count">
@@ -319,26 +329,10 @@ function ProjectPage() {
               projectId={projectId}
               version={p.designVersion}
               mockups={data.mockups || []}
+              items={data.mockupItems || []}
               onRefresh={load}
             />
           </LightboxProvider>
-        )}
-        {activeTab === "style" && (
-          <WorkshopPanel
-            key={projectId}
-            project={p}
-            versions={[
-              ...(data.versions || []),
-              ...rs
-                .filter((r: any) => (r.role === "graphic" || r.role === "svg") && r.status === "done")
-                .map((r: any) => ({
-                  ...r,
-                  artifacts: { image: r.result?.key, renders: [r.result?.key] },
-                })),
-            ]}
-            models={data.models || []}
-            onSaved={load}
-          />
         )}
         {activeTab === "design" && (
           <DesignReference
@@ -347,40 +341,35 @@ function ProjectPage() {
             revisions={data.revisions}
             updates={data.designUpdates || []}
             updating={designUpdating}
+            onOpenMockups={() => setTab("mockups")}
             onSaved={async (approved) => {
               await load();
-              if (approved) setTab("models");
+              if (approved) setTab("ideas");
             }}
           />
         )}
         {activeTab === "history" && <History runs={rs} models={data.models} />}
         {activeTab === "ideas" && (
-          <ModelIdeas
-            key={projectId}
-            projectId={projectId}
-            ideas={ideas}
-            designVersion={p.designVersion}
-            isGraphics={isGraphics}
-            ready={ready}
-            onRefresh={load}
-          />
-        )}
-        {activeTab === "models" && (
           <>
-            {!hasCollection ? (
+            <ModelIdeas
+              key={projectId}
+              projectId={projectId}
+              ideas={ideas}
+              designVersion={p.designVersion}
+              isGraphics={isGraphics}
+              ready={ready}
+              onRefresh={load}
+            />
+            {!hasCollection && ideas.length ? null : !hasCollection ? (
               <Empty className="empty">
                 <h2>No {assetPlural} yet</h2>
                 <p>
-                  {ideas.length
-                    ? `Start a saved idea from the Ideas tab to begin generating ${assetPlural}.`
-                    : `Add a brief for the ${assetPlural} you want, or let AI propose a set from the design.`}
+                  {`Add a brief for the ${assetPlural} you want, or let AI propose a set from the design.`}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  {!ideas.length && (
-                    <Button onClick={() => setGenerate(true)}>
-                      <Plus size={17} /> Add {assetSingular} ideas
-                    </Button>
-                  )}
+                  <Button onClick={() => setGenerate(true)}>
+                    <Plus size={17} /> Add {assetSingular} ideas
+                  </Button>
                   {ready && (
                     <Button variant="outline" onClick={() => setTab("mockups")}>
                       Generate mockups first
@@ -501,6 +490,37 @@ function ProjectPage() {
                 </div>
               </>
             )}
+            {isGraphics &&
+              data.batches
+                .filter(
+                  (b: any) =>
+                    b.preview?.sheet &&
+                    collectionModels.some((model) => model.batchId === b.id),
+                )
+                .map((b: any) => (
+                  <details className="panel collection-preview" key={b.id}>
+                    <summary>Collection sheet</summary>
+                    <div className="section-title">
+                      <h3>Every finished {assetSingular} in this batch</h3>
+                      <a href={fileUrl(b.preview.sheet)} download>
+                        Download sheet
+                      </a>
+                    </div>
+                    <div className="collection-renders">
+                      <a
+                        href={fileUrl(b.preview.sheet)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <AssetImage
+                          src={fileUrl(b.preview.sheet)}
+                          alt={`Grid of every ${assetSingular} in the batch`}
+                        />
+                        <span>Collection sheet</span>
+                      </a>
+                    </div>
+                  </details>
+                ))}
             {!isGraphics &&
               data.batches
                 .filter(
@@ -554,9 +574,9 @@ function ProjectPage() {
         open={generate}
         onOpenChange={setGenerate}
         onRefresh={load}
-        onSaved={async (started) => {
+        onSaved={async () => {
           await load();
-          setTab(started ? "models" : "ideas");
+          setTab("ideas");
         }}
       />
     </main>

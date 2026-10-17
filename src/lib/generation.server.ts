@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { batches, jobs, projects } from "../db/schema";
 import type { GenerationInput } from "./api-inputs";
+import { assertNotArchived } from "./project-lifecycle.server";
 import { snapshotWorkshop } from "./workshop.server";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -16,6 +17,7 @@ export function validateGeneration(project: typeof projects.$inferSelect, input:
 export async function insertGeneration(tx: Transaction, project: typeof projects.$inferSelect, input: GenerationInput) {
   if (project.status !== "ready")
     throw new Error("Approve the design before generating assets");
+  assertNotArchived(project);
   validateGeneration(project, input);
   const id = crypto.randomUUID();
   const workshop = await snapshotWorkshop(project.id, project.workshop);

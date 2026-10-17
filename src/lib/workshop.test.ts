@@ -2,6 +2,7 @@ import { test, expect } from "bun:test";
 import {
   workshopSchema,
   workshopContext,
+  mockupReferences,
   constructionGuides,
 } from "./workshop";
 import { sourceZip } from "./source-bundle.server";
@@ -14,17 +15,32 @@ test("construction context selects relevant modules", () => {
     "references/game-interfaces",
   );
 });
-test("bounded memory and effort produce an explicit lower-priority snapshot", () => {
-  expect(workshopSchema.safeParse({ memory: "x".repeat(8001) }).success).toBe(
-    false,
-  );
+test("bounded variation and effort produce an explicit lower-priority snapshot", () => {
   expect(workshopSchema.safeParse({ variation: 101 }).success).toBe(false);
-  const draft = workshopSchema.parse({
-    memory: "learned rule",
-    effort: "thorough",
-  });
+  const draft = workshopSchema.parse({ effort: "thorough" });
   expect(workshopContext(draft)).toContain("up to 5");
   expect(workshopContext(draft)).toContain("take precedence");
+});
+test("accepted mockups become lower-priority visual direction and extra references", () => {
+  const snapshot = {
+    ...workshopSchema.parse({}),
+    mockups: [
+      { key: "mockups/a.png", note: "thin outlines" },
+      { key: "mockups/b.png", note: "" },
+    ],
+  };
+  const context = workshopContext(snapshot);
+  expect(context).toContain("last 2 supplied reference images are mockups");
+  expect(context).toContain("mockup 1: thin outlines");
+  expect(context).toContain("mockup 2: accepted without comment");
+  expect(context).toContain("take precedence");
+  expect(mockupReferences(snapshot)).toEqual(["mockups/a.png", "mockups/b.png"]);
+  expect(mockupReferences(null)).toEqual([]);
+});
+test("batches saved with style memory keep showing it to their prompts", () => {
+  const context = workshopContext({ ...workshopSchema.parse({}), memory: "legacy rule", style: "sage matte" });
+  expect(context).toContain("legacy rule");
+  expect(context).toContain("sage matte");
 });
 test("source ZIP stores multiple files with valid offsets and checksums", () => {
   const zip = sourceZip([

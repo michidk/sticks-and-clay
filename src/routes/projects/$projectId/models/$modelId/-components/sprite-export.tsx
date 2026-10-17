@@ -1,3 +1,4 @@
+import { describeError } from "@/lib/error-message";
 import { useExportHistory } from "@/modules/asset-builds/use-export-history";
 import {
   exportHistorySchema,
@@ -292,7 +293,7 @@ export function SpriteExport({
             return (
               <div key={job.id} className="space-y-2 rounded-md border p-3">
                 <p role="status">
-                  {job.error ||
+                  {(job.error ? describeError(job.error) : "") ||
                     (job.status === "done"
                       ? "Saved export ready"
                       : `Export: ${job.status}`)}

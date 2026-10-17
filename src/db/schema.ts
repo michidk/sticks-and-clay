@@ -6,6 +6,7 @@ import {
   timestamp,
   jsonb,
   doublePrecision,
+  boolean,
   index,
 } from "drizzle-orm/pg-core";
 import type { Workshop, WorkshopSnapshot } from "../lib/workshop";
@@ -42,6 +43,7 @@ export const projects = pgTable("projects", {
   phase: text().default("Waiting for designer").notNull(),
   progress: integer().default(0).notNull(),
   error: text(),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
   createdAt: created(),
 });
 export const revisions = pgTable("design_revisions", {
@@ -52,8 +54,24 @@ export const revisions = pgTable("design_revisions", {
   version: integer().notNull(),
   content: text().notNull(),
   author: text().notNull(),
+  approved: boolean().default(false).notNull(),
   createdAt: created(),
 });
+/** Concept images for a project: generated, revised from another mockup, or uploaded.
+ * Accepted ones (with their note) are frozen into each new batch as visual direction. */
+export const mockups = pgTable("mockups", {
+  id: text().primaryKey(),
+  projectId: text().notNull().references(() => projects.id, { onDelete: "cascade" }),
+  key: text().notNull(),
+  source: text().$type<"generated" | "uploaded">().notNull(),
+  designVersion: integer().notNull(),
+  parentId: text(),
+  jobId: text(),
+  runId: text(),
+  note: text().default("").notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  createdAt: created(),
+}, (table) => [index("mockups_project_id_idx").on(table.projectId)]);
 export const modelIdeas = pgTable("model_ideas", {
   id: text().primaryKey(),
   projectId: text().notNull().references(() => projects.id, { onDelete: "cascade" }),
@@ -80,7 +98,7 @@ export const batches = pgTable("batches", {
   workshop: jsonb().$type<WorkshopSnapshot>(),
   status: text().default("queued").notNull(),
   error: text(),
-  preview: jsonb().$type<{ lineup: string; scene: string; blend: string }>(),
+  preview: jsonb().$type<{ lineup: string; scene: string; blend: string } | { sheet: string }>(),
   createdAt: created(),
 });
 export const models = pgTable("models", {

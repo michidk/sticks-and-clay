@@ -27,6 +27,7 @@ import { useImageUpload } from "@/hooks/use-image-upload";
 import { appendReferenceImages } from "@/lib/image-file";
 import { AssetImage } from "@/components/asset-image";
 import { WorkerNotice } from "@/components/worker-notice";
+import { ProjectActionsMenu } from "@/components/project-actions-menu";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -122,28 +123,29 @@ function ProjectsPage() {
     }
   }
   const navigate = Route.useNavigate();
+  const mounted = useRef(true);
+  const load = () =>
+    request("projects")
+      .then((d) => {
+        if (mounted.current) {
+          setProjects(d.projects);
+          setWorkerHealthy(d.workerHealthy ?? true);
+          setLoadError("");
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        if (mounted.current) {
+          setLoadError(e.message);
+          setLoading(false);
+        }
+      });
   useEffect(() => {
-    let active = true;
-    const load = () =>
-      request("projects")
-        .then((d) => {
-          if (active) {
-            setProjects(d.projects);
-            setWorkerHealthy(d.workerHealthy ?? true);
-            setLoadError("");
-            setLoading(false);
-          }
-        })
-        .catch((e) => {
-          if (active) {
-            setLoadError(e.message);
-            setLoading(false);
-          }
-        });
+    mounted.current = true;
     void load();
     const t = setInterval(load, 3000);
     return () => {
-      active = false;
+      mounted.current = false;
       clearInterval(t);
     };
   }, []);
@@ -168,13 +170,17 @@ function ProjectsPage() {
       setBusy(false);
     }
   }
+  const liveProjects = projects.filter((p) => !p.archivedAt);
   const visibleProjects = projects
     .filter(
       (p) =>
         (p.name + " " + p.description)
           .toLowerCase()
           .includes(query.trim().toLowerCase()) &&
-        (statusFilter === "all" ||
+        (statusFilter === "archived"
+          ? Boolean(p.archivedAt)
+          : !p.archivedAt) &&
+        (statusFilter === "all" || statusFilter === "archived" ||
           (statusFilter === "active"
             ? p.collection?.active + p.collection?.queued > 0 ||
               p.designUpdating ||
@@ -195,7 +201,7 @@ function ProjectsPage() {
             Projects
             {!loading && (
               <Badge variant="secondary" className="count">
-                {projects.length}
+                {liveProjects.length}
               </Badge>
             )}
           </h1>
@@ -229,6 +235,7 @@ function ProjectsPage() {
                 <SelectItem value="all">All projects</SelectItem>
                 <SelectItem value="active">In progress</SelectItem>
                 <SelectItem value="attention">Needs attention</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
           </Label>
@@ -277,8 +284,9 @@ function ProjectsPage() {
                 );
             const cover = p.thumbnail || p.references[0];
             return (
-              <Card key={p.id} asChild className="project-card">
+              <Card key={p.id} className="project-card">
                 <Link
+                  className="project-card-link"
                   to="/projects/$projectId"
                   params={{ projectId: p.id }}
                   onClick={
@@ -305,7 +313,9 @@ function ProjectsPage() {
                         src={fileUrl(cover)}
                         alt={`${p.name} ${p.thumbnail ? "collection render" : "reference image"}`}
                         style={
-                          p.thumbnail ? { objectFit: "contain" } : undefined
+                          p.thumbnail || p.assetType !== "model"
+                            ? { objectFit: "contain", padding: p.thumbnail ? 0 : 14 }
+                            : undefined
                         }
                       />
                     ) : (
@@ -316,11 +326,6 @@ function ProjectsPage() {
                     <StatusBadge tone={state.tone as any}>
                       {state.label}
                     </StatusBadge>
-                    {cover && (
-                      <span className="cover-provenance">
-                        {p.thumbnail ? "Collection render" : "Reference image"}
-                      </span>
-                    )}
                     <Badge
                       variant="secondary"
                       className="badge asset-type-badge"
@@ -341,7 +346,7 @@ function ProjectsPage() {
                         allowedElements={["p", "strong", "em", "del"]}
                         unwrapDisallowed
                       >
-                        {p.description || "No brief."}
+                        {p.description || "*No brief yet.*"}
                       </ReactMarkdown>
                     </div>
                     {["queued", "designing"].includes(p.status) && (
@@ -374,6 +379,7 @@ function ProjectsPage() {
                           month: "short",
                           day: "numeric",
                         })}
+                        {cover && ` · ${p.thumbnail ? "Collection render" : "Reference image"}`}
                       </span>
                       <span>
                         Est. {costSummary(p.usage.cost)}
@@ -384,6 +390,13 @@ function ProjectsPage() {
                     </div>
                   </div>
                 </Link>
+                <ProjectActionsMenu
+                  className="project-card-menu"
+                  project={p}
+                  canDelete={!p.collection?.total && !p.designUpdating}
+                  onChanged={load}
+                  onDeleted={load}
+                />
               </Card>
             );
           })}
@@ -436,9 +449,9 @@ function ProjectsPage() {
           <DialogHeader>
             <DialogTitle>New project</DialogTitle>
             <DialogDescription>
-              Creating the project starts design generation from the name,
-              brief and references. You review the design before anything else
-              is generated.
+              Your brief becomes the first design reference as written. Review
+              and approve it, then improve it with AI or generate mockups
+              before anything else is generated.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={create} className="setup-form">

@@ -23,7 +23,7 @@ import {
 } from "../modules/pipelines";
 import { prompt } from "./prompts.server";
 import { DATA } from "./storage.server";
-import { workshopContext } from "./workshop";
+import { mockupReferences, workshopContext } from "./workshop";
 import { compareStyle } from "./asset-style";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { settleBatch } from "./batch-state.server";
@@ -55,6 +55,7 @@ export async function executeModelJob(targetId: string) {
       references: [
         ...(job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : project.references),
         ...(batch.workshop?.examples?.flatMap((e) => e.renders.slice(0, 1)) || []),
+        ...mockupReferences(batch.workshop),
       ],
     });
     return;

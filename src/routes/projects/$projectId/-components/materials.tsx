@@ -1,3 +1,4 @@
+import { describeError } from "@/lib/error-message";
 import { useExportHistory } from "@/modules/asset-builds/use-export-history";
 import {
   materialHistorySchema,
@@ -282,7 +283,7 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
                     · seed {job.parameters?.seed}
                   </h3>
                   <p role="status" className="muted">
-                    {job.error ||
+                    {(job.error ? describeError(job.error) : "") ||
                       (job.status === "done"
                         ? "Material maps ready"
                         : `Material: ${job.status}`)}

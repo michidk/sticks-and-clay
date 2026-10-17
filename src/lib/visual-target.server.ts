@@ -6,6 +6,7 @@ import { runImageRole } from "../modules/ai/index.server";
 import { visualTargetDecisionInput } from "./api-inputs";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { prompt } from "./prompts.server";
+import { mockupReferences } from "./workshop";
 import { assertJobActive, JobCancelled, JobWaiting } from "./queue.server";
 
 export async function prepareVisualTarget({ model, batch, project, request, attempt, legacy }: {
@@ -20,7 +21,10 @@ export async function prepareVisualTarget({ model, batch, project, request, atte
   if (!job) throw new Error("Missing durable job context");
   const references: string[] = job.checkpoint["visual-target-input"]
     ? JSON.parse(job.checkpoint["visual-target-input"]).images
-    : job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : project.references;
+    : [
+        ...(job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : project.references),
+        ...mockupReferences(batch.workshop),
+      ];
   if (legacy)
     return { target: model.visualTarget, visualReferences: references };
   if (batch.visualTargetMode === "skip")

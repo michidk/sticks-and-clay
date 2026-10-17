@@ -8,7 +8,8 @@ import { eq } from "drizzle-orm";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { db } from "../db/client";
-import { batches, models } from "../db/schema";
+import { batches, models, projects } from "../db/schema";
+import { renderGraphicSheet } from "./graphic-sheet.server";
 import { DATA, filePath, publishFiles } from "./storage.server";
 import { loadRuntimeSettings } from "./runtime-settings.server";
 
@@ -32,6 +33,13 @@ async function assetFrontAzimuth(artifacts: Record<string, unknown>) {
 }
 
 export async function renderCollection(batchId: string) {
+  const [owner] = await db
+    .select({ assetType: projects.assetType })
+    .from(batches)
+    .innerJoin(projects, eq(projects.id, batches.projectId))
+    .where(eq(batches.id, batchId));
+  // Each asset type renders its own collection view; 3D uses the Blender scene below.
+  if (owner && owner.assetType !== "model") return renderGraphicSheet(batchId);
   const settings = await loadRuntimeSettings();
   const assets = await db
     .select()

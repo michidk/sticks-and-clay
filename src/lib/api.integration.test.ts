@@ -185,7 +185,7 @@ integration(
 
 integration("project creation accepts omitted, blank and short optional briefs", async () => {
   const { jobs } = await import("../db/schema");
-  // Run only on an isolated test database without a worker: creation queues design.
+  // The brief is the first design reference as written; creation queues no AI job.
   for (const description of [undefined, "   ", "Oak"]) {
     const form = new FormData();
     form.set("name", "Optional brief fixture");
@@ -198,10 +198,14 @@ integration("project creation accepts omitted, blank and short optional briefs",
     try {
       const [project] = await db.select().from(projects).where(eq(projects.id, id));
       expect(project.description).toBe(description?.trim() || "");
-      const queued = await db.select().from(jobs).where(eq(jobs.targetId, id));
-      expect(queued).toHaveLength(1);
-      expect(queued[0].kind).toBe("design");
+      expect(project).toMatchObject({
+        design: description?.trim() || "# Optional brief fixture",
+        designVersion: 1,
+        status: "review",
+      });
+      expect(await db.select().from(jobs).where(eq(jobs.targetId, id))).toHaveLength(0);
     } finally {
+      await db.delete(revisions).where(eq(revisions.projectId, id));
       await db.delete(jobs).where(eq(jobs.targetId, id));
       await db.delete(projects).where(eq(projects.id, id));
     }
@@ -304,6 +308,7 @@ for (const assetType of ["graphic", "svg"] as const) integration(`${assetType} p
       await db.delete(jobs).where(eq(jobs.targetId, batch.id));
     await db.delete(jobs).where(eq(jobs.targetId, id));
     await db.delete(batches).where(eq(batches.projectId, id));
+    await db.delete(revisions).where(eq(revisions.projectId, id));
     await db.delete(projects).where(eq(projects.id, id));
   }
 });

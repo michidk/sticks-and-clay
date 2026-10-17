@@ -14,11 +14,11 @@ Native authoring calls the capability-scoped loopback `/workspace` endpoint dire
 
 Builds use both per-capability locking and a shared concurrency limit (`BLENDER_CONCURRENCY`, default two). They execute in fresh candidate directories with pinned support code. A successful candidate is published to its workspace; failed scripts do not replace prior successful files. `build-state.json` prevents a failed final execution from handing stale files to the next pipeline step. Drafts are stored separately under `preview/` and cannot become a final delivery. Last-good draft images carry a failure note when appropriate.
 
-## Collection memory and examples
+## Mockup direction
 
-The Collection style panel saves explicit user-owned memory, style, variation and up to three completed examples. Optimistic version checks reject a stale save without silently overwriting newer guidance. Agents can suggest lessons in their summary; they cannot silently edit memory.
+There is no separate style memory or style-example picker. The Mockups tab is the visual direction: users generate concept images, revise any mockup in a chat, upload their own, and accept the ones they like with a note ("I like the thin outlines, keep icons simpler"). Mockups are stored in `mockups` rows (generated, revised or uploaded) and never alter the approved design or the uploaded references.
 
-Each new batch freezes the guidance and example artifact keys. The approved design and current asset task have priority. Finished 3D examples provide renders, source scripts/blends and authorized generated texture references; graphics provide saved images. A normal fork retains its parent batch snapshot. **Match current collection style** explicitly freezes current guidance into a new linked model while retaining the selected version's design contract.
+Each new batch freezes the accepted mockups (newest four) and their notes, plus variation and 3D self-review effort, into its workshop snapshot. The mockup images are appended to the project references for planning, visual targets and builds, and the notes are added to the prompt as lower-priority context. The approved design and current asset task have priority. Later accepting, un-accepting or deleting a mockup never changes a batch already started. Batches saved before this change keep their memory, style and example snapshot and still show it to their prompts. A normal fork retains its parent batch snapshot. **Match accepted mockups** explicitly freezes the current direction into a new linked model while retaining the selected version's design contract.
 
 Measured style comparisons are advisory: GLB material factors, base-color factors and image counts can expose drift. They do not measure texture pixels, bevel widths, perceived palette, silhouettes or visual similarity. Artistic judges and user review remain necessary.
 
@@ -48,7 +48,7 @@ Small authored starting scripts live in [`blender/examples/`](../blender/example
 
 ## Version actions and imports
 
-The Checks tab separates technical readiness from artistic feedback. Users can select findings to seed a focused repair fork or request current collection style. These actions create linked models and retain the selected source and original history.
+The Checks tab separates technical readiness from artistic feedback. Users can select findings to seed a focused repair fork or match the accepted mockups. These actions create linked models and retain the selected source and original history.
 
 Render again and sprite export use queued local Blender presentation jobs against the exact archived GLB. Outputs live under a separate presentation key and never overwrite that version. These actions create no AI call or token charge. Graphics can fork a variant using the selected saved image as an edit reference; no Blender or 3D judge is involved.
 

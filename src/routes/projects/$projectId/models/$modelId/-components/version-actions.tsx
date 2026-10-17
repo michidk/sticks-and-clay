@@ -1,3 +1,4 @@
+import { describeError } from "@/lib/error-message";
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,7 @@ export function VersionActions({
           judgeIterations: 2,
           useCurrentStyle: style,
           prompt: style
-            ? "Match the current collection style and selected prototypes; retain this asset's functional silhouette and preserve all working interfaces."
+            ? "Match the project's accepted mockups; retain this asset's functional silhouette and preserve all working interfaces."
             : `Repair only these selected findings, then inspect the same locations. Preserve unrelated geometry and materials, including mirrored partners unless the repair requires both.\n${selected.map((i) => findings[i]).join("\n")}`,
         }),
       );
@@ -136,7 +137,7 @@ export function VersionActions({
           disabled={!sourceRunId || busy}
           onClick={() => void revise(true)}
         >
-          Match collection style
+          Match accepted mockups
         </Button>
       </div>
       {job && (
@@ -144,7 +145,7 @@ export function VersionActions({
           <p>
             {job.status === "done"
               ? "Presentation ready"
-              : job.error || `Presentation: ${job.status}`}
+              : (job.error ? describeError(job.error) : "") || `Presentation: ${job.status}`}
           </p>
           {job.files?.map((key: string) => (
             <a

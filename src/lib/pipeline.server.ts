@@ -8,7 +8,7 @@ import { assertJobActive } from "./queue.server";
 import { runRole, roleInput } from "../modules/ai/index.server";
 import { photographProject } from "./project-photography.server";
 import { renderCollection } from "./collection.server";
-import { workshopContext } from "./workshop";
+import { mockupReferences, workshopContext } from "./workshop";
 import { renderPresentation } from "./workshop-actions.server";
 import { renderMaterial } from "./materials.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
@@ -179,7 +179,7 @@ export async function executeJob(kind: string, targetId: string) {
     if (!job.checkpoint["planner-references"])
       await checkpoint(
         "planner-references",
-        JSON.stringify(referenceProject.references),
+        JSON.stringify([...referenceProject.references, ...mockupReferences(batch.workshop)]),
       );
     const plannerRole =
       referenceProject.assetType === "svg" ? "svg-planner" : referenceProject.assetType !== "model" ? "graphic-planner" : "planner";
