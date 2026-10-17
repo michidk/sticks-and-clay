@@ -101,3 +101,6 @@ export function analyzeSvg(svg: string) {
     hasText: Boolean(elements.text),
   };
 }
+
+/** Reference keys a vision model can view: an SVG source is markup, not an image the API accepts. */
+export const viewableReferences = (keys: readonly string[]) => keys.filter((key) => !key.endsWith(".svg"));

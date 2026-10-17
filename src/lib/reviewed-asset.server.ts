@@ -8,6 +8,7 @@ import { runRole, roleInput } from "../modules/ai/index.server";
 import { runPipeline, reviewPipeline } from "../modules/pipelines";
 import type { judgeResult } from "./contracts";
 import type { z } from "zod";
+import { viewableReferences } from "./svg";
 
 export type Review = z.infer<typeof judgeResult>;
 /** One produced version of an asset plus what the judge needs to see of it. */
@@ -83,6 +84,8 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
       },
       judge: async (node) => {
         if (!candidate) throw new Error("Nothing to review");
+        // An SVG source (an earlier version being revised) is markup the judge cannot view as an image.
+        const styleReferences = viewableReferences(ctx.references).slice(0, 3);
         const { result } = await runRole({
           role: kind.judge,
           stepId: node.id,
@@ -90,7 +93,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
           projectId: model.projectId,
           batchId: batch.id,
           modelId: model.id,
-          images: [...candidate.previews.map((p) => p.key), ...ctx.references.slice(0, 3)],
+          images: [...candidate.previews.map((p) => p.key), ...styleReferences],
           input: await roleInput(kind.judge, {
             design: batch.design,
             name: model.name,
@@ -98,7 +101,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
             size: batch.imageSize,
             images:
               candidate.previews.map((p, i) => `Image ${i + 1}: ${p.label}`).join("\n") +
-              (ctx.references.length ? "\nLater images: style references, not the artwork under review." : ""),
+              (styleReferences.length ? "\nLater images: style references, not the artwork under review." : ""),
             analysis: JSON.stringify(candidate.analysis, null, 2),
             feedback: review ? JSON.stringify(review, null, 2) : "None",
           }),

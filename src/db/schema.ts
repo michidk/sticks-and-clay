@@ -77,6 +77,8 @@ export const mockups = pgTable("mockups", {
 export const modelIdeas = pgTable("model_ideas", {
   id: text().primaryKey(),
   projectId: text().notNull().references(() => projects.id, { onDelete: "cascade" }),
+  /** Written by the owner or by AI from the brief; null only on ideas saved before titles existed. */
+  title: text(),
   input: jsonb().$type<GenerationInput>().notNull(),
   batchId: text().references(() => batches.id),
   /** The owner's marker that the brief is final; starting stays a separate, paid action. */

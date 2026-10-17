@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { analyzeSvg, validateSvg } from "./svg";
+import { analyzeSvg, validateSvg, viewableReferences } from "./svg";
 import { fileMimeType } from "./storage/path";
 
 const svg = (body: string) =>
@@ -53,4 +53,8 @@ test("analysis reports structure, palette and stroke widths for the judge", () =
     strokeWidths: [2, 3],
     hasText: true,
   });
+});
+
+test("SVG sources are not sent to vision models as images", () => {
+  expect(viewableReferences(["graphics/a.svg", "references/b.png", "references/c.jpg"])).toEqual(["references/b.png", "references/c.jpg"]);
 });

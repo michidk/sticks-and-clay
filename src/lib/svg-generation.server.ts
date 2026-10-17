@@ -4,7 +4,7 @@ import { runs } from "../db/schema";
 import { runRole, roleInput } from "../modules/ai/index.server";
 import type { AssetKind } from "./reviewed-asset.server";
 import { getStorage, readStoredFile } from "./storage.server";
-import { analyzeSvg, validateSvg } from "./svg";
+import { analyzeSvg, validateSvg, viewableReferences } from "./svg";
 import { renderSvg } from "./svg-render.server";
 
 const png = (data: Buffer) => new Blob([new Uint8Array(data)], { type: "image/png" });
@@ -39,7 +39,7 @@ export const svgKind: AssetKind = {
         previous: previous ? await (await readStoredFile(previous.key)).text() : "None",
         feedback: feedback ? JSON.stringify(feedback, null, 2) : "None",
       }),
-      images: ctx.references.filter((key) => !key.endsWith(".svg")),
+      images: viewableReferences(ctx.references),
     });
     let svg: string;
     try {

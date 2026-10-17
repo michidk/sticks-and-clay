@@ -9,11 +9,14 @@ import type { GenerationInput } from "@/lib/api-inputs";
 
 export type ModelIdea = {
   id: string;
+  /** Null only on ideas saved before titles existed. */
+  title?: string | null;
   input: GenerationInput;
   readyAt?: string | null;
 };
 
 export const ideaBrief = (idea: ModelIdea) => idea.input.prompt?.trim() || "AI proposes assets from the approved design.";
+export const ideaTitle = (idea: ModelIdea) => idea.title?.trim() || ideaBrief(idea).split("\n")[0];
 export const ideaSettings = (idea: ModelIdea, isGraphics: boolean) =>
   `${isGraphics ? `Canvas ${idea.input.imageSize} · ` : ""}${idea.input.judgeIterations} review rounds`
   + (isGraphics ? "" : idea.input.visualTargetMode === "skip" ? " · No visual mock" : " · Visual target approval")
@@ -66,7 +69,7 @@ export function ModelIdeas({ projectId, designVersion, ideas, isGraphics, ready,
     <div className="idea-table">
       <table>
         <thead>
-          <tr><th>Brief</th><th>Count</th><th>Settings</th><th><span className="sr-only">Actions</span></th></tr>
+          <tr><th>Idea</th><th>Count</th><th>Settings</th><th><span className="sr-only">Actions</span></th></tr>
         </thead>
         <tbody>
           {ideas.map((idea) => {
@@ -75,7 +78,10 @@ export function ModelIdeas({ projectId, designVersion, ideas, isGraphics, ready,
             return <tr key={idea.id}>
               <td>
                 <div className="idea-brief-cell">
-                  <button type="button" className="idea-brief" title={brief} onClick={() => setEditing(idea)}>{brief.split("\n")[0]}</button>
+                  <div className="idea-text">
+                    <button type="button" className="idea-brief" title={brief} onClick={() => setEditing(idea)}>{ideaTitle(idea)}</button>
+                    <span className="idea-excerpt">{brief.split("\n")[0]}</span>
+                  </div>
                   {idea.readyAt && <StatusBadge tone="done">Ready</StatusBadge>}
                 </div>
               </td>

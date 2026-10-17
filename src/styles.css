@@ -1402,6 +1402,9 @@ pre {
 .idea-brief:hover { text-decoration: underline; }
 .idea-brief-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .idea-brief-cell .badge { position: static; flex-shrink: 0; }
+.idea-text { display: grid; flex: 1; min-width: 0; }
+.idea-text .idea-brief { font-weight: 550; }
+.idea-excerpt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--muted-foreground); }
 
 /* Board: one column per stage, scrolling sideways when the page is narrow. */
 .board-section { margin-top: 18px; display: grid; gap: 12px; }

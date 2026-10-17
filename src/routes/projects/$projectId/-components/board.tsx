@@ -9,7 +9,7 @@ import { assetStage, boardColumns, boardStages, boardStageTitles, latestSourceRu
 import { fileUrl, json, request } from "@/lib/client";
 import { GenerationDialog } from "./generation-dialog";
 import { GraphicVariant } from "./graphic-variant";
-import { ideaBrief, ideaSettings, useIdeaActions, type ModelIdea } from "./model-ideas";
+import { ideaBrief, ideaSettings, ideaTitle, useIdeaActions, type ModelIdea } from "./model-ideas";
 
 /** Every idea and asset in its stage: Ideas, Ready, In progress, Review and Done. */
 export function Board({ projectId, project, ideas, models, batches, runs, onRefresh }: {
@@ -44,7 +44,7 @@ export function Board({ projectId, project, ideas, models, batches, runs, onRefr
   const ideaCard = (idea: ModelIdea) => {
     const brief = ideaBrief(idea);
     return <li key={idea.id} className="board-card">
-      <button type="button" className="board-card-title idea-brief" title={`Edit: ${brief}`} onClick={() => setEditing(idea)}>{brief.split("\n")[0]}</button>
+      <button type="button" className="board-card-title idea-brief" title={`Edit: ${brief}`} onClick={() => setEditing(idea)}>{ideaTitle(idea)}</button>
       <p className="muted">{idea.input.count} × · {ideaSettings(idea, isGraphics)}</p>
       <div className="board-card-actions">
         {idea.readyAt ? <>
