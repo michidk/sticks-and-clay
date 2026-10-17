@@ -4,6 +4,21 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
 test("agent PATCH saves one role or several in a single write", async () => {
+  // DATA is cached on import, so changing the environment needs a fresh process.
+  if (process.env.STUDIO_ADMIN_AGENTS_TEST_CHILD !== "1") {
+    const child = Bun.spawn([process.execPath, "test", import.meta.path], {
+      env: { ...process.env, STUDIO_ADMIN_AGENTS_TEST_CHILD: "1" },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(child.stdout).text(),
+      new Response(child.stderr).text(),
+      child.exited,
+    ]);
+    expect(exitCode, stdout + stderr).toBe(0);
+    return;
+  }
   const dir = await mkdtemp(resolve(tmpdir(), "studio-agents-"));
   const previous = process.env.STUDIO_DATA_DIR;
   process.env.STUDIO_DATA_DIR = dir;
