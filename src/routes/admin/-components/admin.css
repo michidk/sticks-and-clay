@@ -94,6 +94,7 @@
 }
 
 .settings-stack { display: grid; max-width: 980px; gap: 18px; }
+.settings-stack > * { min-width: 0; }
 .settings-section { padding: 24px; box-shadow: none; }
 .settings-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
 .settings-section-heading h2 { margin-top: 5px; }

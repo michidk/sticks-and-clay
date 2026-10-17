@@ -32,7 +32,7 @@ No companion skill is required. Server instructions, tool descriptions, the `sti
 
 Behind Hodor, no `MCP_*` variables are needed: with `HODOR_SECRET` set (32+ characters) the endpoint is `https://<workshop host>/api/mcp`, derived from the proxy's `Host`/`X-Forwarded-*` headers, which Hodor must overwrite. Hodor owner consent and signing with `HODOR_SECRET` are the defaults. Add `https://chatgpt.com` as a custom connector with that URL and OAuth; it is allowed as a browser origin by default (override with `MCP_ALLOWED_ORIGINS`). Setting `MCP_PUBLIC_URL` pins the URL instead.
 
-**Admin → Settings → AI access** shows the endpoint, connected clients with revoke buttons, and recent tool activity.
+**Admin → AI access** shows the endpoint with a copy button, a pause switch for all MCP and OAuth traffic, a switch per tool (disabled tools vanish from discovery and cannot be called), connected clients with their scopes and token counts, revoke buttons, and paged tool activity. It needs migration `0019` (`bun run db:migrate`).
 
 ## Owner setup
 

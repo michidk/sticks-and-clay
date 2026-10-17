@@ -41,7 +41,7 @@ export function McpSettings() {
 
   async function load() {
     try {
-      const next = await request<State>("admin/mcp");
+      const next = await request<State>("mcp-access");
       setState(next); setEnabled(next.policy.enabled);
       setDisabled(new Set(next.policy.disabledTools)); setAudit(next.audit);
     } catch (cause) { setError((cause as Error).message); }
@@ -59,11 +59,11 @@ export function McpSettings() {
     catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
   }
-  const save = () => act(() => request("admin/mcp/policy", json({ enabled, disabledTools: [...disabled] }, "PUT")),
+  const save = () => act(() => request("mcp-access/policy", json({ enabled, disabledTools: [...disabled] }, "PUT")),
     "AI access saved. New requests use it immediately.");
   const revoke = (id: string, name: string) => {
     if (window.confirm(`Revoke access for “${name}”? Its tokens stop working immediately.`))
-      void act(() => request("admin/mcp/revoke", json({ clientId: id })), `${name} was revoked.`);
+      void act(() => request("mcp-access/revoke", json({ clientId: id })), `${name} was revoked.`);
   };
   const toggle = (name: string, on: boolean) => setDisabled((current) => {
     const next = new Set(current); if (on) next.delete(name); else next.add(name); return next;
@@ -74,7 +74,7 @@ export function McpSettings() {
     setCopied(true); window.setTimeout(() => setCopied(false), 2000);
   }
   async function page(next: number) {
-    try { setAudit(await request<Audit>(`admin/mcp/audit?page=${next}`)); }
+    try { setAudit(await request<Audit>(`mcp-access/audit?page=${next}`)); }
     catch (cause) { setError((cause as Error).message); }
   }
 
@@ -130,7 +130,7 @@ export function McpSettings() {
         <div className="grid gap-4 lg:grid-cols-3">
           {groups.map(([scope, title, note]) => (
             <Card key={scope} className="panel settings-section">
-              <div className="mb-2 flex items-center justify-between gap-2"><h3 className="font-semibold">{title}</h3><Badge variant="outline">{note}</Badge></div>
+              <div className="mb-2"><h3 className="font-semibold">{title}</h3><p className="text-xs text-muted-foreground">{note}</p></div>
               <div className="divide-y">
                 {state.tools.filter((tool) => tool.scope === scope).map((tool) => (
                   <label key={tool.name} htmlFor={`tool-${tool.name}`} className="flex items-start justify-between gap-3 py-3">

@@ -142,7 +142,7 @@ export async function adminAction(request: Request, path: string[]) {
         settings: await updateRuntimeSettings(await request.json()),
       });
   }
-  if (path[0] === "mcp") {
+  if (path[0] === "mcp-access") {
     if (request.method === "GET" && path[1] === "audit")
       return reply(await loadMcpAuditPage(Number(new URL(request.url).searchParams.get("page")) || 0));
     if (request.method === "GET") return reply(await loadMcpAdminState(request));
