@@ -7,8 +7,8 @@ function McpPage() {
   return <div className="admin-page">
     <section className="page-heading">
       <div>
-        <h1>AI access</h1>
-        <p className="lede">Control what connected assistants such as ChatGPT, Claude and Codex can read or change through MCP. OAuth scopes and the switches below are enforced on every request.</p>
+        <h1>MCP</h1>
+        <p className="lede">Choose what connected assistants such as ChatGPT, Claude and Codex can do, and manage the clients you have approved.</p>
       </div>
     </section>
     <McpSettings />

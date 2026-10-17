@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { json, request } from "@/lib/client";
-import { Activity, Bot, Check, ChevronLeft, ChevronRight, Clipboard, KeyRound, ShieldCheck, Trash2 } from "lucide-react";
+import { Activity, Check, ChevronLeft, ChevronRight, Clipboard, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 type Tool = { name: string; title: string; description: string; scope: string };
@@ -21,17 +22,26 @@ type State = {
   audit: Audit;
 };
 
-const groups = [
-  ["sticks-and-clay:read", "Read", "Read projects and assets"],
-  ["sticks-and-clay:write", "Create and change", "Spends AI budget and runs Blender"],
-  ["sticks-and-clay:admin", "Manage", "Models, settings and clients"],
+const scopePrefix = "sticks-and-clay:";
+// Each level allows its own tools plus everything below it.
+const levels = [
+  ["off", "Off", "Reject every MCP and OAuth request. Clients and history are kept."],
+  ["read", "Read only", "Assistants can look at projects, assets, renders and costs, but change nothing."],
+  ["write", "Read and create", "Also create and generate assets. Spends AI budget and runs Blender."],
+  ["admin", "Full access", "Also change models, settings and clients."],
 ] as const;
+type Level = (typeof levels)[number][0];
+const order = ["read", "write", "admin"];
+const toolLevel = (tool: Tool) => tool.scope.replace(scopePrefix, "");
+function levelOf(state: State): Level {
+  if (!state.policy.enabled) return "off";
+  const on = state.tools.filter((tool) => !state.policy.disabledTools.includes(tool.name)).map(toolLevel);
+  return ([...order].reverse().find((name) => on.includes(name)) ?? "read") as Level;
+}
 const when = (value: string) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 
 export function McpSettings() {
   const [state, setState] = useState<State | null>(null);
-  const [enabled, setEnabled] = useState(true);
-  const [disabled, setDisabled] = useState(new Set<string>());
   const [audit, setAudit] = useState<Audit | null>(null);
   const [showRevoked, setShowRevoked] = useState(false);
   const [message, setMessage] = useState("");
@@ -42,8 +52,7 @@ export function McpSettings() {
   async function load() {
     try {
       const next = await request<State>("mcp-access");
-      setState(next); setEnabled(next.policy.enabled);
-      setDisabled(new Set(next.policy.disabledTools)); setAudit(next.audit);
+      setState(next); setAudit(next.audit);
     } catch (cause) { setError((cause as Error).message); }
   }
   useEffect(() => { void load(); }, []);
@@ -51,7 +60,7 @@ export function McpSettings() {
   const clients = useMemo(() => state?.clients.filter((client) => showRevoked || !client.revokedAt) ?? [], [state, showRevoked]);
   if (!state) return error
     ? <Alert variant="destructive" className="error"><AlertDescription>{error}</AlertDescription></Alert>
-    : <Card className="panel max-w-5xl" aria-label="Loading AI access"><Skeleton className="mb-3 h-6 w-48" /><Skeleton className="h-40 w-full" /></Card>;
+    : <Card className="panel max-w-5xl" aria-label="Loading MCP"><Skeleton className="mb-3 h-6 w-48" /><Skeleton className="h-40 w-full" /></Card>;
 
   async function act(task: () => Promise<unknown>, done: string) {
     setBusy(true); setError(""); setMessage("");
@@ -59,15 +68,14 @@ export function McpSettings() {
     catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
   }
-  const save = () => act(() => request("mcp-access/policy", json({ enabled, disabledTools: [...disabled] }, "PUT")),
-    "AI access saved. New requests use it immediately.");
+  const choose = (level: Level) => act(() => request("mcp-access/policy", json({
+    enabled: level !== "off",
+    disabledTools: state.tools.filter((tool) => order.indexOf(toolLevel(tool)) > order.indexOf(level)).map((tool) => tool.name),
+  }, "PUT")), level === "off" ? "MCP is off." : "Access updated. New requests use it immediately.");
   const revoke = (id: string, name: string) => {
     if (window.confirm(`Revoke access for “${name}”? Its tokens stop working immediately.`))
       void act(() => request("mcp-access/revoke", json({ clientId: id })), `${name} was revoked.`);
   };
-  const toggle = (name: string, on: boolean) => setDisabled((current) => {
-    const next = new Set(current); if (on) next.delete(name); else next.add(name); return next;
-  });
   async function copy() {
     if (!state?.endpoint) return;
     await navigator.clipboard.writeText(state.endpoint);
@@ -80,25 +88,12 @@ export function McpSettings() {
 
   const revokedCount = state.clients.filter((client) => client.revokedAt).length;
   const pages = audit ? Math.max(1, Math.ceil(audit.total / audit.pageSize)) : 1;
-  const stats = [
-    [Bot, "Server", !state.configured ? "Not configured" : enabled ? "Available" : "Paused"],
-    [KeyRound, "Clients", String(state.clients.filter((client) => !client.revokedAt).length)],
-    [ShieldCheck, "Enabled tools", `${state.tools.length - disabled.size}/${state.tools.length}`],
-  ] as const;
+  const level = levelOf(state);
 
   return (
     <div className="settings-stack">
       {error && <Alert variant="destructive" className="error"><AlertDescription>{error}</AlertDescription></Alert>}
       {message && <Alert className="border-[#d3e0bd] bg-[#e5efcf] text-[#466630]"><AlertDescription className="text-inherit">{message}</AlertDescription></Alert>}
-
-      <div className="grid gap-3 md:grid-cols-3">
-        {stats.map(([Icon, label, value]) => (
-          <Card key={label} className="panel flex-row items-center gap-3 p-4 shadow-none">
-            <Icon className="text-primary" size={22} aria-hidden="true" />
-            <div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p><p className="mt-1 text-lg font-semibold">{value}</p></div>
-          </Card>
-        ))}
-      </div>
 
       <Card className="panel settings-section">
         <div className="settings-section-heading">
@@ -113,41 +108,24 @@ export function McpSettings() {
             </Button>
           </div>
         ) : <Alert variant="destructive"><AlertDescription>MCP is not configured: {state.configurationError}</AlertDescription></Alert>}
-        <label htmlFor="mcp-enabled" className="mt-4 flex items-center justify-between gap-4 rounded-lg border p-4">
-          <span>
-            <strong className="block">Enable MCP access</strong>
-            <span className="block text-sm text-muted-foreground">Pausing rejects every MCP and OAuth request without deleting clients or history.</span>
-          </span>
-          <Switch id="mcp-enabled" checked={enabled} onCheckedChange={setEnabled} />
-        </label>
       </Card>
 
-      <section aria-labelledby="mcp-tools">
-        <div className="mb-3">
-          <h2 id="mcp-tools" className="text-lg font-semibold">Available tools</h2>
-          <p className="text-sm text-muted-foreground">Disabled tools disappear from MCP discovery. OAuth scopes are a second, per-client boundary.</p>
+      <Card className="panel settings-section" role="radiogroup" aria-labelledby="mcp-access">
+        <div className="settings-section-heading">
+          <h2 id="mcp-access">What assistants can do</h2>
+          <p>One setting for every connected assistant. {level !== "off" && `${state.tools.filter((tool) => order.indexOf(toolLevel(tool)) <= order.indexOf(level)).length} of ${state.tools.length} tools are available.`}</p>
         </div>
-        <div className="grid gap-4 lg:grid-cols-3">
-          {groups.map(([scope, title, note]) => (
-            <Card key={scope} className="panel settings-section">
-              <div className="mb-2"><h3 className="font-semibold">{title}</h3><p className="text-xs text-muted-foreground">{note}</p></div>
-              <div className="divide-y">
-                {state.tools.filter((tool) => tool.scope === scope).map((tool) => (
-                  <label key={tool.name} htmlFor={`tool-${tool.name}`} className="flex items-start justify-between gap-3 py-3">
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold">{tool.title}</span>
-                      <code className="block truncate text-xs text-primary">{tool.name}</code>
-                      <span className="mt-1 line-clamp-2 block text-xs text-muted-foreground" title={tool.description}>{tool.description}</span>
-                    </span>
-                    <Switch id={`tool-${tool.name}`} checked={!disabled.has(tool.name)} onCheckedChange={(on) => toggle(tool.name, on)} />
-                  </label>
-                ))}
-              </div>
-            </Card>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {levels.map(([value, title, note]) => (
+            <button key={value} type="button" role="radio" aria-checked={level === value} disabled={busy} onClick={() => level !== value && void choose(value)}
+              className={cn("rounded-lg border p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-60",
+                level === value && "border-primary bg-primary/5 ring-1 ring-primary")}>
+              <span className="flex items-center justify-between font-semibold">{title}{level === value && <Check size={16} className="text-primary" aria-hidden="true" />}</span>
+              <span className="mt-1 block text-xs text-muted-foreground">{note}</span>
+            </button>
           ))}
         </div>
-        <Button type="button" className="mt-4" disabled={busy} onClick={() => void save()}>Save AI access</Button>
-      </section>
+      </Card>
 
       <section aria-labelledby="mcp-clients">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-3">

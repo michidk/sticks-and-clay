@@ -22,8 +22,8 @@ const sections = [
   },
   {
     to: "/admin/mcp",
-    label: "AI access",
-    description: "MCP tools and clients",
+    label: "MCP",
+    description: "Assistant access",
     icon: KeyRound,
   },
   {
