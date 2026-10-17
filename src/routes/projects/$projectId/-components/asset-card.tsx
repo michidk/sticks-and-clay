@@ -24,6 +24,9 @@ export function AssetCard({
   cost,
   sourceRunId,
   lineage,
+  batch,
+  currentDesignVersion,
+  archived = false,
   renderFailure,
   resumingBatch = false,
   onResumeBatch,
@@ -39,6 +42,10 @@ export function AssetCard({
   cost: number;
   sourceRunId?: string;
   lineage?: string;
+  /** The generation request this asset came from; its design version is frozen. */
+  batch?: { designVersion: number; judgeIterations: number; imageSize?: string; spriteTarget?: unknown };
+  currentDesignVersion: number;
+  archived?: boolean;
   /** The batch whose collection render failed after this model finished. */
   renderFailure?: { id: string; error?: string };
   resumingBatch?: boolean;
@@ -57,6 +64,25 @@ export function AssetCard({
     params: { projectId, modelId: m.id },
   };
   const working = !finished.includes(m.status);
+  const outdated = !!batch && batch.designVersion < currentDesignVersion;
+  async function regenerate() {
+    if (!batch) return;
+    setResuming(true);
+    try {
+      await request(`projects/${projectId}/generate`, json({
+        prompt: m.prompt,
+        count: 1,
+        judgeIterations: batch.judgeIterations,
+        ...(batch.imageSize && { imageSize: batch.imageSize }),
+        ...(batch.spriteTarget ? { spriteTarget: batch.spriteTarget } : {}),
+      }));
+      await onRefresh();
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setResuming(false);
+    }
+  }
   async function resume() {
     setResuming(true);
     try {
@@ -111,7 +137,7 @@ export function AssetCard({
             )}
           </Link>
         )}
-        <StatusBadge status={m.status} verdict={m.verdict} />
+        <StatusBadge status={m.status} verdict={m.verdict === "limit_reached" ? m.verdict : undefined} />
         {!isGraphics && m.artifacts && (
           <Button
             variant="outline"
@@ -130,6 +156,11 @@ export function AssetCard({
             {queueKindLabels[job.kind] || job.kind} · {job.status}
           </StatusBadge>
         ))}
+        {batch && (
+          <StatusBadge tone={outdated ? "warning" : "queued"}>
+            Design v{batch.designVersion}{outdated ? " · outdated" : ""}
+          </StatusBadge>
+        )}
         <h3>
           {isGraphics ? name : <Link {...modelLink} search={{ view: "3d", section: "review" }}>{name}</Link>}
         </h3>
@@ -188,6 +219,11 @@ export function AssetCard({
           {m.status === "failed" && (
             <Button variant="outline" disabled={resuming} onClick={resume}>
               {resuming ? "Resuming…" : "Resume"}
+            </Button>
+          )}
+          {outdated && !archived && !working && (
+            <Button variant="outline" disabled={resuming} onClick={regenerate}>
+              Regenerate on v{currentDesignVersion}
             </Button>
           )}
           {renderFailure && onResumeBatch && (

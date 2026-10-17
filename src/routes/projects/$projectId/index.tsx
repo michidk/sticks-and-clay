@@ -529,6 +529,9 @@ function ProjectPage() {
                         projectId={projectId}
                         model={m}
                         lineage={lineage || undefined}
+                        batch={data.batches.find((b: any) => b.id === m.batchId)}
+                        currentDesignVersion={p.designVersion}
+                        archived={!!p.archivedAt}
                         renderFailure={renderFailureByRepresentative.get(m.id)}
                         resumingBatch={busy}
                         onResumeBatch={resumeBatch}
