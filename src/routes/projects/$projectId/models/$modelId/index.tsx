@@ -45,6 +45,7 @@ import { LightboxProvider } from "@/components/image-lightbox";
 import { request, json, fileUrl, costSummary } from "@/lib/client";
 import { collectionAssetGroups } from "@/lib/project-summary";
 import { History } from "../../-components/history";
+import { DeleteAsset } from "../../-components/delete-asset";
 import { GraphicDetail } from "./-components/graphic-detail";
 import { ModelPipeline } from "./-components/pipeline";
 import { ModelConversation } from "./-components/model-conversation";
@@ -316,6 +317,14 @@ function ModelPage() {
               ))}
               {model.name !== name && (
                 <span className="model-detail-filename">{model.name}</span>
+              )}
+              {!data.project.archivedAt && (
+                <DeleteAsset
+                  id={model.id}
+                  name={name}
+                  disabled={!["done", "failed", "cancelled"].includes(model.status)}
+                  onDeleted={() => navigate({ to: "/projects/$projectId", params: { projectId } })}
+                />
               )}
             </div>
           </header>
