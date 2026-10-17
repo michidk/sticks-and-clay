@@ -36,10 +36,10 @@ import { failedBatchFor, pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
 import { queueKindLabels } from "@/lib/queue-view";
 
-const tabs = ["design", "mockups", "ideas", "materials", "history"] as const;
+const tabs = ["design", "mockups", "ideas", "models", "materials", "history"] as const;
 export type ProjectTab = (typeof tabs)[number];
-// Links from before the tab rework: the collection became Ideas and Style was removed.
-const legacyTabs = { models: "ideas", style: "design" } as const;
+// Style was removed in the tab rework.
+const legacyTabs = { style: "design" } as const;
 export const Route = createFileRoute("/projects/$projectId/")({
   validateSearch: z.object({
     tab: z
@@ -209,16 +209,17 @@ function ProjectPage() {
       setBusy(false);
     }
   }
+  const hasCollection = data.models.length || data.batches.length;
   // Unapproved projects open on the design; mockups need an approved version.
   const activeTab: ProjectTab =
     !ready && (!search.tab || search.tab === "mockups")
       ? "design"
-      : search.tab || "ideas";
-  const hasCollection = data.models.length || data.batches.length;
+      : search.tab || (hasCollection ? "models" : "ideas");
   const tabList: [ProjectTab, string, number?][] = [
     ["design", "Design"],
     ...(ready ? [["mockups", "Mockups"] as [ProjectTab, string]] : []),
-    ["ideas", "Ideas", counts.all + ideas.length],
+    ["ideas", "Ideas", ideas.length],
+    ["models", isGraphics ? "Graphics" : "Models", counts.all],
     ...(!isGraphics && ready
       ? [["materials", "Materials"] as [ProjectTab, string]]
       : []),
@@ -360,7 +361,11 @@ function ProjectPage() {
               ready={ready}
               onRefresh={load}
             />
-            {!hasCollection && ideas.length ? null : !hasCollection ? (
+          </>
+        )}
+        {activeTab === "models" && (
+          <>
+            {!hasCollection ? (
               <Empty className="empty">
                 <h2>No {assetPlural} yet</h2>
                 <p>
