@@ -1,0 +1,1 @@
+ALTER TABLE "model_ideas" ADD COLUMN "title" text;

@@ -7,6 +7,7 @@ All authored agent instructions and input templates live here.
 - `project-brief.md`: fills the initial project brief using TanStack AI.
 - `designer.md`: uses TanStack AI to write the project's design reference.
 - `design-update-input.md`: revises a saved design from a chat prompt; 3D and graphic revisions retain their respective designer instructions.
+- `idea-title.md`: names a saved idea from its brief when the owner leaves the title blank.
 - `model-brief.md`: uses TanStack AI to draft the editable Model brief from the approved design and requested count.
 - `planner.md`: turns a submitted model brief into individual builder tasks.
 - `graphic-brief.md`, `graphic-designer.md`, `graphic-planner.md`: the parallel brief, visual-system, and planning roles for 2D graphic collections.

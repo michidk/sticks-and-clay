@@ -3,15 +3,19 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { batches, jobs, modelIdeas, models, projects } from "../db/schema";
 import { api } from "./api.server";
+import { ideaInput } from "./api-inputs";
+import { saveModelIdea, startModelIdea, updateModelIdea } from "./model-ideas.server";
 
 // Use an isolated migrated database with no worker.
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 const design = "# Collection style\n" + "Simple ivory forms and forest green accents. ".repeat(4);
 const input = { prompt: "A small sedan", count: 1, judgeIterations: 2, imageSize: "1024x1024" };
+// Saves and edits name their idea: a blank title would call the AI provider, which these tests do not have.
+const saves = (suffix: string, method: string) => method !== "DELETE" && /^(\/[^/]+)?$/.test(suffix);
 const send = (projectId: string, suffix: string, body?: unknown, method = "POST") => api(new Request(
   `http://localhost/api/projects/${projectId}/ideas${suffix}`, {
     method, headers: { "Content-Type": "application/json" },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    ...(body === undefined ? {} : { body: JSON.stringify(saves(suffix, method) ? { title: "Test idea", ...(body as object) } : body) }),
   },
 ));
 async function cleanup(ids: string[]) {
@@ -33,11 +37,16 @@ integration("ideas persist without jobs, require approval to start, and queue on
     ]);
     const projectIds = (await db.select({ id: projects.id }).from(projects)).map(({ id }) => id).sort();
     for (const count of [0, 21, 1.5]) expect((await send(id, "", { ...input, count })).status).toBe(400);
+    for (const prompt of ["", "   "]) expect((await send(id, "", { ...input, prompt })).status).toBe(400);
     const saved = await send(id, "", input);
     expect(saved.status).toBe(201);
-    const ideaId = (await saved.json()).id;
+    const created = await saved.json();
+    const ideaId = created.id;
+    expect(created.title).toBe("Test idea");
     const detail = await (await api(new Request(`http://localhost/api/projects/${id}`))).json();
-    expect(detail.ideas).toMatchObject([{ id: ideaId, projectId: id, input }]);
+    expect(detail.ideas).toMatchObject([{ id: ideaId, projectId: id, title: "Test idea", input }]);
+    expect(detail.ideas[0].input).not.toHaveProperty("title");
+    expect((await send(id, `/${ideaId}`, { ...input, prompt: "" }, "PUT")).status).toBe(400);
     expect(detail.batches).toEqual([]);
     expect(await db.select().from(jobs).where(eq(jobs.targetId, ideaId))).toEqual([]);
     expect((await send(other, `/${ideaId}`, input, "PUT")).status).toBe(400);
@@ -46,7 +55,9 @@ integration("ideas persist without jobs, require approval to start, and queue on
       spriteTarget: { size: 128, directions: 4, frameCount: 3, pixel: false, loop: false } };
     expect((await send(id, `/${ideaId}`, edited, "PUT")).status).toBe(200);
     const afterEdit = await (await api(new Request(`http://localhost/api/projects/${id}`))).json();
-    expect(afterEdit.ideas).toMatchObject([{ id: ideaId, input: edited }]);
+    expect(afterEdit.ideas).toMatchObject([{ id: ideaId, title: "Test idea", input: edited }]);
+    expect((await send(id, `/${ideaId}`, { ...edited, title: "  Yellow cab  " }, "PUT")).status).toBe(200);
+    expect((await (await api(new Request(`http://localhost/api/projects/${id}`))).json()).ideas[0].title).toBe("Yellow cab");
     expect(afterEdit.batches).toEqual([]);
     expect((await send(id, `/${ideaId}/ready`, { ready: true })).status).toBe(200);
     expect((await send(other, `/${ideaId}/ready`, { ready: false })).status).toBe(400);
@@ -125,4 +136,33 @@ integration("accept marks only finished assets and export zips accepted entries 
     expect((await post(`models/${done}/accept`, { accepted: false })).status).toBe(200);
     expect((await db.select().from(models).where(eq(models.id, done)))[0].acceptedAt).toBeNull();
   } finally { await cleanup([id, other]); }
+});
+
+integration("a blank title is written from the brief, and an AI failure stores nothing", async () => {
+  const id = crypto.randomUUID();
+  const calls: string[] = [];
+  const writer = async (_: string, brief: string) => { calls.push(brief); return `Titled: ${brief}`; };
+  const failing = async () => { throw new Error("Provider unavailable"); };
+  try {
+    await db.insert(projects).values({ id, name: "Title fixture", description: "test", design, designVersion: 1, status: "ready" });
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    const body = { ...input, title: "" };
+    const generated = await saveModelIdea(project, ideaInput.parse(body), writer);
+    expect(generated.title).toBe("Titled: A small sedan");
+    expect(calls).toEqual(["A small sedan"]);
+    const named = await saveModelIdea(project, ideaInput.parse({ ...body, title: "  My title " }), writer);
+    expect(named.title).toBe("My title");
+    expect(calls).toHaveLength(1);
+    await expect(saveModelIdea(project, ideaInput.parse(body), failing)).rejects.toThrow("Provider unavailable");
+    expect(await db.select().from(modelIdeas).where(eq(modelIdeas.projectId, id))).toHaveLength(2);
+    // An edit that clears the title rewrites it from the new brief; a kept title costs no call.
+    await updateModelIdea(project, generated.id, ideaInput.parse({ ...body, prompt: "A red pickup" }), writer);
+    expect((await db.select().from(modelIdeas).where(eq(modelIdeas.id, generated.id)))[0].title).toBe("Titled: A red pickup");
+    await updateModelIdea(project, generated.id, ideaInput.parse({ ...body, title: "Kept" }), writer);
+    expect(calls).toEqual(["A small sedan", "A red pickup"]);
+    // A started idea cannot be edited and must not cost an AI call.
+    await startModelIdea(id, generated.id);
+    await expect(updateModelIdea(project, generated.id, ideaInput.parse(body), writer)).rejects.toThrow("no longer available");
+    expect(calls).toHaveLength(2);
+  } finally { await cleanup([id]); }
 });

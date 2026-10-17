@@ -162,6 +162,13 @@
       "when": 1792246810532,
       "tag": "0022_flaky_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1792248560666,
+      "tag": "0023_faulty_warpath",
+      "breakpoints": true
     }
   ]
 }
