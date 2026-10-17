@@ -36,7 +36,7 @@ import { failedBatchFor, pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
 import { queueKindLabels } from "@/lib/queue-view";
 
-const tabs = ["design", "mockups", "ideas", "models", "materials", "history"] as const;
+const tabs = ["design", "mockups", "ideas", "models", "materials", "collection", "history"] as const;
 export type ProjectTab = (typeof tabs)[number];
 // Style was removed in the tab rework.
 const legacyTabs = { style: "design" } as const;
@@ -215,6 +215,7 @@ function ProjectPage() {
     !ready && (!search.tab || search.tab === "mockups")
       ? "design"
       : search.tab || (hasCollection ? "models" : "ideas");
+  const hasRenders = data.batches.some((b: any) => b.preview);
   const tabList: [ProjectTab, string, number?][] = [
     ["design", "Design"],
     ...(ready ? [["mockups", "Mockups"] as [ProjectTab, string]] : []),
@@ -223,6 +224,7 @@ function ProjectPage() {
     ...(!isGraphics && ready
       ? [["materials", "Materials"] as [ProjectTab, string]]
       : []),
+    ...(hasRenders ? [["collection", "Collection"] as [ProjectTab, string]] : []),
     ["history", "Activity", rs.length],
   ];
   return (
@@ -310,7 +312,7 @@ function ProjectPage() {
       >
         <TabsList variant="line" className="tabs" aria-label="Project views">
           {tabList.map(([id, title, count]) => (
-            <TabsTrigger value={id} key={id} className={id === "history" ? "tab-end" : undefined}>
+            <TabsTrigger value={id} key={id} className={id === (hasRenders ? "collection" : "history") ? "tab-end" : undefined}>
               {title}
               {!!count && (
                 <Badge variant="secondary" className="count">
@@ -348,6 +350,81 @@ function ProjectPage() {
               if (approved) setTab("ideas");
             }}
           />
+        )}
+        {activeTab === "collection" && (
+          <>
+            {isGraphics &&
+              data.batches
+                .filter(
+                  (b: any) =>
+                    b.preview?.sheet &&
+                    collectionModels.some((model) => model.batchId === b.id),
+                )
+                .map((b: any) => (
+                  <section className="panel collection-preview" key={b.id}>
+                    <div className="section-title">
+                      <h3>Every finished {assetSingular} in this batch</h3>
+                      <a href={fileUrl(b.preview.sheet)} download>
+                        Download sheet
+                      </a>
+                    </div>
+                    <div className="collection-renders">
+                      <a
+                        href={fileUrl(b.preview.sheet)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <AssetImage
+                          src={fileUrl(b.preview.sheet)}
+                          alt={`Grid of every ${assetSingular} in the batch`}
+                        />
+                        <span>Collection sheet</span>
+                      </a>
+                    </div>
+                  </section>
+                ))}
+            {!isGraphics &&
+              data.batches
+                .filter(
+                  (b: any) =>
+                    b.preview &&
+                    collectionModels.some((model) => model.batchId === b.id),
+                )
+                .map((b: any) => (
+                  <section className="panel collection-preview" key={b.id}>
+                    <div className="section-title">
+                      <h3>Scale lineup and demo scene</h3>
+                      <a href={fileUrl(b.preview.blend)} download>
+                        Download demo scene
+                      </a>
+                    </div>
+                    <div className="collection-renders">
+                      <a
+                        href={fileUrl(b.preview.lineup)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <AssetImage
+                          src={fileUrl(b.preview.lineup)}
+                          alt="Collection at consistent scale"
+                        />
+                        <span>Scale lineup</span>
+                      </a>
+                      <a
+                        href={fileUrl(b.preview.scene)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <AssetImage
+                          src={fileUrl(b.preview.scene)}
+                          alt="Collection demo scene"
+                        />
+                        <span>Demo scene</span>
+                      </a>
+                    </div>
+                  </section>
+                ))}
+          </>
         )}
         {activeTab === "history" && <History runs={rs} models={data.models} />}
         {activeTab === "ideas" && (
@@ -495,79 +572,6 @@ function ProjectPage() {
                 </div>
               </>
             )}
-            {isGraphics &&
-              data.batches
-                .filter(
-                  (b: any) =>
-                    b.preview?.sheet &&
-                    collectionModels.some((model) => model.batchId === b.id),
-                )
-                .map((b: any) => (
-                  <details className="panel collection-preview" key={b.id}>
-                    <summary>Collection sheet</summary>
-                    <div className="section-title">
-                      <h3>Every finished {assetSingular} in this batch</h3>
-                      <a href={fileUrl(b.preview.sheet)} download>
-                        Download sheet
-                      </a>
-                    </div>
-                    <div className="collection-renders">
-                      <a
-                        href={fileUrl(b.preview.sheet)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <AssetImage
-                          src={fileUrl(b.preview.sheet)}
-                          alt={`Grid of every ${assetSingular} in the batch`}
-                        />
-                        <span>Collection sheet</span>
-                      </a>
-                    </div>
-                  </details>
-                ))}
-            {!isGraphics &&
-              data.batches
-                .filter(
-                  (b: any) =>
-                    b.preview &&
-                    collectionModels.some((model) => model.batchId === b.id),
-                )
-                .map((b: any) => (
-                  <details className="panel collection-preview" key={b.id}>
-                    <summary>Collection renders</summary>
-                    <div className="section-title">
-                      <h3>Scale lineup and demo scene</h3>
-                      <a href={fileUrl(b.preview.blend)} download>
-                        Download demo scene
-                      </a>
-                    </div>
-                    <div className="collection-renders">
-                      <a
-                        href={fileUrl(b.preview.lineup)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <AssetImage
-                          src={fileUrl(b.preview.lineup)}
-                          alt="Collection at consistent scale"
-                        />
-                        <span>Scale lineup</span>
-                      </a>
-                      <a
-                        href={fileUrl(b.preview.scene)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <AssetImage
-                          src={fileUrl(b.preview.scene)}
-                          alt="Collection demo scene"
-                        />
-                        <span>Demo scene</span>
-                      </a>
-                    </div>
-                  </details>
-                ))}
           </>
         )}
       </Tabs>
