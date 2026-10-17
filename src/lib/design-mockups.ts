@@ -16,6 +16,9 @@ export const mockupSnapshot = z.object({
   baseId: z.string().optional(),
 });
 
+/** Optional context the owner adds when marking a mockup as a reference. */
+export const referenceNoteInput = z.object({ note: z.string().trim().max(1000).default("") });
+
 export const mockupImage = z.object({ key: z.string(), runId: z.string() });
 
 export type DesignMockups = {

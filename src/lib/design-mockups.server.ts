@@ -148,7 +148,7 @@ export async function uploadMockup(projectId: string, file: File) {
 }
 
 /** Adds a mockup to, or removes it from, the project's reference images (the same list the design page edits). */
-export async function setMockupReference(projectId: string, id: string, use: boolean) {
+export async function setMockupReference(projectId: string, id: string, use: boolean, note = "") {
   await db.transaction(async (tx) => {
     const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
     if (!project) throw new Error("Project not found");
@@ -160,7 +160,9 @@ export async function setMockupReference(projectId: string, id: string, use: boo
       throw new Error(`A project holds up to ${MAX_REFERENCE_IMAGES} reference images. Remove one on the Design tab first.`);
     const { [row.key]: _removed, ...notes } = project.referenceNotes;
     await tx.update(projects)
-      .set(use ? { references: [...rest, row.key] } : { references: rest, referenceNotes: notes })
+      .set(use
+        ? { references: [...rest, row.key], referenceNotes: note.trim() ? { ...notes, [row.key]: note.trim() } : notes }
+        : { references: rest, referenceNotes: notes })
       .where(eq(projects.id, projectId));
   });
 }

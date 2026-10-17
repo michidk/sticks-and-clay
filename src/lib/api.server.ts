@@ -45,7 +45,7 @@ import { fileMimeType } from "./storage/path";
 import { prepareReferences, retainedNotes } from "./reference-images.server";
 import { readWorkerHeartbeat } from "./worker-control.server";
 import { downloadImage } from "./remote-image.server";
-import { mockupInput } from "./design-mockups";
+import { mockupInput, referenceNoteInput } from "./design-mockups";
 import {
   deleteMockup,
   designMockups,
@@ -651,7 +651,8 @@ export async function api(request: Request) {
         return reply({ ok: true });
       }
       if (path[2] === "mockups" && path[3] && path[4] === "reference" && ["POST", "DELETE"].includes(request.method)) {
-        await setMockupReference(id, uuidOrJob.parse(path[3]), request.method === "POST");
+        const use = request.method === "POST";
+        await setMockupReference(id, uuidOrJob.parse(path[3]), use, use ? referenceNoteInput.parse(await request.json().catch(() => ({}))).note : "");
         return reply({ ok: true });
       }
       if (path[2] === "ideas") {

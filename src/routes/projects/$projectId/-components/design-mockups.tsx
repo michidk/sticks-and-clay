@@ -43,6 +43,8 @@ export function DesignMockupStep({
   const [baseId, setBaseId] = useState<string | null>(null);
   const [hint, setHint] = useState("");
   const [count, setCount] = useState(3);
+  const [referencing, setReferencing] = useState<MockupItem | null>(null);
+  const [note, setNote] = useState("");
   const [deleting, setDeleting] = useState<MockupItem | null>(null);
   const feed = useRef<HTMLDivElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -220,7 +222,9 @@ export function DesignMockupStep({
                   </div>
                   <div className="mockup-card-actions">
                     <Button size="sm" variant={isReference(item) ? "outline" : "default"} disabled={Boolean(busy)}
-                      onClick={() => void act(`reference-${item.id}`, () => request(urlFor(item, "reference"), { method: isReference(item) ? "DELETE" : "POST" }))}>
+                      onClick={() => isReference(item)
+                        ? void act(`reference-${item.id}`, () => request(urlFor(item, "reference"), { method: "DELETE" }))
+                        : (setNote(""), setReferencing(item))}>
                       <Check size={14} /> {isReference(item) ? "Remove from references" : "Use as reference"}
                     </Button>
                     <Button size="sm" variant="outline" disabled={active || Boolean(busy)}
@@ -254,6 +258,31 @@ export function DesignMockupStep({
             <Button disabled={Boolean(busy) || uploader.isBusy || !uploader.images.length} onClick={upload}>
               {busy === "upload" ? <LoaderCircle size={15} className="spin" /> : <Upload size={15} />}
               {busy === "upload" ? "Uploading…" : `Add ${uploader.images.length || ""} mockup${uploader.images.length === 1 ? "" : "s"}`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={Boolean(referencing)} onOpenChange={(open) => !busy && !open && setReferencing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Use as reference</DialogTitle>
+            <DialogDescription>
+              The image joins the project's reference images and goes to the AI with every new mockup and batch. Say what to take from it.
+            </DialogDescription>
+          </DialogHeader>
+          {referencing && <AssetImage src={fileUrl(referencing.key)} alt="Mockup being used as a reference" className="w-full rounded-lg bg-muted" style={{ objectFit: "contain", maxHeight: 260 }} />}
+          <div className="space-y-2">
+            <Label htmlFor="mockup-note">Context (optional)</Label>
+            <Textarea id="mockup-note" value={note} maxLength={1000} rows={4}
+              placeholder="I like the thin outlines and the warm background, but keep the icons less detailed."
+              onChange={(event) => setNote(event.target.value)} />
+          </div>
+          {error && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
+          <DialogFooter>
+            <DialogClose asChild><Button variant="outline" disabled={Boolean(busy)}>Cancel</Button></DialogClose>
+            <Button disabled={Boolean(busy)}
+              onClick={() => referencing && void act(`reference-${referencing.id}`, () => request(urlFor(referencing, "reference"), json({ note })), () => setReferencing(null))}>
+              <Check size={16} /> {busy.startsWith("reference-") ? "Saving…" : "Use as reference"}
             </Button>
           </DialogFooter>
         </DialogContent>

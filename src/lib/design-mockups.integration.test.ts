@@ -171,10 +171,13 @@ integration("mockups can be uploaded, used as references, frozen into batches, r
 
     // A mockup becomes a reference image of the project and can be removed again.
     const references = async () => (await (await call("")).json()).project.references as string[];
-    expect((await call(`/mockups/${mockupId}/reference`, {})).status).toBe(200);
+    expect((await call(`/mockups/${mockupId}/reference`, { note: "  Thin outlines  " })).status).toBe(200);
     expect(await references()).toEqual([key]);
+    expect((await call("")).status).toBe(200);
+    expect((await (await call("")).json()).project.referenceNotes).toEqual({ [key]: "Thin outlines" });
     expect((await call(`/mockups/${mockupId}/reference`, undefined, "DELETE")).status).toBe(200);
     expect(await references()).toEqual([]);
+    expect((await (await call("")).json()).project.referenceNotes).toEqual({});
 
     // The six-image limit holds; the mockup fits once there is room.
     await db.update(projects).set({ references: ["r/1.png", "r/2.png", "r/3.png", "r/4.png", "r/5.png", "r/6.png"] }).where(eq(projects.id, id));
