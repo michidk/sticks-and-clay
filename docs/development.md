@@ -126,3 +126,15 @@ advisories still fail CI.
 `guarded-fetch` pins an affected Undici release; the dependency override replaces
 only `undici@7.29.0` with patched 7.30.0, leaving Eve's separate Undici 8 dependency
 on its supported major version.
+
+## Images in the UI
+
+Every image the interface shows is a compressed WebP, never the stored original. `AssetImage`
+(`src/components/asset-image.tsx`) requests `/api/files/<key>?w=320|640|1280` (640 by default), and
+`src/lib/thumbnail.server.ts` makes all three sizes from one decode, caches them under `data/.thumbnails`, and
+shares or limits the work so a cold project cannot starve the server. A project request warms the thumbnails
+of the images it mentions before the browser asks. The lightbox shows 1280 px and offers the original through
+**Open original** and download links. Use `AssetImage` (or add `?w=` by hand for a raw `<img>`) for new images.
+Pixel-exact views, such as the sprite player and sheets, and textures loaded into the 3D viewer deliberately use
+the original. The project overview polls `?summary=true&versions=false`, which leaves out the per-version
+history that only the model page reads.

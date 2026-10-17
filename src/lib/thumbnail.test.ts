@@ -21,3 +21,9 @@ test("thumbnails are small WebP copies of stored rasters and skip everything els
     await rm(resolve(DATA, "thumbnail-test"), { recursive: true, force: true });
   }
 });
+
+test("image keys are collected from a payload, once each", async () => {
+  const { imageKeys } = await import("./thumbnail.server");
+  const payload = { a: "graphics/m1/a/preview.png", b: [{ c: "references/x.jpg" }, "references/x.jpg"], d: "notes.md", e: "model.glb" };
+  expect(imageKeys(payload).sort()).toEqual(["graphics/m1/a/preview.png", "references/x.jpg"]);
+});

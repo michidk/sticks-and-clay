@@ -397,11 +397,11 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
                           </figcaption>
                           <img
                             className="w-full"
-                            src={fileUrl(
+                            src={`${fileUrl(
                               version.files.find((f) =>
                                 f.endsWith("/review.png"),
                               )!,
-                            )}
+                            )}?w=1280`}
                             alt={`${index === 0 ? "Comparison" : "Current"} material review`}
                           />
                         </figure>
@@ -419,7 +419,7 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
                 <a href={fileUrl(preview)} target="_blank" rel="noreferrer">
                   <img
                     className="material-review"
-                    src={fileUrl(preview)}
+                    src={`${fileUrl(preview)}?w=1280`}
                     alt="Material repeated under lighting, albedo crop, sphere and channel maps"
                     loading="lazy"
                   />

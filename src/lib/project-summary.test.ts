@@ -77,3 +77,11 @@ test("prompt iterations replace their model in collection summaries while forks 
 test("visual targets awaiting approval need attention without counting as active work", () => {
   expect(collectionSummary([{ status: "awaiting_approval" }], [])).toEqual({ total: 1, queued: 0, active: 0, completed: 0, attention: 1 });
 });
+
+test("run results drop the repeated artifact record but keep the files other views look up", async () => {
+  const { slimResult } = await import("./project-summary");
+  expect(slimResult({ summary: "s", artifacts: { glb: "a.glb", blend: "a.blend", metrics: { big: 1 } } }))
+    .toEqual({ summary: "s", artifacts: { glb: "a.glb", blend: "a.blend" } });
+  expect(slimResult({ key: "k.png" })).toEqual({ key: "k.png" });
+  expect(slimResult(null)).toBeNull();
+});

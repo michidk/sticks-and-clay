@@ -79,7 +79,7 @@ export function LightboxProvider({ children }: { children: ReactNode }) {
         {gallery && current && (
           <DialogContent className="image-lightbox">
             <figure className="image-lightbox-figure">
-              <AssetImage src={current.src} width="full" alt={current.title} />
+              <AssetImage src={current.src} width={1280} alt={current.title} />
               <figcaption>
                 <div>
                   <DialogTitle>{current.title}</DialogTitle>

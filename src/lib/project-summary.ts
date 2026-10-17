@@ -121,3 +121,12 @@ export function projectState(
     return { label: `${collection.completed} completed`, tone: "done" };
   return { label: "Ready to generate", tone: "ready" };
 }
+
+/** A run's result for the project payload: builder results repeat their whole artifact record, which the
+ * model page already gets per version, so only the files other views look up stay. */
+export function slimResult(result: unknown) {
+  const value = result as { artifacts?: Record<string, unknown> } | null;
+  if (!value || typeof value !== "object" || !value.artifacts || typeof value.artifacts !== "object") return result;
+  const { blend, glb } = value.artifacts;
+  return { ...value, artifacts: { blend, glb } };
+}

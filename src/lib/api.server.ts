@@ -16,11 +16,11 @@ import {
 import { exportAssets, setModelAccepted } from "./asset-export.server";
 import { recordedAnalysis } from "../modules/model-analysis/report";
 import { workshopSchema } from "./workshop";
-import { thumbnail } from "./thumbnail.server";
+import { imageKeys, thumbnail, warmThumbnails } from "./thumbnail.server";
 import { snapshotWorkshop } from "./workshop.server";
 import { workshopAction } from "./workshop-actions.server";
 import { materialAction } from "./materials.server";
-import { collectionSummary } from "./project-summary";
+import { collectionSummary, slimResult } from "./project-summary";
 import { databaseErrorResponse } from "./database-error";
 import { eq, desc, and, inArray, or, getTableColumns, sql } from "drizzle-orm";
 import { assertDesignIdle } from "./design-updates.server";
@@ -511,7 +511,8 @@ export async function api(request: Request) {
         return reply({ id: jobId }, 201);
       }
       if (request.method === "GET") {
-        const summary = new URL(request.url).searchParams.get("summary") === "true";
+        const query = new URL(request.url).searchParams;
+        const summary = query.get("summary") === "true";
         const [assets, history, versions, requests, designUpdates, activeJobs] =
           await Promise.all([
             db
@@ -558,7 +559,7 @@ export async function api(request: Request) {
               ),
             )).orderBy(jobs.createdAt),
           ]);
-        return reply({
+        const payload = {
           project,
           photographs: await projectPhotographs(id),
           mockups: await designMockups(id),
@@ -605,7 +606,9 @@ export async function api(request: Request) {
                 })),
               };
             }),
-          runs: summary ? history.map(({ systemPrompt, input, output, images, ...run }) => run) : history,
+          runs: summary
+            ? history.map(({ systemPrompt, input, output, images, ...run }) => ({ ...run, result: slimResult(run.result) }))
+            : history,
           revisions: versions,
           batches: requests,
           workerHealthy: (await readWorkerHeartbeat())?.healthy ?? false,
@@ -626,7 +629,11 @@ export async function api(request: Request) {
               resultVersion: checkpoint.resultVersion ? Number(checkpoint.resultVersion) : null,
             }),
           ),
-        });
+        };
+        // Per-version history is only the model page's; the overview asks to leave it out.
+        if (summary && query.get("versions") === "false") payload.versions = [];
+        warmThumbnails(imageKeys(payload));
+        return reply(payload);
       }
       if (request.method === "DELETE" && path.length === 2) {
         await deleteProject(id);
