@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Breadcrumbs } from "@/components/breadcrumbs";
+import { describeError } from "@/lib/error-message";
 import { Progress, StatusBadge } from "@/components/status";
 
 export function ProjectSetup({
@@ -62,7 +63,7 @@ export function ProjectSetup({
         )}
         {(error || project.error) && (
           <Alert variant="destructive">
-            <AlertDescription>{error || project.error}</AlertDescription>
+            <AlertDescription>{describeError(error || project.error)}</AlertDescription>
           </Alert>
         )}
         {failed && (

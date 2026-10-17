@@ -1,3 +1,4 @@
+import { describeError } from "@/lib/error-message";
 import { useState, type FormEvent } from "react";
 import { Download, ImagePlus, LoaderCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -103,7 +104,7 @@ export function DesignMockupStep({
             label={job.status === "queued" ? "Waiting to generate mockups" : job.status === "cancelling" ? "Stopping mockups" : `Generating mockup ${Math.min(job.images.length + 1, job.count)} of ${job.count}`}
             status={job.status} />}
           {job.error && <Alert variant="destructive" className="my-4">
-            <AlertDescription>{job.error}</AlertDescription>
+            <AlertDescription>{describeError(job.error)}</AlertDescription>
           </Alert>}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {job.images.map((image, index) => <figure key={image.runId}>

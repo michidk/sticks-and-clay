@@ -1,3 +1,4 @@
+import { describeError } from "@/lib/error-message";
 import type { ModelInspection } from "@/components/ui/model-viewer";
 import type { ObjectReference } from "@/lib/object-reference";
 import { objectReferenceFromNode } from "./-lib/selection";
@@ -226,7 +227,7 @@ function ModelPage() {
     <div className="studio-chat-notice">
       {model.error && (
         <Alert variant="destructive">
-          <AlertDescription>{model.error}</AlertDescription>
+          <AlertDescription>{describeError(model.error)}</AlertDescription>
         </Alert>
       )}
       {model.status === "failed" && (
