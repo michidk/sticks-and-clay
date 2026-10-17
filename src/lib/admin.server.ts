@@ -2,7 +2,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
 import { jobs, models, batches, projects, runs } from "../db/schema";
-import { agentInput } from "./api-inputs";
+import { agentInput, type AgentInput } from "./api-inputs";
 import { cancelJob } from "./queue.server";
 import { agentSettings, immediateRoles } from "../modules/ai/index.server";
 import {
@@ -106,24 +106,26 @@ export async function adminAction(request: Request, path: string[]) {
   if (path[0] === "agents" && request.method === "GET")
     return reply({ agents: await agentSettings() });
   if (path[0] === "agents" && request.method === "PATCH") {
-    const input = agentInput.parse(await request.json());
-    const configured = (await agentSettings()).find(
-      (agent) => agent.id === input.id,
-    );
-    if (!configured || configured.engine !== input.engine)
-      throw new Error("Unknown or mismatched agent role");
-    const patch =
-      input.engine === "imagegen"
-        ? {
-            imageAgents: {
-              [input.id]: { model: input.model, quality: input.effort },
-            },
-          }
-        : {
-            agents: {
-              [input.id]: { model: input.model, effort: input.effort },
-            },
-          };
+    const body = await request.json();
+    // One role, or `{ agents: [...] }` to change several in a single write.
+    const inputs = z
+      .array(agentInput)
+      .min(1)
+      .max(100)
+      .parse(Array.isArray(body?.agents) ? body.agents : [body]);
+    const configured = await agentSettings();
+    const patch: {
+      agents: Record<string, { model: string; effort: AgentInput["effort"] }>;
+      imageAgents: Record<string, { model: string; quality: AgentInput["effort"] }>;
+    } = { agents: {}, imageAgents: {} };
+    for (const input of inputs) {
+      const role = configured.find((agent) => agent.id === input.id);
+      if (!role || role.engine !== input.engine)
+        throw new Error("Unknown or mismatched agent role");
+      if (input.engine === "imagegen")
+        patch.imageAgents[input.id] = { model: input.model, quality: input.effort };
+      else patch.agents[input.id] = { model: input.model, effort: input.effort };
+    }
     await updateRuntimeSettings(patch);
     return reply({ agents: await agentSettings() });
   }

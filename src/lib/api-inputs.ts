@@ -55,7 +55,9 @@ export const agentInput = z.object({
   effort: effortSchema,
 });
 
-export const materialInput = z.object({
+export type AgentInput = z.infer<typeof agentInput>;
+
+export const materialInput =z.object({
   parameters: materialSchema,
   prompt: z.string().trim().max(12000).default(""),
   reviewRounds: z.number().int().min(0).max(5).default(2),

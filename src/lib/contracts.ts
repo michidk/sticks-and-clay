@@ -32,6 +32,15 @@ const generationDefaultsSchema = z.object({
   judgeIterations: z.number().int().min(0).max(5),
   imageSize: imageSizeSchema,
 });
+/** Models offered in the admin dropdowns; a saved custom model is still shown. */
+export const textModelOptions = [
+  "gpt-6-sol",
+  "gpt-6-astra",
+  "claude-sonnet-5-5",
+  "claude-opus-5-5",
+  "claude-haiku-5-5",
+];
+export const imageModelOptions = ["gpt-image-2"];
 export const textPresetSchema = z.enum(["gpt", "claude"]);
 export const runtimeSettingsSchema = z
   .object({

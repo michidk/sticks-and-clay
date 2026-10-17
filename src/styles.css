@@ -1241,12 +1241,6 @@ pre {
 .agent-overview-note svg { width: 20px; height: 20px; flex: none; color: var(--primary); }
 .agent-overview-note span { max-width: 480px; font-size: 12px; line-height: 1.55; }
 .agent-overview-note code { color: var(--foreground); font-size: 11px; }
-.agents-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 23px;
-  align-items: start;
-}
 .agent-card { position: relative; overflow: hidden; border-color: #d9e0d3; background: var(--card); padding: 24px; }
 .agent-card::before { position: absolute; inset: 0 0 auto; height: 3px; background: linear-gradient(90deg, var(--primary), #8da678); content: ""; opacity: .9; }
 .agent-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
@@ -1285,7 +1279,6 @@ pre {
 .asset-title .tabs { flex-wrap: wrap; }
 
 @media (max-width: 800px) {
-  .agents-grid { grid-template-columns: 1fr; }
   .agent-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .agent-overview .agent-overview-note { grid-column: 1 / -1; border-top: 1px solid var(--border); }
 }
