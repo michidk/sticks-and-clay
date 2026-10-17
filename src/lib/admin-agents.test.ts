@@ -9,8 +9,8 @@ test("agent PATCH saves one role or several in a single write", async () => {
   process.env.STUDIO_DATA_DIR = dir;
   try {
     const { adminAction } = await import("./admin.server");
-    const patch = (body: unknown) =>
-      adminAction(new Request("http://x/api/admin/agents", { method: "PATCH", body: JSON.stringify(body) }), ["agents"]);
+    const patch = async (body: unknown) =>
+      (await adminAction(new Request("http://x/api/admin/agents", { method: "PATCH", body: JSON.stringify(body) }), ["agents"]))!;
     const rows = async (response: Response) => (await response.json()).agents as { id: string; model: string; effort: string }[];
     const find = (list: { id: string }[], id: string) => list.find((agent) => agent.id === id) as any;
 
