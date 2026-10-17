@@ -68,3 +68,36 @@ export function validateSvg(source: string): string {
   }
   return new XMLSerializer().serializeToString(doc);
 }
+
+const paintAttributes = ["fill", "stroke", "stop-color"];
+
+/** Structural facts about validated SVG, handed to the judge beside the render. */
+export function analyzeSvg(svg: string) {
+  const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+  const nodes = doc.getElementsByTagName("*");
+  const elements: Record<string, number> = {};
+  const colors = new Set<string>();
+  const strokeWidths = new Set<number>();
+  let pathCommands = 0;
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes.item(i)!;
+    elements[node.tagName] = (elements[node.tagName] || 0) + 1;
+    for (const name of paintAttributes) {
+      const value = node.getAttribute(name)?.trim().toLowerCase();
+      if (value && value !== "none" && !value.startsWith("url(")) colors.add(value);
+    }
+    const width = Number(node.getAttribute("stroke-width"));
+    if (width > 0) strokeWidths.add(width);
+    pathCommands += (node.getAttribute("d")?.match(/[a-z]/gi) || []).length;
+  }
+  return {
+    viewBox: doc.documentElement?.getAttribute("viewBox") ?? null,
+    bytes: svg.length,
+    elementCount: nodes.length,
+    elements,
+    pathCommands,
+    colors: [...colors].sort(),
+    strokeWidths: [...strokeWidths].sort((a, b) => a - b),
+    hasText: Boolean(elements.text),
+  };
+}

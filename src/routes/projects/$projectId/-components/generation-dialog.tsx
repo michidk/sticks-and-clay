@@ -125,7 +125,7 @@ export function GenerationDialog({
                 }
               : undefined,
           count: Number(f.get("count")),
-          judgeIterations: isGraphics ? 0 : Number(f.get("iterations")),
+          judgeIterations: Number(f.get("iterations")),
           imageSize: isGraphics ? f.get("imageSize") : "1024x1024",
         }, idea ? "PUT" : "POST"),
       );
@@ -275,9 +275,26 @@ export function GenerationDialog({
                   )}
                 </div>
               </div>
+              {isGraphics && (
+                <div className="space-y-2">
+                  <Label htmlFor="idea-rounds">Review rounds</Label>
+                  <Input
+                    id="idea-rounds"
+                    name="iterations"
+                    type="number"
+                    min={0}
+                    max={5}
+                    value={judgeIterations}
+                    onChange={(event) => setJudgeIterations(event.target.valueAsNumber)}
+                    required
+                  />
+                </div>
+              )}
               <p className="idea-settings-note">
                 {isGraphics
-                  ? "Each graphic is saved as a PNG on the chosen canvas."
+                  ? judgeIterations === 0
+                    ? "Each graphic is generated once, with no review."
+                    : `A reviewer inspects each rendered graphic and requests fixes, for up to ${judgeIterations} round${judgeIterations === 1 ? "" : "s"}; a pass ends review early. More rounds add time and cost.`
                   : judgeIterations === 0
                     ? "Four modeling passes with photographs, no judge review or score."
                     : `Up to ${judgeIterations} review round${judgeIterations === 1 ? "" : "s"} each for geometry and materials. Geometry must pass first; a pass ends review early. More rounds add time and cost.`}

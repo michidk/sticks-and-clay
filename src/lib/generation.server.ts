@@ -9,8 +9,6 @@ type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export function validateGeneration(project: typeof projects.$inferSelect, input: GenerationInput) {
   if (project.assetType !== "model" && input.spriteTarget)
     throw new Error("Sprite targets require a 3D collection");
-  if (project.assetType !== "model" && input.judgeIterations !== 0)
-    throw new Error("Graphic generation does not use 3D judge rounds");
   if (project.assetType === "model" && input.imageSize !== "1024x1024")
     throw new Error("Image size applies only to graphic projects");
 }

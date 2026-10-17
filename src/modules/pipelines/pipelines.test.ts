@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { modelReviewPipeline, runPipeline } from "./index";
+import { modelReviewPipeline, reviewPipeline, runPipeline } from "./index";
 import { executionPolicy, roles } from "../ai/roles";
 
 test("role registry selects one-shot or resumable execution, including legacy designer", () => {
@@ -199,4 +199,13 @@ test("v4 replay uses stable step identities and failed photography prevents refi
   await runPipeline(refinementPipeline(1), handlers);
   expect(executed).toEqual(["builder:0", "photographer:0", "builder:1", "photographer:1",
     "builder:2", "photographer:2", "builder:3", "photographer:3"]);
+});
+
+test("reviewPipeline builds, reviews and revises up to N rounds for any single-artifact asset", () => {
+  const two = reviewPipeline(2);
+  expect(`${two.id}:${two.version}`).toBe("asset-review:1");
+  expect(two.nodes.map((node) => node.id)).toEqual(["builder:0", "judge:0", "builder:1", "judge:1"]);
+  expect(two.nodes.filter((node) => node.task === "judge").every((node) => node.stopOnPass)).toBe(true);
+  expect(reviewPipeline(0).nodes.map((node) => node.id)).toEqual(["builder:0"]);
+  expect(() => reviewPipeline(6)).toThrow();
 });

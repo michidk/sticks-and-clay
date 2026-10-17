@@ -140,6 +140,18 @@ export function AssetCard({
         {m.artifacts?.stage === "geometry" && (
           <p className="note">Geometry only. Materials pending.</p>
         )}
+        {isGraphics && m.feedback && !working && (
+          <details className="note">
+            <summary>Review {m.feedback.score}/100 · {m.feedback.summary}</summary>
+            {m.verdict !== "approved" && m.feedback.improvements?.length > 0 && (
+              <ul>
+                {m.feedback.improvements.map((item: { priority: string; issue: string }, index: number) => (
+                  <li key={index}>[{item.priority}] {item.issue}</li>
+                ))}
+              </ul>
+            )}
+          </details>
+        )}
         {m.error && (
           <Alert variant="destructive" className="error">
             <AlertDescription>{m.error}</AlertDescription>

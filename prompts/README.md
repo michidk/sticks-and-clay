@@ -10,7 +10,8 @@ All authored agent instructions and input templates live here.
 - `model-brief.md`: uses TanStack AI to draft the editable Model brief from the approved design and requested count.
 - `planner.md`: turns a submitted model brief into individual builder tasks.
 - `graphic-brief.md`, `graphic-designer.md`, `graphic-planner.md`: the parallel brief, visual-system, and planning roles for 2D graphic collections.
-- `svg-designer.md`, `svg.md`: vector design direction and static SVG generation through the text model. SVG planning uses the graphic planner instructions.
+- `svg-designer.md`, `svg.md`: vector design direction and static SVG generation through the text model (a short plan, then the markup). SVG planning uses the graphic planner instructions.
+- `svg-judge.md`, `graphic-judge.md`, `graphic-judge-input.md`: the reviewers for SVG and raster graphics. They inspect renders and measurements, then return the same verdict contract as the 3D judge, which drives revision rounds.
 - `graphic.md`: the final prompt sent to the configured Image API for each planned graphic.
 - `design-mockup.md`: optional collection concept images from an approved design and its visual references, before final asset generation.
 - `builder.md`, `photographer.md`, `judge.md`: build, photograph the exported GLB, and visually review assets.

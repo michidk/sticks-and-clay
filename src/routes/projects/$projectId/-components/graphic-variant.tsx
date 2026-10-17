@@ -35,7 +35,7 @@ export function GraphicVariant({
     try {
       await request(
         `models/${model.id}/branch`,
-        json({ kind: "fork", sourceRunId, name, prompt, judgeIterations: 0 }),
+        json({ kind: "fork", sourceRunId, name, prompt, judgeIterations: 2 }),
       );
       setOpen(false);
       void onSaved().catch(() => {

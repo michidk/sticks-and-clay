@@ -828,13 +828,8 @@ export async function api(request: Request) {
         .where(eq(projects.id, parent.projectId));
       if (!parentBatch || !project)
         throw new Error("Source project is unavailable");
-      if (
-        project.assetType !== "model" &&
-        (input.judgeIterations !== 0 || source.role !== project.assetType)
-      )
-        throw new Error(
-          "Graphic variants need a saved graphic and zero judge rounds",
-        );
+      if (project.assetType !== "model" && source.role !== project.assetType)
+        throw new Error("Graphic variants need a saved graphic");
       if (project.assetType === "model" && source.role !== "builder")
         throw new Error("Choose a saved model version");
       const batchId = crypto.randomUUID();

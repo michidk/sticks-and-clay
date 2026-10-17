@@ -73,11 +73,9 @@ integration("discard removes only an unstarted idea and graphics retain canvas v
   const id = crypto.randomUUID();
   try {
     await db.insert(projects).values({ id, name: "Graphic ideas", assetType: "graphic", description: "test", design, designVersion: 1, status: "ready" });
-    expect((await send(id, "", input)).status).toBe(400);
-    expect((await send(id, "", { ...input, judgeIterations: 0, spriteTarget: { size: 64 } })).status).toBe(400);
-    const ideaInput = { ...input, judgeIterations: 0, imageSize: "1024x1536", count: 2 };
+    expect((await send(id, "", { ...input, spriteTarget: { size: 64 } })).status).toBe(400);
+    const ideaInput = { ...input, judgeIterations: 1, imageSize: "1024x1536", count: 2 };
     const ideaId = (await (await send(id, "", ideaInput)).json()).id;
-    expect((await send(id, `/${ideaId}`, input, "PUT")).status).toBe(400);
     expect((await send(id, `/${ideaId}`, { ...ideaInput, imageSize: "1536x1024", prompt: "Wide poster" }, "PUT")).status).toBe(200);
     expect((await (await api(new Request(`http://localhost/api/projects/${id}`))).json()).ideas[0].input).toMatchObject({ imageSize: "1536x1024", prompt: "Wide poster" });
     expect((await send(id, `/${ideaId}`, undefined, "DELETE")).status).toBe(200);

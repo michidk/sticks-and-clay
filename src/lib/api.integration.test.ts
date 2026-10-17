@@ -240,7 +240,7 @@ integration("model generation accepts optional briefs and preserves the design s
   }
 });
 
-for (const assetType of ["graphic", "svg"] as const) integration(`${assetType} projects persist their type and skip 3D judge settings`, async () => {
+for (const assetType of ["graphic", "svg"] as const) integration(`${assetType} projects persist their type, keep review rounds and reject sprite targets`, async () => {
   const { batches, jobs } = await import("../db/schema");
   const form = new FormData();
   form.set("name", "Graphic fixture");
@@ -271,7 +271,7 @@ for (const assetType of ["graphic", "svg"] as const) integration(`${assetType} p
       new Request(`http://localhost/api/projects/${id}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: "", count: 1, judgeIterations: 1 }),
+        body: JSON.stringify({ prompt: "", count: 1, judgeIterations: 0, spriteTarget: { size: 64 } }),
       }),
     );
     expect(invalid.status).toBe(400);
@@ -282,7 +282,7 @@ for (const assetType of ["graphic", "svg"] as const) integration(`${assetType} p
         body: JSON.stringify({
           prompt: "",
           count: 1,
-          judgeIterations: 0,
+          judgeIterations: 2,
           imageSize: "1536x1024",
         }),
       }),
@@ -293,7 +293,7 @@ for (const assetType of ["graphic", "svg"] as const) integration(`${assetType} p
       .select()
       .from(batches)
       .where(eq(batches.id, batchId));
-    expect(batch.judgeIterations).toBe(0);
+    expect(batch.judgeIterations).toBe(2);
     expect(batch.imageSize).toBe("1536x1024");
   } finally {
     const projectBatches = await db

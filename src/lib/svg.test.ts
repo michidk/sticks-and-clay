@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { validateSvg } from "./svg";
+import { analyzeSvg, validateSvg } from "./svg";
 import { fileMimeType } from "./storage/path";
 
 const svg = (body: string) =>
@@ -38,4 +38,19 @@ test("rejects declarations, multiple roots, invalid viewports and oversized outp
     " ".repeat(500_001),
   ])
     expect(() => validateSvg(value)).toThrow();
+});
+
+test("analysis reports structure, palette and stroke widths for the judge", () => {
+  const analysis = analyzeSvg(
+    svg(
+      '<g><path d="M0 0L10 10" stroke="#284E3C" stroke-width="2"/><circle cx="5" cy="5" r="4" fill="#C8D8B0" stroke="#284e3c" stroke-width="3"/><text x="1" y="1">A</text></g>',
+    ),
+  );
+  expect(analysis).toMatchObject({
+    elements: { g: 1, path: 1, circle: 1, text: 1 },
+    pathCommands: 2,
+    colors: ["#284e3c", "#c8d8b0"],
+    strokeWidths: [2, 3],
+    hasText: true,
+  });
 });

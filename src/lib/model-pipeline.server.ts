@@ -1,4 +1,5 @@
-import { generateSvg } from "./svg-generation.server";
+import { assetKinds } from "./asset-kinds.server";
+import { runReviewedAsset } from "./reviewed-asset.server";
 import { prepareVisualTarget } from "./visual-target.server";
 import { referencedChange } from "./object-reference";
 import { analyzeModel } from "../modules/model-analysis/index.server";
@@ -7,12 +8,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { db } from "../db/client";
-import { projects, batches, models, jobs, runs } from "../db/schema";
+import { projects, batches, models, runs } from "../db/schema";
 import { assertJobActive } from "./queue.server";
 import { REVIEW_VIEWS, judgeImageLabels } from "./photo-views";
 import { GlbHandoverError } from "../modules/glb/handover";
 import { archiveVersion, archivePhotography } from "./versions.server";
-import { runRole, roleInput, runImageRole } from "../modules/ai/index.server";
+import { runRole, roleInput } from "../modules/ai/index.server";
 import {
   runPipeline,
   modelReviewPipeline,
@@ -49,67 +50,13 @@ export async function executeModelJob(targetId: string) {
     : model.prompt;
   const attempt = job.checkpoint.workspace || job.id;
   if (project.assetType !== "model") {
-    await db
-      .update(models)
-      .set({
-        status: "building",
-        phase: "Generating final graphic",
-        progress: 10,
-      })
-      .where(eq(models.id, model.id));
-    const graphic = project.assetType === "svg" ? await generateSvg({
-      projectId: model.projectId, batchId: batch.id, modelId: model.id,
-      directory: `graphics/${model.id}/${attempt}`,
-      design: batch.design + workshopContext(batch.workshop, false), name: model.name, request, size: batch.imageSize,
-      images: [...(job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : project.references),
-        ...(batch.workshop?.examples?.flatMap((e) => e.renders.slice(0, 1)) || [])],
-    }) : await runImageRole({
-      role: "graphic",
-      name: "graphic",
-      stepId: "graphic",
-      projectId: model.projectId,
-      batchId: batch.id,
-      modelId: model.id,
-      directory: `graphics/${model.id}/${attempt}`,
-      prompt:
-        (await prompt("graphic", {
-          design: batch.design,
-          name: model.name,
-          request,
-        })) + workshopContext(batch.workshop, false),
-      size: batch.imageSize,
-      images: [
-        ...(job.checkpoint["branch-references"]
-          ? JSON.parse(job.checkpoint["branch-references"])
-          : project.references),
-        ...(batch.workshop?.examples?.flatMap((e) => e.renders.slice(0, 1)) ||
-          []),
+    await runReviewedAsset(assetKinds[project.assetType], {
+      model, batch, project, request, attempt,
+      references: [
+        ...(job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : project.references),
+        ...(batch.workshop?.examples?.flatMap((e) => e.renders.slice(0, 1)) || []),
       ],
-      assertActive: assertJobActive,
     });
-    await assertJobActive();
-    await db.transaction(async (tx) => {
-      await tx
-        .update(models)
-        .set({
-          status: "done",
-          phase: "Graphic ready",
-          progress: 100,
-          verdict: "unreviewed",
-          visualTarget: graphic.key,
-          artifacts: {
-            image: graphic.key,
-            stage: "final",
-            format: project.assetType === "svg" ? "svg" : "png",
-          },
-        })
-        .where(eq(models.id, model.id));
-      await tx
-        .update(jobs)
-        .set({ checkpoint: { ...job.checkpoint, applied: "yes" } })
-        .where(eq(jobs.id, job.id));
-    });
-    await settleBatch(batch.id);
     return;
   }
   const [sourceRun] = model.sourceRunId

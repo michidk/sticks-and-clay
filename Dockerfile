@@ -6,7 +6,7 @@ COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl xz-utils python3 python3-venv \
     libsm6 libxext6 libxrender1 libxi6 libxfixes3 libxkbcommon0 \
-    libgl1 libegl1 libgomp1 libglib2.0-0 \
+    libgl1 libegl1 libgomp1 libglib2.0-0 fontconfig fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 ARG BLENDER_VERSION=4.5.4
 ARG BLENDER_SHA256=2e6ef8e99fc36327270429ddc8e7bad2859dd878a5a137d2e0bf0f02f6792505

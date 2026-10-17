@@ -49,6 +49,12 @@ To add another workflow, define its nodes and handlers. In handlers call `runRol
 
 Traversal restarts from the first node on recovery. Completed AI results are reused; handler side effects must be idempotent, and final database writes must use the existing atomic `applied` checkpoint pattern. This is orchestration infrastructure, not a general exactly-once transaction engine. Tool authorization remains in Eve/MCP and scoped Blender capabilities; role instructions are not security boundaries.
 
+## Reviewed single-artifact assets (graphics, SVG)
+
+Every non-3D asset type runs through `runReviewedAsset` (`src/lib/reviewed-asset.server.ts`) using the shared `reviewPipeline(rounds)`: build, review, then revise from the judge's findings, for up to N rounds with early approval; zero rounds is one unreviewed build. The runner owns progress, the stored review, verdicts (`approved`, `limit_reached`, `unreviewed`), saved pipeline version and recovery. A type supplies only an `AssetKind` (`build` and the judge role) and registers it in `assetKinds` (`src/lib/asset-kinds.server.ts`), typed over every non-3D `assetType`, so a new type cannot compile without one and cannot skip review.
+
+SVG's equivalent of the Blender workshop is `src/lib/svg.ts` (allowlist sanitizer, structural analysis) plus `src/lib/svg-render.server.ts` (sharp/librsvg rasterizer and ink-bounds measurement). The judge sees a 768 px render, a 64 px legibility render and the measurements. Iteration 0 keeps the original step ID and file layout so jobs saved before review rounds resume unchanged. Raster graphics use the image API for builds and the generated PNG as the judge's evidence. 3D keeps its own staged pipelines in `model-pipeline.server.ts`.
+
 ## Filesystem and enforcement
 
 Eve and TanStack adapters live in `src/modules/ai/internal`. Only the public AI entrypoint imports them. An architecture test rejects external imports of internal modules. Pipeline traversal has no provider, database, or filesystem dependency. Asset handlers own those effects.

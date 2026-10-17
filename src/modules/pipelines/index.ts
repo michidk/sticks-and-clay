@@ -28,6 +28,13 @@ export function modelReviewPipeline(
   return { id: "model-review", version: 1, nodes };
 }
 
+/** Build → review → revise for any asset that is one artifact (SVG, raster graphics, …).
+ * Up to N build/review pairs with early approval; zero rounds is a single unreviewed build.
+ */
+export function reviewPipeline(judgeRounds: number): Pipeline<"builder" | "judge"> {
+  return { ...modelReviewPipeline(judgeRounds), id: "asset-review" };
+}
+
 /** Geometry is a hard gate before surface work. Zero rounds retains a single build. */
 export function qualityPipeline(rounds: number): Pipeline<"builder" | "judge"> {
   modelReviewPipeline(rounds); // shared bounds

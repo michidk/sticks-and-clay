@@ -34,7 +34,19 @@ function role<S extends z.ZodType>(
 
 /** Authored instructions stay in /prompts; execution policy and contracts live here. */
 export const roles = {
-  svg: role("tanstack", "svg", z.object({ svg: z.string().min(1).max(500_000) })),
+  svg: role(
+    "tanstack",
+    "svg",
+    // Plan first: the model commits to canvas, palette and construction before drawing.
+    z.object({ plan: z.string().max(4000).optional(), svg: z.string().min(1).max(500_000) }),
+    "gpt-6-sol",
+    "high",
+  ),
+  "svg-judge": {
+    ...role("tanstack", "svg-judge", judgeResult, "gpt-6-sol", "high"),
+    inputTemplate: "graphic-judge-input",
+  },
+  "graphic-judge": role("tanstack", "graphic-judge", judgeResult, "gpt-6-sol", "high"),
   "svg-designer": role("tanstack", "svg-designer", designResult),
   "svg-design-update": { ...role("tanstack", "svg-designer", designResult), inputTemplate: "design-update-input" },
   "svg-planner": { ...role("tanstack", "graphic-planner", planResult), inputTemplate: "graphic-planner-input" },

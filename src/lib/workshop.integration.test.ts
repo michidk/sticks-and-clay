@@ -283,7 +283,7 @@ integration(
   },
 );
 for (const assetType of ["graphic", "svg"] as const) integration(
-  `${assetType} variants retain the actual source as an edit reference and reject judge rounds`,
+  `${assetType} variants retain the actual source as an edit reference and keep their review rounds`,
   async () => {
     const projectId = crypto.randomUUID(),
       batchId = crypto.randomUUID(),
@@ -331,17 +331,21 @@ for (const assetType of ["graphic", "svg"] as const) integration(
       result: { key: `graphics/source.${assetType === "svg" ? "svg" : "png"}` },
     });
     try {
+      const reviewed = await send(`models/${modelId}/branch`, {
+        kind: "fork",
+        sourceRunId: runId,
+        name: "Reviewed",
+        prompt: "change palette",
+        judgeIterations: 1,
+      });
+      expect(reviewed.status).toBe(201);
+      const [reviewedModel] = await db
+        .select()
+        .from(models)
+        .where(eq(models.id, (await reviewed.json()).id));
       expect(
-        (
-          await send(`models/${modelId}/branch`, {
-            kind: "fork",
-            sourceRunId: runId,
-            name: "Wrong",
-            prompt: "change palette",
-            judgeIterations: 1,
-          })
-        ).status,
-      ).toBe(400);
+        (await db.select().from(batches).where(eq(batches.id, reviewedModel.batchId)))[0].judgeIterations,
+      ).toBe(1);
       const response = await send(`models/${modelId}/branch`, {
         kind: "fork",
         sourceRunId: runId,
