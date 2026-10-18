@@ -1,3 +1,4 @@
+import { reviewPassed } from "./contracts";
 import { assetKinds } from "./asset-kinds.server";
 import { materializeStartingPoint } from "./starting-point.server";
 import { runReviewedAsset } from "./reviewed-asset.server";
@@ -567,6 +568,7 @@ export async function executeAssetVersionJob(targetId: string) {
             workshopContext(batch.workshop, false),
         });
         await assertJobActive();
+        result.passed = reviewPassed(result);
         feedback = result;
         passed = result.passed;
         geometryBlocked =

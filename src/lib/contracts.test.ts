@@ -2,6 +2,7 @@ import { test, expect } from "bun:test";
 import {
   price,
   nextStage,
+  reviewPassed,
   judgeResult,
   planResult,
   projectNameResult,
@@ -51,4 +52,15 @@ test("idea titles are trimmed and bounded; saved ideas need a brief", async () =
   expect(ideaInput.safeParse({ ...idea, prompt: "   " }).success).toBe(false);
   expect(ideaInput.safeParse({ ...idea, prompt: "A chair", title: "x".repeat(101) }).success).toBe(false);
   expect(ideaInput.parse({ ...idea, prompt: " A chair " })).toMatchObject({ prompt: "A chair", title: "" });
+});
+
+
+test("review approval requires a pass with no blocking findings regardless of score", () => {
+  const review = { passed: true, score: 100, summary: "Looks good", improvements: [] };
+  expect(reviewPassed(review)).toBe(true);
+  expect(reviewPassed({ ...review, passed: false })).toBe(false);
+  expect(reviewPassed({ ...review, improvements: [{ priority: "minor", issue: "Optional polish", action: "Smooth edge", view: "front" }] })).toBe(true);
+  for (const priority of ["major", "critical"] as const) {
+    expect(reviewPassed({ ...review, improvements: [{ priority, issue: "Broken join", action: "Connect the parts", view: "front" }] })).toBe(false);
+  }
 });

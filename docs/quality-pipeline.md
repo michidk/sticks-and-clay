@@ -9,6 +9,8 @@ New model attempts use `model-quality:4`:
 5. Build the requested final materials, then polish and photograph the result. Textured assets require purposeful generated base-color images and appropriate normal maps. Color markings normally belong on continuous surfaces, rather than raised patch geometry. Run the surface review/revision loop with the same per-stage limit.
 6. Archive every export and review. Collection thumbnails use the latest render. New v4 jobs retain blockout, refinement, materials and polish with photography when judge rounds is zero; only judging is disabled.
 
+A review passes only when the judge reports `passed: true` and lists no major or critical findings. The application enforces this for both geometry and surface reviews, even when the model returns a contradictory pass or high score. Raw AI responses remain in run history; version feedback records the effective verdict.
+
 The configured round count is a maximum per stage. Two rounds allow up to four judge calls and six builds, including the initial blockout and material passes. Early passes skip unused refinements. Saved v1–v3 jobs retain their original graph and inputs. New attempts keep prior attempts, images, sessions, feedback and usage history.
 
 The text design wins if the generated image contradicts it. Triangle counts are informational only. Historical approved snapshots remain in history; the pipeline no longer configures or enforces polygon limits.

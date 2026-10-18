@@ -94,6 +94,11 @@ export const judgeResult = z.object({
     view: z.string(),
   })),
 });
+/** A contradictory model verdict cannot waive its own blocking findings. */
+export function reviewPassed(review: z.infer<typeof judgeResult>) {
+  return review.passed && review.improvements.every((item) => item.priority === "minor");
+}
+
 export function nextStage(passed: boolean, iteration: number, limit: number) {
   return passed ? "approved" : iteration >= limit ? "limit_reached" : "revise";
 }

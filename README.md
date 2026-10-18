@@ -90,7 +90,7 @@ flowchart LR
 5. **Build and judge.** Agents run blockout, shape refinement, materials, and
    polish passes in isolated Blender processes. A vision judge inspects the
    rendered views and sends fixes back until the asset passes or the review
-   rounds are spent.
+   rounds are spent. Major or critical findings block a pass.
 6. **Review.** Accept finished assets, iterate on them with a written request,
    or fork a variant. The stage strip and the global board track everything
    from Ideas to Done.

@@ -6,7 +6,8 @@ import { checkpoint, jobContext } from "./checkpoint.server";
 import { settleBatch } from "./batch-state.server";
 import { runRole, roleInput } from "../modules/ai/index.server";
 import { runPipeline, reviewPipeline } from "../modules/pipelines";
-import type { judgeResult } from "./contracts";
+import { reviewPassed, type judgeResult } from "./contracts";
+import { reviewEvidence } from "../modules/pipelines/evidence";
 import { z } from "zod";
 import { viewableReferences } from "./svg";
 import { workshopContext } from "./workshop";
@@ -75,6 +76,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
       analysis: {},
     };
   }
+  let previousCandidate: Candidate | undefined;
   let review: Review | undefined;
   let passed = false;
 
@@ -91,6 +93,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
             progress: progress(node.iteration),
           })
           .where(eq(assetVersions.id, model.id));
+        previousCandidate = review ? candidate : undefined;
         candidate = await kind.build(ctx, { node, previous: candidate, feedback: review });
         await assertJobActive();
         await db
@@ -108,6 +111,16 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
         if (!candidate) throw new Error("Nothing to review");
         // An SVG source (an earlier version being revised) is markup the judge cannot view as an image.
         const styleReferences = viewableReferences(ctx.references).slice(0, 3);
+        const evidence = reviewEvidence({
+          buildId: `${ctx.attempt}:${node.iteration}`,
+          current: candidate.previews.map(({ key, label }) => ({ path: key, label })),
+          previous: previousCandidate?.previews.filter((p) => !p.key.endsWith(".svg"))
+            .map(({ key, label }) => ({ path: key, label })),
+          references: styleReferences.map((path) => ({ path, label: "style reference" })),
+          parameters: { size: batch.imageSize },
+          technical: candidate.analysis,
+          findings: review,
+        });
         const { result } = await runRole({
           role: kind.judge,
           stepId: node.id,
@@ -115,15 +128,13 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
           projectId: model.projectId,
           batchId: batch.id,
           modelId: model.id,
-          images: [...candidate.previews.map((p) => p.key), ...styleReferences],
+          images: evidence.images,
           input: await roleInput(kind.judge, {
             design: batch.design,
             name: model.name,
             request: ctx.request + workshopContext(batch.workshop, false),
             size: batch.imageSize,
-            images:
-              candidate.previews.map((p, i) => `Image ${i + 1}: ${p.label}`).join("\n") +
-              (styleReferences.length ? "\nLater images: style references, not the artwork under review." : ""),
+            images: evidence.labels,
             analysis: JSON.stringify(candidate.analysis, null, 2),
             feedback: review ? JSON.stringify(review, null, 2) : "None",
           }),
@@ -134,6 +145,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
           result.passed = false;
           result.improvements.push({ priority: "major", issue: "Required geometric checks failed or remain unknown", action: "Inspect the measured checks against the frozen CAD contract and correct the source", view: "metrics" });
         }
+        result.passed = reviewPassed(result);
         passed = result.passed;
         await db
           .update(assetVersions)

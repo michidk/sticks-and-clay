@@ -40,7 +40,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
   };
   const cleanup = async () => {
     for (const dir of [base, `${base}/iteration-1`])
-      for (const file of ["graphic.svg", "preview.png", "preview-64.png"])
+      for (const file of ["graphic.svg", "preview.png", "preview-64.png", "preview-24.png"])
         if (await getStorage().exists(`${dir}/${file}`)) await getStorage().delete(`${dir}/${file}`);
     await db.delete(jobs).where(eq(jobs.id, jobId));
     await db.delete(runs).where(eq(runs.projectId, projectId));
@@ -48,7 +48,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
     await db.delete(batches).where(eq(batches.projectId, projectId));
     await db.delete(projects).where(eq(projects.id, projectId));
   };
-  return { base, run, cleanup, batchId };
+  return { base, run, cleanup, batchId, modelId };
 }
 
 integration("a failed review triggers a revision that is reviewed again and approved", async () => {
@@ -82,6 +82,57 @@ integration("exhausted review rounds finish with issues rather than approval", a
     expect(model.verdict).toBe("limit_reached");
     expect(model.artifacts).toMatchObject({ image: `${t.base}/graphic.svg` });
   } finally {
+    await t.cleanup();
+  }
+});
+
+
+integration("a contradictory passing review with a major defect finishes with issues on replay", async () => {
+  const t = await scenario(1, [
+    { step: "svg", role: "svg", iteration: 0, result: { svg: svg("#284e3c", 20) } },
+    { step: "judge:0", role: "svg-judge", iteration: 0, result: { ...verdict(false, "Too small"), passed: true, score: 95 } },
+  ]);
+  try {
+    const model = await t.run();
+    expect(model.verdict).toBe("limit_reached");
+    expect(model.feedback).toMatchObject({ passed: false, score: 95, improvements: [{ priority: "major" }] });
+  } finally {
+    await t.cleanup();
+  }
+});
+
+integration("revision review transports labeled current and previous evidence without a paid call", async () => {
+  const t = await scenario(2, [
+    { step: "svg", role: "svg", iteration: 0, result: { svg: svg("#284e3c", 20) } },
+    { step: "judge:0", role: "svg-judge", iteration: 0, result: verdict(false, "Too small") },
+    { step: "builder:1", role: "svg", iteration: 1, result: { svg: svg("#284e3c", 36) } },
+  ]);
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY;
+  const originalBase = process.env.OPENAI_BASE_URL;
+  let requestBody = "";
+  try {
+    process.env.OPENAI_API_KEY = "review-test-fixture";
+    process.env.OPENAI_BASE_URL = "https://review.invalid/v1";
+    globalThis.fetch = Object.assign(async (_url: string | URL | Request, init?: RequestInit) => {
+      requestBody = String(init?.body);
+      throw new Error("Stopped before provider request");
+    }, { preconnect: originalFetch.preconnect });
+    await expect(t.run()).rejects.toThrow();
+    const [review] = (await db.select().from(runs).where(eq(runs.modelId, t.modelId)))
+      .filter((run) => run.role === "svg-judge" && run.iteration === 1);
+    expect(review.input).toContain("Image 1: full-size render (768 px) on white (current output)");
+    expect(review.input).toContain("Image 4: full-size render (768 px) on white (previous output)");
+    const current = await (await getStorage().download(`${t.base}/iteration-1/preview.png`)).arrayBuffer();
+    const previous = await (await getStorage().download(`${t.base}/preview.png`)).arrayBuffer();
+    const currentIndex = requestBody.indexOf(Buffer.from(current).toString("base64"));
+    const previousIndex = requestBody.indexOf(Buffer.from(previous).toString("base64"));
+    expect(currentIndex).toBeGreaterThan(-1);
+    expect(previousIndex).toBeGreaterThan(currentIndex);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey;
+    if (originalBase === undefined) delete process.env.OPENAI_BASE_URL; else process.env.OPENAI_BASE_URL = originalBase;
     await t.cleanup();
   }
 });
