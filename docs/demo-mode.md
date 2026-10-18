@@ -37,6 +37,13 @@ The export reads `DATABASE_URL` and `STUDIO_DATA_DIR` (defaults: the local
 Compose database and `data/`) and replaces `demo/` entirely. Review the result
 before committing it: it becomes public.
 
+The committed snapshot keeps at most three build iterations per model, including
+builds referenced by another version and the newest builds. Original build
+numbers are retained, so gaps are expected. Removed iterations' runs, events,
+and unreferenced files are omitted. Costs in this curated history cover only
+the retained runs. Exporting again replaces this curated snapshot with the
+source workshop's full history.
+
 ## Build and deploy
 
 ```sh
