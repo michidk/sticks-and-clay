@@ -61,12 +61,29 @@ test("SVG sources are not sent to vision models as images", () => {
 
 test("the SVG model is shown renders of the earlier versions before the style references", async () => {
   const { attachedImages } = await import("./svg-generation.server");
-  const shown = attachedImages("g/preview.png", ["s/preview.png"], ["s/source.svg", "references/a.png"]);
+  const shown = await attachedImages("g/preview.png", ["s/preview.png"], ["s/source.svg", "references/a.png"]);
   expect(shown.keys).toEqual(["g/preview.png", "s/preview.png", "references/a.png"]);
   expect(shown.notes.split("\n")).toEqual([
     "Image 1: render of the PREVIOUS ATTEMPT SVG, on white",
     "Image 2: render of the SAVED SOURCE SVG, on white",
     "Image 3: style reference, not the artwork to copy",
   ]);
-  expect(attachedImages(undefined, [], []).notes).toBe("None");
+  expect((await attachedImages(undefined, [], [])).notes).toBe("None");
+});
+
+test("a restored SVG source preview is rendered to PNG before attaching it", async () => {
+  const { attachedImages } = await import("./svg-generation.server");
+  const { getStorage, readStoredFile } = await import("./storage.server");
+  const directory = `graphics/${crypto.randomUUID()}`;
+  const source = `${directory}/graphic.svg`, preview = `${directory}/preview.png`;
+  const storage = getStorage();
+  try {
+    await storage.upload(new Blob([svg('<circle cx="5" cy="5" r="4"/>')], { type: "image/svg+xml" }), source);
+    expect((await attachedImages(source, [], [])).keys).toEqual([preview]);
+    const bytes = new Uint8Array(await (await readStoredFile(preview)).arrayBuffer());
+    expect(Array.from(bytes.slice(0, 8))).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    expect((await attachedImages(source, [], [])).keys).toEqual([preview]);
+  } finally {
+    for (const key of [source, preview]) if (await storage.exists(key)) await storage.delete(key);
+  }
 });
