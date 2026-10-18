@@ -31,7 +31,7 @@ export function StageStrip<Id extends string>({ steps, current, onSelect }: {
   }, [current]);
   return <div className="stage-strip" role="group" aria-label="Project workflow" ref={strip}>
     {steps.map((step) => <button type="button" key={step.id} aria-pressed={current === step.id} onClick={() => onSelect(step.id)}>
-      <strong>{step.title} {step.count !== undefined && <span className="count">{step.count}</span>}</strong>
+      <strong>{step.title} {!!step.count && <span className="count">{step.count}</span>}</strong>
       <small className={step.warn ? "attention" : undefined}>{step.hint}</small>
     </button>)}
   </div>;

@@ -14,7 +14,6 @@ import { ProjectSetup } from "./-components/project-setup";
 import { ImportModel } from "./-components/import-model";
 import { WorkerNotice } from "@/components/worker-notice";
 import { MaterialPanel } from "./-components/materials";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty } from "@/components/ui/empty";
@@ -259,13 +258,9 @@ function ProjectPage() {
           <div className="page-meta">
             <StatusBadge tone={state.tone as any}>{state.label}</StatusBadge>
             <span>{assetTypeLabels[p.assetType as AssetType]}</span>
-            <button type="button" onClick={() => setTab("design")}>
-              Design v{p.designVersion} {ready ? "approved" : "awaiting approval"}
-            </button>
-            <button type="button" aria-pressed={activeTab === "history"} onClick={() => setTab("history")}>
-              <ActivityIcon size={13} aria-hidden="true" /> Activity
-              {!!rs.length && <Badge variant="secondary" className="count">{rs.length}</Badge>}
-              {" · "}{costSummary(total.cost)} spent
+            <button type="button" aria-label={`Activity: ${rs.length} AI requests, estimated cost ${costSummary(total.cost)}`} title="View activity" aria-pressed={activeTab === "history"} onClick={() => setTab("history")}>
+              <ActivityIcon size={13} aria-hidden="true" />
+              {rs.length} {rs.length === 1 ? "request" : "requests"} · {costSummary(total.cost)}
               {total.unpriced ? ` (${total.unpriced} unpriced)` : ""}
             </button>
           </div>
@@ -278,15 +273,8 @@ function ProjectPage() {
             onChanged={load}
             onDeleted={() => navigate({ to: "/" })}
           />
-          {ready && !isGraphics && !p.archivedAt && <ImportModel projectId={projectId} />}
-          {ready ? (
-            <Button disabled={Boolean(p.archivedAt)} onClick={() => setGenerate(true)}>
-              <Plus size={17} /> Add asset
-            </Button>
-          ) : (
-            activeTab !== "design" && (
-              <Button onClick={() => setTab("design")}>Review design</Button>
-            )
+          {!ready && activeTab !== "design" && (
+            <Button onClick={() => setTab("design")}>Review design</Button>
           )}
         </div>
       </section>
@@ -377,6 +365,12 @@ function ProjectPage() {
         )}
         {activeTab === "export" && (
           <>
+            <div className="stage-head">
+              <div>
+                <h2>Export</h2>
+                <p className="muted">Zip every saved file of the accepted {assetPlural}. Collection renders follow below.</p>
+              </div>
+            </div>
             <ExportPanel projectId={projectId} projectName={p.name} models={data.assetVersions} />
             {isGraphics &&
               data.batches
@@ -459,30 +453,29 @@ function ProjectPage() {
                 <h2>{boardStageTitles[stage]}</h2>
                 <p className="muted">{stageMeanings[stage]}</p>
               </div>
-              {stageCounts[stage] > 0 && !["idea", "ready"].includes(stage) && (
-                <Input
-                  aria-label="Search collection"
-                  placeholder={`Search ${assetPlural}`}
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-              )}
+              <div className="stage-actions">
+                {stageCounts[stage] > 0 && !["idea", "ready"].includes(stage) && (
+                  <Input
+                    aria-label="Search collection"
+                    placeholder={`Search ${assetPlural}`}
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                )}
+                {stage === "review" && ready && !isGraphics && !p.archivedAt && <ImportModel projectId={projectId} />}
+                {stage === "idea" && (
+                  <Button disabled={Boolean(p.archivedAt)} onClick={() => setGenerate(true)}>
+                    <Plus size={17} /> Add asset
+                  </Button>
+                )}
+              </div>
             </div>
             {!stageCounts[stage] ? (
               <Empty className="empty">
                 <h2>{stageEmpty[stage][0]}</h2>
                 <p>{stageEmpty[stage][1]}</p>
-                {stage === "idea" && (
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <Button disabled={Boolean(p.archivedAt)} onClick={() => setGenerate(true)}>
-                      <Plus size={17} /> Add asset
-                    </Button>
-                    {ready && (
-                      <Button variant="outline" onClick={() => setTab("mockups")}>
-                        Generate mockups first
-                      </Button>
-                    )}
-                  </div>
+                {stage === "idea" && ready && (
+                  <Button variant="outline" onClick={() => setTab("mockups")}>Generate mockups first</Button>
                 )}
               </Empty>
             ) : ["idea", "ready"].includes(stage) ? (
