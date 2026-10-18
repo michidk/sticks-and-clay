@@ -160,7 +160,8 @@ configuration, scopes, and deployment behind an auth proxy.
 - 👾 **Pixel art.** Drawn cell by cell on a grid (a palette and one row of text
   per row) instead of generated, with targeted repairs for malformed rows, rendered exactly by the app, reviewed on a
   sheet (1x on dark and light, silhouette, values) with craft measurements,
-  optionally animated or split into paperdoll layers, and exported as a
+  with editable design palettes and reference swatches. AI design drafts propose
+  colors; sprites enforce the approved palette. Optionally animated or split into paperdoll layers, and exported as a
   baseline-aligned sheet with Unity and Godot import descriptions.
 - **CAD parts.** Editable CadQuery Python with STEP, STL and GLB exports,
   measured dimensions, solid validation and seven-view independent review.

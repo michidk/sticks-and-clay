@@ -342,6 +342,8 @@ function ProjectPage() {
               key={projectId}
               projectId={projectId}
               version={p.designVersion}
+              design={p.design}
+              assetType={p.assetType}
               mockups={mockups}
               items={data.mockupItems || []}
               references={p.references}

@@ -1,3 +1,4 @@
+import { designPalette } from "./pixel-design-palette";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { batches, events, jobs, assetVersions, projects, revisions, runs } from "../db/schema";
@@ -33,6 +34,7 @@ export async function approveDesign(projectId: string, version: number) {
     await assertDesignIdle(projectId, tx);
     if (project.designVersion !== version || !["review", "ready"].includes(project.status) || !project.design)
       throw new Error("Design changed. Reload before approving.");
+    if (project.assetType === "pixel") designPalette(project.design);
     await tx.update(projects).set({ status: "ready", phase: "Ready to build", progress: 100, error: null })
       .where(eq(projects.id, projectId));
     await tx.update(revisions).set({ approved: true })

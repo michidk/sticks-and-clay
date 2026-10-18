@@ -1,3 +1,4 @@
+import { generationPalettes } from "./pixel-design-palette";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { runs } from "../db/schema";
@@ -70,12 +71,12 @@ export const pixelKind: AssetKind = {
       ...(previous ? [{ key: previous.previews[0].key, note: `${previous.previews[0].label}, of the PREVIOUS ATTEMPT` }] : starting?.preview ? [{ key: starting.preview, note: "STARTING POINT to edit; preserve it outside the requested changes" }] : []),
       ...viewableReferences(ctx.references).map((key) => ({ key: enlarged(key), note: "style reference, not the artwork to copy" })),
     ];
-    const palettes = namedPalettes(batch.design, ctx.request);
     const job = jobContext.getStore();
     if (!job) throw new Error("Missing durable job context");
     if (!job.checkpoint["pixel:palette-contract"])
-      await checkpoint("pixel:palette-contract", Object.keys(job.checkpoint).some((key) => /^step:(pixel|builder:)/.test(key)) ? "1" : "3");
+      await checkpoint("pixel:palette-contract", Object.keys(job.checkpoint).some((key) => /^step:(pixel|builder:)/.test(key)) ? "1" : "4");
     const paletteContract = job.checkpoint["pixel:palette-contract"];
+    const palettes = paletteContract === "4" ? generationPalettes(batch.design, ctx.request) : namedPalettes(batch.design, ctx.request);
     // Repair a few malformed rows in place first; whole-grid or palette errors retain the existing redraw retry.
     let problem = "None";
     for (let attempt = 0; ; attempt++) {

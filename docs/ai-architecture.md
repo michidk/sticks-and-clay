@@ -65,7 +65,7 @@ Collection output follows the same per-type split. When a graphic or SVG batch s
 
 ## Filesystem and enforcement
 
-New jobs checkpoint `pixel:palette-contract = 3` for the retry-then-snap policy above. Saved jobs with contract 2 keep strict palette rejection on both attempts, and jobs with saved pixel build steps but no marker retain contract 1 advisory checks. The marker persists across later review rounds and recovery. Fully transparent cells remain allowed; alpha is assessed separately. The approved design and named palette override generic craft preferences, including pure black/white and hue-shifting.
+New jobs checkpoint `pixel:palette-contract = 4`: an explicit `## Pixel palette` section in the snapshotted design overrides named presets, with the retry-then-snap policy above. Contract 3 keeps named-only retry-then-snap behavior. Saved jobs with contract 2 keep strict palette rejection on both attempts, and jobs with saved pixel build steps but no marker retain contract 1 advisory checks. The marker persists across later review rounds and recovery. Fully transparent cells remain allowed; alpha is assessed separately. The approved design and named palette override generic craft preferences, including pure black/white and hue-shifting.
 
 Eve and TanStack adapters live in `src/modules/ai/internal`. Only the public AI entrypoint imports them. An architecture test rejects external imports of internal modules. Pipeline traversal has no provider, database, or filesystem dependency. Asset handlers own those effects.
 

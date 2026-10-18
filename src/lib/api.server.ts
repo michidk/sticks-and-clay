@@ -1,3 +1,4 @@
+import { designPalette } from "./pixel-design-palette";
 import { DEMO_MODE } from "./build-mode";
 import { plannerReservations } from "./queue.server";
 import { updateStartingPoint, startingPointVersions } from "./starting-point.server";
@@ -790,6 +791,7 @@ export async function api(request: Request) {
               }
             : await request.json(),
         );
+        if (input.approve && project.assetType === "pixel") designPalette(input.design);
         const prepared = form
           ? await prepareReferences(form, project.references)
           : null;

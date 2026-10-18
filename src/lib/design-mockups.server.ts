@@ -1,3 +1,5 @@
+import { generationPalettes } from "./pixel-design-palette";
+import { palettePromptText } from "./pixel-palettes";
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../db/client";
 import { jobs, mockups, assetEntries, projects } from "../db/schema";
@@ -48,12 +50,15 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
       ...workshopSchema.parse(project.workshop || {}),
       referenceNotes: referenceNotesFor(project.references, project.referenceNotes),
     };
+    const paletteDirection = project.assetType === "pixel"
+      ? `\n\nPIXEL ART: use crisp square pixels, consistent pixel scale, no blur or gradients. Follow the approved palette for the artwork.\n${palettePromptText(generationPalettes(project.design))}`
+      : "";
     const prompts = await Promise.all(Array.from({ length: input.count }, (_, index) =>
       prompt("design/design-mockup", {
         name: project.name,
         description: project.description,
         design: project.design,
-        assetType: project.assetType !== "model" ? "2D graphics" : "3D assets",
+        assetType: project.assetType === "pixel" ? "pixel art" : project.assetType !== "model" ? "2D graphics" : "3D assets",
         request: base
           ? revisionRequest(input.hint)
           : input.hint || (ideas.length
@@ -62,7 +67,7 @@ export async function queueDesignMockups(projectId: string, input: z.infer<typeo
         ideas: ideaList || "None",
         variation: index + 1,
         count: input.count,
-      }).then((text) => text + workshopContext(direction, false)),
+      }).then((text) => text + workshopContext(direction, false) + paletteDirection),
     ));
     const id = crypto.randomUUID();
     await tx.insert(jobs).values({

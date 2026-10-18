@@ -111,3 +111,21 @@ integration("only projects without generated work can be deleted", async () => {
     await remove(empty);
   }
 });
+
+
+integration("pixel palette drafts require valid colors before either approval route", async () => {
+  const id = await createProject("Pixel palette lifecycle", "Forest pixel icons");
+  const invalid = "# Forest\n\n## Pixel palette\n#bad";
+  const valid = "# Forest\n\n## Pixel palette\n#112233 #aabbcc";
+  try {
+    await db.update(projects).set({ assetType: "pixel" }).where(eq(projects.id, id));
+    expect((await call(`projects/${id}/design`, { design: invalid, version: 1, approve: true }, "PUT")).status).toBe(400);
+    expect((await call(`projects/${id}/design`, { design: invalid, version: 1, approve: false }, "PUT")).status).toBe(200);
+    expect((await call(`projects/${id}/design/approve`, { version: 2 })).status).toBe(400);
+    expect((await call(`projects/${id}/design`, { design: valid, version: 2, approve: true }, "PUT")).status).toBe(200);
+    expect((await db.select().from(projects).where(eq(projects.id, id)))[0]).toMatchObject({ design: valid, status: "ready", designVersion: 3 });
+    expect((await db.select().from(revisions).where(eq(revisions.projectId, id))).find((r) => r.version === 3)?.content).toBe(valid);
+  } finally {
+    await remove(id);
+  }
+});

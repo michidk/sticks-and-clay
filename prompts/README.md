@@ -8,7 +8,7 @@ A prompt's name is its path under `prompts/` without `.md` (for example `design/
 | --- | --- |
 | `eve/` | `system.md`: shared Eve agent rules, loaded by `eve/agent/instructions.ts` at build time. `resume.md`: continues a failed Eve turn in the same session. |
 | `project/` | `project-name`, `project-brief` (initial name and brief from the user's notes) and `idea-title` (names a saved idea from its brief when the title is left blank). |
-| `design/` | The design reference: `designer` (3D), `graphic-designer`, `svg-designer`, `pixel-designer`, plus `design-update-input`, `design-from-model-input` and `design-mockup` (concept images from the approved design; with an open request it also gets a few unstarted saved ideas to pick from). |
+| `design/` | The design reference: `designer` (3D), `graphic-designer`, `svg-designer`, `pixel-designer` (includes the explicit Pixel palette section), plus `design-update-input`, `design-from-model-input` and `design-mockup` (concept images from the approved design; with an open request it also gets a few unstarted saved ideas to pick from). |
 | `planning/` | `model-brief` and `graphic-brief` draft the editable brief; `planner` and `graphic-planner` turn a submitted brief into individual tasks. SVG and pixel-art planning use the graphic planner. |
 | `models/` | 3D generation: `builder`, `photographer`, `judge`, `visual-target` (the imagegen concept step), and the required v4 passes `modeling-pass` and `modeling-review`. |
 | `graphics/` | `graphic` (the final prompt sent to the Image API) and `graphic-judge` with its input; the SVG and pixel judges share this input template. |

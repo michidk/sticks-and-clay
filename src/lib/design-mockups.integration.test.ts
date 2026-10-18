@@ -236,3 +236,25 @@ integration("mockups can be uploaded, used as references, frozen into batches, r
     if (key) await getStorage().delete(key);
   }
 });
+
+
+integration("pixel mockups freeze the explicit design palette", async () => {
+  const id = crypto.randomUUID();
+  try {
+    await db.insert(projects).values({ id, name: "Pixel palette fixture", description: "test", assetType: "pixel",
+      design: design + "\n\n## Pixel palette\n#112233 #aabbcc", designVersion: 1, status: "ready" });
+    const response = await api(new Request(`http://localhost/api/projects/${id}/mockups`, {
+      method: "POST", body: JSON.stringify({ version: 1, count: 1 }),
+    }));
+    expect(response.status).toBe(201);
+    const [job] = await db.select().from(jobs).where(eq(jobs.targetId, id));
+    const input = mockupSnapshot.parse(JSON.parse(job.checkpoint.input));
+    expect(input.prompts[0]).toContain("PIXEL ART: use crisp square pixels");
+    expect(input.prompts[0]).toContain("Design palette (2 colors, use only these exact values): #112233 #aabbcc");
+    await db.update(projects).set({ design: design + "\n\n## Pixel palette\n#ff0000", designVersion: 2 }).where(eq(projects.id, id));
+    expect((await db.select().from(jobs).where(eq(jobs.id, job.id)))[0].checkpoint.input).toBe(job.checkpoint.input);
+  } finally {
+    await db.delete(jobs).where(eq(jobs.targetId, id));
+    await db.delete(projects).where(eq(projects.id, id));
+  }
+});

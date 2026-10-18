@@ -1,3 +1,4 @@
+import { DesignPalette } from "./design-palette";
 import { DesignConversation, type DesignRevision, type DesignUpdate } from "./design-conversation";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
@@ -232,6 +233,7 @@ export function DesignReference({
         )}
       </Card>
         <Card className="panel">
+          {project.assetType === "pixel" && <DesignPalette design={design} version={version} onChange={setDesign} disabled={saving || stale} />}
           <PictureUploader
             images={uploader.images}
             onFilesAdded={uploader.addFiles}

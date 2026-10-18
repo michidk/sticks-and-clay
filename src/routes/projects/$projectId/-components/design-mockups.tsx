@@ -1,3 +1,4 @@
+import { DesignPalette } from "./design-palette";
 import { describeError } from "@/lib/error-message";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { PictureUploader } from "@/components/picture-uploader";
@@ -28,9 +29,11 @@ const running = (status: string) => ["queued", "running", "cancelling"].includes
 
 /** Concept images beside a chat: generate, revise any mockup, accept the ones that set the direction, upload your own. */
 export function DesignMockupStep({
-  projectId, version, mockups, items, references, assets = [], onRefresh,
+  projectId, version, design, assetType, mockups, items, references, assets = [], onRefresh,
 }: {
   projectId: string;
+  design: string;
+  assetType: string;
   version: number;
   mockups: DesignMockups[];
   items: MockupItem[];
@@ -189,6 +192,7 @@ export function DesignMockupStep({
       </section>
 
       <section className="mockup-gallery panel" aria-label="Mockups">
+        {assetType === "pixel" && <DesignPalette design={design} version={version} />}
         <div className="section-title flex-wrap gap-3">
           <div>
             <h2>Mockups</h2>

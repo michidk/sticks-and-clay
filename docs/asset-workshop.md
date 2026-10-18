@@ -107,6 +107,23 @@ The saved source GLB remains byte-for-byte unchanged. Outputs, receipt and sourc
 
 ## Pixel art drawings
 
+Pixel projects show a palette above the design reference images and mockup gallery.
+Use **Add palette** or **Edit palette**, enter six-digit hex colors, then apply and
+save the design. The `## Pixel palette` section stores 1–64 distinct opaque colors;
+each sprite still uses at most 32 colors. A Markdown table with color names and hex
+values works too. Invalid sections can be saved as drafts but cannot be approved.
+Ask for a palette in the design chat to have AI propose one from the brief and
+reference images. AI design drafts include this section and keep existing colors
+unless asked to change them. Review and approve the draft before generating.
+
+New pixel generations use only colors from that section, even when a request names
+a classic preset. Without the section, named palettes continue to work. Mockup
+image prompts receive the same exact colors, though image-provider output is not
+quantized like the final pixel grid. The palette is part of the design revision
+and each batch snapshot, so editing it does not recolor existing images or change
+queued work. Swatches show the current design revision, not a palette extracted
+from each historic image.
+
 Pixel-art projects (`assetType: "pixel"`) are drawn cell by cell by a text model and rendered exactly; see [AI architecture](ai-architecture.md#reviewed-single-artifact-assets-graphics-svg-pixel-art) for the role, review and retry. Each version stores, beside `pixel.png` (one image pixel per cell, the asset), `preview.png` (enlarged on white, for vision references), `review.png` (the review sheet the judge and the reviser see), `grid.json` (the cells, `version: 2`) and the engine files listed under `artifacts.exports`:
 
 - `sheet.png` and `sheet.json`: the frames in one row, moved as a whole so the feet (lowest drawn row, middle of the bottom band) stand one cell above the cell's bottom edge on its centre column; cells are rounded to even sizes. `sheet.json` records the cell size, FPS, loop, pivot and baseline in the sprite-player layout, so the version page plays animations from it.

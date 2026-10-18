@@ -157,3 +157,5 @@ New versions freeze those inputs. Three-dimensional parts share one file;
 image parts have separate named files. Returning to Ideas preserves history.
 Ready is an owner's marker and starting generation remains a separate paid
 action. Done requires the owner's acceptance after reviewing the result.
+
+Pixel projects display wrapping color swatches with hex labels above design reference images and mockups. The palette editor applies colors to the design document; normal draft saving and approval persist them. Label swatches with the current design revision so historic images are not mistaken for examples of its palette. AI design changes propose colors for owner approval.

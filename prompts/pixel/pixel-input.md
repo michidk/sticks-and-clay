@@ -10,7 +10,7 @@ REQUEST
 SIZE LIMIT
 {{limit}}
 
-NAMED PALETTES the brief asks for (exact colors; use only these values and no others)
+DESIGN PALETTE / NAMED PALETTES the brief asks for (exact colors; use only these values and no others)
 {{palettes}}
 
 SAVED SOURCE GRID, if this is a variant (JSON: width, height, palette, rows, and frames or layers when present)

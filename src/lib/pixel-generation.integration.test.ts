@@ -21,7 +21,7 @@ const verdict = (passed: boolean, summary: string) => ({
 });
 
 // `passes` > 1 replays the finished job to prove resume is idempotent; a retried drawing leaves a failed run, so retries run once.
-async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2, design = "Green circles", paletteContract: "1" | "2" | "3" | null = "3") {
+async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2, design = "Green circles", paletteContract: "1" | "2" | "3" | "4" | null = "3") {
   const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
   await db.insert(projects).values({ id: projectId, name: "Review fixture", description: "test", assetType: "pixel", status: "ready" });
   await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design, designVersion: 1, status: "building" });
@@ -248,5 +248,22 @@ integration("row repair receives the rejected drawing and every malformed row", 
     if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey;
     if (originalBase === undefined) delete process.env.OPENAI_BASE_URL; else process.env.OPENAI_BASE_URL = originalBase;
     await t.cleanup();
+  }
+});
+
+
+integration("custom design palettes override named presets only for the new contract", async () => {
+  for (const contract of ["3", "4"] as const) {
+    const t = await scenario(0, [
+      { step: "pixel", role: "pixel", iteration: 0, result: offPalette },
+      { step: "pixel:fix1", role: "pixel", iteration: 0, result: offPalette },
+    ], 1, "Game Boy inspired\n\n## Pixel palette\n#112233 #ffffff", contract);
+    try {
+      expect((await t.run()).status).toBe("done");
+      const grid = JSON.parse(await (await getStorage().download(`${t.base}/grid.json`)).text());
+      expect(grid.palette[1].color).toBe(contract === "4" ? "#112233" : "#306230");
+    } finally {
+      await t.cleanup();
+    }
   }
 });
