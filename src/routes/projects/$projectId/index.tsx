@@ -21,7 +21,7 @@ import { Empty } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { assetStage, boardStages, boardStageTitles, type BoardStage } from "@/lib/board";
-import { StageStrip, stageHints } from "./-components/stage-strip";
+import { StageStrip, stageHints, stageMeanings } from "./-components/stage-strip";
 import { WorkspaceSkeleton } from "@/components/loading";
 import { AssetImage } from "@/components/asset-image";
 import { LightboxProvider } from "@/components/image-lightbox";
@@ -32,7 +32,7 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { z } from "zod";
-import { Plus } from "lucide-react";
+import { Activity as ActivityIcon, Plus } from "lucide-react";
 import { request, json, costSummary, fileUrl, previewUrl } from "../../../lib/client";
 import { assetTypeLabels, isFlatRole, type AssetType } from "@/lib/asset-types";
 import { PendingModel } from "./-components/pending-model";
@@ -41,15 +41,14 @@ import { History } from "./-components/history";
 import { queueKindLabels } from "@/lib/queue-view";
 
 // The workflow from left to right, plus the activity log.
-const tabs = ["design", ...boardStages, "export", "history"] as const;
+const tabs = ["design", "mockups", ...boardStages, "export", "history"] as const;
 export type ProjectTab = (typeof tabs)[number];
-const designViews = ["reference", "mockups", "materials"] as const;
+const designViews = ["reference", "materials"] as const;
 type DesignView = (typeof designViews)[number];
 type Search = { tab?: ProjectTab; view?: DesignView };
-// Earlier tab reworks: Style became Design; Mockups and Materials became design views; the asset tabs became stages.
+// Earlier tab reworks: Style became Design; Materials became a design view; the asset tabs became stages.
 const legacyTabs: Record<string, Search> = {
   style: { tab: "design" },
-  mockups: { tab: "design", view: "mockups" },
   materials: { tab: "design", view: "materials" },
   ideas: { tab: "idea" },
   assets: {},
@@ -61,10 +60,13 @@ export const Route = createFileRoute("/projects/$projectId/")({
   validateSearch: z
     .object({
       tab: z.string().optional().catch(undefined),
-      view: z.enum(designViews).optional().catch(undefined),
+      view: z.enum([...designViews, "mockups"]).optional().catch(undefined),
       stage: z.enum(boardStages).optional().catch(undefined),
     })
-    .transform(({ tab, stage, ...rest }): Search => {
+    .transform(({ tab, stage, view }): Search => {
+      // Mockups was briefly a design view before it became a step.
+      const rest: Search = view === "mockups" ? { tab: "mockups" } : { view };
+      if (rest.tab) return rest;
       const search: Search = tab && legacyTabs[tab]
         ? { ...rest, ...legacyTabs[tab] }
         : { ...rest, tab: (tabs as readonly string[]).includes(tab ?? "") ? (tab as ProjectTab) : undefined };
@@ -222,13 +224,14 @@ function ProjectPage() {
   const hasCollection = data.assetVersions.length || data.batches.length;
   // Mockups and materials need an approved version.
   const designView: DesignView = ready ? search.view ?? "reference" : "reference";
-  const designViewList: [DesignView, string, number?][] = [
+  const designViewList: [DesignView, string][] = [
     ["reference", `Reference · v${p.designVersion}`],
-    ...(ready ? [["mockups", "Mockups", (data.mockups || []).length] as [DesignView, string, number]] : []),
     ...(ready && !isGraphics ? [["materials", "Materials"] as [DesignView, string]] : []),
   ];
+  const mockups = data.mockups || [];
   const steps = [
     { id: "design", title: "Design", hint: ready ? `v${p.designVersion} approved` : "Awaiting approval" },
+    { id: "mockups", title: "Mockups", count: mockups.length, hint: "Concept images" },
     ...boardStages.map((id) => ({
       id,
       title: boardStageTitles[id],
@@ -259,21 +262,13 @@ function ProjectPage() {
             <button type="button" onClick={() => setTab("design")}>
               Design v{p.designVersion} {ready ? "approved" : "awaiting approval"}
             </button>
-            <button type="button" onClick={() => setTab("history")}>
-              {costSummary(total.cost)} spent · {rs.length} requests
+            <button type="button" aria-pressed={activeTab === "history"} onClick={() => setTab("history")}>
+              <ActivityIcon size={13} aria-hidden="true" /> Activity
+              {!!rs.length && <Badge variant="secondary" className="count">{rs.length}</Badge>}
+              {" · "}{costSummary(total.cost)} spent
               {total.unpriced ? ` (${total.unpriced} unpriced)` : ""}
             </button>
           </div>
-          {p.description && (
-            <details className="overview-brief">
-              <summary>Brief</summary>
-              <div className="overview-description markdown">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {p.description}
-                </ReactMarkdown>
-              </div>
-            </details>
-          )}
         </div>
         <div className="page-actions">
           <ProjectActionsMenu
@@ -324,36 +319,42 @@ function ProjectPage() {
         </Alert>
       )}
       <section className="workspace-tabs">
-        <div className="stage-nav">
-          <StageStrip steps={steps} current={activeTab} onSelect={(id) => setTab(id)} />
-          <Button variant="ghost" aria-pressed={activeTab === "history"} onClick={() => setTab("history")}>
-            Activity
-            {!!rs.length && <Badge variant="secondary" className="count">{rs.length}</Badge>}
-          </Button>
-        </div>
+        <StageStrip steps={steps} current={activeTab} onSelect={(id) => setTab(id)} />
         {activeTab === "design" && designViewList.length > 1 && (
           <Tabs value={designView} onValueChange={(value) => setTab("design", { view: value as DesignView })}>
             <TabsList variant="line" className="tabs compact" aria-label="Design views">
-              {designViewList.map(([id, title, count]) => (
-                <TabsTrigger value={id} key={id}>
-                  {title}
-                  {!!count && <Badge variant="secondary" className="count">{count}</Badge>}
-                </TabsTrigger>
+              {designViewList.map(([id, title]) => (
+                <TabsTrigger value={id} key={id}>{title}</TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
         )}
+        {activeTab === "design" && designView === "reference" && p.description && (
+          <details className="overview-brief">
+            <summary>Original brief</summary>
+            <div className="overview-description markdown">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{p.description}</ReactMarkdown>
+            </div>
+          </details>
+        )}
         {activeTab === "design" && designView === "materials" && (
           <MaterialPanel key={projectId} projectId={projectId} />
         )}
-        {activeTab === "design" && designView === "mockups" && (
+        {activeTab === "mockups" && !ready && (
+          <Empty className="empty">
+            <h2>Mockups need an approved design</h2>
+            <p>Approve the design reference first. Mockups are paid concept images generated from it.</p>
+            <Button onClick={() => setTab("design")}>Review design</Button>
+          </Empty>
+        )}
+        {activeTab === "mockups" && ready && (
           <LightboxProvider>
             <DesignMockupStep
               assets={data.assets}
               key={projectId}
               projectId={projectId}
               version={p.designVersion}
-              mockups={data.mockups || []}
+              mockups={mockups}
               items={data.mockupItems || []}
               references={p.references}
               onRefresh={load}
@@ -367,7 +368,7 @@ function ProjectPage() {
             revisions={data.revisions}
             updates={data.designUpdates || []}
             updating={designUpdating}
-            onOpenMockups={() => setTab("design", { view: "mockups" })}
+            onOpenMockups={() => setTab("mockups")}
             onSaved={async (approved) => {
               await load();
               if (approved) setTab(firstStage);
@@ -453,16 +454,20 @@ function ProjectPage() {
         {activeTab === "history" && <History runs={rs} models={data.assetVersions} />}
         {(boardStages as readonly string[]).includes(activeTab) && (
           <>
-            {stageCounts[stage] > 0 && !["idea", "ready"].includes(stage) && (
-              <div className="collection-toolbar">
+            <div className="stage-head">
+              <div>
+                <h2>{boardStageTitles[stage]}</h2>
+                <p className="muted">{stageMeanings[stage]}</p>
+              </div>
+              {stageCounts[stage] > 0 && !["idea", "ready"].includes(stage) && (
                 <Input
                   aria-label="Search collection"
                   placeholder={`Search ${assetPlural}`}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                 />
-              </div>
-            )}
+              )}
+            </div>
             {!stageCounts[stage] ? (
               <Empty className="empty">
                 <h2>{stageEmpty[stage][0]}</h2>
@@ -473,7 +478,7 @@ function ProjectPage() {
                       <Plus size={17} /> Add asset
                     </Button>
                     {ready && (
-                      <Button variant="outline" onClick={() => setTab("design", { view: "mockups" })}>
+                      <Button variant="outline" onClick={() => setTab("mockups")}>
                         Generate mockups first
                       </Button>
                     )}

@@ -9,6 +9,15 @@ export const stageHints: Record<BoardStage, string> = {
   done: "Ready to export",
 };
 
+/** What a stage means, shown above its list. */
+export const stageMeanings: Record<BoardStage, string> = {
+  idea: "The brief can still be developed. Returning an asset here keeps its versions.",
+  ready: "You marked the brief ready. This does not start paid work.",
+  progress: "Generation is queued, running, waiting for a visual target decision, or needs recovery.",
+  review: "The latest version finished and waits for your decision.",
+  done: "You accepted the finished version.",
+};
+
 /** The project workflow as left-to-right steps; the pressed step is the open view. */
 export function StageStrip<Id extends string>({ steps, current, onSelect }: {
   steps: { id: Id; title: string; hint: string; count?: number; warn?: boolean }[];
