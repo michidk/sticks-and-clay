@@ -42,11 +42,14 @@ jobs:
       - run: |
           python -m venv .venv
           .venv/bin/python -m pip install -r blender/requirements.txt -r scripts/requirements-dev.txt
+          python -m venv .venv-cad
+          .venv-cad/bin/python -m pip install -r cad/requirements.txt
       - run: bun run db:migrate
       - run: bun run verify
       - run: bun run eve:build
       - run: bun run audit
-      - run: .venv/bin/ruff check blender scripts
+      - run: .venv/bin/ruff check blender scripts cad
+      - run: .venv-cad/bin/python -m unittest cad.test_cad
       - run: |
           PYTHONPATH=blender .venv/bin/python -m unittest \
             blender.test_analyze_mesh blender.test_materials blender.test_material_quality \

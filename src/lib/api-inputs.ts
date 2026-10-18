@@ -3,6 +3,7 @@ import { effortSchema, imageSizeSchema } from "./contracts";
 import { materialSchema } from "./materials";
 import { spriteOptionsSchema } from "./sprites";
 import { objectReferenceSchema } from "./object-reference";
+import { startingPointSchema } from "./starting-point";
 
 const uuid = z.string().uuid();
 
@@ -18,6 +19,7 @@ export const designInput = z.object({
 });
 
 export const generationInput = z.object({
+  startingPoint: startingPointSchema.optional(),
   visualTargetMode: z.enum(["review", "skip"]).optional(),
   prompt: z.string().trim().max(12000).default(""),
   count: z.number().int().min(1).max(20),

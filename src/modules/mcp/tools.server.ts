@@ -127,6 +127,16 @@ export function createStudioMcpServer(options: {
     generationInput.omit({ count: true }).extend({ ...projectId.shape, prompt: z.string().trim().min(1).max(12000) }),
     (input) => ({ path: `projects/${input.projectId}/generate`, method: "POST", body: { ...input, count: 1 } }), { paid: true });
   const assetId = projectId.extend({ assetId: uuid });
+  register("list_starting_points", "List compatible completed versions in this project that can seed an idea. Does not start generation.", read,
+    projectId, ({ projectId }) => ({ path: `projects/${projectId}/starting-points` }));
+  register("set_asset_starting_point", "Attach an immutable starting point to an idea using uploaded bytes or a completed same-project sourceRunId. Omit both to remove it. Pass expectedSha256 from the current source, or empty when absent. CAD Python executes only when generation starts. No server paths or arbitrary execution.", write,
+    assetId.extend({ file: assetUploadSchema.optional(), sourceRunId: uuid.optional(), expectedSha256: z.string().max(64).default(""), units: z.enum(["mm", "cm", "m", "in"]).default("mm") })
+      .refine((input) => !(input.file && input.sourceRunId), "Choose a file or a saved version"), (input) => {
+      const form = new FormData(); form.set("expected", input.expectedSha256); form.set("units", input.units);
+      if (input.sourceRunId) form.set("sourceRunId", input.sourceRunId);
+      if (input.file) form.set("file", new File([new Uint8Array(Buffer.from(input.file.base64, "base64"))], input.file.filename));
+      return { path: `projects/${input.projectId}/assets/${input.assetId}/starting-point`, method: "POST", body: form };
+    });
   register("create_asset", "Create an asset in Ideas with its required brief, optional named parts and generation settings. Omit title for a small paid AI title request. The same asset keeps its identity through Ready, In progress, Review and Done.", write,
     ideaInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/assets`, method: "POST", body: input }));
   register("update_asset", "Replace an asset's brief, title, parts and settings for future versions in any stage. An empty title uses a small paid AI request. Saved versions stay unchanged.", write,

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { json, request } from "@/lib/client";
 import { usePending } from "@/hooks/use-pending";
 import type { GenerationInput } from "@/lib/api-inputs";
+import type { AssetType } from "@/lib/asset-types";
 
 export type AssetDraft = {
   id: string;
@@ -21,8 +22,8 @@ export type AssetDraft = {
 
 export const ideaBrief = (idea: AssetDraft) => idea.input.prompt?.trim() || "AI proposes assets from the approved design.";
 export const ideaTitle = (idea: AssetDraft) => idea.title?.trim() || ideaBrief(idea).split("\n")[0];
-export const ideaSettings = (idea: AssetDraft, isGraphics: boolean) =>
-  `${isGraphics ? `Canvas ${idea.input.imageSize} · ` : ""}${idea.input.judgeIterations} review rounds`
+export const ideaSettings = (idea: AssetDraft, isGraphics: boolean, assetType?: AssetType) =>
+  `${isGraphics && assetType !== "cad" ? `Canvas ${idea.input.imageSize} · ` : ""}${idea.input.judgeIterations} review rounds`
   + (isGraphics ? "" : idea.input.visualTargetMode === "skip" ? " · No visual mock" : " · Visual target approval")
   + (idea.input.spriteTarget ? ` · Sprites ${idea.input.spriteTarget.size}px` : "");
 
@@ -49,7 +50,8 @@ export function useIdeaActions(projectId: string, onRefresh: () => Promise<unkno
 type IdeaAction = "generate" | "discard" | "ready";
 
 /** Saved briefs waiting to start, in their own tab before the collection. */
-export function AssetDrafts({ projectId, designVersion, ideas, isGraphics, ready, onRefresh }: {
+export function AssetDrafts({ projectId, designVersion, ideas, isGraphics, ready, onRefresh, assetType }: {
+  assetType?: AssetType;
   projectId: string;
   designVersion: number;
   ideas: AssetDraft[];
@@ -87,7 +89,7 @@ export function AssetDrafts({ projectId, designVersion, ideas, isGraphics, ready
                   {idea.readyAt && <StatusBadge tone="done">Ready</StatusBadge>}
                 </div>
               </td>
-              <td className="muted">{ideaSettings(idea, isGraphics)}</td>
+              <td className="muted">{ideaSettings(idea, isGraphics, assetType)}</td>
               <td>
                 <div className="flex justify-end gap-1">
                   <Button size="sm" disabled={!ready || starting} onClick={() => act(idea, "generate")}>
@@ -117,6 +119,7 @@ export function AssetDrafts({ projectId, designVersion, ideas, isGraphics, ready
       designVersion={designVersion}
       ready={ready}
       isGraphics={isGraphics}
+      assetType={assetType}
       open
       onOpenChange={(open) => { if (!open) setEditing(null); }}
       onRefresh={onRefresh}

@@ -6,6 +6,7 @@ import { flatRoles } from "./asset-types";
 import { assertNotArchived } from "./project-lifecycle.server";
 import { assetSnapshot } from "./asset-snapshot.server";
 import { snapshotWorkshop } from "./workshop.server";
+import { validateStartingPoint } from "./starting-point.server";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -24,8 +25,9 @@ export async function insertGeneration(tx: Transaction, project: typeof projects
     throw new Error("Approve the design before generating assets");
   assertNotArchived(project);
   validateGeneration(project, input);
+  await validateStartingPoint(project.id, project.assetType, input.startingPoint);
   const id = crypto.randomUUID();
-  const workshop = asset ? assetSnapshot(project, asset) : { ...snapshotWorkshop(project, project.workshop), ...(input.parts ? { parts: input.parts } : {}) };
+  const workshop = asset ? assetSnapshot(project, asset) : { ...snapshotWorkshop(project, project.workshop), startingPoint: input.startingPoint, ...(input.parts ? { parts: input.parts } : {}) };
   await tx.insert(batches).values({
     id, projectId: project.id, ...input,
     visualTargetMode: input.visualTargetMode ?? "review",

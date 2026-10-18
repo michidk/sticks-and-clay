@@ -480,6 +480,7 @@ function ProjectPage() {
               </Empty>
             ) : ["idea", "ready"].includes(stage) ? (
               <AssetDrafts
+                assetType={p.assetType}
                 key={projectId + stage}
                 projectId={projectId}
                 ideas={ideas.filter((idea: any) => (stage === "ready") === Boolean(idea.readyAt))}
@@ -573,6 +574,7 @@ function ProjectPage() {
         )}
       </section>
       <GenerationDialog
+        assetType={p.assetType}
         projectId={projectId}
         designVersion={p.designVersion}
         ready={ready}

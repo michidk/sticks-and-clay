@@ -15,6 +15,7 @@ A prompt's name is its path under `prompts/` without `.md` (for example `design/
 | `pixel/` | `pixel` (a plan with a numeric proportion plan, then a palette with one key per tone and rows of cells; frames or layers when asked; patches on revisions), `pixel-input` and `pixel-judge` (reads the review sheet and the named measurement warnings in a fixed critique order); their craft rules come from the surveyed pixel-art skills listed in `references/SOURCES.md`. |
 | `svg/` | `svg` (a short plan, then the markup through the text model), `svg-input` and `svg-judge`. |
 | `materials/` | `material-planner`, `material-builder` and `material-judge`. |
+| `cad/` | Approved CAD design and planning, a frozen per-asset numeric specification, CadQuery source construction with bounded runtime repair, and independent visual review. `references/cad-construction.md` gives pinned construction and diagnostic guidance. |
 | `references/` | Focused construction references added to role instructions, plus `SOURCES.md` and `WORKSHOP-INSPIRATION.md`, which are documentation and excluded from agent input. |
 | `evaluations/`, `licenses/` | The control prompt for `scripts/evaluate-material-prompts.ts` and upstream MIT notices. Neither is model input. |
 

@@ -27,8 +27,12 @@ import { appendReferenceImages } from "@/lib/image-file";
 import { request, json } from "@/lib/client";
 import type { AssetDraft } from "./asset-drafts";
 import type { RuntimeSettings } from "@/lib/contracts";
+import type { AssetType } from "@/lib/asset-types";
+import type { StartingPoint } from "@/lib/starting-point";
+import { StartingPointField } from "./starting-point-field";
 
 type GenerationDialogProps = {
+  assetType?: AssetType;
   idea?: AssetDraft;
   projectId: string;
   designVersion: number;
@@ -41,6 +45,7 @@ type GenerationDialogProps = {
 };
 
 export function GenerationDialog({
+  assetType,
   idea,
   projectId,
   designVersion,
@@ -52,6 +57,18 @@ export function GenerationDialog({
   onSaved,
 }: GenerationDialogProps) {
   const [busy, setBusy] = useState<false | "save" | "start">(false);
+  const type = assetType ?? (isGraphics ? "graphic" : "model");
+  const [startingPoint, setStartingPoint] = useState(idea?.input.startingPoint);
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [sourceRun, setSourceRun] = useState("");
+  const [sourceRemoved, setSourceRemoved] = useState(false);
+  const [sourceUnits, setSourceUnits] = useState<StartingPoint["units"]>(idea?.input.startingPoint?.units ?? "mm");
+  const [sourceVersions, setSourceVersions] = useState<{ id: string; label: string }[]>([]);
+  useEffect(() => {
+    let active = true;
+    void request<{ sources: { id: string; label: string }[] }>(`projects/${projectId}/starting-points`).then((result) => { if (active) setSourceVersions(result.sources); }).catch(() => {});
+    return () => { active = false; };
+  }, [projectId]);
   const [error, setError] = useState("");
   const [modelBrief, setModelBrief] = useState(idea?.input.prompt || "");
   const [parts, setParts] = useState(idea?.input.parts ?? []);
@@ -69,6 +86,8 @@ export function GenerationDialog({
   const assetPlural = "asset";
   useEffect(() => {
     setModelBrief(idea?.input.prompt || "");
+    setStartingPoint(idea?.input.startingPoint); setSourceFile(null); setSourceRun(""); setSourceRemoved(false);
+    setSourceUnits(idea?.input.startingPoint?.units ?? "mm");
     setSpriteEnabled(Boolean(idea?.input.spriteTarget));
     setSkipVisualMock(idea?.input.visualTargetMode === "skip");
     setParts(idea?.input.parts ?? []);
@@ -124,6 +143,7 @@ export function GenerationDialog({
         `projects/${projectId}/assets${savedAssetId ? `/${savedAssetId}` : ""}`,
         json({
           prompt: f.get("prompt"),
+          startingPoint,
           title: f.get("title"),
           visualTargetMode: skipVisualMock ? "skip" : "review",
           spriteTarget:
@@ -140,7 +160,7 @@ export function GenerationDialog({
           count: 1,
           parts: parts.length ? parts : undefined,
           judgeIterations: Number(f.get("iterations")),
-          imageSize: isGraphics ? f.get("imageSize") : "1024x1024",
+          imageSize: isGraphics && type !== "cad" ? f.get("imageSize") : "1024x1024",
         }, savedAssetId ? "PUT" : "POST"),
       );
       const assetId = saved.id ?? savedAssetId;
@@ -154,6 +174,13 @@ export function GenerationDialog({
       setExpectedReferences(updatedReferences);
       uploader.reset(updatedReferences.references);
       setReferenceNotes(updatedReferences.referenceNotes);
+      if (sourceFile || sourceRun || sourceRemoved) {
+        const source = new FormData(); source.set("expected", startingPoint?.sha256 ?? ""); source.set("units", sourceUnits);
+        if (sourceFile) source.set("file", sourceFile);
+        if (sourceRun) source.set("sourceRunId", sourceRun);
+        const updated = await request<{ startingPoint: StartingPoint | null }>(`projects/${projectId}/assets/${assetId}/starting-point`, { method: "POST", body: source });
+        setStartingPoint(updated.startingPoint ?? undefined); setSourceFile(null); setSourceRun(""); setSourceRemoved(false);
+      }
       if (start) await request(`projects/${projectId}/assets/${assetId}/generate`, json({}));
       setModelBrief("");
       onOpenChange(false);
@@ -202,6 +229,9 @@ export function GenerationDialog({
         </DialogHeader>
         <form onSubmit={saveIdea} className="setup-form">
           <div className="setup-fields">
+            <StartingPointField type={type} source={startingPoint} file={sourceFile} run={sourceRun} removed={sourceRemoved} units={sourceUnits} disabled={locked} versions={sourceVersions}
+              onFile={(file) => { setSourceFile(file); setSourceRun(""); setSourceRemoved(false); }} onRun={(run) => { setSourceRun(run); setSourceFile(null); setSourceRemoved(false); }}
+              onUnits={setSourceUnits} onRemove={() => { setSourceRemoved(true); setSourceFile(null); setSourceRun(""); }} />
             <div className="brief-field">
               <div className="field-heading flex-wrap">
                 <Label htmlFor="model-brief">Brief</Label>
@@ -272,7 +302,7 @@ export function GenerationDialog({
               <legend>Generation settings</legend>
               <div className="idea-settings-grid">
                 <div className="space-y-2">
-                  {isGraphics ? (
+                  {isGraphics && type !== "cad" ? (
                     <>
                       <Label htmlFor="idea-canvas">Canvas</Label>
                       <Select
@@ -294,7 +324,7 @@ export function GenerationDialog({
                     </>
                   ) : (
                     <>
-                      <Label htmlFor="idea-rounds">Review rounds per stage</Label>
+                      <Label htmlFor="idea-rounds">{type === "cad" ? "Review rounds" : "Review rounds per stage"}</Label>
                       <Input
                         id="idea-rounds"
                         name="iterations"
@@ -311,7 +341,7 @@ export function GenerationDialog({
                   )}
                 </div>
               </div>
-              {isGraphics && (
+              {isGraphics && type !== "cad" && (
                 <div className="space-y-2">
                   <Label htmlFor="idea-rounds">Review rounds</Label>
                   <Input
@@ -327,7 +357,10 @@ export function GenerationDialog({
                 </div>
               )}
               <p className="idea-settings-note">
-                {isGraphics
+                {type === "cad"
+                  ? judgeIterations === 0 ? "Build and measure the CAD model once, with no visual review."
+                    : `Review seven rendered views and measured requirements for up to ${judgeIterations} rounds; a pass ends review early.`
+                  : isGraphics
                   ? judgeIterations === 0
                     ? "Each graphic is generated once, with no review."
                     : `A reviewer inspects each rendered graphic and requests fixes, for up to ${judgeIterations} round${judgeIterations === 1 ? "" : "s"}; a pass ends review early. More rounds add time and cost.`

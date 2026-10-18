@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { pixelGridSchema } from "../../lib/pixel";
+import { cadBuildResult, cadSpecResult } from "../../lib/cad";
 import type { AssetType } from "../../lib/asset-types";
 import {
   materialPlanResult,
@@ -37,6 +38,12 @@ function role<S extends z.ZodType>(
 
 /** Authored instructions stay in /prompts; execution policy and contracts live here. */
 export const roles = {
+  cad: role("tanstack", "cad/builder", cadBuildResult, "gpt-6-astra", "high", ["references/cad-construction"]),
+  "cad-spec": role("tanstack", "cad/spec", cadSpecResult, "gpt-6-sol", "high"),
+  "cad-judge": { ...role("tanstack", "cad/judge", judgeResult, "gpt-6-astra", "high"), inputTemplate: "graphics/graphic-judge-input" },
+  "cad-designer": role("tanstack", "cad/designer", designResult),
+  "cad-design-update": { ...role("tanstack", "cad/designer", designResult), inputTemplate: "design/design-update-input" },
+  "cad-planner": { ...role("tanstack", "cad/planner", planResult), inputTemplate: "planning/planner-input" },
   svg: role(
     "tanstack",
     "svg/svg",
@@ -121,6 +128,7 @@ export const roles = {
 export type Role = keyof typeof roles;
 /** Which role handles each stage for each asset type; a new type must name all three. */
 export const assetRoles = {
+  cad: { designer: "cad-designer", update: "cad-design-update", planner: "cad-planner" },
   model: { designer: "designer", update: "design-update", planner: "planner" },
   graphic: { designer: "graphic-designer", update: "graphic-design-update", planner: "graphic-planner" },
   svg: { designer: "svg-designer", update: "svg-design-update", planner: "svg-planner" },

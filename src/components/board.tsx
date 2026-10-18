@@ -40,7 +40,7 @@ function IdeaCard({ idea, entry, showProject, onRefresh }: Context & { idea: Boa
     <ProjectLabel entry={entry} showProject={showProject} />
     <Link to="/projects/$projectId/assets/$assetId" params={{ projectId: project.id, assetId: idea.id }} className="board-card-title idea-brief" title={ideaBrief(idea)}>{ideaTitle(idea)}</Link>
     <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Edit asset</Button>
-    <p className="muted">{ideaSettings(idea, project.assetType !== "model")}</p>
+    <p className="muted">{ideaSettings(idea, project.assetType !== "model", project.assetType)}</p>
     {actions.error && <Alert variant="destructive"><AlertDescription>{actions.error}</AlertDescription></Alert>}
     <div className="board-card-actions">
       {idea.readyAt ? <>
@@ -50,7 +50,7 @@ function IdeaCard({ idea, entry, showProject, onRefresh }: Context & { idea: Boa
       <Button size="icon-sm" variant="ghost" aria-label="Discard asset" disabled={!!project.archivedAt || actions.isPending(idea, "discard")} onClick={() => actions.act(idea, "discard")}><Trash2 size={14} /></Button>
       {!project.archivedAt && <References asset={idea} projectId={project.id} onRefresh={onRefresh} />}
     </div>
-    {editing && <GenerationDialog key={idea.id} idea={idea} projectId={project.id} designVersion={project.designVersion} ready={ready} isGraphics={project.assetType !== "model"} open onOpenChange={setEditing} onRefresh={onRefresh} onSaved={async () => { await onRefresh(); }} />}
+    {editing && <GenerationDialog assetType={project.assetType} key={idea.id} idea={idea} projectId={project.id} designVersion={project.designVersion} ready={ready} isGraphics={project.assetType !== "model"} open onOpenChange={setEditing} onRefresh={onRefresh} onSaved={async () => { await onRefresh(); }} />}
   </li>;
 }
 function useBoardAction(onRefresh: Context["onRefresh"]) {

@@ -13,6 +13,7 @@ import {
 import { namedPalettes, palettePromptText } from "./pixel-palettes";
 import { renderPixels } from "./pixel-render.server";
 import { viewableReferences } from "./svg";
+import { workshopContext } from "./workshop";
 
 const blob = (data: Buffer | string, type: string) => new Blob([typeof data === "string" ? data : new Uint8Array(data)], { type });
 const REVIEW_LABEL = "the review sheet: the art zoomed with a cell grid (rows and columns numbered from 1, stronger lines every 8 cells), at 1x on dark and on light, 2x and 3x, its silhouette, its greyscale values, the colors drawn sorted dark to light with their palette keys, and the frames or layers when there are any";
@@ -61,10 +62,11 @@ export const pixelKind: AssetKind = {
     const base = `graphics/${model.id}/${ctx.attempt}`;
     const directory = node.iteration ? `${base}/iteration-${node.iteration}` : base;
     const sources = (await Promise.all(ctx.references.filter((key) => key.endsWith("/pixel.png")).map(savedGrid))).filter(Boolean);
-    const previousText = previous ? await savedGrid(previous.key) : undefined;
+    const starting = batch.workshop?.startingPoint;
+    const previousText = previous ? await savedGrid(previous.key) : starting?.grid ? await (await readStoredFile(starting.grid)).text() : undefined;
     const previousGrid = previousText ? (JSON.parse(previousText) as PixelGrid) : undefined;
     const shown = [
-      ...(previous ? [{ key: previous.previews[0].key, note: `${previous.previews[0].label}, of the PREVIOUS ATTEMPT` }] : []),
+      ...(previous ? [{ key: previous.previews[0].key, note: `${previous.previews[0].label}, of the PREVIOUS ATTEMPT` }] : starting?.preview ? [{ key: starting.preview, note: "STARTING POINT to edit; preserve it outside the requested changes" }] : []),
       ...viewableReferences(ctx.references).map((key) => ({ key: enlarged(key), note: "style reference, not the artwork to copy" })),
     ];
     const palettes = namedPalettes(batch.design, ctx.request);
@@ -90,7 +92,7 @@ export const pixelKind: AssetKind = {
           input: await roleInput("pixel", {
             design: batch.design,
             name: model.name,
-            request: ctx.request,
+            request: ctx.request + workshopContext(batch.workshop, false),
             limit: `${MAX_PIXELS}x${MAX_PIXELS} cells at most; up to ${MAX_FRAMES} animation frames or ${MAX_LAYERS} layers`,
             palettes: palettePromptText(palettes),
             source: sources.join("\n\n") || "None",

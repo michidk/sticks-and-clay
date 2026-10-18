@@ -2,6 +2,27 @@
 
 The workshop adds reusable construction and visual correction to the existing v4 generation graph. It keeps approved design snapshots, four required modeling passes, immutable versions, separate artistic judging, and existing run/session/cost recovery. The prompts and helpers support staged construction, reusable modeling vocabulary and collection consistency. See [workshop design notes](../prompts/references/WORKSHOP-INSPIRATION.md).
 
+## Idea starting points
+
+An idea can carry one primary starting point separately from appearance references. Upload a file or select a compatible completed version in the project; CAD saved versions seed from their STEP geometry. Source receipts contain the original filename, format, SHA-256, units, derived previews and import mode. Replacement/removal uses the current hash to reject stale edits. Source changes are restricted to Ideas, and every new generation freezes its own receipt in the batch snapshot. Old sources and previous versions remain intact. Generated variants continue from their selected version before considering the original idea source.
+
+- Models: GLB, Blender, STL and OBJ. Fixed Blender import produces a GLB baseline; STL/OBJ units are selectable (mm, cm, m, inches). GLB/Blender use their native scene conventions.
+- CAD: CadQuery Python, STEP/STP, STL, GLB, OBJ and Blender. Python is retained without execution at upload; STEP provides native solids. Mesh inputs are rendered and measured as reconstruction evidence for an editable CadQuery result, with approximation disclosed.
+- SVG and graphics: SVG, PNG, JPEG, WebP, GIF, BMP and TIFF. Native SVG uses the existing static SVG allowlist; unsupported active/external content is rejected. Raster inputs for SVG are redrawn into editable paths. Graphics use a normalized image as the editing source. Still-image workflows use the first GIF/TIFF image.
+- Pixel: saved grid JSON, PNG or GIF. Imported raster art is fitted to at most 128×128 cells using nearest-neighbor sampling and a shared palette of at most 32 entries, with binary transparency; up to eight GIF frames are retained. The original file is preserved alongside the converted grid.
+
+Uploads are limited to 200 MiB, text to 8 MiB, and CadQuery Python to 200,000 bytes. Images have a 40-million-pixel decode limit. File bytes are decoded/validated before publication, ownership and receipts are checked before generation, and reference images retain their separate existing limits.
+
+## CAD generation
+
+CAD projects use a separate CadQuery 2.8 runtime and the shared bounded build/review graph. A per-asset specification snapshots explicit dimensions/counts and declared assumptions before source generation. Only explicit requirements become hard numeric review gates. Builders return complete Python; the host executes it in a fresh supervised process, performs up to two runtime repairs, and owns all exports. Dependency failures and cancellation are not repaired by silently removing features. Zero judge rounds still builds, validates and photographs one unreviewed candidate.
+
+The canonical model uses Z-up millimetres. The runner checks valid positive-volume solids, measures bounds, volume, solid count and inward cylindrical surfaces, exports STEP, reloads it to check validity/count/volume, and validates the tessellated mesh's closure. STL and meter-space GLB are derived outputs. A fixed independent Blender process renders front, rear, left, right, top, bottom and isometric images from the exported GLB at a common orthographic scale. The judge sees those images, the frozen contract and measured checks. Failed or unknown required checks prevent approval even if the visual judge returns a pass. Unsupported properties such as thread fit, through-hole status, minimum wall thickness, structural strength and manufacturing suitability remain explicitly unverified.
+
+Every iteration stores source, STEP/STL/GLB, seven photographs, metrics, checks and a hashed manifest. The source ZIP includes the pinned runner/helpers, specification, dependencies and requirements; install the included requirements and run `python runner.py --blender /path/to/blender`. Optional `--mode quick` writes a separate preview. Completed candidate checkpoints verify artifact hashes on resume. Failed builds preserve the preceding good output. STEP inputs and preceding iterations receive dimensional/volume comparisons; visual evidence retains its coordinate frame. The version page provides the 3D viewer, measurements, review views and downloads. Owner acceptance stays explicit.
+
+CAD source executes with the trusted workshop service user's permissions, like generated Blender Python; process supervision is not an OS sandbox. Keep the existing single-owner deployment boundary.
+
 ## Generation and prompts
 
 New builders receive relevant construction guides selected by the request and stage. `assetkit` supplies developed geometry (extrusions, lathes, lofts, tubes, seeded rocks and supported trees), materials/UV helpers, named roots and meaningful pivots. Guides emphasize primary shape relationships before detail, actual openings and thickness, thumbnail readability, and observed defects tied to specific parts and views.

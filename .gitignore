@@ -7,6 +7,7 @@ output/
 .tanstack/
 eve/.eve/
 .venv/
+.venv-cad/
 __pycache__/
 *.pyc
 .ruff_cache/

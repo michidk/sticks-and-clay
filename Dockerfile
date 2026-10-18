@@ -25,8 +25,11 @@ COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 COPY blender/requirements.txt ./blender/requirements.txt
 COPY blender/materials/requirements.txt ./blender/materials/requirements.txt
+COPY cad/requirements.txt ./cad/requirements.txt
 RUN python3 -m venv .venv \
     && .venv/bin/pip install --no-cache-dir -r blender/requirements.txt
+RUN python3 -m venv .venv-cad \
+    && .venv-cad/bin/pip install --no-cache-dir -r cad/requirements.txt
 COPY . .
 RUN test ! -e .env && test ! -e eve/.eve && test ! -e eve/.output \
     && bun run build \

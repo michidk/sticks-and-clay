@@ -17,6 +17,7 @@ import { DeleteAsset } from "../../../-components/delete-asset";
 import { ReturnToIdea } from "../../../-components/return-to-idea";
 import { GraphicVariant } from "../../../-components/graphic-variant";
 import { PixelExports } from "./pixel-exports";
+import { CadExports } from "./cad-exports";
 import type { Workspace } from "../-lib/model";
 
 const namedParts = z.array(z.object({ name: z.string(), key: z.string() }));
@@ -190,6 +191,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
             </section>
           )}
           {pixelated && current && <PixelExports exports={(current.result as any)?.exports} review={(current.result as any)?.review} />}
+          {data.project.assetType === "cad" && current && <CadExports exports={(current.result as any)?.exports} previews={(current.result as any)?.previews} analysis={(current.result as any)?.analysis} />}
           {builds.length > 1 && (
             <ul className="mt-4 flex flex-wrap gap-2" aria-label="Review rounds">
               {builds.map((build: any, index) => (

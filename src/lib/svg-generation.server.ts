@@ -44,9 +44,10 @@ export const svgKind: AssetKind = {
     // Iteration 0 keeps the one-shot layout so jobs saved before review rounds resume unchanged.
     const base = `graphics/${model.id}/${ctx.attempt}`;
     const directory = node.iteration ? `${base}/iteration-${node.iteration}` : base;
-    const sourceKeys = ctx.references.filter((key) => key.endsWith(".svg"));
+    const starting = batch.workshop?.startingPoint;
+    const sourceKeys = [...(starting?.format === "svg" ? [starting.key.replace(/source\.svg$/, "editable.svg")] : []), ...ctx.references.filter((key) => key.endsWith(".svg"))];
     const source = await Promise.all(sourceKeys.map(async (key) => (await readStoredFile(key)).text()));
-    const images = attachedImages(previous?.previews[0]?.key, await Promise.all(sourceKeys.map(renderOf)), ctx.references);
+    const images = attachedImages(previous?.previews[0]?.key, [...(starting?.preview ? [starting.preview] : []), ...await Promise.all(sourceKeys.map(renderOf))], ctx.references);
     const { result, runId } = await runRole({
       role: "svg",
       stepId: node.iteration ? node.id : "svg",

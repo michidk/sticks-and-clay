@@ -14,6 +14,7 @@ import { workshopContext } from "./workshop";
 export type Review = z.infer<typeof judgeResult>;
 /** One produced version of an asset plus what the judge needs to see of it. */
 export type Candidate = {
+  requiredChecksPassed?: boolean;
   key: string;
   /** Named files that together form this version; `key` remains its cover image. */
   parts?: { name: string; key: string }[];
@@ -33,8 +34,8 @@ export type AssetContext = {
 };
 export type AssetKind = {
   /** Stored with the asset; "pixel" is a PNG that views must show without smoothing. */
-  format: "svg" | "png" | "pixel";
-  judge: "svg-judge" | "graphic-judge" | "pixel-judge";
+  format: "svg" | "png" | "pixel" | "cad";
+  judge: "svg-judge" | "graphic-judge" | "pixel-judge" | "cad-judge";
   /** Produce the first version, or revise `previous` using the judge's `feedback`. */
   build(
     ctx: AssetContext,
@@ -64,11 +65,13 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
       eq(runs.id, model.sourceRunId), eq(runs.modelId, model.parentModelId),
     ));
     const saved = z.object({
-      key: z.string(), parts: z.array(z.object({ name: z.string(), key: z.string() })),
+      key: z.string(), parts: z.array(z.object({ name: z.string(), key: z.string() })).optional(),
+      exports: z.record(z.string(), z.string()).optional(),
+      previews: z.array(z.object({ key: z.string(), label: z.string() })).optional(),
     }).safeParse(source?.result);
     if (saved.success) candidate = {
       ...saved.data,
-      previews: saved.data.parts.map(({ name, key }) => ({ key, label: name })),
+      previews: saved.data.previews ?? saved.data.parts?.map(({ name, key }) => ({ key, label: name })) ?? [{ key: saved.data.key, label: "previous source version" }],
       analysis: {},
     };
   }
@@ -83,7 +86,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
           .update(assetVersions)
           .set({
             status: "building",
-            phase: review ? "Revising from review feedback" : "Generating final graphic",
+            phase: review ? "Revising from review feedback" : kind.format === "cad" ? "Building CAD geometry" : "Generating final graphic",
             iteration: node.iteration,
             progress: progress(node.iteration),
           })
@@ -95,7 +98,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
           .set({
             artifacts: { image: candidate.key, stage: "final", format: kind.format, ...(candidate.parts ? { parts: candidate.parts } : {}), ...(candidate.exports ? { exports: candidate.exports } : {}) },
             visualTarget: candidate.key,
-            phase: reviewed ? "Reviewing rendered preview" : "Graphic ready",
+            phase: reviewed ? "Reviewing rendered preview" : kind.format === "cad" ? "CAD ready" : "Graphic ready",
             progress: progress(node.iteration, 0.6),
             status: reviewed ? "judging" : "building",
           })
@@ -127,6 +130,10 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
         });
         await assertJobActive();
         review = result;
+        if (candidate.requiredChecksPassed === false) {
+          result.passed = false;
+          result.improvements.push({ priority: "major", issue: "Required geometric checks failed or remain unknown", action: "Inspect the measured checks against the frozen CAD contract and correct the source", view: "metrics" });
+        }
         passed = result.passed;
         await db
           .update(assetVersions)
@@ -151,7 +158,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
           verdict === "approved"
             ? "Approved"
             : verdict === "unreviewed"
-              ? "Graphic ready · no review requested"
+              ? `${kind.format === "cad" ? "CAD" : "Graphic"} ready · no review requested`
               : "Complete · review limit reached",
         verdict,
         visualTarget: candidate!.key,
