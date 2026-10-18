@@ -41,7 +41,7 @@ charge at every step that matters.
 
 <p align="center">
   <img src=".github/images/model-review.png"
-    alt="A generated low-poly sedan in the interactive 3D viewer, next to the judge's review with a 78/100 score and a requested change"
+    alt="The demo's approved Paloma Sedan in the interactive 3D viewer, with a 91/100 review score"
     width="1200">
 </p>
 
@@ -180,6 +180,18 @@ configuration, scopes, and deployment behind an auth proxy.
   <img src=".github/images/model-mobile.png"
     alt="The 3D model viewer on a phone"
     width="22%">
+</p>
+
+## Read-only demo
+
+The demo includes a public homepage and an exported project you can explore
+without a database or AI credentials. Generation and changes are disabled.
+Build it with `bun run build:demo`; see [the demo guide](docs/demo-mode.md).
+
+<p align="center">
+  <img src=".github/images/demo-homepage.png"
+    alt="Sticks & Clay demo homepage with links to explore the demo and self-host the workshop"
+    width="1200">
 </p>
 
 ## 🧰 Tech stack
