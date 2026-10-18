@@ -31,7 +31,7 @@ export function ProjectSetup({
     <main className="project-overview">
       <Breadcrumbs
         items={[
-          { label: "Projects", link: { to: "/" } },
+          { label: "Projects", link: { to: "/projects" } },
           { label: project.name },
         ]}
       />

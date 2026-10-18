@@ -35,3 +35,6 @@ coverage/
 *.tmp
 *.local.*
 .DS_Store
+
+# Demo build output
+.vercel/

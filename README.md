@@ -41,7 +41,7 @@ charge at every step that matters.
 
 <p align="center">
   <img src=".github/images/model-review.png"
-    alt="A generated low-poly sedan in the interactive 3D viewer, next to the judge's review with a 78/100 score and a requested change"
+    alt="The demo's approved Paloma Sedan in the interactive 3D viewer, with a 91/100 review score"
     width="1200">
 </p>
 
@@ -177,16 +177,23 @@ configuration, scopes, and deployment behind an auth proxy.
   and retry that survives restarts and lost sandboxes.
 - 💸 **Honest costs.** Every request is recorded with snapshotted rates and
   usage provenance, including cancelled and failed attempts.
-- 📱 **Desktop and phone.** The full workflow, including the 3D viewer, works
-  on a small screen.
 
 <p align="center">
   <img src=".github/images/board.png"
     alt="Project board with Ideas, Ready, In progress, Review and Done columns"
-    width="68%">
-  <img src=".github/images/model-mobile.png"
-    alt="The 3D model viewer on a phone"
-    width="22%">
+    width="1200">
+</p>
+
+## Read-only demo
+
+The demo includes a public homepage and an exported project you can explore
+without a database or AI credentials. Generation and changes are disabled.
+Build it with `bun run build:demo`; see [the demo guide](docs/demo-mode.md).
+
+<p align="center">
+  <img src=".github/images/demo-homepage.png"
+    alt="Sticks & Clay demo homepage with links to explore the demo and self-host the workshop"
+    width="1200">
 </p>
 
 ## 🧰 Tech stack
@@ -195,7 +202,7 @@ configuration, scopes, and deployment behind an auth proxy.
 | --- | --- |
 | Runtime | Bun 1.4, Node 24 |
 | Web | React 19, TanStack Start and Router, Vite, Tailwind 4, shadcn/ui |
-| 3D viewer | Three.js with React Three Fiber |
+| 3D viewer | [shadcn-3d-viewer](https://github.com/michidk/shadcn-3d-viewer) |
 | Data | PostgreSQL 17 with Drizzle; local or S3-compatible file storage |
 | Agents | Eve agent runtime, TanStack AI, any OpenAI-compatible provider |
 | Modeling | Blender 4.5 LTS in isolated processes behind a loopback MCP service |
@@ -242,7 +249,8 @@ Open <http://localhost:3000>. Eve listens on `127.0.0.1:33441`, Blender MCP on
 `127.0.0.1:33442`, and PostgreSQL on `127.0.0.1:55439`. The supervisor also
 starts the durable worker. For a production build, run `bun run build`, then
 `PORT=3000 bun .output/server/index.mjs`, and keep the background services
-running separately.
+running separately. `bun run build:demo` builds the read-only public demo
+with its landing page; see [the demo guide](docs/demo-mode.md).
 
 On Windows, use WSL for the service launcher. See
 [development and operations](docs/development.md) for troubleshooting,
@@ -278,6 +286,7 @@ running worker; Python and real Blender checks run separately. See
 | [Prompt guide](prompts/README.md) | Authored instructions and third-party attribution |
 | [Design guide](design.md) | Interface theme and component conventions |
 | [Development and operations](docs/development.md) | Source map, services, persistence, tests |
+| [Read-only demo](docs/demo-mode.md) | Landing page, demo fixtures, Vercel build |
 
 ## 📁 Project layout
 
@@ -291,7 +300,8 @@ src/db/, drizzle/  Schema and migrations
 eve/agent/         Agent tools and capability-scoped workspaces
 blender/           Isolated Blender execution, export, analysis, materials
 prompts/           Authored role instructions and templates
-scripts/           Service supervisor, worker, migrations
+scripts/           Service supervisor, worker, migrations, demo build
+demo/              Exported projects shown by the read-only demo
 ```
 
 PostgreSQL, `data/`, and Eve session storage form one recoverable state; back
