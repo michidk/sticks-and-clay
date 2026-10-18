@@ -22,7 +22,8 @@ export const spriteOptionsSchema = z
       .max(32)
       .optional(),
     outline: z
-      .union([z.literal(""), z.string().regex(/^#[0-9a-fA-F]{6}$/)])
+      // "auto": the darkest sheet color darkened (or the palette's darkest), counted in the color budget.
+      .union([z.literal(""), z.literal("auto"), z.string().regex(/^#[0-9a-fA-F]{6}$/)])
       .default(""),
   })
   .refine((value) => !value.palette || value.palette.length <= value.colors, {

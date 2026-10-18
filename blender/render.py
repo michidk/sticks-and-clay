@@ -31,7 +31,7 @@ def main():
     candidate=directory/('.candidate-'+uuid.uuid4().hex)
     shutil.copytree(directory,candidate,ignore=shutil.ignore_patterns('.candidate-*','.published','preview','output.last','__pycache__','*.zip','output-current.json','publication-pending.json'))
     try:
-        for pattern in ('front.png','rear.png','detail.png','metrics.json','asset.glb','source.blend','sprites.png','sprites.json','sprite-checks.json','frame-*.png','review-*-f*-d*.png','asset-lod-*.glb','lods.json','build-receipt.json','state.json'):
+        for pattern in ('front.png','rear.png','detail.png','metrics.json','asset.glb','source.blend','sprites.png','sprites.json','sprite-checks.json','sprites.unity.json','sprites.godot.json','frame-*.png','review-*-f*-d*.png','asset-lod-*.glb','lods.json','build-receipt.json','state.json'):
             for path in candidate.glob(pattern):path.unlink()
         if bpy:
             runpy.run_path(str(candidate / 'rebuild.py'), run_name='__main__', init_globals={'STUDIO_CANDIDATE': True})
@@ -41,7 +41,7 @@ def main():
         if code:raise SystemExit(code)
         names=['front.png','rear.png','detail.png','metrics.json']+(['asset.glb','source.blend'] if args.mode=='final' else [])
         if any(not (candidate/name).exists() for name in names):raise RuntimeError('Build omitted required artifacts')
-        for pattern in ('sprites.png','sprites.json','sprite-checks.json','frame-*.png','review-*-f*-d*.png','asset-lod-*.glb','lods.json'):
+        for pattern in ('sprites.png','sprites.json','sprite-checks.json','sprites.unity.json','sprites.godot.json','frame-*.png','review-*-f*-d*.png','asset-lod-*.glb','lods.json'):
             names.extend(path.name for path in candidate.glob(pattern))
         if args.mode=='final' and (candidate/'textures').exists():names.append('textures')
         digest=hashlib.sha256((candidate/'asset.py').read_bytes()).hexdigest()

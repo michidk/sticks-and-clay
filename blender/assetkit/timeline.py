@@ -4,10 +4,15 @@ def select_clip(scene, clip, document):
     """Resolve stable GLB animation indices through the importer's name mapping."""
     if not clip:return
     if clip.startswith('@animation:'):
-        from io_scene_gltf2.blender.imp.blender_gltf import BlenderGlTF
+        try:
+            # Blender 5.x moved the importer's naming helper into a shared module.
+            from io_scene_gltf2.blender.com.gltf2_blender_utils import find_unused_name
+        except ImportError:
+            from io_scene_gltf2.blender.imp.blender_gltf import BlenderGlTF
+            find_unused_name=BlenderGlTF.find_unused_name
         index=int(clip.split(':',1)[1]); names=[]; used=set()
         for i, animation in enumerate(document.get('animations',[])):
-            name=BlenderGlTF.find_unused_name(used,animation.get('name') or 'Anim_%d'%i)
+            name=find_unused_name(used,animation.get('name') or 'Anim_%d'%i)
             names.append(name);used.add(name)
         if index<0 or index>=len(names):raise ValueError('Animation index not found')
         clip=names[index]
