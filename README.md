@@ -158,12 +158,15 @@ configuration, scopes, and deployment behind an auth proxy.
   API, or editable vector artwork with previews, variants, and safe SVG output
   (no scripts, external content, or embedded rasters).
 - 👾 **Pixel art.** Drawn cell by cell on a grid (a palette and one row of text
-  per row) instead of generated, rendered exactly by the app, reviewed against
-  cell-level measurements, and shown enlarged without smoothing.
+  per row) instead of generated, rendered exactly by the app, reviewed on a
+  sheet (1x on dark and light, silhouette, values) with craft measurements,
+  optionally animated or split into paperdoll layers, and exported as a
+  baseline-aligned sheet with Unity and Godot import descriptions.
 - 🧪 **Procedural PBR materials** generated as recipes, previewed live, and
   assigned to models.
 - 🎞️ **Sprites from 3D.** Render pixel or smooth sprite sheets with 1, 4, or
-  8 directions, animation frames, and shared palettes, plus LODs.
+  8 directions, animation frames, shared palettes and outlines, with Unity and
+  Godot import descriptions, plus LODs.
 - 🗂️ **Board and export.** Ideas → Ready → In progress → Review → Done, and a
   ZIP export of accepted assets.
 - 🔁 **Durable jobs.** A PostgreSQL-backed worker with checkpoints, resume,

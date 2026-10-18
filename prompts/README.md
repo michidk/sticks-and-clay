@@ -12,7 +12,7 @@ A prompt's name is its path under `prompts/` without `.md` (for example `design/
 | `planning/` | `model-brief` and `graphic-brief` draft the editable brief; `planner` and `graphic-planner` turn a submitted brief into individual tasks. SVG and pixel-art planning use the graphic planner. |
 | `models/` | 3D generation: `builder`, `photographer`, `judge`, `visual-target` (the imagegen concept step), and the required v4 passes `modeling-pass` and `modeling-review`. |
 | `graphics/` | `graphic` (the final prompt sent to the Image API) and `graphic-judge` with its input; the SVG and pixel judges share this input template. |
-| `pixel/` | `pixel` (a plan, then a palette and rows of cells), `pixel-input` and `pixel-judge`; their craft rules come from the surveyed pixel-art skills listed in `references/SOURCES.md`. |
+| `pixel/` | `pixel` (a plan with a numeric proportion plan, then a palette with one key per tone and rows of cells; frames or layers when asked; patches on revisions), `pixel-input` and `pixel-judge` (reads the review sheet and the named measurement warnings in a fixed critique order); their craft rules come from the surveyed pixel-art skills listed in `references/SOURCES.md`. |
 | `svg/` | `svg` (a short plan, then the markup through the text model), `svg-input` and `svg-judge`. |
 | `materials/` | `material-planner`, `material-builder` and `material-judge`. |
 | `references/` | Focused construction references added to role instructions, plus `SOURCES.md` and `WORKSHOP-INSPIRATION.md`, which are documentation and excluded from agent input. |
