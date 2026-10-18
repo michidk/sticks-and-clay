@@ -38,7 +38,7 @@ function AssetPage() {
   const asset = data?.assets.find((asset) => asset.id === assetId);
   const versions = data?.assetVersions.filter((version) => version.assetId === assetId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) ?? [];
   return <main>
-    <Link to="/projects/$projectId" params={{ projectId }} search={{ tab: "assets" }}>Back to project</Link>
+    <Link to="/projects/$projectId" params={{ projectId }} search={{}}>Back to project</Link>
     {error && <Alert variant="destructive"><AlertDescription>{error} <Button variant="ghost" size="sm" onClick={() => refresh().catch((error) => setError(error instanceof Error ? error.message : "Could not load this asset"))}>Retry</Button></AlertDescription></Alert>}
     {!data && !error && <WorkspaceSkeleton />}
     {data && !asset && <p className="muted mt-6">Asset not found in this project.</p>}

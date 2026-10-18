@@ -137,7 +137,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
           )}
           {!archived && (
             <ReturnToIdea id={modelId} name={name} noun="graphic" canDelete={!working}
-              onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "assets", stage: "idea" } })} />
+              onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "idea" } })} />
           )}
           {!archived && (
             <DeleteAsset id={modelId} name={name} disabled={working}
