@@ -235,6 +235,9 @@ export async function renderMaterial(projectId: string) {
     "height.png",
     "ao.png",
     "orm.png",
+    ...(await Promise.all(["hdrp_mask.png", "urp_metallic_smoothness.png", "normal_dx.png"].map(async (name) =>
+      await readFile(resolve(root, "output", name)).then(() => name, () => null),
+    ))).filter((name): name is string => name !== null),
     "review.png",
     ...((await readFile(resolve(root, "output/lighting.png")).then(
       () => true,

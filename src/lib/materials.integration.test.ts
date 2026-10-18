@@ -69,6 +69,8 @@ integration(
       await db.update(jobs).set({ status: "done" }).where(eq(jobs.id, id));
       const [saved] = await db.select().from(jobs).where(eq(jobs.id, id));
       const files = JSON.parse(saved.checkpoint.files);
+      for (const name of ["hdrp_mask.png", "urp_metallic_smoothness.png", "normal_dx.png"])
+        expect(files).toContain(`materials/${id}/output/${name}`);
       expect(files).toContain(`materials/${id}/output/height.png`);
       expect(
         (

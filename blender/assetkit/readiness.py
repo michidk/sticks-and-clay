@@ -3,6 +3,7 @@ import json
 import math
 import bpy
 import bmesh
+from .spatial import inspect_spatial
 
 
 def inspect_asset(parts, dimensions):
@@ -49,6 +50,7 @@ def inspect_asset(parts, dimensions):
                 if event.get('socket') and event['socket'] not in sockets:
                     issue("event_socket",obj,f"Missing event socket {event['socket']}")
     clips={k[5:]:json.loads(bpy.context.scene[k]) for k in bpy.context.scene.keys() if k.startswith('clip_')}
-    return {"version":1,"status":"warnings" if findings else "passed","findings":findings,
+    spatial=inspect_spatial(parts)
+    return {"version":2,"status":"warnings" if findings or spatial['findings'] else "passed","findings":findings,"spatial":spatial,
             "nodes":nodes,"clips":clips,"fps":bpy.context.scene.render.fps/bpy.context.scene.render.fps_base,"dimensions":dimensions,
-            "limitations":["Source topology and declared interfaces only; exported GLB receives separate analysis.","No general intersection or physical simulation proof."]}
+            "limitations":["Source topology, current-pose surface intersections and declared interfaces only; exported GLB receives separate analysis.","No physical simulation proof."]}

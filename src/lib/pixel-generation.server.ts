@@ -5,7 +5,8 @@ import { runRole, roleInput } from "../modules/ai/index.server";
 import type { AssetKind } from "./reviewed-asset.server";
 import { getStorage, readStoredFile } from "./storage.server";
 import { ZodError } from "zod";
-import { analyzePixels, enlarged, MAX_PIXELS, PixelGridError, pixelGridSchema, type PixelGrid } from "./pixel";
+import { analyzePixels, enlarged, MAX_PIXELS, PixelGridError, pixelGridSchema, validatePixelPalette, type PixelGrid } from "./pixel";
+import { checkpoint, jobContext } from "./checkpoint.server";
 import { namedPalettes, palettePromptText } from "./pixel-palettes";
 import { renderPixels } from "./pixel-render.server";
 import { viewableReferences } from "./svg";
@@ -34,11 +35,16 @@ async function save(
   const preview = `${directory}/preview.png`;
   await storage.upload(blob(rendered.native, "image/png"), key);
   await storage.upload(blob(rendered.preview, "image/png"), preview);
+  const review = `${directory}/review.png`;
+  await storage.upload(blob(rendered.review, "image/png"), review);
   await storage.upload(blob(JSON.stringify({ ...grid, plan: undefined }), "application/json"), `${directory}/grid.json`);
   await db.update(runs).set({ result: { ...result, key, analysis } }).where(eq(runs.id, runId));
   return {
     key,
-    previews: [{ key: preview, label: `the art enlarged ${rendered.scale}x on white, each square one cell` }],
+    previews: [
+      { key: preview, label: `the art enlarged ${rendered.scale}x on white, each square one cell` },
+      { key: review, label: "review sheet, left to right: top row native 1x on light and dark, 2x on dark, 3x on light; bottom row enlarged on dark, silhouette on light, grayscale on light. Native panels are small by design; use the enlarged image for cell coordinates" },
+    ],
     analysis,
   };
 }
@@ -59,6 +65,11 @@ export const pixelKind: AssetKind = {
       ...viewableReferences(ctx.references).map((key) => ({ key: enlarged(key), note: "style reference, not the artwork to copy" })),
     ];
     const palettes = namedPalettes(batch.design, ctx.request);
+    const job = jobContext.getStore();
+    if (!job) throw new Error("Missing durable job context");
+    // Jobs that already began drawing retain advisory palette checks on resume.
+    if (!job.checkpoint["pixel:palette-contract"])
+      await checkpoint("pixel:palette-contract", Object.keys(job.checkpoint).some((key) => /^step:(pixel|builder:)/.test(key)) ? "1" : "2");
     // Models most often fail the strict row/column format, so a malformed drawing gets one corrected retry
     // with the problem named, before the version fails.
     let problem = "None";
@@ -88,6 +99,7 @@ export const pixelKind: AssetKind = {
         });
         runId = answer.runId;
         const grid = pixelGridSchema.parse(answer.result);
+        if (job.checkpoint["pixel:palette-contract"] === "2") validatePixelPalette(grid, palettes);
         const analysis = analyzePixels(grid, palettes);
         const rendered = await renderPixels(grid);
         return await save({ grid, analysis, rendered, result: answer.result, runId, directory });

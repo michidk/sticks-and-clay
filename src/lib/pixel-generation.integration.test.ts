@@ -21,12 +21,13 @@ const verdict = (passed: boolean, summary: string) => ({
 });
 
 // `passes` > 1 replays the finished job to prove resume is idempotent; a retried drawing leaves a failed run, so retries run once.
-async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2) {
+async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2, paletteContract?: "1" | "2") {
   const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
   await db.insert(projects).values({ id: projectId, name: "Review fixture", description: "test", assetType: "pixel", status: "ready" });
-  await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design: "Green circles", designVersion: 1, status: "building" });
+  await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design: paletteContract ? "Game Boy circles" : "Green circles", designVersion: 1, status: "building" });
   await db.insert(assetVersions).values({ id: modelId, projectId, batchId, name: "Circle", prompt: "A green circle" });
   const checkpoint: Record<string, string> = {};
+  if (paletteContract) checkpoint["pixel:palette-contract"] = paletteContract;
   for (const item of saved) {
     const id = crypto.randomUUID();
     checkpoint[`step:${item.step}`] = id;
@@ -45,7 +46,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
   };
   const cleanup = async () => {
     for (const dir of [base, `${base}/iteration-1`])
-      for (const file of ["pixel.png", "preview.png", "grid.json"])
+      for (const file of ["pixel.png", "preview.png", "review.png", "grid.json"])
         if (await getStorage().exists(`${dir}/${file}`)) await getStorage().delete(`${dir}/${file}`);
     await db.delete(jobs).where(eq(jobs.id, jobId));
     await db.delete(runs).where(eq(runs.projectId, projectId));
@@ -93,6 +94,22 @@ integration("a drawing that does not fit its grid is retried once with the probl
     expect(failed[0].error).toContain("Expected 4 rows, got 5");
   } finally {
     await t.cleanup();
+  }
+});
+
+integration("new palette contracts retry illegal colors; saved contracts retain advisory behavior", async () => {
+  const legal = { ...drawing(2), palette: [{ key: ".", color: "transparent" }, { key: "o", color: "#306230" }] };
+  for (const contract of ["1", "2"] as const) {
+    const t = await scenario(0, [
+      { step: "pixel", role: "pixel", iteration: 0, result: drawing(1) },
+      { step: "pixel:fix1", role: "pixel", iteration: 0, result: legal },
+    ], 1, contract);
+    try {
+      await t.run();
+      const saved = JSON.parse(await (await getStorage().download(`${t.base}/grid.json`)).text());
+      expect(saved.rows[1]).toBe(contract === "2" ? "oo.." : "o...");
+      expect(await getStorage().exists(`${t.base}/review.png`)).toBe(true);
+    } finally { await t.cleanup(); }
   }
 });
 

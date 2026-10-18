@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import sharp from "sharp";
-import { analyzePixels, enlarged, validatePixelGrid, type PixelGrid } from "./pixel";
+import { analyzePixels, enlarged, validatePixelGrid, validatePixelPalette, type PixelGrid } from "./pixel";
 import { renderPixels } from "./pixel-render.server";
 
 const grid = (rows: string[], palette = [{ key: ".", color: "transparent" }, { key: "o", color: "#102030" }, { key: "h", color: "#ffd060" }]): PixelGrid =>
@@ -65,4 +65,29 @@ test("a named classic palette in the brief is expanded to its exact colors", asy
 test("a saved pixel image is shown to vision models through its enlarged copy", () => {
   expect(enlarged("graphics/m/a/iteration-1/pixel.png")).toBe("graphics/m/a/iteration-1/preview.png");
   expect(enlarged("references/photo.png")).toBe("references/photo.png");
+});
+
+test("review evidence handles maximum-size rectangular grids and keeps exact native art", async () => {
+  const drawing = grid(Array.from({ length: 4 }, () => "o".repeat(128)));
+  const result = await renderPixels(drawing);
+  expect(await sharp(result.review).metadata()).toMatchObject({ width: 1248, height: 832 });
+  expect(await sharp(result.native).metadata()).toMatchObject({ width: 128, height: 4 });
+});
+
+test("named palettes reject off-palette RGB while allowing clear backgrounds and explicit alpha", () => {
+  expect(() => validatePixelPalette(heart, [{ colors: ["#102030"] }])).toThrow("keys h");
+  expect(() => validatePixelPalette(heart, [])).not.toThrow();
+  expect(() => validatePixelPalette(heart, [{ colors: ["#102030", "#ffd060"] }])).not.toThrow();
+  const alpha = grid(["oooo", "oooo", "oooo", "oooo"], [{ key: "o", color: "#10203080" }]);
+  expect(() => validatePixelPalette(alpha, [{ colors: ["#102030"] }])).not.toThrow();
+});
+
+test("local transition evidence distinguishes flat fills from checkerboard texture", () => {
+  const flat = analyzePixels(grid(Array(8).fill("oooooooo")));
+  const noisy = analyzePixels(grid(Array.from({ length: 8 }, (_, y) => y % 2 ? "hohohoho" : "ohohohoh")));
+  expect(flat.busiestPatch.ratio).toBe(0);
+  expect(noisy.busiestPatch).toMatchObject({ left: 0, top: 0, width: 8, height: 8, ratio: 1 });
+  expect(flat.valueRange?.span).toBe(0);
+  expect(noisy.valueRange!.span).toBeGreaterThan(100);
+  expect(analyzePixels(grid(Array(4).fill("...."))).valueRange).toBeNull();
 });

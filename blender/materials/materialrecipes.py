@@ -2,9 +2,9 @@ import math
 import numpy as np
 
 if __package__:
-    from .materialcore import check, fracture_mask, linear, noise, scatter
+    from .materialcore import check, derive_surface, fracture_mask, linear, noise, scatter
 else:
-    from materialcore import check, fracture_mask, linear, noise, scatter
+    from materialcore import check, derive_surface, fracture_mask, linear, noise, scatter
 
 def build_material(params):
     p = check(params); n = p['size']; recipe = p['recipe']; seed = p['seed']
@@ -92,23 +92,9 @@ def build_material(params):
     centered = shape - shape.mean()
     height_mm = centered * (p['reliefMm'] / max(float(np.ptp(shape)),1e-8))
     height_mm = height_mm.astype(np.float32)
-    dx = (np.roll(height_mm,-1,1)-np.roll(height_mm,1,1))/(2*mm_per_px)
-    dy = (np.roll(height_mm,-1,0)-np.roll(height_mm,1,0))/(2*mm_per_px)
-    normal = np.stack([-dx,dy,np.ones_like(dx)],-1)
-    normal /= np.linalg.norm(normal,axis=-1,keepdims=True)
-    occlusion = np.zeros((n,n),np.float32)
-    for angle in np.arange(8)*math.tau/8:
-        horizon = np.zeros_like(occlusion)
-        for radius_mm in np.geomspace(max(p['featureMm']/16,.5),max(p['featureMm'],2),6):
-            step=max(1,radius_mm/mm_per_px)
-            ox,oy=round(math.cos(angle)*step),round(math.sin(angle)*step)
-            distance=max(math.hypot(ox,oy)*mm_per_px,1e-6)
-            slope=(np.roll(height_mm,(oy,ox),(0,1))-height_mm)/distance
-            horizon=np.maximum(horizon,slope)
-        occlusion += horizon / np.sqrt(1+horizon*horizon)
-    ao=np.clip(1-occlusion/8,0,1)
+    normal,ao=derive_surface(height_mm,p['tileMetres'],p['featureMm'])
     window=max(float(np.abs(height_mm).max()),1e-8)
     height=height_mm/(2*window)+.5
-    return dict(albedo=albedo,roughness=roughness,metallic=metal,normal=normal*.5+.5,
+    return dict(albedo=albedo,roughness=roughness,metallic=metal,normal=normal,
                 height=height,ao=ao,heightWindowMm=[-window,window],particles=counts,
                 warnings=warnings+(['Particle count capped; requested density is not fully resolved.'] if counts==2048 else []))

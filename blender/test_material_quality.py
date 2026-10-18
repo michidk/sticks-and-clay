@@ -8,7 +8,7 @@ import tempfile
 import unittest
 import re
 import numpy as np
-from blender.materials.materialkit import build_material, layer, noise
+from blender.materials.materialkit import build_material, derive_surface, layer, noise, seam_ratio
 from blender.materials.materialcalibration import calibrate
 
 class MaterialQualityTests(unittest.TestCase):
@@ -46,6 +46,17 @@ class MaterialQualityTests(unittest.TestCase):
         self.assertEqual(result['particles'],0)
         self.assertTrue(any('unresolved' in w for w in result['warnings']))
 
+    def test_sparse_seams_and_shared_surface_derivatives(self):
+        sparse=np.zeros((64,64),np.float32);sparse[:,-1]=1
+        self.assertLessEqual(seam_ratio(sparse),1.5)
+        broken=np.tile(np.linspace(0,1,64),(64,1))
+        self.assertGreater(seam_ratio(broken),1.5)
+        result=build_material({'recipe':'wood','size':64,'featureMm':75})
+        low,high=result['heightWindowMm']
+        normal,ao=derive_surface(low+result['height']*(high-low),1,75)
+        np.testing.assert_allclose(normal,result['normal'],atol=1e-6)
+        np.testing.assert_allclose(ao,result['ao'],atol=1e-6)
+
     def test_calibration_is_optional_and_preserves_height(self):
         corpus=json.loads((pathlib.Path(__file__).parent/'materials/calibration-targets.json').read_text())
         result=build_material({'recipe':'wood','size':64})
@@ -53,6 +64,8 @@ class MaterialQualityTests(unittest.TestCase):
         self.assertIs(unchanged,result);self.assertFalse(report['applied'])
         changed,report=calibrate(result,'wood',.5,corpus)
         self.assertTrue(report['applied']);np.testing.assert_array_equal(changed['height'],result['height'])
+        np.testing.assert_array_equal(changed['roughness'],result['roughness'])
+        self.assertIn('roughnessSkipped',report)
         _,report=calibrate(result,'sand',1,corpus);self.assertEqual(report['reason'],'unsupported class')
 
     def test_cache_hit_corruption_and_failed_build_retention(self):

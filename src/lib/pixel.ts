@@ -54,6 +54,12 @@ export function validatePixelGrid(grid: PixelGrid) {
   return { width: grid.width, height: grid.height, rgba, keys };
 }
 
+/** Named palettes constrain RGB values; transparency remains available for sprite backgrounds. */
+export function validatePixelPalette(grid: PixelGrid, presets: { colors: string[] }[]) {
+  const outside = analyzePixels(grid, presets).colorsOutsideNamedPalette;
+  if (outside?.length) throw new PixelGridError(`Palette keys ${outside.join(", ")} use colors outside the named palette; replace them with exact supplied hex values`);
+}
+
 /** Measurements for the reviewer, in cells: palette use, how the art sits on the grid, and stray single cells. */
 export function analyzePixels(grid: PixelGrid, presets: { colors: string[] }[] = []) {
   const { width, height, rgba, keys } = validatePixelGrid(grid);
@@ -85,6 +91,24 @@ export function analyzePixels(grid: PixelGrid, presets: { colors: string[] }[] =
   }));
   const named = new Set(presets.flatMap((preset) => preset.colors.map((hex) => hex.toLowerCase())));
   const hex = (c: number[]) => `#${[c[0], c[1], c[2]].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+  const values = drawn.map(({ rgba: c }) => Math.round(.2126 * c[0] + .7152 * c[1] + .0722 * c[2]));
+  // Local color transitions expose noisy patches without declaring deliberate texture a defect.
+  let worstPatch = { left: 0, top: 0, width: 0, height: 0, transitions: 0, comparisons: 0, ratio: 0 };
+  for (let y = 0; y < height; y += 4) for (let x = 0; x < width; x += 4) {
+    let transitions = 0, comparisons = 0;
+    const w = Math.min(8, width - x), h = Math.min(8, height - y);
+    for (let py = y; py < y + h; py++) for (let px = x; px < x + w; px++) {
+      const a = py * width + px;
+      for (const b of [px + 1 < x + w ? a + 1 : -1, py + 1 < y + h ? a + width : -1]) {
+        if (b < 0 || rgba[a * 4 + 3] <= 8 || rgba[b * 4 + 3] <= 8) continue;
+        comparisons++;
+        if ([0, 1, 2, 3].some((channel) => rgba[a * 4 + channel] !== rgba[b * 4 + channel])) transitions++;
+      }
+    }
+    const ratio = comparisons ? transitions / comparisons : 0;
+    if (ratio > worstPatch.ratio || (ratio === worstPatch.ratio && comparisons > worstPatch.comparisons))
+      worstPatch = { left: x, top: y, width: w, height: h, transitions, comparisons, ratio };
+  }
   return {
     size: `${width}x${height}`,
     colorsUsed: [...used.keys()].filter((key) => (color.get(key) ?? "").toLowerCase() !== "transparent").length,
@@ -96,6 +120,9 @@ export function analyzePixels(grid: PixelGrid, presets: { colors: string[] }[] =
     ...(named.size ? { colorsOutsideNamedPalette: drawn.filter(({ rgba: c }) => !named.has(hex(c))).map(({ key }) => key) } : {}),
     transparentShare: Math.round((1 - inked / (width * height)) * 1000) / 1000,
     isolatedCells: orphans,
+    valueRange: values.length ? { min: Math.min(...values), max: Math.max(...values), span: Math.max(...values) - Math.min(...values) } : null,
+    busiestPatch: { ...worstPatch, ratio: Math.round(worstPatch.ratio * 1000) / 1000, coordinates: "zero-based cells; visible neighbors only" },
+    boundingBoxFill: inked ? Math.round(inked / ((right - left + 1) * (bottom - top + 1)) * 1000) / 1000 : 0,
     ...(inked
       ? {
           marginsInCells: { left, top, right: width - 1 - right, bottom: height - 1 - bottom },

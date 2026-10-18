@@ -17,7 +17,10 @@ def calibrate(result, recipe, strength, corpus):
     out=dict(result);mask=(1-result['metallic'])[...,None]
     ratio=np.clip(np.array(target['statistics']['albedo']['mean'])/np.maximum(before['albedoMeanLinear'],1e-6),.5,2)
     out['albedo']=np.clip(result['albedo']*(1+mask*strength*(ratio-1)),0,1)
-    delta=np.clip(target['statistics']['roughness']['mean']-before['roughnessMean'],-.2,.2)
+    roughness=target['statistics']['roughness']
+    degenerate=roughness.get('std',0)==0 and roughness['mean'] in (0,1)
+    delta=0 if degenerate else np.clip(roughness['mean']-before['roughnessMean'],-.2,.2)
     out['roughness']=np.clip(result['roughness']+strength*delta*(1-result['metallic']),.05,1)
     report.update(applied=True,source=target['source'],after=measure(out))
+    if degenerate:report['roughnessSkipped']='Constant endpoint reference has no usable response statistics'
     return out,report

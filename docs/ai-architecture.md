@@ -61,6 +61,8 @@ Collection output follows the same per-type split. When a graphic or SVG batch s
 
 ## Filesystem and enforcement
 
+New pixel builds also store `review.png` alongside the unchanged native and enlarged images. Its labelled panels are described to the judge: native 1x, 2x/3x, dark-background enlargement, silhouette and grayscale. Analysis adds visible-color value span, bounding-box fill and the busiest up-to-8x8 patch's adjacent-color transition ratio, all advisory. Named palette expansion includes Endesga 32, a fixed NES RGB preset and 1-bit. New jobs checkpoint `pixel:palette-contract = 2` and reject used RGB colors outside the supplied palette union through the existing single correction retry; fully transparent cells remain allowed and alpha is assessed separately. Jobs with saved pixel build steps and no contract marker retain v1 advisory behavior on resume. The marker persists across later review rounds and retries. Pure black/white and hue-shift preferences defer to the approved palette.
+
 Eve and TanStack adapters live in `src/modules/ai/internal`. Only the public AI entrypoint imports them. An architecture test rejects external imports of internal modules. Pipeline traversal has no provider, database, or filesystem dependency. Asset handlers own those effects.
 
 ## Extending execution

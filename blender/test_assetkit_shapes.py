@@ -16,6 +16,47 @@ from assetkit.sprites import sample_frames
 class ShapeTests(unittest.TestCase):
     def setUp(self):bpy.ops.wm.read_factory_settings(use_empty=True)
 
+    def test_placement_and_copies_preserve_child_pivots(self):
+        group=kit.root('Assembly')
+        body=kit.rounded_box('Body',size=(2,2,2),location=(3,0,4),owner=group,radius=0)
+        socket=kit.socket('socket_grip',(3,0,5),body)
+        kit.slot(body,'grip',socket.name,['tool'])
+        kit.sit_on_ground(group)
+        bpy.context.view_layer.update()
+        self.assertAlmostEqual(body.matrix_world.translation.z,1)
+        self.assertAlmostEqual(body.children[0].matrix_world.translation.z,2)
+        support=kit.rounded_box('Support',size=(4,4,2),radius=0)
+        kit.place_on(group,support,gap=.25)
+        bpy.context.view_layer.update()
+        self.assertAlmostEqual(body.matrix_world.translation.x,0)
+        self.assertAlmostEqual(body.matrix_world.translation.z,2.25)
+        group.location.x=3
+        copies=kit.circle_array(group,4)
+        mirrored=kit.mirror_copy(group)
+        bpy.context.view_layer.update()
+        self.assertEqual(len(copies),4)
+        self.assertEqual(len(mirrored.children_recursive),2)
+        self.assertAlmostEqual(mirrored.matrix_world.translation.x,-group.matrix_world.translation.x)
+        self.assertAlmostEqual(copies[1].matrix_world.translation.y,3)
+        self.assertIsNot(copies[1].children[0].data,body.data)
+        self.assertFalse(any(f['code']=='slot_socket' for f in kit.check(mirrored)['findings']))
+        with self.assertRaises(ValueError):kit.place_on(group,body)
+        with self.assertRaises(ValueError):kit.circle_array(group,0)
+
+    def test_spatial_warnings_use_evaluated_geometry_and_explicit_contact_intent(self):
+        a=kit.rounded_box('A',radius=0)
+        b=kit.rounded_box('B',location=(.4,0,.2),radius=0)
+        report=kit.check()
+        self.assertTrue(any(f['code']=='CLIPPING' for f in report['spatial']['findings']))
+        kit.allow_overlap(a,b,'Welded structural joint')
+        self.assertFalse(any(f['code']=='CLIPPING' for f in kit.check()['spatial']['findings']))
+        b.location.z=3
+        kit.contact(b,a);kit.ground_contact(b)
+        findings=kit.check()['spatial']['findings']
+        self.assertTrue({'GAP','FLOATING'} <= {f['code'] for f in findings})
+        kit.sit_on_ground(b)
+        self.assertFalse(any(f['code']=='FLOATING' for f in kit.check()['spatial']['findings']))
+
     def test_readiness_requires_real_sockets_and_valid_declarations(self):
         owner=kit.rounded_box('Owner')
         target=kit.rounded_box('NotASocket')

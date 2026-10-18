@@ -28,6 +28,8 @@ Model and effort settings are configured in `src/modules/ai/roles.ts` and shown 
 
 ## Focused construction references
 
+Pixel craft guidance now includes cell-coordinate proportion planning, grips, internal form separation and shared baselines. Palette-specific black/white and hue choices override generic shading preferences. The independent judge receives native/background/silhouette/value evidence and treats new density measurements as advisory. Model toolkit guidance documents custom meshes, world-space placement and independent assembly copies, plus conservative spatial checks and explicit contact intent. Material guidance uses shared horizon AO and explains physical feature coupling, final-resolution evidence and sparse-map seam measurements. Existing saved role instructions remain authoritative on resume.
+
 The builder's `references` list in `src/modules/ai/roles.ts` adds `references/modeling-method.md`, `hard-surface.md`, `organic-and-trees.md`, and `uv-and-materials.md` to its role instructions. Each is short and conditional on the asset and current pass. The judge receives `references/review-method.md`. The Eve adapter snapshots the entire assembled bundle on new runs and reuses stored instructions on resume. Agents do not need filesystem access to discover these documents. Main role prompts and the existing pipeline remain authoritative.
 
 See [sources and adaptation notes](references/SOURCES.md) and `licenses/` for pinned upstream references and MIT notices. These are excluded from model input.

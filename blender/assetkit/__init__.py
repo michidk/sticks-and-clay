@@ -2,9 +2,9 @@
 import math
 import random
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
 def parent(obj, to):
@@ -59,6 +59,120 @@ def bevel(obj, width=.03, segments=2):
     mod.width, mod.segments = width, max(1, segments)
     mod.limit_method = 'ANGLE'
     return obj
+
+
+def _world_bounds(obj):
+    bpy.context.view_layer.update()
+    depsgraph=bpy.context.evaluated_depsgraph_get()
+    points=[part.matrix_world @ Vector(corner)
+            for source in [obj,*obj.children_recursive] if source.type=='MESH'
+            for part in [source.evaluated_get(depsgraph)] for corner in part.bound_box]
+    if not points:raise ValueError('Placement needs mesh geometry')
+    return [min(p[i] for p in points) for i in range(3)],[max(p[i] for p in points) for i in range(3)]
+
+
+def sit_on_ground(obj, z=0):
+    """Translate one assembly in world space, preserving its child pivots."""
+    if not math.isfinite(z):raise ValueError('Ground height must be finite')
+    low,_=_world_bounds(obj)
+    world=obj.matrix_world.copy();world.translation.z+=z-low[2];obj.matrix_world=world
+    return obj
+
+
+def place_on(obj, support, gap=0):
+    """Center an assembly over a support's world bounds and place its lowest point on top."""
+    if not math.isfinite(gap):raise ValueError('Placement gap must be finite')
+    if obj==support or support in obj.children_recursive:raise ValueError('Support must be outside the placed assembly')
+    low,high=_world_bounds(obj);bottom,top=_world_bounds(support)
+    delta=Vector(((bottom[0]+top[0]-low[0]-high[0])/2,(bottom[1]+top[1]-low[1]-high[1])/2,top[2]+gap-low[2]))
+    world=obj.matrix_world.copy();world.translation+=delta;obj.matrix_world=world
+    return obj
+
+
+def _copy_assembly(obj,name,transform):
+    import json
+    bpy.context.view_layer.update()
+    mapping={}
+    for source in [obj,*obj.children_recursive]:
+        clone=source.copy()
+        if source.data:clone.data=source.data.copy()
+        clone.name=name if source==obj else name+'_'+source.name
+        bpy.context.collection.objects.link(clone)
+        mapping[source]=clone
+    for source,clone in mapping.items():
+        clone.parent=mapping.get(source.parent,source.parent)
+        clone.matrix_world=transform @ source.matrix_world
+    names={source.name:clone.name for source,clone in mapping.items()}
+    for clone in mapping.values():
+        for key in list(clone.keys()):
+            for prefix in ('allowed_overlap_','contact_'):
+                if key.startswith(prefix) and key[len(prefix):] in names:
+                    clone[prefix+names[key[len(prefix):]]]=clone[key];del clone[key]
+                    break
+            if key.startswith('slot_') or key.startswith('event_'):
+                declaration=json.loads(clone[key])
+                if declaration.get('socket') in names:
+                    declaration['socket']=names[declaration['socket']]
+                    clone[key]=json.dumps(declaration)
+    return mapping[obj]
+
+
+def mirror_copy(obj, axis='X', name=None, center=(0,0,0)):
+    """Independent reflected assembly around a world-space plane; includes children."""
+    if axis not in ('X','Y','Z'):raise ValueError('Mirror axis must be X, Y or Z')
+    scale=[1,1,1,1];scale['XYZ'.index(axis)]=-1
+    offset=Matrix.Translation(Vector(center))
+    return _copy_assembly(obj,name or obj.name+'_mirrored',offset @ Matrix.Diagonal(scale) @ offset.inverted())
+
+
+def circle_array(obj, count, center=(0,0,0), axis='Z'):
+    """Return original plus independent assemblies, equally spaced around a world-space axis."""
+    if type(count) is not int or count<1 or count>256:raise ValueError('Array count must be 1–256')
+    if axis not in ('X','Y','Z'):raise ValueError('Array axis must be X, Y or Z')
+    offset=Matrix.Translation(Vector(center))
+    return [obj]+[_copy_assembly(obj,obj.name+'_'+str(i),offset @ Matrix.Rotation(math.tau*i/count,4,axis) @ offset.inverted()) for i in range(1,count)]
+
+
+def weighted_normals(obj, weight=50):
+    """Add face-area weighted normals after bevels on a hard-surface mesh."""
+    if obj.type!='MESH':raise ValueError('Weighted normals need a mesh')
+    if not math.isfinite(weight) or not 1<=weight<=100:raise ValueError('Normal weight must be 1–100')
+    modifier=obj.modifiers.new('Weighted normals','WEIGHTED_NORMAL')
+    modifier.keep_sharp=True;modifier.weight=int(weight)
+    return obj
+
+
+def allow_asymmetry(obj,reason):
+    if not reason.strip():raise ValueError('Intentional asymmetry needs a reason')
+    obj['asymmetry_reason']=reason
+    return obj
+
+
+def contact(obj,support,tolerance=.002):
+    """Declare an expected mesh-to-mesh contact for conservative bounds gap checks."""
+    if obj.type!='MESH' or support.type!='MESH' or obj==support:raise ValueError('Contact needs two distinct meshes')
+    if not math.isfinite(tolerance) or tolerance<0:raise ValueError('Contact tolerance must be finite and nonnegative')
+    obj['contact_'+support.name]=float(tolerance)
+    return obj
+
+
+def ground_contact(obj,z=0,tolerance=.002):
+    """Declare that this mesh must touch the given world ground plane."""
+    if obj.type!='MESH' or not math.isfinite(z) or not math.isfinite(tolerance) or tolerance<0:
+        raise ValueError('Ground contact needs a mesh, finite height and nonnegative tolerance')
+    obj['ground_contact_z']=float(z);obj['ground_contact_tolerance']=float(tolerance)
+    return obj
+
+
+def check(obj=None):
+    """Inspect one assembly or the current asset without exporting or modifying geometry."""
+    from .readiness import inspect_asset
+    parts=[obj,*obj.children_recursive] if obj else [o for o in bpy.context.scene.objects if not o.get('studio_environment')]
+    meshes=[o for o in parts if o.type=='MESH']
+    if not meshes:raise ValueError('Checks need mesh geometry')
+    bounds=[_world_bounds(o) for o in meshes]
+    dimensions=[max(high[i] for _,high in bounds)-min(low[i] for low,_ in bounds) for i in range(3)]
+    return inspect_asset(parts,dimensions)
 
 
 def rounded_box(name, size=(1, 1, 1), location=(0, 0, 0), radius=.04, material=None, owner=None):
