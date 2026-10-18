@@ -1,6 +1,6 @@
 import sharp from "sharp";
 
-const SIZES = { full: 768, small: 64 } as const;
+const SIZES = { full: 768, small: 64, icon: 24 } as const;
 
 async function render(svg: string, size: number) {
   return sharp(Buffer.from(svg), { density: 144 })
@@ -39,6 +39,7 @@ export async function renderSvg(svg: string) {
   return {
     full: await flat(SIZES.full),
     small: await flat(SIZES.small),
+    icon: await flat(SIZES.icon),
     ink: await inkBounds(svg),
   };
 }

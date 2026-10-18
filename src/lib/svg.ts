@@ -1,3 +1,4 @@
+import { svgGeometry } from "./svg-geometry";
 import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 
 const elements = new Set(
@@ -99,6 +100,7 @@ export function analyzeSvg(svg: string) {
     colors: [...colors].sort(),
     strokeWidths: [...strokeWidths].sort((a, b) => a - b),
     hasText: Boolean(elements.text),
+    geometry: doc.documentElement ? svgGeometry(doc.documentElement) : null,
   };
 }
 

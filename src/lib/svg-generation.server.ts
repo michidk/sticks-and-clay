@@ -82,6 +82,7 @@ export const svgKind: AssetKind = {
     const previews = [
       { key: `${directory}/preview.png`, label: "full-size render (768 px) on white", data: rendered.full },
       { key: `${directory}/preview-64.png`, label: "64 px render on white, for legibility at small size", data: rendered.small },
+      { key: `${directory}/preview-24.png`, label: "24 px render on white, for UI icon legibility when requested", data: rendered.icon },
     ];
     await storage.upload(new Blob([svg], { type: "image/svg+xml" }), key);
     for (const preview of previews) await storage.upload(png(preview.data), preview.key);

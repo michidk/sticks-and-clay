@@ -53,7 +53,7 @@ export const roles = {
     "high",
   ),
   "svg-judge": {
-    ...role("tanstack", "svg/svg-judge", judgeResult, "gpt-6-sol", "high"),
+    ...role("tanstack", "svg/svg-judge", judgeResult, "gpt-6-astra", "high"),
     inputTemplate: "graphics/graphic-judge-input",
   },
   "graphic-judge": role("tanstack", "graphics/graphic-judge", judgeResult, "gpt-6-sol", "high"),

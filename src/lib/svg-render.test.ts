@@ -18,3 +18,13 @@ test("render measures ink margins and flags content clipped by the canvas", asyn
 
   expect((await renderSvg(doc(""))).ink).toEqual({ empty: true });
 });
+
+test("24-unit icons have native-size evidence and sharp enlarged vector renders", async () => {
+  const sharp = (await import("sharp")).default;
+  const source = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 3L21 21" stroke="black" stroke-width="0.2"/></svg>';
+  const rendered = await renderSvg(source);
+  expect(await sharp(rendered.icon).metadata()).toMatchObject({ width: 24, height: 24 });
+  expect(await sharp(rendered.small).metadata()).toMatchObject({ width: 64, height: 64 });
+  const native = await sharp(Buffer.from(source), { density: 2304 }).flatten({ background: "#ffffff" }).raw().toBuffer();
+  expect((await sharp(rendered.full).removeAlpha().raw().toBuffer()).equals(native)).toBe(true);
+});

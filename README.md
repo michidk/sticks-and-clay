@@ -155,7 +155,7 @@ configuration, scopes, and deployment behind an auth proxy.
   target. "Completed with issues" stays distinct from approval and from
   technical failure.
 - 🎨 **Graphics and SVG.** One-shot images through an OpenAI-compatible Image
-  API, or editable vector artwork with previews, variants, and safe SVG output
+  API, or editable vector artwork with previews, variants, junction diagnostics, and safe SVG output
   (no scripts, external content, or embedded rasters).
 - 👾 **Pixel art.** Drawn cell by cell on a grid (a palette and one row of text
   per row) instead of generated, rendered exactly by the app, reviewed on a
