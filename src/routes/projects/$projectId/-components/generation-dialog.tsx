@@ -432,12 +432,12 @@ export function GenerationDialog({
                 generation.
               </p>
             )}
-            {error && (
-              <Alert variant="destructive" className="error">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
           </div>
+          {error && (
+            <Alert variant="destructive" className="error mb-3">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
           <DialogFooter className="setup-footer">
             <DialogClose asChild>
               <Button variant="outline" type="button" disabled={locked}>
