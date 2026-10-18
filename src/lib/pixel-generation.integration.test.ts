@@ -21,10 +21,10 @@ const verdict = (passed: boolean, summary: string) => ({
 });
 
 // `passes` > 1 replays the finished job to prove resume is idempotent; a retried drawing leaves a failed run, so retries run once.
-async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2) {
+async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2, design = "Green circles") {
   const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
   await db.insert(projects).values({ id: projectId, name: "Review fixture", description: "test", assetType: "pixel", status: "ready" });
-  await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design: "Green circles", designVersion: 1, status: "building" });
+  await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design, designVersion: 1, status: "building" });
   await db.insert(assetVersions).values({ id: modelId, projectId, batchId, name: "Circle", prompt: "A green circle" });
   const checkpoint: Record<string, string> = {};
   for (const item of saved) {
@@ -45,7 +45,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
   };
   const cleanup = async () => {
     for (const dir of [base, `${base}/iteration-1`])
-      for (const file of ["pixel.png", "preview.png", "grid.json"])
+      for (const file of ["pixel.png", "preview.png", "review.png", "grid.json", "sheet.png", "sheet.json", "sheet.unity.json", "sheet.godot.json", "anim.gif"])
         if (await getStorage().exists(`${dir}/${file}`)) await getStorage().delete(`${dir}/${file}`);
     await db.delete(jobs).where(eq(jobs.id, jobId));
     await db.delete(runs).where(eq(runs.projectId, projectId));
@@ -66,11 +66,76 @@ integration("pixel art is drawn on a grid, rendered exactly, and revised after a
   try {
     const model = await t.run();
     expect(model.verdict).toBe("approved");
-    expect(model.artifacts).toEqual({ image: `${t.base}/iteration-1/pixel.png`, stage: "final", format: "pixel" });
+    const dir = `${t.base}/iteration-1`;
+    expect(model.artifacts).toEqual({
+      image: `${dir}/pixel.png`, stage: "final", format: "pixel",
+      exports: { sheet: `${dir}/sheet.png`, sheetLayout: `${dir}/sheet.json`, unity: `${dir}/sheet.unity.json`, godot: `${dir}/sheet.godot.json` },
+    });
     expect(await getStorage().exists(`${t.base}/pixel.png`)).toBe(true);
-    expect(await getStorage().exists(`${t.base}/iteration-1/preview.png`)).toBe(true);
+    expect(await getStorage().exists(`${dir}/preview.png`)).toBe(true);
+    expect(await getStorage().exists(`${dir}/review.png`)).toBe(true);
+    const grid = JSON.parse(await (await getStorage().download(`${dir}/grid.json`)).text());
+    expect(grid).toMatchObject({ version: 2, rows: ["....", "ooo.", "....", "...."] });
+    // The judge and the reviser see the review sheet; the run records the measurements behind it.
+    const builds = (await db.select().from(runs).where(eq(runs.modelId, model.id))).filter((run) => run.role === "pixel");
+    const latest = builds.find((run) => run.iteration === 1)!.result as { review: string; analysis: { craft: object; warnings: string[] } };
+    expect(latest.review).toBe(`${dir}/review.png`);
+    expect(latest.analysis.craft).toHaveProperty("valueRange");
+    expect(latest.analysis.warnings.some((w) => w.startsWith("GRID:"))).toBe(true);
+  } finally {
+    await t.cleanup();
+  }
+});
+
+integration("a revision may return patches against the previous drawing", async () => {
+  const t = await scenario(2, [
+    { step: "pixel", role: "pixel", iteration: 0, result: drawing(1) },
+    { step: "judge:0", role: "pixel-judge", iteration: 0, result: verdict(false, "Too small") },
+    { step: "builder:1", role: "pixel", iteration: 1, result: { plan: "widen", width: 4, height: 4, palette: drawing(1).palette, patches: [{ row: 2, column: 2, rows: ["oo"] }] } },
+    { step: "judge:1", role: "pixel-judge", iteration: 1, result: verdict(true, "Good size now") },
+  ]);
+  try {
+    expect((await t.run()).verdict).toBe("approved");
     const grid = JSON.parse(await (await getStorage().download(`${t.base}/iteration-1/grid.json`)).text());
-    expect(grid.rows[1]).toBe("ooo.");
+    expect(grid.rows).toEqual(["....", "ooo.", "....", "...."]);
+    expect(grid.patches).toBeUndefined();
+  } finally {
+    await t.cleanup();
+  }
+});
+
+const offPalette = { ...drawing(2), palette: [{ key: ".", color: "transparent" }, { key: "o", color: "#284e3c" }] };
+const onPalette = { ...drawing(2), palette: [{ key: ".", color: "transparent" }, { key: "o", color: "#306230" }] };
+
+integration("a drawing outside the named palette is retried with the colors named", async () => {
+  const t = await scenario(0, [
+    { step: "pixel", role: "pixel", iteration: 0, result: offPalette },
+    { step: "pixel:fix1", role: "pixel", iteration: 0, result: onPalette },
+  ], 1, "Game Boy palette, 16x16 icons");
+  try {
+    expect((await t.run()).status).toBe("done");
+    const failed = (await db.select().from(runs).where(eq(runs.batchId, t.batchId))).filter((run) => run.status === "failed");
+    expect(failed[0].error).toContain('"o" #284e3c (nearest');
+    const grid = JSON.parse(await (await getStorage().download(`${t.base}/grid.json`)).text());
+    expect(grid.palette[1].color).toBe("#306230");
+  } finally {
+    await t.cleanup();
+  }
+});
+
+integration("a corrected drawing that still leaves the named palette is snapped and the change recorded", async () => {
+  const t = await scenario(0, [
+    { step: "pixel", role: "pixel", iteration: 0, result: offPalette },
+    { step: "pixel:fix1", role: "pixel", iteration: 0, result: offPalette },
+  ], 1, "Game Boy palette, 16x16 icons");
+  try {
+    expect((await t.run()).status).toBe("done");
+    const grid = JSON.parse(await (await getStorage().download(`${t.base}/grid.json`)).text());
+    expect(["#0f380f", "#306230", "#8bac0f", "#9bbc0f"]).toContain(grid.palette[1].color);
+    const fixed = (await db.select().from(runs).where(eq(runs.batchId, t.batchId))).find((run) => run.status === "done" && run.role === "pixel");
+    expect((fixed!.result as { analysis: { snappedToNamedPalette: object[] } }).analysis.snappedToNamedPalette).toEqual([
+      { key: "o", from: "#284e3c", to: grid.palette[1].color },
+    ]);
   } finally {
     await t.cleanup();
   }

@@ -20,6 +20,8 @@ export type Candidate = {
   /** Raster images of the candidate, in the order the judge is told about them. */
   previews: { key: string; label: string }[];
   analysis: unknown;
+  /** Engine-ready files derived from this version (pixel sprite sheets and import descriptions), by name. */
+  exports?: Record<string, string>;
 };
 export type AssetContext = {
   model: typeof assetVersions.$inferSelect;
@@ -91,7 +93,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
         await db
           .update(assetVersions)
           .set({
-            artifacts: { image: candidate.key, stage: "final", format: kind.format, ...(candidate.parts ? { parts: candidate.parts } : {}) },
+            artifacts: { image: candidate.key, stage: "final", format: kind.format, ...(candidate.parts ? { parts: candidate.parts } : {}), ...(candidate.exports ? { exports: candidate.exports } : {}) },
             visualTarget: candidate.key,
             phase: reviewed ? "Reviewing rendered preview" : "Graphic ready",
             progress: progress(node.iteration, 0.6),
@@ -153,7 +155,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
               : "Complete · review limit reached",
         verdict,
         visualTarget: candidate!.key,
-        artifacts: { image: candidate!.key, stage: "final", format: kind.format, ...(candidate!.parts ? { parts: candidate!.parts } : {}) },
+        artifacts: { image: candidate!.key, stage: "final", format: kind.format, ...(candidate!.parts ? { parts: candidate!.parts } : {}), ...(candidate!.exports ? { exports: candidate!.exports } : {}) },
       })
       .where(eq(assetVersions.id, model.id));
     await tx

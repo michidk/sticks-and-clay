@@ -31,6 +31,7 @@ export function fileMimeType(path: string) {
     jpg: "image/jpeg",
     jpeg: "image/jpeg",
     webp: "image/webp",
+    gif: "image/gif",
     glb: "model/gltf-binary",
     json: "application/json",
     py: "text/plain",
