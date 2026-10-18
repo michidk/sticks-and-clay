@@ -170,16 +170,11 @@ configuration, scopes, and deployment behind an auth proxy.
   and retry that survives restarts and lost sandboxes.
 - 💸 **Honest costs.** Every request is recorded with snapshotted rates and
   usage provenance, including cancelled and failed attempts.
-- 📱 **Desktop and phone.** The full workflow, including the 3D viewer, works
-  on a small screen.
 
 <p align="center">
   <img src=".github/images/board.png"
     alt="Project board with Ideas, Ready, In progress, Review and Done columns"
-    width="68%">
-  <img src=".github/images/model-mobile.png"
-    alt="The 3D model viewer on a phone"
-    width="22%">
+    width="1200">
 </p>
 
 ## Read-only demo
@@ -200,7 +195,7 @@ Build it with `bun run build:demo`; see [the demo guide](docs/demo-mode.md).
 | --- | --- |
 | Runtime | Bun 1.4, Node 24 |
 | Web | React 19, TanStack Start and Router, Vite, Tailwind 4, shadcn/ui |
-| 3D viewer | Three.js with React Three Fiber |
+| 3D viewer | [shadcn-3d-viewer](https://github.com/michidk/shadcn-3d-viewer) |
 | Data | PostgreSQL 17 with Drizzle; local or S3-compatible file storage |
 | Agents | Eve agent runtime, TanStack AI, any OpenAI-compatible provider |
 | Modeling | Blender 4.5 LTS in isolated processes behind a loopback MCP service |
