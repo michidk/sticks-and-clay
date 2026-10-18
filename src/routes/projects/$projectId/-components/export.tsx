@@ -69,7 +69,7 @@ export function ExportPanel({ projectId, projectName, models }: {
     </p>}
     {!listed.length ? <Empty className="empty">
       <h2>{doneOnly ? "No done items yet" : "No finished assets yet"}</h2>
-      <p>{doneOnly ? "Accept assets in Review on the board, or include every finished asset." : "Finished assets appear here once generation completes."}</p>
+      <p>{doneOnly ? "Accept assets in the Review stage, or include every finished asset." : "Finished assets appear here once generation completes."}</p>
       {doneOnly && finished.length > 0 && <Button variant="outline" onClick={() => setDoneOnly(false)}>Include all finished</Button>}
     </Empty> : <ul className="export-list">
       {listed.map((m: any) => {

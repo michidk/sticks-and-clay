@@ -38,8 +38,9 @@ can accept it or request another version. A newer version requires a new
 acceptance decision. Design and visual-target approval remain separate human
 checkpoints.
 
-The project board and global board use these same stages and actions. The
-global board shows each asset's project and can filter by project.
+The project workspace lists these stages as a left-to-right strip, and the
+global board shows them as columns with each asset's project and a project
+filter. Both offer the same actions.
 
 ## References and parts
 

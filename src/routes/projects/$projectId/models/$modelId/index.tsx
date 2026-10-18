@@ -326,7 +326,7 @@ function ModelPage() {
                   name={name}
                   noun="model"
                   canDelete={["done", "failed", "cancelled"].includes(model.status)}
-                  onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "ideas" } })}
+                  onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "assets", stage: "idea" } })}
                 />
               )}
               {!data.project.archivedAt && (

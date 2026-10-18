@@ -92,7 +92,8 @@ flowchart LR
    rendered views and sends fixes back until the asset passes or the review
    rounds are spent.
 6. **Review.** Accept finished assets, iterate on them with a written request,
-   or fork a variant. The board tracks everything from Ideas to Done.
+   or fork a variant. The stage strip and the global board track everything
+   from Ideas to Done.
 
 <p align="center">
   <img src=".github/images/design-chat.png"
