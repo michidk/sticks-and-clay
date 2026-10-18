@@ -7,9 +7,12 @@ import { result } from "./api.server";
 const artifactRoots = new Set([
   "references", "models", "versions", "graphics", "collections", "photographs",
   "project-photographs", "imports", "materials", "presentations", "assignments", "exports",
+  "cad", "starting-points",
 ]);
 export const artifactKey = z.string().min(1).max(1024).refine((key) => {
   try { assertStoragePath(key); } catch { return false; }
+  if (key.startsWith("cad/") && !/^cad\/[a-f0-9-]+\/[a-f0-9-]+\/\d+\/(?:asset\.py|input\.step|source\.zip|output\/(?:asset\.(?:step|stl|glb)|(?:metrics|manifest)\.json|(?:front|rear|left|right|top|bottom|iso)\.png))$/.test(key)) return false;
+  if (key.startsWith("starting-points/") && !/^starting-points\/[a-f0-9-]+\/[a-f0-9-]+\/(?:source\.[a-z0-9]+|editable\.svg|input\.glb|grid\.json|receipt\.json|(?:preview|front|rear|left|right|top|bottom|iso)\.png)$/.test(key)) return false;
   return artifactRoots.has(key.split("/")[0]) && !key.split("/").some((part) => part.startsWith("."));
 }, "Choose an artifact key returned by the application; internal state is not accessible");
 const MAX_INLINE_BYTES = 16 * 1024 * 1024;

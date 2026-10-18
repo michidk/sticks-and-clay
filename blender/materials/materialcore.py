@@ -6,7 +6,7 @@ Color is computed in linear space. No directional lighting enters base color.
 import math
 import numpy as np
 
-VERSION = '2.0.0'
+VERSION = '2.1.0'
 RECIPES = ('sand', 'gravel', 'stone', 'wood', 'brick', 'painted_metal')
 
 
@@ -92,17 +92,24 @@ def fracture_mask(size, seed, cells, width=.05):
             second=np.minimum(second,np.maximum(first,distance));first=np.minimum(first,distance)
     return np.exp(-(second-first)/max(width,.001)).astype(np.float32)
 
-def derive_surface(height_mm, tile_metres):
-    """Recompute tangent normals and local cavity AO after height composition."""
+def derive_surface(height_mm, tile_metres, feature_mm=35):
+    """Wrapped physical derivatives and eight-direction horizon AO for every construction path."""
     mm_per_px=tile_metres*1000/height_mm.shape[0]
     dx=(np.roll(height_mm,-1,1)-np.roll(height_mm,1,1))/(2*mm_per_px)
     dy=(np.roll(height_mm,-1,0)-np.roll(height_mm,1,0))/(2*mm_per_px)
     normal=np.stack([-dx,dy,np.ones_like(dx)],-1)
     normal/=np.linalg.norm(normal,axis=-1,keepdims=True)
-    cavity=np.zeros_like(height_mm)
-    for axis in (0,1):
-        for sign in (-1,1):cavity+=np.maximum(0,np.roll(height_mm,sign,axis)-height_mm)/mm_per_px
-    return normal*.5+.5,np.clip(1-cavity/4,0,1)
+    occlusion=np.zeros_like(height_mm)
+    for angle in np.arange(8)*math.tau/8:
+        horizon=np.zeros_like(height_mm)
+        for radius_mm in np.geomspace(max(feature_mm/16,.5),max(feature_mm,2),6):
+            step=max(1,radius_mm/mm_per_px)
+            ox,oy=round(math.cos(angle)*step),round(math.sin(angle)*step)
+            distance=max(math.hypot(ox,oy)*mm_per_px,1e-6)
+            slope=(np.roll(height_mm,(oy,ox),(0,1))-height_mm)/distance
+            horizon=np.maximum(horizon,slope)
+        occlusion+=horizon/np.sqrt(1+horizon*horizon)
+    return normal*.5+.5,np.clip(1-occlusion/8,0,1)
 
 def layer(base, coating, mask, tile_metres):
     """Blend channels with one physical region mask, then derive the surface."""

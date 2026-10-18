@@ -7,6 +7,7 @@ import { prompt } from "./prompts.server";
 import { assertJobActive } from "./queue.server";
 import type { AssetKind } from "./reviewed-asset.server";
 import { pixelKind } from "./pixel-generation.server";
+import { cadKind } from "./cad-generation.server";
 import { svgKind } from "./svg-generation.server";
 import { workshopContext } from "./workshop";
 
@@ -43,7 +44,7 @@ const graphicKind: AssetKind = {
           ? `\n\nNAMED PART OUTPUT\nGenerate only part ${JSON.stringify(part.name)} of this asset: ${part.brief}\nThe other named parts are generated as separate files in this same version. Keep their shared scale, alignment, palette and visual language consistent. Do not include other parts or a contact sheet in this file.`
           : "") + revision,
         size: batch.imageSize,
-        images: [...(previousKey ? [previousKey] : []), ...ctx.references],
+        images: [...(previousKey ? [previousKey] : batch.workshop?.startingPoint?.preview ? [batch.workshop.startingPoint.preview] : []), ...ctx.references],
         assertActive: assertJobActive,
       });
       generated.push(image);
@@ -69,6 +70,7 @@ const graphicKind: AssetKind = {
  * and every kind is reviewed by `runReviewedAsset`.
  */
 export const assetKinds: Record<Exclude<AssetType, "model">, AssetKind> = {
+  cad: cadKind,
   graphic: graphicKind,
   svg: svgKind,
   pixel: pixelKind,

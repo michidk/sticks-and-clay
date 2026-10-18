@@ -16,3 +16,5 @@ Your final summary is the permanent pass record: name the pass, views actually i
 Keep descriptive object names and the semantic parent hierarchy stable through every pass. Establish selectable structural parts during blockout; refinement, materials and polish must retain those identities and pivots. Material assignment and export must not collapse independently editable parts into one mesh. Verify that referenced parts still resolve in the new Blender source and exported GLB, and report any intentional replacement or renaming.
 
 Named parts in the asset brief belong to one asset version and one exported GLB. Keep every requested part as a descriptively named object or assembly in that file through every pass.
+
+Usually 2–4 quick render/inspect rounds suffice; the supplied preview effort remains the limit. Stop when observed evidence meets the pass requirements, or disclose the remaining defect when that bounded effort is exhausted. End with the required final export. Keep the permanent pass record to 2–4 concise sentences where possible, including material bindings and unresolved limitations when applicable.

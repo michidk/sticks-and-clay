@@ -123,7 +123,7 @@ async def run_saved_asset(capability,preview=False,code=None):
                 if (dest/'build-request.json').exists():shutil.copyfile(dest/'build-request.json',candidate/'build-request.json')
             names=required if preview else required+['build-config.json','helpers.py','rebuild.py','render.py','build_runtime.py','build_artifacts.py','params.json','assetkit','inputs','textures']
             names=[name for name in names if (candidate/name).exists()]
-            for pattern in ('frame-*.png','review-*-f*-d*.png','sprite-checks.json','sprites.png','sprites.json','asset-lod-*.glb','lods.json'):
+            for pattern in ('frame-*.png','review-*-f*-d*.png','sprite-checks.json','sprites.png','sprites.json','sprites.unity.json','sprites.godot.json','asset-lod-*.glb','lods.json'):
                 names.extend(path.name for path in candidate.glob(pattern))
             receipt(candidate,'model','quick' if preview else 'final',state['scriptSha256'],{'runner':str(json.loads((dest/'work-source.json').read_text()).get('runnerProtocol',3))})
             (candidate/'state.json').write_text(json.dumps(state))

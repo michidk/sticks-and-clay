@@ -1,4 +1,5 @@
 import { assetKinds } from "./asset-kinds.server";
+import { materializeStartingPoint } from "./starting-point.server";
 import { runReviewedAsset } from "./reviewed-asset.server";
 import { prepareVisualTarget } from "./visual-target.server";
 import { referencedChange } from "./object-reference";
@@ -81,7 +82,7 @@ export async function executeAssetVersionJob(targetId: string) {
         ? resolve(DATA, String(model.artifacts.blend))
         : job.checkpoint["import-baseline"]
           ? resolve(DATA, job.checkpoint["import-baseline"])
-          : "",
+          : batch.workshop?.startingPoint ? await materializeStartingPoint(batch.workshop.startingPoint) : "",
     previousScript = sourceArtifacts?.script || model.artifacts?.script,
     passed = false,
     artifacts: Record<string, unknown> = {};

@@ -5,6 +5,7 @@ import { generationInput, type IdeaInput } from "./api-inputs";
 import { roleInput, runRole } from "../modules/ai/index.server";
 import { insertGeneration, validateGeneration } from "./generation.server";
 import { assertNotArchived } from "./project-lifecycle.server";
+import { validateStartingPoint } from "./starting-point.server";
 
 export async function listAssetDrafts(projectId: string) {
   return db.select().from(assetEntries).where(and(
@@ -26,6 +27,7 @@ export async function createAsset(
 ) {
   assertNotArchived(project);
   validateGeneration(project, input);
+  await validateStartingPoint(project.id, project.assetType, input.startingPoint);
   const id = crypto.randomUUID();
   const title = await resolveTitle(titleFor, project.id, requested, input.prompt);
   await db.insert(assetEntries).values({ id, projectId: project.id, title, input });
@@ -37,10 +39,15 @@ export async function updateAsset(
 ) {
   assertNotArchived(project);
   validateGeneration(project, input);
+  await validateStartingPoint(project.id, project.assetType, input.startingPoint);
   const ownedAsset = and(eq(assetEntries.id, ideaId), eq(assetEntries.projectId, project.id));
   // Check ownership before charging for a title.
-  if (!(await db.select({ id: assetEntries.id }).from(assetEntries).where(ownedAsset)).length)
+  const [existing] = await db.select().from(assetEntries).where(ownedAsset);
+  if (!existing)
     throw new Error("Asset is no longer available for editing");
+  if (input.startingPoint && !existing.inIdea && input.startingPoint.sha256 !== existing.input.startingPoint?.sha256)
+    throw new Error("Return the asset to Ideas before changing its starting point");
+  input.startingPoint ??= existing.input.startingPoint;
   const title = await resolveTitle(titleFor, project.id, requested, input.prompt);
   const updated = await db.update(assetEntries).set({ title, input }).where(ownedAsset).returning({ id: assetEntries.id });
   if (!updated.length) throw new Error("Asset is no longer available for editing");

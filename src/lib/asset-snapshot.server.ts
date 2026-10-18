@@ -27,5 +27,6 @@ export function assetSnapshot(
     references,
     referenceNotes: referenceNotesFor(references, { ...projectReferenceNotes, ...asset.referenceNotes }),
     parts: asset.input.parts,
+    startingPoint: asset.input.startingPoint,
   };
 }

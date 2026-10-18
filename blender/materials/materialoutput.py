@@ -15,7 +15,10 @@ def seam_ratio(array):
     values=[]
     for axis in (0,1):
         edge=np.abs(np.take(array,0,axis)-np.take(array,-1,axis)).mean()
-        adjacent=np.abs(np.diff(array,axis=axis)).mean()
+        differences=np.abs(np.diff(array,axis=axis)).reshape(-1)
+        # Sparse relief should be compared to its active edges, not diluted by flat texels.
+        count=max(1,math.ceil(differences.size*.01))
+        adjacent=np.partition(differences,-count)[-count:].mean()
         values.append(float(edge/max(float(adjacent),1e-6)))
     return max(values)
 
@@ -51,12 +54,17 @@ def save(result, params, directory):
             raise ValueError('Invalid channel '+name)
         report['seamRatios'][name]=seam_ratio(array)
         report['channelRanges'][name]=[float(array.min()),float(array.max())]
-        if report['seamRatios'][name]>2: report['warnings'].append(name+': inspect wrap seams in the repeated preview')
+        if report['seamRatios'][name]>1.5: report['warnings'].append('SEAM: '+name+': inspect wrap seams in the repeated preview')
         if name=='height':
             Image.fromarray(np.round(array*65535).astype(np.uint16)).save(out/(name+'.png'))
         else: image(srgb(array) if name=='albedo' else array).save(out/(name+'.png'))
     packed=np.stack([result['ao'],result['roughness'],result['metallic']],-1)
     image(packed).save(out/'orm.png')
+    smoothness=1-result['roughness']
+    image(np.stack([result['metallic'],result['ao'],np.ones_like(smoothness),smoothness],-1)).save(out/'hdrp_mask.png')
+    image(np.stack([result['metallic'],np.zeros_like(smoothness),np.zeros_like(smoothness),smoothness],-1)).save(out/'urp_metallic_smoothness.png')
+    normal_dx=result['normal'].copy();normal_dx[:,:,1]=1-normal_dx[:,:,1]
+    image(normal_dx).save(out/'normal_dx.png')
     normal=result['normal']*2-1
     light=np.array([.4,-.45,.8]); light/=np.linalg.norm(light)
     preview=srgb(shade(result['albedo'],normal,result['roughness'],result['metallic'],result['ao'],light))
@@ -65,7 +73,7 @@ def save(result, params, directory):
     draw.text((12,12),'Repeated material / 1:1 crop / sphere / exported channels',fill=(35,60,42))
     for y in range(2):
         for x in range(2): review.paste(tile,(x*256,40+y*256))
-    crop=image(srgb(result['albedo'])).crop((0,0,min(p['size'],256),min(p['size'],256)))
+    crop=image(preview).crop((0,0,min(p['size'],256),min(p['size'],256)))
     review.paste(crop,(512,40))
     # UV-mapped sphere preview: tangent normal transformed into sphere frame.
     grid=np.linspace(-1,1,256); sx,sy=np.meshgrid(grid,-grid); mask=sx*sx+sy*sy<1
@@ -96,7 +104,10 @@ def save(result, params, directory):
     metadata=dict(version=VERSION,parameters=p,heightWindowMm=result['heightWindowMm'],
                   heightZero=.5,physicalTileMetres=p['tileMetres'],particles=result['particles'],
                   colorSpaces={'albedo':'sRGB','otherMaps':'linear'},
-                  packedORM={'R':'ao','G':'roughness','B':'metallic'},validation=report,
+                  packedORM={'R':'ao','G':'roughness','B':'metallic'},
+                  engineMaps={'hdrp_mask.png':{'R':'metallic','G':'ao','B':'detail mask = 1','A':'smoothness'},
+                              'urp_metallic_smoothness.png':{'R':'metallic','G':'unused = 0','B':'unused = 0','A':'smoothness'},
+                              'normal_dx.png':{'convention':'DirectX -Y; green inverted from normal.png'}},validation=report,
                   toolchain={'python':platform.python_version(),'numpy':np.__version__,'pillow':pillow_version})
     (out/'material.json').write_text(json.dumps(metadata,indent=2),encoding='utf-8')
     files={path.name:hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(out.glob('*')) if path.is_file() and path.name!='manifest.json'}

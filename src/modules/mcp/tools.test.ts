@@ -43,6 +43,8 @@ const actions: {
   name: string; scope: string; method: string; path: string; args: Record<string, unknown>;
 }[] = [
   { name: "list_projects", scope: read, method: "GET", path: "projects", args: {} },
+  { name: "list_starting_points", scope: read, method: "GET", path: `projects/${id}/starting-points`, args: { projectId: id } },
+  { name: "set_asset_starting_point", scope: write, method: "POST", path: `projects/${id}/assets/${sourceRunId}/starting-point`, args: { projectId: id, assetId: sourceRunId, expectedSha256: "" } },
   { name: "get_project", scope: read, method: "GET", path: `projects/${id}`, args: { projectId: id } },
   { name: "get_board", scope: read, method: "GET", path: "board", args: {} },
   { name: "update_asset_references", scope: write, method: "POST", path: `projects/${id}/assets/${sourceRunId}/references`, args: { projectId: id, assetId: sourceRunId, references: [], referenceNotes: {}, expected: { references: [], referenceNotes: {} } } },

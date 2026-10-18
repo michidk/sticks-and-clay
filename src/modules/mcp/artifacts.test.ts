@@ -56,6 +56,8 @@ test("artifact tools and resource reads reject traversal and internal state befo
     for (const key of [
       "capabilities/one.json", "postgres/database", "runtime-settings.json", "models/../runtime-settings.json",
       "models/%2e%2e/runtime-settings.json", "models/.secret", "/etc/passwd", "models\\source.glb",
+      "cad/abc/def/support/runner.py", "cad/abc/def/0/process.log", "cad/abc/def/0/spec.json",
+      "starting-points/abc/def/process.log", "starting-points/abc/def/runner.py",
     ]) {
       const tool = await connected.client.callTool({ name: "read_artifact", arguments: { key } });
       expect(tool.isError).toBe(true);

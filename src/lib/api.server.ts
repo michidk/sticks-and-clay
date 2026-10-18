@@ -1,5 +1,6 @@
 import { DEMO_MODE } from "./build-mode";
 import { plannerReservations } from "./queue.server";
+import { updateStartingPoint, startingPointVersions } from "./starting-point.server";
 import { getGlobalBoard } from "./global-board.server";
 import { assetSnapshot } from "./asset-snapshot.server";
 import { updateAssetReferences, attachMockupToAsset } from "./asset-references.server";
@@ -501,6 +502,9 @@ export async function api(request: Request) {
         .from(projects)
         .where(eq(projects.id, id));
       if (!project) return reply({ error: "Project not found" }, 404);
+      if (path[2] === "starting-points" && request.method === "GET") {
+        return reply({ sources: await startingPointVersions(project) });
+      }
       if (request.method === "POST" && path[2] === "photograph") {
         const existing = await db
           .select()
@@ -681,6 +685,9 @@ export async function api(request: Request) {
         const use = request.method === "POST";
         await setMockupReference(id, uuidOrJob.parse(path[3]), use, use ? referenceNoteInput.parse(await request.json().catch(() => ({}))).note : "");
         return reply({ ok: true });
+      }
+      if (path[2] === "assets" && path[3] && path[4] === "starting-point" && request.method === "POST") {
+        return reply(await updateStartingPoint(project, uuid.parse(path[3]), await request.formData()));
       }
       if (path[2] === "assets" && path[3] && path[4] === "references" && request.method === "POST") {
         return reply(await updateAssetReferences(id, uuid.parse(path[3]), await request.formData()));

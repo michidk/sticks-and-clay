@@ -12,9 +12,10 @@ A prompt's name is its path under `prompts/` without `.md` (for example `design/
 | `planning/` | `model-brief` and `graphic-brief` draft the editable brief; `planner` and `graphic-planner` turn a submitted brief into individual tasks. SVG and pixel-art planning use the graphic planner. |
 | `models/` | 3D generation: `builder`, `photographer`, `judge`, `visual-target` (the imagegen concept step), and the required v4 passes `modeling-pass` and `modeling-review`. |
 | `graphics/` | `graphic` (the final prompt sent to the Image API) and `graphic-judge` with its input; the SVG and pixel judges share this input template. |
-| `pixel/` | `pixel` (a plan, then a palette and rows of cells), `pixel-input` and `pixel-judge`; their craft rules come from the surveyed pixel-art skills listed in `references/SOURCES.md`. |
+| `pixel/` | `pixel` (a plan with a numeric proportion plan, then a palette with one key per tone and rows of cells; frames or layers when asked; patches on revisions), `pixel-input` and `pixel-judge` (reads the review sheet and the named measurement warnings in a fixed critique order); their craft rules come from the surveyed pixel-art skills listed in `references/SOURCES.md`. |
 | `svg/` | `svg` (a short plan, then the markup through the text model), `svg-input` and `svg-judge`. |
 | `materials/` | `material-planner`, `material-builder` and `material-judge`. |
+| `cad/` | Approved CAD design and planning, a frozen per-asset numeric specification, CadQuery source construction with bounded runtime repair, and independent visual review. `references/cad-construction.md` gives pinned construction and diagnostic guidance. |
 | `references/` | Focused construction references added to role instructions, plus `SOURCES.md` and `WORKSHOP-INSPIRATION.md`, which are documentation and excluded from agent input. |
 | `evaluations/`, `licenses/` | The control prompt for `scripts/evaluate-material-prompts.ts` and upstream MIT notices. Neither is model input. |
 
@@ -27,6 +28,8 @@ Model and effort settings are configured in `src/modules/ai/roles.ts` and shown 
 `models/visual-target.md` drives the imagegen concept step for 3D models. Graphic projects send `graphics/graphic.md` directly through the same logged one-shot Image API adapter and retain the resulting PNG in collection and activity history. See [quality pipeline](../docs/quality-pipeline.md) for geometry gates, target thumbnails, image accounting and legacy recovery semantics.
 
 ## Focused construction references
+
+Pixel craft guidance now includes cell-coordinate proportion planning, grips, internal form separation and shared baselines. Palette-specific black/white and hue choices override generic shading preferences. The independent judge receives native/background/silhouette/value evidence and treats new density measurements as advisory. Model toolkit guidance documents custom meshes, world-space placement and independent assembly copies, plus conservative spatial checks and explicit contact intent. Material guidance uses shared horizon AO and explains physical feature coupling, final-resolution evidence and sparse-map seam measurements. Existing saved role instructions remain authoritative on resume.
 
 The builder's `references` list in `src/modules/ai/roles.ts` adds `references/modeling-method.md`, `hard-surface.md`, `organic-and-trees.md`, and `uv-and-materials.md` to its role instructions. Each is short and conditional on the asset and current pass. The judge receives `references/review-method.md`. The Eve adapter snapshots the entire assembled bundle on new runs and reuses stored instructions on resume. Agents do not need filesystem access to discover these documents. Main role prompts and the existing pipeline remain authoritative.
 

@@ -76,6 +76,8 @@ export async function archiveVersion(
       "sprites.png",
       "sprites.json",
       "sprite-checks.json",
+      "sprites.unity.json",
+      "sprites.godot.json",
     ]) {
       await copyFile(resolve(inputDirectory, name), resolve(temporary, name))
         .then(() => sourceFiles.push(name))
@@ -308,7 +310,7 @@ export async function archiveVersion(
         (name) =>
           /^(frame-[0-9]+-[0-9]+|review-[a-z]+-f[0-9]+-d[0-9]+)\.png$/.test(
             name,
-          ) || name === "sprite-checks.json",
+          ) || ["sprite-checks.json", "sprites.unity.json", "sprites.godot.json"].includes(name),
       )
       .map((name) => `${destination}/${name}`),
     ...artifacts.lods.map((lod: { key: string }) => lod.key),

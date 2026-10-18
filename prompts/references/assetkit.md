@@ -5,6 +5,7 @@ The script is the editable asset. Write one coherent deterministic program with 
 These helpers return ordinary bpy objects. They are a construction vocabulary, not a style to impose:
 
 - `kit.root(name)` creates an asset root; parent top-level parts to it.
+- `kit.mesh(name, vertices, faces, material=None, owner=None)` creates a custom indexed mesh; use for shaped panels, profile transitions and contours beyond the presets. Supply consistently wound faces and deliberate closed topology where required.
 - `kit.rounded_box(name, size=(x,y,z), location=(x,y,z), radius=.04, material=None, owner=None)` creates controlled edge radii. Dimensions are metres.
 - `kit.extrude(name, profile, depth, material=None, owner=None)` extrudes a simple counterclockwise XY polygon along +Z. Shape profiles deliberately; leave intended openings open.
 - `kit.lathe(name, profile, segments=24, material=None, owner=None)` revolves positive-radius `(radius,z)` rings ordered bottom to top, capped at the ends.
@@ -16,6 +17,16 @@ These helpers return ordinary bpy objects. They are a construction vocabulary, n
 - `kit.color_material(name, color=(r,g,b,a), roughness=.6, metallic=0)` provides matte geometry-review or poly materials.
 - `kit.image_material(name, base_color, normal, roughness=.6, metallic=0)` binds and packs supplied maps with correct color spaces. It does not infer normals from color.
 - `kit.unwrap(obj)` provides a starting UV layout. Refine islands for directional grain, markings, texel scale and seams.
+- `kit.sit_on_ground(obj, z=0)` moves a mesh or assembly by its evaluated world bounds; use for grounded feet and props while retaining child pivots.
+- `kit.place_on(obj, support, gap=0)` centers one assembly over the support bounds and places it on top; use for stacked props, then inspect actual contact on sloped or hollow supports.
+- `kit.mirror_copy(obj, axis='X', name=None, center=(0,0,0))` reflects an independent assembly and its children about a world plane; use for left/right structural pairs. Inspect the reflected material and motion axes.
+- `kit.circle_array(obj, count, center=(0,0,0), axis='Z')` returns the original plus independent assemblies; use for spokes, bolts and radial construction.
+- `kit.weighted_normals(obj, weight=50)` adds face-area weighted normals after bevels; use for planar hard-surface shading, not to conceal poor topology.
+- `kit.allow_overlap(a, b, reason)` records a justified intersecting joint; `kit.allow_asymmetry(obj, reason)` records deliberate asymmetry. Neither is evidence of artistic quality.
+- `kit.contact(obj, support, tolerance=.002)` declares expected contact between two meshes; `kit.ground_contact(obj, z=0, tolerance=.002)` declares a mesh's expected ground plane. Tolerances are metres. Declare these for feet, bases and structural supports where relevant.
+- `kit.check(obj=None)` returns readiness and bounded spatial evidence for one assembly or the scene. Final and quick runs also include these metrics. CLIPPING means surfaces intersect or touch, not proven volume penetration; GAP proves separated bounds for a declared contact; FLOATING checks a declared ground plane. Inspect warnings, repair unintended defects and justify intentional joins with `allow_overlap`. Skipped objects, budget limits and untested enclosed geometry remain explicit limitations.
+
+Compose meaningful shapes: a bottle uses a lathed body and a separate cap; a sword uses an extruded blade, shaped guard, tube grip and lathed pommel; a chair uses profiled legs and a shaped seat/back; a barrel uses a tapered lathe with separate hoop bands. These are construction starting points, not substitutes for the approved design. For stylized hard surfaces a bevel around 3–6% of the smallest part dimension with 2–3 segments can be a useful starting point; reduce it where it erases a narrow feature and use the approved style over this suggestion.
 
 Prefer expressive authored shapes to a heap of unchanged primitives. Inspect transitions, thickness and believable support. Use custom bpy meshes/modifiers when the vocabulary does not fit.
 

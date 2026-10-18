@@ -13,17 +13,17 @@ SIZE LIMIT
 NAMED PALETTES the brief asks for (exact colors; use only these values and no others)
 {{palettes}}
 
-SAVED SOURCE GRID, if this is a variant (JSON: width, height, palette, rows)
+SAVED SOURCE GRID, if this is a variant (JSON: width, height, palette, rows, and frames or layers when present)
 {{source}}
 
-PREVIOUS ATTEMPT GRID, if this is a revision
+PREVIOUS ATTEMPT GRID, if this is a revision (patches apply to this grid)
 {{previous}}
 
 REVIEWER FEEDBACK ON THE PREVIOUS ATTEMPT, if any
 {{feedback}}
 
-FORMAT PROBLEM WITH YOUR LAST ANSWER, if any (fix it and return the whole drawing)
+FORMAT PROBLEM WITH YOUR LAST ANSWER, if any (fix it; return the whole drawing or valid patches)
 {{problem}}
 
-ATTACHED IMAGES (an enlarged render of the previous attempt, plus any style references; judge the drawing by looking at them, not only by reading the grid)
+ATTACHED IMAGES (the review sheet of the previous attempt, plus any style references; judge the drawing by looking at them, not only by reading the grid)
 {{images}}

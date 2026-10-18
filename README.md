@@ -25,7 +25,7 @@
 <a href="https://github.com/michidk/sticks-and-clay/actions/workflows/image.yml">
 <img alt="Image" src="https://github.com/michidk/sticks-and-clay/actions/workflows/image.yml/badge.svg"></a>
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-<img alt="MCP: 48 tools" src="https://img.shields.io/badge/MCP-48%20tools-264d3c.svg">
+<img alt="MCP: 53 tools" src="https://img.shields.io/badge/MCP-53%20tools-264d3c.svg">
 <img alt="Blender 4.5 LTS" src="https://img.shields.io/badge/Blender-4.5%20LTS-e87d0d.svg">
 </p>
 
@@ -34,7 +34,7 @@
 ## 🧱 What it is
 
 Sticks & Clay is a self-hosted workshop for cohesive collections of **3D models,
-graphics, SVG artwork, pixel art, procedural PBR materials, and sprites rendered from 3D**.
+graphics, SVG artwork, pixel art, CadQuery CAD parts, procedural PBR materials, and sprites rendered from 3D**.
 You describe a collection once; AI agents draft the design, write editable
 Blender Python, render product shots, and judge their own output. You stay in
 charge at every step that matters.
@@ -158,12 +158,19 @@ configuration, scopes, and deployment behind an auth proxy.
   API, or editable vector artwork with previews, variants, and safe SVG output
   (no scripts, external content, or embedded rasters).
 - 👾 **Pixel art.** Drawn cell by cell on a grid (a palette and one row of text
-  per row) instead of generated, rendered exactly by the app, reviewed against
-  cell-level measurements, and shown enlarged without smoothing.
+  per row) instead of generated, rendered exactly by the app, reviewed on a
+  sheet (1x on dark and light, silhouette, values) with craft measurements,
+  optionally animated or split into paperdoll layers, and exported as a
+  baseline-aligned sheet with Unity and Godot import descriptions.
+- **CAD parts.** Editable CadQuery Python with STEP, STL and GLB exports,
+  measured dimensions, solid validation and seven-view independent review.
+- **Start from a file.** Attach a source to an idea, or select a saved version.
+  Its original bytes and import settings are frozen for that generation.
 - 🧪 **Procedural PBR materials** generated as recipes, previewed live, and
-  assigned to models.
+  assigned to models, with ORM, HDRP/URP packed maps and DirectX normals.
 - 🎞️ **Sprites from 3D.** Render pixel or smooth sprite sheets with 1, 4, or
-  8 directions, animation frames, and shared palettes, plus LODs.
+  8 directions, animation frames, shared palettes and outlines, with Unity and
+  Godot import descriptions, plus LODs.
 - 🗂️ **Board and export.** Ideas → Ready → In progress → Review → Done, and a
   ZIP export of accepted assets.
 - 🔁 **Durable jobs.** A PostgreSQL-backed worker with checkpoints, resume,
@@ -199,6 +206,7 @@ Build it with `bun run build:demo`; see [the demo guide](docs/demo-mode.md).
 | Data | PostgreSQL 17 with Drizzle; local or S3-compatible file storage |
 | Agents | Eve agent runtime, TanStack AI, any OpenAI-compatible provider |
 | Modeling | Blender 4.5 LTS in isolated processes behind a loopback MCP service |
+| CAD | CadQuery 2.8 / OpenCascade with a separate supervised Python runtime |
 | Agent access | MCP TypeScript SDK v2 with OAuth and PKCE |
 | Deployment | Docker image on GHCR, Kubernetes manifests in a separate repo |
 
@@ -206,13 +214,15 @@ Build it with `bun run build:demo`; see [the demo guide](docs/demo-mode.md).
 
 On Linux, macOS, or WSL, install Bun 1.4+, Node 24+, Python 3.11+, Blender 4.5
 LTS, and Docker. The lockfile pins JavaScript dependencies; Python
-dependencies are pinned in `blender/requirements.txt`.
+dependencies are pinned in `blender/requirements.txt` and `cad/requirements.txt`.
 
 ```sh
 bun install --frozen-lockfile
 cp .env.example .env
 python3 -m venv .venv
 .venv/bin/python -m pip install -r blender/requirements.txt
+python3 -m venv .venv-cad
+.venv-cad/bin/python -m pip install -r cad/requirements.txt
 ```
 
 Edit `.env` privately. Set `EVE_PASSWORD` to a random secret of at least 32

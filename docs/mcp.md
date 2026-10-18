@@ -72,7 +72,9 @@ Keep `/oauth/authorize` behind the login gate. Allow machine clients through Hod
 
 Write and admin permissions start unchecked on the consent page. The owner chooses each grant; admin does not imply write. Clients see only tools allowed by their grant, and direct calls to other tools fail. Read access includes project prompts, run history, files and cost estimates, so grant it only to clients that should see the workshop's content.
 
-There are 51 tools covering existing workshop actions and artifact access. `create_collection` provides a workflow prompt; `sticks-and-clay://workflow` explains generation and recovery. No shell, arbitrary Python execution, internal texture-builder endpoint, filesystem-path import, or history-deletion tool is exposed.
+There are 53 tools covering existing workshop actions and artifact access. `create_collection` provides a workflow prompt; `sticks-and-clay://workflow` explains generation and recovery. No shell, arbitrary Python execution endpoint, internal texture-builder endpoint, filesystem-path import, or history-deletion tool is exposed.
+
+`create_project` accepts `assetType: "cad"` for the CadQuery pipeline. CAD jobs use the ordinary approved design, idea, generation, review, branch and acceptance actions. `list_starting_points` (read) lists up to 100 compatible completed versions from the project. `set_asset_starting_point` (write) attaches source bytes or a same-project `sourceRunId` to an idea; it accepts `expectedSha256` for optimistic replacement and `units` for STL/OBJ imports. Omit both file and sourceRunId to remove it. Uploaded CadQuery Python is source data until a generation job builds it. Starting points and CAD deliverables use the same authenticated artifact access; internal runner logs and state are excluded. See [CAD and starting points](asset-workshop.md#cad-generation).
 
 ## Working with assets
 

@@ -20,7 +20,7 @@ test("every prompt file is used by a role or a prompt() call, and every named pr
     if ("references" in definition) definition.references.forEach((name) => used.add(name));
   }
   const files = readdirSync("prompts", { recursive: true })
-    .map(String)
+    .map((file) => String(file).replaceAll("\\", "/"))
     .filter((file) => file.endsWith(".md"))
     .map((file) => file.slice(0, -3))
     .filter((file) => !notInput(file));
