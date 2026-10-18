@@ -54,7 +54,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
     await db.delete(batches).where(eq(batches.projectId, projectId));
     await db.delete(projects).where(eq(projects.id, projectId));
   };
-  return { base, run, cleanup, batchId };
+  return { base, run, cleanup, batchId, modelId };
 }
 
 integration("pixel art is drawn on a grid, rendered exactly, and revised after a failed review", async () => {
@@ -187,14 +187,66 @@ integration("a drawing that does not fit its grid is retried once with the probl
   }
 });
 
-integration("a drawing that is wrong twice fails the version with the first problem named", async () => {
+integration("an invalid redraw and row correction fail instead of publishing malformed pixels", async () => {
   const t = await scenario(0, [
     { step: "pixel", role: "pixel", iteration: 0, result: tooManyRows },
     { step: "pixel:fix1", role: "pixel", iteration: 0, result: { ...drawing(1), rows: ["....", "o..", "....", "...."] } },
+    { step: "pixel:fix1:rows1", role: "pixel-row-repair", iteration: 0, result: { corrections: [{ target: 0, row: 2, cells: "o...." }] } },
   ], 1);
   try {
-    await expect(t.run()).rejects.toThrow("Row 2 has 3 cells; expected 4");
+    await expect(t.run()).rejects.toThrow("must have exactly 4 cells using only palette keys");
   } finally {
+    await t.cleanup();
+  }
+});
+
+
+integration("malformed pixel rows are repaired locally and replay uses both saved results", async () => {
+  const original = { ...drawing(1), rows: ["....", "o ..", "ooooo", "...."] };
+  const t = await scenario(0, [
+    { step: "pixel", role: "pixel", iteration: 0, result: original },
+    { step: "pixel:rows1", role: "pixel-row-repair", iteration: 0, result: { corrections: [
+      { target: 0, row: 2, cells: "oo.." }, { target: 0, row: 3, cells: "oooo" },
+    ] } },
+  ], 2);
+  try {
+    const model = await t.run();
+    expect(model.status).toBe("done");
+    const grid = JSON.parse(await (await getStorage().download(`${t.base}/grid.json`)).text());
+    expect(grid.rows).toEqual(["....", "oo..", "oooo", "...."]);
+    const saved = await db.select().from(runs).where(eq(runs.modelId, model.id));
+    expect(saved).toHaveLength(2);
+    expect(saved.every(run => run.status === "done")).toBe(true);
+    expect(saved.find(run => run.role === "pixel")?.result).toMatchObject({ rows: original.rows, rowRepair: { rows: 2 } });
+  } finally { await t.cleanup(); }
+});
+
+
+integration("row repair receives the rejected drawing and every malformed row", async () => {
+  const original = { ...drawing(1), rows: ["....", "o ..", "ooooo", "...."] };
+  const t = await scenario(0, [{ step: "pixel", role: "pixel", iteration: 0, result: original }], 1);
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY;
+  const originalBase = process.env.OPENAI_BASE_URL;
+  let requested = false;
+  try {
+    process.env.OPENAI_API_KEY = "pixel-repair-test-fixture";
+    process.env.OPENAI_BASE_URL = "https://pixel-repair.invalid/v1";
+    globalThis.fetch = Object.assign(async () => {
+      requested = true;
+      throw new Error("Stopped before provider request");
+    }, { preconnect: originalFetch.preconnect });
+    await expect(t.run()).rejects.toThrow();
+    expect(requested).toBe(true);
+    const saved = await db.select().from(runs).where(eq(runs.modelId, t.modelId));
+    const repair = saved.find(run => run.role === "pixel-row-repair");
+    expect(repair?.input).toContain(JSON.stringify(original));
+    expect(repair?.input).toContain('"row":2,"cells":"o ..","actualWidth":4,"expectedWidth":4,"invalidCells":[{"column":2,"key":" "}]');
+    expect(repair?.input).toContain('"row":3,"cells":"ooooo","actualWidth":5,"expectedWidth":4');
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey;
+    if (originalBase === undefined) delete process.env.OPENAI_BASE_URL; else process.env.OPENAI_BASE_URL = originalBase;
     await t.cleanup();
   }
 });

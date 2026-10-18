@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { pixelRowRepairSchema } from "../../lib/pixel-row-repair";
 import { pixelGridSchema } from "../../lib/pixel";
 import { cadBuildResult, cadSpecResult } from "../../lib/cad";
 import type { AssetType } from "../../lib/asset-types";
@@ -62,6 +63,7 @@ export const roles = {
   "svg-planner": { ...role("tanstack", "planning/graphic-planner", planResult), inputTemplate: "planning/graphic-planner-input" },
   // Pixel art is drawn on a grid by the text model, like SVG, and rendered exactly by the app.
   pixel: role("tanstack", "pixel/pixel", pixelGridSchema, "gpt-6-sol", "high"),
+  "pixel-row-repair": role("tanstack", "pixel/pixel-row-repair", pixelRowRepairSchema, "gpt-6-sol", "high"),
   "pixel-judge": {
     ...role("tanstack", "pixel/pixel-judge", judgeResult, "gpt-6-sol", "high"),
     inputTemplate: "graphics/graphic-judge-input",

@@ -22,7 +22,7 @@ PREVIOUS ATTEMPT GRID, if this is a revision (patches apply to this grid)
 REVIEWER FEEDBACK ON THE PREVIOUS ATTEMPT, if any
 {{feedback}}
 
-FORMAT PROBLEM WITH YOUR LAST ANSWER, if any (fix it; return the whole drawing or valid patches)
+FORMAT PROBLEM AND REJECTED ANSWER, if any (correct that answer; preserve valid rows and return the whole drawing or valid patches against the PREVIOUS ATTEMPT GRID)
 {{problem}}
 
 ATTACHED IMAGES (the review sheet of the previous attempt, plus any style references; judge the drawing by looking at them, not only by reading the grid)

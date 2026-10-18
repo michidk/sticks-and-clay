@@ -158,7 +158,7 @@ configuration, scopes, and deployment behind an auth proxy.
   API, or editable vector artwork with previews, variants, junction diagnostics, and safe SVG output
   (no scripts, external content, or embedded rasters).
 - 👾 **Pixel art.** Drawn cell by cell on a grid (a palette and one row of text
-  per row) instead of generated, rendered exactly by the app, reviewed on a
+  per row) instead of generated, with targeted repairs for malformed rows, rendered exactly by the app, reviewed on a
   sheet (1x on dark and light, silhouette, values) with craft measurements,
   optionally animated or split into paperdoll layers, and exported as a
   baseline-aligned sheet with Unity and Godot import descriptions.
