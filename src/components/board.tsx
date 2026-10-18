@@ -14,7 +14,7 @@ import { fileUrl, json, request } from "@/lib/client";
 import { usePending } from "@/hooks/use-pending";
 import { GenerationDialog } from "@/routes/projects/$projectId/-components/generation-dialog";
 import { GraphicVariant } from "@/routes/projects/$projectId/-components/graphic-variant";
-import { ReturnToIdea } from "@/routes/projects/$projectId/-components/return-to-idea";
+import { ReopenAsIdea } from "@/routes/projects/$projectId/-components/reopen-as-idea";
 import { ideaBrief, ideaSettings, ideaTitle, useIdeaActions } from "@/routes/projects/$projectId/-components/asset-drafts";
 
 type Context = { entry: BoardProject; showProject: boolean; onRefresh: () => Promise<unknown> };
@@ -91,7 +91,7 @@ function VersionCard({ version, root, count, entry, showProject, onRefresh }: Co
       {version.status === "failed" && <Button size="sm" variant="outline" disabled={pending.has(`models/${version.id}/retry`)} onClick={() => send(`models/${version.id}/retry`, {})}>Resume</Button>}
       {version.status === "awaiting_approval" && <Button size="sm" variant="outline" asChild><Link {...link} search={{ view: "target", section: "review" }}>Review target</Link></Button>}
       <References asset={asset} projectId={project.id} onRefresh={onRefresh} />
-      <ReturnToIdea id={root.id} name={name} noun="asset" versions={count} canDelete={false} onDone={onRefresh} />
+      <ReopenAsIdea id={root.id} name={name} onDone={onRefresh} />
     </div>}
   </li>;
 }

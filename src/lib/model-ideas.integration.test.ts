@@ -4,7 +4,7 @@ import { db } from "../db/client";
 import { batches, jobs, assetEntries, assetVersions, projects } from "../db/schema";
 import { api } from "./api.server";
 import { ideaInput } from "./api-inputs";
-import { returnVersionToIdea, createAsset, startAsset, updateAsset } from "./assets.server";
+import { reopenVersionAsIdea, createAsset, startAsset, updateAsset } from "./assets.server";
 
 // Use an isolated migrated database with no worker.
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
@@ -193,34 +193,36 @@ integration("returning an asset keeps its identity and versions, ignores legacy 
     await db.insert(batches).values({ id: iterationBatch, projectId: id, prompt: "repair", count: 1, judgeIterations: 0, design, designVersion: 1, status: "done" });
     await db.insert(assetVersions).values({ id: iteration, assetId: original.id, projectId: id, batchId: iterationBatch, name: "Oak_Chair", prompt: "repair", status: "done", parentModelId: root.id, branchKind: "iterate" });
     const before = await db.select().from(assetVersions).where(eq(assetVersions.assetId, original.id));
-    const returned = await returnVersionToIdea(iteration, true);
-    expect(returned).toEqual({ id: original.id, title: "Oak chair", deleted: false });
-    const [asset] = await db.select().from(assetEntries).where(eq(assetEntries.id, original.id));
-    expect(asset).toMatchObject({ id: original.id, inIdea: true, readyAt: null, batchId: iterationBatch, input: { prompt: "A small sedan", count: 1, spriteTarget: sprite } });
+    const [originalBefore] = await db.select().from(assetEntries).where(eq(assetEntries.id, original.id));
+    const returned = await reopenVersionAsIdea(iteration);
+    expect(returned).toEqual({ id: expect.any(String), title: "Oak chair" });
+    expect(returned.id).not.toBe(original.id);
+    const [reopened] = await db.select().from(assetEntries).where(eq(assetEntries.id, returned.id));
+    expect(reopened).toMatchObject({ inIdea: true, readyAt: null, batchId: null, title: "Oak chair", input: { prompt: "A small sedan", count: 1, spriteTarget: sprite } });
+    expect(await db.select().from(assetVersions).where(eq(assetVersions.assetId, returned.id))).toHaveLength(0);
+    // The original asset and its versions are left exactly as they were.
+    expect((await db.select().from(assetEntries).where(eq(assetEntries.id, original.id)))[0]).toEqual(originalBefore);
     expect(await db.select().from(assetVersions).where(eq(assetVersions.assetId, original.id))).toEqual(before);
     expect((await post(`models/${crypto.randomUUID()}/idea`, {})).status).toBe(400);
-    expect(await (await post(`models/${iteration}/idea`)).json()).toEqual(returned);
-    expect(await db.select().from(assetEntries).where(eq(assetEntries.projectId, id))).toHaveLength(1);
+    expect(await (await post(`models/${iteration}/idea`)).json()).toEqual({ id: expect.any(String), title: "Oak chair" });
+    expect(await db.select().from(assetEntries).where(eq(assetEntries.projectId, id))).toHaveLength(3);
     expect((await send(id, `/${original.id}`, undefined, "DELETE")).status).toBe(400);
     expect(await db.select().from(assetVersions).where(eq(assetVersions.assetId, original.id))).toEqual(before);
 
-    const secondBatch = await startAsset(id, original.id);
+    const secondBatch = await startAsset(id, returned.id);
     expect(secondBatch).not.toBe(batchId);
-    expect(await startAsset(id, original.id)).toBe(secondBatch);
-    const restarted = await db.select().from(assetVersions).where(eq(assetVersions.assetId, original.id));
-    expect(restarted).toHaveLength(3);
-    await expect(returnVersionToIdea(iteration, false)).rejects.toThrow("Wait for generation to finish");
-    for (const version of restarted) await db.update(assetVersions).set({ status: "done" }).where(eq(assetVersions.id, version.id));
+    expect(await startAsset(id, returned.id)).toBe(secondBatch);
+    expect(await db.select().from(assetVersions).where(eq(assetVersions.assetId, returned.id))).toHaveLength(1);
+    expect(await db.select().from(assetVersions).where(eq(assetVersions.assetId, original.id))).toEqual(before);
 
     // Direct version inserts acquire their own stable asset through the ownership trigger.
+    // Reopening is allowed while that version is still generating and does not touch it.
     await db.insert(assetVersions).values({ id: running, projectId: id, batchId: iterationBatch, name: "Oak_Table", prompt: "A table", status: "building" });
-    await expect(returnVersionToIdea(running, true)).rejects.toThrow("Wait for generation to finish");
+    const whileRunning = await reopenVersionAsIdea(running);
+    expect(whileRunning).toEqual({ id: expect.any(String), title: "Oak Table" });
     expect((await db.select().from(assetVersions).where(eq(assetVersions.id, running)))[0].status).toBe("building");
-    await db.update(assetVersions).set({ status: "done" }).where(eq(assetVersions.id, running));
-    const directReturn = await returnVersionToIdea(running, false);
-    const [directVersion] = await db.select().from(assetVersions).where(eq(assetVersions.id, running));
-    expect(directReturn).toEqual({ id: directVersion.assetId, title: "Oak Table", deleted: false });
+    expect((await db.select().from(assetEntries).where(eq(assetEntries.id, whileRunning.id)))[0]).toMatchObject({ inIdea: true, batchId: null });
     await db.update(projects).set({ archivedAt: new Date() }).where(eq(projects.id, id));
-    await expect(returnVersionToIdea(iteration, false)).rejects.toThrow();
+    await expect(reopenVersionAsIdea(iteration)).rejects.toThrow();
   } finally { await cleanup([id]); }
 });

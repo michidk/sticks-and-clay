@@ -13,17 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { json, request } from "@/lib/client";
 
-/** Move the same asset back to Ideas while keeping all saved versions. */
-export function ReturnToIdea({
+/** Create a new idea from this asset's brief and settings; the asset itself is left as it is. */
+export function ReopenAsIdea({
   id, name, onDone,
 }: {
   id: string;
   name: string;
-  noun: "model" | "graphic" | "asset";
-  versions?: number;
-  /** False while the asset is still generating, which the server would refuse to delete. */
-  canDelete?: boolean;
-  onDone: (result: { id: string; title: string; deleted: boolean }) => unknown;
+  onDone: (result: { id: string; title: string | null }) => unknown;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -32,7 +28,7 @@ export function ReturnToIdea({
     setBusy(true);
     setError("");
     try {
-      const result = await request<{ id: string; title: string; deleted: boolean }>(
+      const result = await request<{ id: string; title: string | null }>(
         `asset-versions/${id}/idea`, json({}),
       );
       setOpen(false);
@@ -45,23 +41,23 @@ export function ReturnToIdea({
   }
   return (
     <>
-      <Button variant="ghost" size="icon-sm" aria-label={`Return ${name} to ideas`} title="Return to ideas"
+      <Button variant="ghost" size="icon-sm" aria-label={`Reopen ${name} as a new idea`} title="Reopen as new idea"
         onClick={() => { setError(""); setOpen(true); }}>
         <Lightbulb size={15} />
       </Button>
       <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
         <DialogContent showCloseButton={!busy}>
           <DialogHeader>
-            <DialogTitle>Return {name} to ideas?</DialogTitle>
+            <DialogTitle className="pr-6">Reopen {name} as a new idea?</DialogTitle>
             <DialogDescription>
-              Moves this asset to Ideas so you can edit its brief and settings. All saved versions and their history remain available.
+              Creates a new idea from this asset’s brief, settings and references so you can edit it and generate again. This asset, its versions and any running generation stay as they are.
             </DialogDescription>
           </DialogHeader>
           {error && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
           <DialogFooter>
             <DialogClose asChild><Button variant="outline" disabled={busy}>Cancel</Button></DialogClose>
             <Button disabled={busy} onClick={() => void submit()}>
-              {busy ? <LoaderCircle size={15} className="spin" /> : <Lightbulb size={15} />} {busy ? "Returning…" : "Return to ideas"}
+              {busy ? <LoaderCircle size={15} className="spin" /> : <Lightbulb size={15} />} {busy ? "Reopening…" : "Reopen as new idea"}
             </Button>
           </DialogFooter>
         </DialogContent>

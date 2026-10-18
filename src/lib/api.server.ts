@@ -17,7 +17,6 @@ import {
   acceptInput,
   exportInput,
   ideaInput,
-  returnToIdeaInput,
   readyInput,
 } from "./api-inputs";
 import { exportAssets, setModelAccepted } from "./asset-export.server";
@@ -77,7 +76,7 @@ import {
   startDesign,
 } from "./project-lifecycle.server";
 import { queueGeneration, regenerateAsset } from "./generation.server";
-import { discardAssetDraft, listAssetDrafts, returnVersionToIdea, createAsset, setAssetReady, startAsset, updateAsset } from "./assets.server";
+import { discardAssetDraft, listAssetDrafts, reopenVersionAsIdea, createAsset, setAssetReady, startAsset, updateAsset } from "./assets.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   kinds: string[],
@@ -1012,8 +1011,7 @@ export async function api(request: Request) {
       return reply({ ok: true });
     }
     if (path[0] === "models" && path[1] && path[2] === "idea" && request.method === "POST") {
-      const { deleteModel } = returnToIdeaInput.parse(await request.json().catch(() => ({})));
-      return reply(await returnVersionToIdea(uuid.parse(path[1]), deleteModel), 201);
+      return reply(await reopenVersionAsIdea(uuid.parse(path[1])), 201);
     }
     if (path[0] === "models" && path[1] && path.length === 2 && request.method === "DELETE") {
       await deleteAsset(uuid.parse(path[1]));

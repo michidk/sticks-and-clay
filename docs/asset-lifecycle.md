@@ -26,7 +26,7 @@ idea's own title, written by the owner or by AI, is kept.
 
 | Stage | Meaning |
 | --- | --- |
-| Ideas | The asset's brief can still be developed. Returning here preserves its versions. |
+| Ideas | The asset's brief can still be developed. Reopening a generated asset as a new idea copies its brief, settings and references into a fresh asset and leaves the original and its versions as they are. |
 | Ready | The owner marked the asset's brief ready. This does not start paid work. |
 | In progress | Generation is queued, running, waiting for a visual target decision, or needs recovery. |
 | Review | The latest version finished and awaits the owner's decision. |

@@ -15,7 +15,7 @@ import { costSummary, fileUrl, json, request } from "@/lib/client";
 import { GraphicVariant } from "./graphic-variant";
 import { queueKindLabels } from "@/lib/queue-view";
 import { DeleteAsset } from "./delete-asset";
-import { ReturnToIdea } from "./return-to-idea";
+import { ReopenAsIdea } from "./reopen-as-idea";
 
 const finished = ["done", "failed", "cancelled"];
 
@@ -269,8 +269,7 @@ export function AssetCard({
             </>
           )}
           {deleteTarget && !archived && (
-            <ReturnToIdea id={deleteTarget.id} name={name} noun={isGraphics ? "graphic" : "model"} versions={deleteTarget.versions}
-              canDelete={!working} onDone={async () => { await onRefresh(); onReturnedToIdea?.(); }} />
+            <ReopenAsIdea id={deleteTarget.id} name={name} onDone={async () => { await onRefresh(); onReturnedToIdea?.(); }} />
           )}
           {deleteTarget && !archived && (
             <DeleteAsset id={deleteTarget.id} name={name} versions={deleteTarget.versions}

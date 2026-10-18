@@ -14,7 +14,7 @@ import { costSummary, fileUrl, json, request } from "@/lib/client";
 import { describeError } from "@/lib/error-message";
 import { isFlatRole } from "@/lib/asset-types";
 import { DeleteAsset } from "../../../-components/delete-asset";
-import { ReturnToIdea } from "../../../-components/return-to-idea";
+import { ReopenAsIdea } from "../../../-components/reopen-as-idea";
 import { GraphicVariant } from "../../../-components/graphic-variant";
 import { PixelExports } from "./pixel-exports";
 import { CadExports } from "./cad-exports";
@@ -138,7 +138,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
             </Button>
           )}
           {!archived && (
-            <ReturnToIdea id={modelId} name={name} noun="graphic" canDelete={!working}
+            <ReopenAsIdea id={modelId} name={name}
               onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "idea" } })} />
           )}
           {!archived && (

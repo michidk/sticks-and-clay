@@ -47,7 +47,7 @@ import { collectionAssetGroups } from "@/lib/project-summary";
 import { AssetReferences } from "@/components/asset-references";
 import { History } from "../../-components/history";
 import { DeleteAsset } from "../../-components/delete-asset";
-import { ReturnToIdea } from "../../-components/return-to-idea";
+import { ReopenAsIdea } from "../../-components/reopen-as-idea";
 import { GraphicDetail } from "./-components/graphic-detail";
 import { ModelPipeline } from "./-components/pipeline";
 import { ModelConversation } from "./-components/model-conversation";
@@ -321,11 +321,9 @@ function ModelPage() {
                 <span className="model-detail-filename">{model.name}</span>
               )}
               {!data.project.archivedAt && (
-                <ReturnToIdea
+                <ReopenAsIdea
                   id={model.id}
                   name={name}
-                  noun="model"
-                  canDelete={["done", "failed", "cancelled"].includes(model.status)}
                   onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "idea" } })}
                 />
               )}

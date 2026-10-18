@@ -6,7 +6,7 @@ import { api } from "./api.server";
 import { jobContext } from "./checkpoint.server";
 import { executeJob, failJob } from "./pipeline.server";
 import { cancelJob } from "./queue.server";
-import { returnVersionToIdea } from "./assets.server";
+import { reopenVersionAsIdea } from "./assets.server";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 
@@ -32,16 +32,16 @@ async function fixture() {
   return { projectId, batchId, jobId, runId, ids, checkpoint, cleanup };
 }
 
-integration("cancelling an unplanned asset marks its reserved versions terminal and retains its identity in Ideas", async () => {
+integration("cancelling an unplanned asset marks its reserved versions terminal and can be reopened as a new idea", async () => {
   const t = await fixture();
   try {
     expect(await cancelJob(t.jobId, true)).toBe("cancelled");
     const versions = await db.select().from(assetVersions).where(eq(assetVersions.batchId, t.batchId));
     expect(versions.map((version) => version.status)).toEqual(["cancelled", "cancelled"]);
-    const returned = await returnVersionToIdea(t.ids[0], false);
+    const returned = await reopenVersionAsIdea(t.ids[0]);
     const version = versions.find((item) => item.id === t.ids[0]);
     if (!version) throw new Error("Missing reserved version");
-    expect(returned.id).toBe(version.assetId);
+    expect(returned.id).not.toBe(version.assetId);
     expect((await db.select().from(assetEntries).where(eq(assetEntries.id, returned.id)))[0].inIdea).toBe(true);
     expect(await db.select().from(jobs).where(eq(jobs.kind, "model"))).not.toContainEqual(expect.objectContaining({ targetId: t.ids[0] }));
   } finally { await t.cleanup(); }

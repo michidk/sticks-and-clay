@@ -68,7 +68,7 @@ const actions: {
   { name: "generate_material", scope: write, method: "POST", path: `projects/${id}/materials`, args: { projectId: id, parameters: {} } },
   { name: "branch_asset_version", scope: write, method: "POST", path: `asset-versions/${id}/branch`, args: { versionId: id, kind: "iterate", sourceRunId, prompt: "Fix the handle", judgeIterations: 0 } },
   { name: "accept_asset_version", scope: write, method: "POST", path: `asset-versions/${id}/accept`, args: { versionId: id, accepted: true } },
-  { name: "return_asset_to_idea", scope: write, method: "POST", path: `asset-versions/${id}/idea`, args: { versionId: id } },
+  { name: "reopen_asset_as_idea", scope: write, method: "POST", path: `asset-versions/${id}/idea`, args: { versionId: id } },
   { name: "export_assets", scope: write, method: "POST", path: `projects/${id}/export`, args: { projectId: id, acceptedOnly: true } },
   { name: "update_design_from_asset", scope: write, method: "POST", path: `asset-versions/${id}/design-update`, args: { versionId: id, sourceRunId, view: 0 } },
   { name: "approve_visual_target", scope: write, method: "POST", path: `asset-versions/${id}/visual-target`, args: { versionId: id, target: "models/target.png" } },

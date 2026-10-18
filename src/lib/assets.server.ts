@@ -89,18 +89,20 @@ export async function setAssetReady(projectId: string, ideaId: string, ready: bo
   if (!updated.length) throw new Error("Idea is no longer available");
 }
 
-/** Return the same asset to Ideas while keeping every version and its accounting. */
-export async function returnVersionToIdea(modelId: string, _deleteModel: boolean) {
+/** Reopen an asset's brief, settings and references as a new idea. The original asset, its versions
+ * and any running generation stay untouched, so this is allowed at any time. */
+export async function reopenVersionAsIdea(versionId: string) {
   return db.transaction(async (tx) => {
-    const [version] = await tx.select().from(assetVersions).where(eq(assetVersions.id, modelId));
+    const [version] = await tx.select().from(assetVersions).where(eq(assetVersions.id, versionId));
     if (!version) throw new Error("Version not found");
     const [project] = await tx.select().from(projects).where(eq(projects.id, version.projectId)).for("update");
     assertNotArchived(project);
-    const [asset] = await tx.select().from(assetEntries).where(eq(assetEntries.id, version.assetId)).for("update");
-    const versions = await tx.select().from(assetVersions).where(eq(assetVersions.assetId, asset.id));
-    if (versions.some((item) => !["done", "failed", "cancelled"].includes(item.status)))
-      throw new Error("Wait for generation to finish before returning this asset to Ideas");
-    await tx.update(assetEntries).set({ inIdea: true, readyAt: null }).where(eq(assetEntries.id, asset.id));
-    return { id: asset.id, title: asset.title, deleted: false };
+    const [asset] = await tx.select().from(assetEntries).where(eq(assetEntries.id, version.assetId));
+    const id = crypto.randomUUID();
+    await tx.insert(assetEntries).values({
+      id, projectId: asset.projectId, title: asset.title, input: asset.input,
+      references: asset.references, referenceNotes: asset.referenceNotes,
+    });
+    return { id, title: asset.title };
   });
 }
