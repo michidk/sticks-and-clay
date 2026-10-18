@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import { boardStages, boardStageTitles, type BoardStage } from "@/lib/board";
+import type { BoardStage } from "@/lib/board";
 
-const hints: Record<BoardStage, string> = {
+export const stageHints: Record<BoardStage, string> = {
   idea: "Write the brief",
   ready: "Start generation",
   progress: "Generating",
@@ -9,24 +9,30 @@ const hints: Record<BoardStage, string> = {
   done: "Ready to export",
 };
 
-/** The asset lifecycle as left-to-right steps; the selected step decides which assets are listed. */
-export function StageStrip({ stage, counts, attention, onSelect }: {
-  stage: BoardStage;
-  counts: Record<BoardStage, number>;
-  attention: number;
-  onSelect: (stage: BoardStage) => void;
+/** What a stage means, shown above its list. */
+export const stageMeanings: Record<BoardStage, string> = {
+  idea: "The brief can still be developed. Returning an asset here keeps its versions.",
+  ready: "You marked the brief ready. This does not start paid work.",
+  progress: "Generation is queued, running, waiting for a visual target decision, or needs recovery.",
+  review: "The latest version finished and waits for your decision.",
+  done: "You accepted the finished version.",
+};
+
+/** The project workflow as left-to-right steps; the pressed step is the open view. */
+export function StageStrip<Id extends string>({ steps, current, onSelect }: {
+  steps: { id: Id; title: string; hint: string; count?: number; warn?: boolean }[];
+  current: string;
+  onSelect: (id: Id) => void;
 }) {
   const strip = useRef<HTMLDivElement>(null);
-  // On phones the strip scrolls sideways; keep the pressed stage visible.
+  // On phones the strip scrolls sideways; keep the pressed step visible.
   useEffect(() => {
     strip.current?.querySelector<HTMLElement>('[aria-pressed="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [stage]);
-  return <div className="stage-strip" role="group" aria-label="Asset stages" ref={strip}>
-    {boardStages.map((id) => <button type="button" key={id} aria-pressed={stage === id} onClick={() => onSelect(id)}>
-      <strong>{boardStageTitles[id]} <span className="count">{counts[id]}</span></strong>
-      {id === "progress" && attention
-        ? <small className="attention">{attention === 1 ? "1 needs attention" : `${attention} need attention`}</small>
-        : <small>{hints[id]}</small>}
+  }, [current]);
+  return <div className="stage-strip" role="group" aria-label="Project workflow" ref={strip}>
+    {steps.map((step) => <button type="button" key={step.id} aria-pressed={current === step.id} onClick={() => onSelect(step.id)}>
+      <strong>{step.title} {!!step.count && <span className="count">{step.count}</span>}</strong>
+      <small className={step.warn ? "attention" : undefined}>{step.hint}</small>
     </button>)}
   </div>;
 }

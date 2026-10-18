@@ -130,7 +130,7 @@ export function projectState(
   if (collection.queued)
     return { label: `${collection.queued} queued`, tone: "queued" };
   if (collection.attention)
-    return { label: `${collection.attention} need attention`, tone: "warning" };
+    return { label: `${collection.attention} need${collection.attention === 1 ? "s" : ""} attention`, tone: "warning" };
   if (collection.completed)
     return { label: `${collection.completed} completed`, tone: "done" };
   return { label: "Ready to generate", tone: "ready" };

@@ -370,7 +370,7 @@ function ProjectsPage() {
                         · {p.collection?.completed || 0} completed
                       </span>
                       {!!p.collection?.attention && (
-                        <span>{p.collection.attention} need attention</span>
+                        <span>{p.collection.attention} need{p.collection.attention === 1 ? "s" : ""} attention</span>
                       )}
                       {p.status === "ready" && <span>Design approved</span>}
                     </div>

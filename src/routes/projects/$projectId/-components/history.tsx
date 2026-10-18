@@ -126,14 +126,12 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
   const max = Math.max(1, ...runs.map((r) => r.inputTokens + r.outputTokens));
   return (
     <div className="history">
-      <div className="section-title">
-        <h2>Activity</h2>
-        <span>{runs.length} AI requests</span>
+      <div className="stage-head">
+        <div>
+          <h2>Activity</h2>
+          <p className="muted">Every AI request with its outcome and estimated cost, including failed attempts.</p>
+        </div>
       </div>
-      <p className="muted">
-        Every AI request, grouped by asset. Costs are estimates and include
-        failed attempts.
-      </p>
       {!!runs.length && (
         <div className="history-filters">
           <Label>
