@@ -14,6 +14,7 @@ import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as BoardRouteImport } from './routes/board'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ApiSplatRouteImport } from './routes/api/$'
+import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as AdminAgentsIndexRouteImport } from './routes/admin/agents/index'
 import { Route as AdminDiagnosticsIndexRouteImport } from './routes/admin/diagnostics/index'
 import { Route as AdminMcpIndexRouteImport } from './routes/admin/mcp/index'
@@ -46,6 +47,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
 const ApiSplatRoute = ApiSplatRouteImport.update({
   id: '/api/$',
   path: '/api/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminAgentsIndexRoute = AdminAgentsIndexRouteImport.update({
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/board': typeof BoardRoute
   '/api/$': typeof ApiSplatRoute
   '/admin/': typeof AdminIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
   '/admin/agents/': typeof AdminAgentsIndexRoute
   '/admin/diagnostics/': typeof AdminDiagnosticsIndexRoute
   '/admin/mcp/': typeof AdminMcpIndexRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/board': typeof BoardRoute
   '/api/$': typeof ApiSplatRoute
   '/admin': typeof AdminIndexRoute
+  '/projects': typeof ProjectsIndexRoute
   '/admin/agents': typeof AdminAgentsIndexRoute
   '/admin/diagnostics': typeof AdminDiagnosticsIndexRoute
   '/admin/mcp': typeof AdminMcpIndexRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/board': typeof BoardRoute
   '/api/$': typeof ApiSplatRoute
   '/admin/': typeof AdminIndexRoute
+  '/projects/': typeof ProjectsIndexRoute
   '/admin/agents/': typeof AdminAgentsIndexRoute
   '/admin/diagnostics/': typeof AdminDiagnosticsIndexRoute
   '/admin/mcp/': typeof AdminMcpIndexRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/board'
     | '/api/$'
     | '/admin/'
+    | '/projects/'
     | '/admin/agents/'
     | '/admin/diagnostics/'
     | '/admin/mcp/'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/board'
     | '/api/$'
     | '/admin'
+    | '/projects'
     | '/admin/agents'
     | '/admin/diagnostics'
     | '/admin/mcp'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/board'
     | '/api/$'
     | '/admin/'
+    | '/projects/'
     | '/admin/agents/'
     | '/admin/diagnostics/'
     | '/admin/mcp/'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   BoardRoute: typeof BoardRoute
   ApiSplatRoute: typeof ApiSplatRoute
+  ProjectsIndexRoute: typeof ProjectsIndexRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
   ProjectsProjectIdAssetsAssetIdIndexRoute: typeof ProjectsProjectIdAssetsAssetIdIndexRoute
   ProjectsProjectIdModelsModelIdIndexRoute: typeof ProjectsProjectIdModelsModelIdIndexRoute
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/api/$'
       fullPath: '/api/$'
       preLoaderRoute: typeof ApiSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/': {
+      id: '/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/agents/': {
@@ -316,6 +336,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRouteRoute: AdminRouteRouteWithChildren,
   BoardRoute: BoardRoute,
   ApiSplatRoute: ApiSplatRoute,
+  ProjectsIndexRoute: ProjectsIndexRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
   ProjectsProjectIdAssetsAssetIdIndexRoute:
     ProjectsProjectIdAssetsAssetIdIndexRoute,

@@ -121,7 +121,7 @@ function ModelPage() {
   const back = (
     <Breadcrumbs
       items={[
-        { label: "Projects", link: { to: "/" } },
+        { label: "Projects", link: { to: "/projects" } },
         {
           label: data?.project.name || "Project",
           link: { to: "/projects/$projectId", params: { projectId } },
@@ -259,7 +259,7 @@ function ModelPage() {
             <div className="model-detail-topline">
               <Breadcrumbs
                 items={[
-                  { label: "Projects", link: { to: "/" } },
+                  { label: "Projects", link: { to: "/projects" } },
                   {
                     label: data.project.name,
                     link: { to: "/projects/$projectId", params: { projectId } },

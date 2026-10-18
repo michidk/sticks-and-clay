@@ -6,7 +6,9 @@ import {
   HeadContent,
   Outlet,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
+import { DEMO_MODE } from "@/lib/build-mode";
 import "../styles.css";
 export const Route = createRootRoute({
   head: () => ({
@@ -17,12 +19,7 @@ export const Route = createRootRoute({
       { title: "Sticks & Clay · From reference to ready" },
     ],
   }),
-  component: () => (
-    <>
-      <StudioNav />
-      <Outlet />
-    </>
-  ),
+  component: RootLayout,
   shellComponent: ({ children }) => (
     <html lang="en">
       <head>
@@ -45,7 +42,24 @@ export const Route = createRootRoute({
       <Button variant="outline" onClick={() => window.location.reload()}>
         Reload page
       </Button>
-      <a href="/">Return to projects</a>
+      <a href="/projects">Return to projects</a>
     </main>
   ),
 });
+
+function RootLayout() {
+  const landing = useRouterState({ select: (state) => state.location.pathname === "/" });
+  if (landing) return <Outlet />;
+  return (
+    <>
+      {DEMO_MODE && (
+        <p className="demo-banner">
+          Read-only demo with sample projects. Generation and changes are disabled.{" "}
+          <a href="https://github.com/michidk/sticks-and-clay">Self-host Sticks &amp; Clay</a>
+        </p>
+      )}
+      <StudioNav />
+      <Outlet />
+    </>
+  );
+}

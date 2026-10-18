@@ -1,3 +1,4 @@
+import { DEMO_MODE } from "./build-mode";
 import { plannerReservations } from "./queue.server";
 import { getGlobalBoard } from "./global-board.server";
 import { assetSnapshot } from "./asset-snapshot.server";
@@ -152,7 +153,8 @@ export async function api(request: Request) {
     }
     if (path[0] === "files" && request.method === "GET") {
       const key = path.slice(1).map(decodeURIComponent).join("/");
-      const width = Number(new URL(request.url).searchParams.get("w"));
+      // The demo ships previews instead of raster originals, so it serves the largest one in their place.
+      const width = Number(new URL(request.url).searchParams.get("w")) || (DEMO_MODE ? 1280 : 0);
       const small = width ? await thumbnail(key, width) : null;
       if (small)
         return new Response(small, {

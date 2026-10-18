@@ -49,7 +49,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
   const model: any = data.assetVersions.find((item) => item.id === modelId);
   const back = (
     <Breadcrumbs items={[
-      { label: "Projects", link: { to: "/" } },
+      { label: "Projects", link: { to: "/projects" } },
       { label: data.project.name, link: { to: "/projects/$projectId", params: { projectId } } },
     ]} />
   );

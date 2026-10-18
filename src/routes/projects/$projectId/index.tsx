@@ -241,7 +241,7 @@ function ProjectPage() {
   return (
     <main className="project-overview">
       <Breadcrumbs
-        items={[{ label: "Projects", link: { to: "/" } }, { label: p.name }]}
+        items={[{ label: "Projects", link: { to: "/projects" } }, { label: p.name }]}
       />
       <section className="page-header">
         <div>
@@ -274,7 +274,7 @@ function ProjectPage() {
             project={p}
             canDelete={!hasCollection && !designUpdating}
             onChanged={load}
-            onDeleted={() => navigate({ to: "/" })}
+            onDeleted={() => navigate({ to: "/projects" })}
           />
           {ready && !isGraphics && !p.archivedAt && <ImportModel projectId={projectId} />}
           {ready ? (

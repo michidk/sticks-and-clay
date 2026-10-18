@@ -44,6 +44,7 @@ jobs:
           .venv/bin/python -m pip install -r blender/requirements.txt -r scripts/requirements-dev.txt
       - run: bun run db:migrate
       - run: bun run verify
+      - run: bun run build:demo
       - run: bun run eve:build
       - run: bun run audit
       - run: .venv/bin/ruff check blender scripts

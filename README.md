@@ -232,7 +232,8 @@ Open <http://localhost:3000>. Eve listens on `127.0.0.1:33441`, Blender MCP on
 `127.0.0.1:33442`, and PostgreSQL on `127.0.0.1:55439`. The supervisor also
 starts the durable worker. For a production build, run `bun run build`, then
 `PORT=3000 bun .output/server/index.mjs`, and keep the background services
-running separately.
+running separately. `bun run build:demo` builds the read-only public demo
+with its landing page; see [the demo guide](docs/demo-mode.md).
 
 On Windows, use WSL for the service launcher. See
 [development and operations](docs/development.md) for troubleshooting,
@@ -268,6 +269,7 @@ running worker; Python and real Blender checks run separately. See
 | [Prompt guide](prompts/README.md) | Authored instructions and third-party attribution |
 | [Design guide](design.md) | Interface theme and component conventions |
 | [Development and operations](docs/development.md) | Source map, services, persistence, tests |
+| [Read-only demo](docs/demo-mode.md) | Landing page, demo fixtures, Vercel build |
 
 ## 📁 Project layout
 
@@ -281,7 +283,8 @@ src/db/, drizzle/  Schema and migrations
 eve/agent/         Agent tools and capability-scoped workspaces
 blender/           Isolated Blender execution, export, analysis, materials
 prompts/           Authored role instructions and templates
-scripts/           Service supervisor, worker, migrations
+scripts/           Service supervisor, worker, migrations, demo build
+demo/              Exported projects shown by the read-only demo
 ```
 
 PostgreSQL, `data/`, and Eve session storage form one recoverable state; back

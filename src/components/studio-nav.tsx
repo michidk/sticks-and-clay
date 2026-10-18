@@ -2,7 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { FolderOpen, Settings, Columns3 } from "lucide-react";
 
 const sections = [
-  { to: "/", label: "Projects", icon: FolderOpen },
+  { to: "/projects", label: "Projects", icon: FolderOpen },
   { to: "/board", label: "Board", icon: Columns3 },
   { to: "/admin", label: "Admin", icon: Settings },
 ] as const;
@@ -24,10 +24,7 @@ export function StudioNav() {
         </Link>
         <nav className="studio-nav" aria-label="Main navigation">
           {sections.map(({ to, label, icon: Icon }) => {
-            const active =
-              to === "/"
-                ? pathname === "/" || pathname.startsWith("/projects/")
-                : pathname === to || pathname.startsWith(to + "/");
+            const active = pathname === to || pathname.startsWith(to + "/");
             return (
               <Link
                 key={to}
