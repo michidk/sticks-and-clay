@@ -255,7 +255,7 @@ export function SpriteExport({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="sprite-outline">Outline color (optional)</Label>
+            <Label htmlFor="sprite-outline">Outline color (optional, or auto)</Label>
             <Input
               id="sprite-outline"
               disabled={!options.pixel}
@@ -263,7 +263,7 @@ export function SpriteExport({
               onChange={(e) =>
                 setOptions({ ...options, outline: e.target.value })
               }
-              placeholder="#243b2c"
+              placeholder="#243b2c or auto"
               maxLength={7}
             />
           </div>

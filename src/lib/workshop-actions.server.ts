@@ -303,14 +303,20 @@ export async function renderPresentation() {
       "output/sprites.png",
       "output/sprites.json",
       "output/receipt.json",
-      ...((await readFile(
-        resolve(destination, "output/sprite-checks.json"),
-      ).then(
-        () => true,
-        () => false,
-      ))
-        ? ["output/sprite-checks.json"]
-        : []),
+      // Optional: pinned runners from before these files existed do not write them.
+      ...(
+        await Promise.all(
+          ["sprite-checks.json", "sprites.unity.json", "sprites.godot.json"].map(
+            async (name) =>
+              (await readFile(resolve(destination, "output", name)).then(
+                () => true,
+                () => false,
+              ))
+                ? [`output/${name}`]
+                : [],
+          ),
+        )
+      ).flat(),
       ...((await readFile(
         resolve(destination, "output/build-receipt.json"),
       ).then(
