@@ -161,3 +161,5 @@ action. Done requires the owner's acceptance after reviewing the result.
 Pixel projects display wrapping color swatches with hex labels above design reference images and mockups. The palette editor applies colors to the design document; normal draft saving and approval persist them. Label swatches with the current design revision so historic images are not mistaken for examples of its palette. AI design changes propose colors for owner approval.
 
 Every Review asset card offers Regenerate alongside its existing actions, on the project page, global board, and asset lifecycle page. It creates another version using the current approved design and saved result, preserving previous versions. Disable it while submitting or while the design needs approval; archived projects keep actions hidden.
+
+Outdated asset cards show Regenerate in place of Iterate, including on the graphic detail page. It opens the new-version dialog with an optional change comment and keeps the design-approval requirement.

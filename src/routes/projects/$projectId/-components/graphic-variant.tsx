@@ -21,12 +21,14 @@ export function GraphicVariant({
   onSaved,
   kind = "fork",
   designReady = true,
+  iterateLabel = "Iterate",
 }: {
   model: any;
   sourceRunId?: string;
   onSaved: () => Promise<unknown>;
   kind?: "fork" | "iterate";
   designReady?: boolean;
+  iterateLabel?: "Iterate" | "Regenerate";
 }) {
   const iterate = kind === "iterate";
   const [open, setOpen] = useState(false),
@@ -65,16 +67,16 @@ export function GraphicVariant({
         variant="outline"
         size={iterate ? "sm" : undefined}
         disabled={!sourceRunId || (iterate && !designReady)}
-        title={iterate && !designReady ? "Approve the design before iterating" : undefined}
+        title={iterate && !designReady ? "Approve the design before generating a new version" : undefined}
         onClick={() => setOpen(true)}
       >
-        {iterate ? "Iterate" : "Fork asset"}
+        {iterate ? iterateLabel : "Fork asset"}
       </Button>
       {!open && error && <p role="status">{error}</p>}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{iterate ? "Iterate" : "Fork asset"}</DialogTitle>
+            <DialogTitle>{iterate ? iterateLabel : "Fork asset"}</DialogTitle>
             <DialogDescription>
               {iterate
                 ? "Creates a new version of this asset that returns to Review. The current version is kept. Leave the comment blank to use the current approved design and latest saved result. Paid generation request."

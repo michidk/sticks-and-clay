@@ -127,7 +127,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
             </Button>
           )}
           {current && !archived && !working && <>
-            <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} kind="iterate" designReady={data.project.status === "ready"} />
+            <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} kind="iterate" iterateLabel={outdated ? "Regenerate" : "Iterate"} designReady={data.project.status === "ready"} />
             <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} />
           </>}
           {!archived && (

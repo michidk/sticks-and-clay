@@ -232,6 +232,7 @@ export function AssetCard({
           {(outdated || assetStage(m) === "review") && !archived && !working && (
             <GraphicVariant
               kind="iterate"
+              iterateLabel={outdated ? "Regenerate" : "Iterate"}
               model={m}
               sourceRunId={sourceRunId}
               designReady={designReady}
