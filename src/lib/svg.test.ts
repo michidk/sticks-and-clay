@@ -61,14 +61,15 @@ test("SVG sources are not sent to vision models as images", () => {
 
 test("the SVG model is shown renders of the earlier versions before the style references", async () => {
   const { attachedImages } = await import("./svg-generation.server");
-  const shown = await attachedImages("g/preview.png", ["s/preview.png"], ["s/source.svg", "references/a.png"]);
-  expect(shown.keys).toEqual(["g/preview.png", "s/preview.png", "references/a.png"]);
+  const shown = await attachedImages([{ key: "g/preview.png", label: "full-size" }, { key: "g/preview-24.png", label: "24 px" }], ["s/preview.png"], ["s/source.svg", "references/a.png"]);
+  expect(shown.keys).toEqual(["g/preview.png", "g/preview-24.png", "s/preview.png", "references/a.png"]);
   expect(shown.notes.split("\n")).toEqual([
-    "Image 1: render of the PREVIOUS ATTEMPT SVG, on white",
-    "Image 2: render of the SAVED SOURCE SVG, on white",
-    "Image 3: style reference, not the artwork to copy",
+    "Image 1: render of the PREVIOUS ATTEMPT SVG: full-size",
+    "Image 2: render of the PREVIOUS ATTEMPT SVG: 24 px",
+    "Image 3: render of the SAVED SOURCE SVG, on white",
+    "Image 4: style reference, not the artwork to copy",
   ]);
-  expect((await attachedImages(undefined, [], [])).notes).toBe("None");
+  expect((await attachedImages([], [], [])).notes).toBe("None");
 });
 
 test("a restored SVG source preview is rendered to PNG before attaching it", async () => {
@@ -79,10 +80,10 @@ test("a restored SVG source preview is rendered to PNG before attaching it", asy
   const storage = getStorage();
   try {
     await storage.upload(new Blob([svg('<circle cx="5" cy="5" r="4"/>')], { type: "image/svg+xml" }), source);
-    expect((await attachedImages(source, [], [])).keys).toEqual([preview]);
+    expect((await attachedImages([{ key: source, label: "restored SVG" }], [], [])).keys).toEqual([preview]);
     const bytes = new Uint8Array(await (await readStoredFile(preview)).arrayBuffer());
     expect(Array.from(bytes.slice(0, 8))).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
-    expect((await attachedImages(source, [], [])).keys).toEqual([preview]);
+    expect((await attachedImages([{ key: source, label: "restored SVG" }], [], [])).keys).toEqual([preview]);
   } finally {
     for (const key of [source, preview]) if (await storage.exists(key)) await storage.delete(key);
   }

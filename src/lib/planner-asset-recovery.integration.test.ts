@@ -129,3 +129,19 @@ integration("the planner names the assets of a multi-asset request, but an idea 
     await db.delete(projects).where(eq(projects.id, projectId));
   }
 });
+
+integration("one saved SVG construction contract reaches every planned asset unchanged", async () => {
+  const t = await fixture();
+  const contract = 'viewBox="0 0 24 24"; stroke-width=2; radius=2; ink bounds=2..22; palette=#285C45,#D9A448';
+  try {
+    await db.update(runs).set({ result: { iconContract: contract, models: [
+      { name: "First", prompt: "First planned switch" },
+      { name: "Second", prompt: "Second planned switch" },
+    ] } }).where(eq(runs.id, t.runId));
+    await jobContext.run({ id: t.jobId, checkpoint: t.checkpoint }, () => executeJob("plan", t.batchId));
+    const versions = await db.select().from(assetVersions).where(eq(assetVersions.batchId, t.batchId));
+    expect(versions.map((v) => v.prompt).sort()).toEqual(["First planned switch", "Second planned switch"].map((brief) =>
+      `${brief}\n\nSHARED ICON CONSTRUCTION\n${contract}\nThe approved design and explicit user requirements take precedence.`));
+    expect((await db.select().from(batches).where(eq(batches.id, t.batchId)))[0].design).toBe("Green switches");
+  } finally { await t.cleanup(); }
+});

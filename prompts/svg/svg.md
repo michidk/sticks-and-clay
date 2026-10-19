@@ -16,6 +16,12 @@ Before drawing, commit to: the subject in one line; the canvas and viewBox; the 
 - Avoid text. If the request requires it, use `font-family="sans-serif"`, set `text-anchor` for alignment and keep the label short.
 - Add a `title` element for meaningful artwork, and group related shapes in `g` elements with the shared attributes on the group.
 
+## Icon scale and shared construction
+
+For UI icons, use the shared icon construction in the asset brief. Preserve its exact viewBox, palette, weight, radii and bounds. If no shared specification exists, use the grid and weight requested by the approved design; default unspecified UI geometry to viewBox="0 0 24 24", a 2-unit stroke, 2-unit corner radii and visible ink inside 2..22 on both axes. Do not convert a 24-unit icon to a 1024-unit illustration. Raster preview dimensions are not SVG coordinates. Explicit design requirements override these defaults.
+
+Account for half the stroke width on each side of a contour when sizing fills and openings. A narrow filled handle needs enough interior width left after its outline. Simplify or enlarge meaningful openings instead of letting thick strokes consume them. Compare the supplied 24px and 64px previous renders during repairs; a clean enlarged drawing alone is insufficient.
+
 ## Outline icons
 
 - Draw each continuous contour as one path rather than several capped lines. Close genuinely closed contours with Z. Keep intentional open contours open: Z adds a straight segment back to the start and can create an unwanted diagonal.

@@ -213,7 +213,11 @@ export async function executeJob(kind: string, targetId: string) {
         .where(eq(jobs.id, job.id));
       const reserved = await tx.select().from(assetVersions).where(eq(assetVersions.batchId, batch.id)).orderBy(assetVersions.createdAt, assetVersions.id);
       const slots = await tx.select().from(assetEntries).where(eq(assetEntries.batchId, batch.id)).orderBy(assetEntries.createdAt, assetEntries.id);
-      for (const [index, model] of result.models.entries()) {
+      for (const [index, planned] of result.models.entries()) {
+        const contract = "iconContract" in result ? result.iconContract : undefined;
+        const model = { ...planned, prompt: typeof contract === "string" && contract.trim()
+          ? `${planned.prompt}\n\nSHARED ICON CONSTRUCTION\n${contract}\nThe approved design and explicit user requirements take precedence.`
+          : planned.prompt };
         const existing = reserved[index];
         const id = existing?.id || crypto.randomUUID();
         // A request for several assets only had a stand-in title (its first line) until now; the planner names

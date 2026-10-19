@@ -57,10 +57,14 @@ export const roles = {
     ...role("tanstack", "svg/svg-judge", judgeResult, "gpt-6-astra", "high"),
     inputTemplate: "graphics/graphic-judge-input",
   },
+  "svg-collection-judge": {
+    ...role("tanstack", "svg/collection-judge", judgeResult, "gpt-6-astra", "high"),
+    inputTemplate: "graphics/graphic-judge-input",
+  },
   "graphic-judge": role("tanstack", "graphics/graphic-judge", judgeResult, "gpt-6-sol", "high"),
   "svg-designer": role("tanstack", "design/svg-designer", designResult),
   "svg-design-update": { ...role("tanstack", "design/svg-designer", designResult), inputTemplate: "design/design-update-input" },
-  "svg-planner": { ...role("tanstack", "planning/graphic-planner", planResult), inputTemplate: "planning/graphic-planner-input" },
+  "svg-planner": { ...role("tanstack", "planning/svg-planner", planResult.extend({ iconContract: z.string().optional() })), inputTemplate: "planning/graphic-planner-input" },
   // Pixel art is drawn on a grid by the text model, like SVG, and rendered exactly by the app.
   pixel: role("tanstack", "pixel/pixel", pixelGridSchema, "gpt-6-sol", "high"),
   "pixel-row-repair": role("tanstack", "pixel/pixel-row-repair", pixelRowRepairSchema, "gpt-6-sol", "high"),

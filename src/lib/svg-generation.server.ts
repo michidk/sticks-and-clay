@@ -12,11 +12,14 @@ const png = (data: Buffer) => new Blob([new Uint8Array(data)], { type: "image/pn
 
 /** The images shown to the SVG model, with a line telling it what each one is. Renders come first,
  * so the model sees what the earlier markup actually looks like instead of reading code alone. */
-export async function attachedImages(previousRender: string | undefined, sourceRenders: string[], references: string[]) {
+export async function attachedImages(previousPreviews: { key: string; label: string }[], sourceRenders: string[], references: string[]) {
   // Restored versions can carry their SVG source as the fallback preview.
-  if (previousRender?.endsWith(".svg")) previousRender = await renderOf(previousRender);
+  const previous = await Promise.all(previousPreviews.map(async ({ key, label }) => ({
+    key: key.endsWith(".svg") ? await renderOf(key) : key,
+    note: `render of the PREVIOUS ATTEMPT SVG: ${label}`,
+  })));
   const entries = [
-    ...(previousRender ? [{ key: previousRender, note: "render of the PREVIOUS ATTEMPT SVG, on white" }] : []),
+    ...previous,
     ...sourceRenders.map((key) => ({ key, note: "render of the SAVED SOURCE SVG, on white" })),
     ...viewableReferences(references).map((key) => ({ key, note: "style reference, not the artwork to copy" })),
   ];
@@ -49,7 +52,7 @@ export const svgKind: AssetKind = {
     const starting = batch.workshop?.startingPoint;
     const sourceKeys = [...(starting?.format === "svg" ? [starting.key.replace(/source\.svg$/, "editable.svg")] : []), ...ctx.references.filter((key) => key.endsWith(".svg"))];
     const source = await Promise.all(sourceKeys.map(async (key) => (await readStoredFile(key)).text()));
-    const images = await attachedImages(previous?.previews[0]?.key, [...(starting?.preview ? [starting.preview] : []), ...await Promise.all(sourceKeys.map(renderOf))], ctx.references);
+    const images = await attachedImages(previous?.previews ?? [], [...(starting?.preview ? [starting.preview] : []), ...await Promise.all(sourceKeys.map(renderOf))], ctx.references);
     const { result, runId } = await runRole({
       role: "svg",
       stepId: node.iteration ? node.id : "svg",
