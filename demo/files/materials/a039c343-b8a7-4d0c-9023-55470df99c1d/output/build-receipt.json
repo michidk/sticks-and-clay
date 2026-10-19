@@ -1,0 +1,136 @@
+{
+  "version": 1,
+  "buildId": "44572aca051a441082b367c64125f7f9",
+  "kind": "material",
+  "mode": "final",
+  "status": "done",
+  "inputHash": "a06d4f8a73f0c4c7b7e4641eb59845bd449e4caee53c7f089e00d79357a21e9a",
+  "inputs": {
+    "scriptSha256": "34399a3f83aa86c1dccd714eae8d90aae5b1652a3b8f873caa97c33d057cc6fb",
+    "parametersSha256": "0e2c592a40cd981364880ac3da19ea7d8275f72121fbfef6108350720f4ebde9",
+    "toolkitSha256": "4b198b2ddcfb2eee5a018a5c09f53b7099f0ab19f3f5029b25167300ab827a5b"
+  },
+  "artifacts": [
+    {
+      "id": "albedo",
+      "role": "albedo",
+      "path": "albedo.png",
+      "label": "albedo",
+      "mime": "image/png",
+      "sha256": "124b92379080e415fbc4d6ee5ee46cbf72692c804c3aa950fd325b1fd6c77662",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "id": "ao",
+      "role": "ao",
+      "path": "ao.png",
+      "label": "ao",
+      "mime": "image/png",
+      "sha256": "4137e5aa6335883c6cb26477a727a9f0b40b6c6f9efa8448ead156f84c6df2d0",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "id": "calibration",
+      "role": "calibration",
+      "path": "calibration.json",
+      "label": "calibration",
+      "mime": "application/json",
+      "sha256": "136bc174630e6a0d32f710d30deff01bf0d2c3c4246be74d4a66386407a68fb1"
+    },
+    {
+      "id": "height",
+      "role": "height",
+      "path": "height.png",
+      "label": "height",
+      "mime": "image/png",
+      "sha256": "93d4bab90793df266864e525f472d6aa9505217753815f4f5bb326142ca395da",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "id": "lighting",
+      "role": "lighting",
+      "path": "lighting.png",
+      "label": "lighting",
+      "mime": "image/png",
+      "sha256": "dbb68752f0345c90531be5628ba1857be5a1f2c12960a3b86b3419bf555e1c73",
+      "width": 512,
+      "height": 280
+    },
+    {
+      "id": "manifest",
+      "role": "manifest",
+      "path": "manifest.json",
+      "label": "manifest",
+      "mime": "application/json",
+      "sha256": "1f46317c42ced775e418624abba21713c00ca61ef832ea99bed9f3bac5002f9c"
+    },
+    {
+      "id": "material",
+      "role": "material",
+      "path": "material.json",
+      "label": "material",
+      "mime": "application/json",
+      "sha256": "47e8e140292c0d65bf7697c66f364f2ffeca99e78c3790406940b39a1d0eed68"
+    },
+    {
+      "id": "metallic",
+      "role": "metallic",
+      "path": "metallic.png",
+      "label": "metallic",
+      "mime": "image/png",
+      "sha256": "ef2a4c8949cdab1ef24e678bdb88cc276b1fd75e62066e47011c2ce53996efe6",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "id": "normal",
+      "role": "normal",
+      "path": "normal.png",
+      "label": "normal",
+      "mime": "image/png",
+      "sha256": "572310115fd669b4ce442ea8dae6bdee745825d11590d164343beb2ca01243ce",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "id": "orm",
+      "role": "orm",
+      "path": "orm.png",
+      "label": "orm",
+      "mime": "image/png",
+      "sha256": "012b1561e931e1b9b87e5f973ee1c6dba319cd5498d889fe394ab7455476784e",
+      "width": 512,
+      "height": 512
+    },
+    {
+      "id": "review",
+      "role": "review",
+      "path": "review.png",
+      "label": "review",
+      "mime": "image/png",
+      "sha256": "b9b542c94bab891ab97bdc03766e0125e35c39f31ce2f5481907c56b088c5379",
+      "width": 768,
+      "height": 750
+    },
+    {
+      "id": "roughness",
+      "role": "roughness",
+      "path": "roughness.png",
+      "label": "roughness",
+      "mime": "image/png",
+      "sha256": "a41549210f0770ccb1ffdeb002e2c4ff34e7fb6794b31f983bb85fd101eca3fa",
+      "width": 512,
+      "height": 512
+    }
+  ],
+  "checks": [],
+  "timings": {
+    "executionSeconds": 1.6830720790312625
+  },
+  "toolchain": {
+    "python": "3.11.2"
+  }
+}

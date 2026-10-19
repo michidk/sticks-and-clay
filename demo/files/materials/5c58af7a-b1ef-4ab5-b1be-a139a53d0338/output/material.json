@@ -1,0 +1,90 @@
+{
+  "version": "2.0.0",
+  "parameters": {
+    "recipe": "brick",
+    "size": 512,
+    "seed": 5,
+    "tileMetres": 1,
+    "color": "#b5603a",
+    "roughness": 0.8,
+    "reliefMm": 12,
+    "featureMm": 35,
+    "coverage": 0.65,
+    "wear": 0.25,
+    "moisture": 0,
+    "dirt": 0.15,
+    "burial": 0.35,
+    "sizeSpread": 0.45,
+    "calibration": 0
+  },
+  "heightWindowMm": [
+    -3.0,
+    12.0
+  ],
+  "heightZero": 0.5,
+  "physicalTileMetres": 1,
+  "particles": 0,
+  "colorSpaces": {
+    "albedo": "sRGB",
+    "otherMaps": "linear"
+  },
+  "packedORM": {
+    "R": "ao",
+    "G": "roughness",
+    "B": "metallic"
+  },
+  "validation": {
+    "seamRatios": {
+      "albedo": 4.610566759195576,
+      "roughness": 1.0156022119973003,
+      "metallic": 0.0,
+      "normal": 4.2818324996985595,
+      "height": 2.7662451038188145,
+      "ao": 7.397362089156639
+    },
+    "channelRanges": {
+      "albedo": [
+        0.016073441225609993,
+        0.8063761270296037
+      ],
+      "roughness": [
+        0.5799999833106995,
+        0.9802770540237427
+      ],
+      "metallic": [
+        0.0,
+        0.0
+      ],
+      "normal": [
+        0.18917745314384388,
+        0.9999999992244353
+      ],
+      "height": [
+        0.07549031575520833,
+        0.3470517927606901
+      ],
+      "ao": [
+        0.47997736357666676,
+        1.0
+      ]
+    },
+    "warnings": [
+      "albedo: inspect wrap seams in the repeated preview",
+      "normal: inspect wrap seams in the repeated preview",
+      "height: inspect wrap seams in the repeated preview",
+      "ao: inspect wrap seams in the repeated preview"
+    ],
+    "normalConvention": "OpenGL +Y; PNG rows top to bottom",
+    "albedoMeanLinear": [
+      0.4414302401965624,
+      0.1460465728370509,
+      0.06884406979016955
+    ],
+    "roughnessMean": 0.8292385551576889
+  },
+  "toolchain": {
+    "python": "3.11.2",
+    "numpy": "2.4.6",
+    "pillow": "12.3.0"
+  }
+}

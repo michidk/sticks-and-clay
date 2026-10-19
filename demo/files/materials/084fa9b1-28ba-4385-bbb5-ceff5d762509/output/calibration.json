@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "strength": 0,
+  "before": {
+    "albedoMeanLinear": [
+      0.15956234095184976,
+      0.1710959089086634,
+      0.13356961115065175
+    ],
+    "roughnessMean": 0.7048998119604557
+  },
+  "applied": false,
+  "reason": "disabled"
+}
