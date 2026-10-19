@@ -40,7 +40,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
   };
   const cleanup = async () => {
     for (const dir of [base, `${base}/iteration-1`])
-      for (const file of ["graphic.svg", "preview.png", "preview-64.png", "preview-24.png"])
+      for (const file of ["graphic.svg", "preview.png", "preview-64.png", "preview-24.png", "preview-16.png", "preview-dark-64.png", "preview-dark-24.png", "preview-dark-16.png"])
         if (await getStorage().exists(`${dir}/${file}`)) await getStorage().delete(`${dir}/${file}`);
     await db.delete(jobs).where(eq(jobs.id, jobId));
     await db.delete(runs).where(eq(runs.projectId, projectId));
@@ -106,6 +106,7 @@ integration("revision review transports labeled current and previous evidence wi
     { step: "svg", role: "svg", iteration: 0, result: { svg: svg("#284e3c", 20) } },
     { step: "judge:0", role: "svg-judge", iteration: 0, result: verdict(false, "Too small") },
     { step: "builder:1", role: "svg", iteration: 1, result: { svg: svg("#284e3c", 36) } },
+    { step: "judge:1:reading", role: "svg-reader", iteration: 1, result: { subject: "circle", alternatives: [], visibleFeatures: "round", smallSizeReading: "circle" } },
   ]);
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.OPENAI_API_KEY;
@@ -122,7 +123,7 @@ integration("revision review transports labeled current and previous evidence wi
     const [review] = (await db.select().from(runs).where(eq(runs.modelId, t.modelId)))
       .filter((run) => run.role === "svg-judge" && run.iteration === 1);
     expect(review.input).toContain("Image 1: full-size render (768 px) on white (current output)");
-    expect(review.input).toContain("Image 4: full-size render (768 px) on white (previous output)");
+    expect(review.input).toContain("Image 8: full-size render (768 px) on white (previous output)");
     const current = await (await getStorage().download(`${t.base}/iteration-1/preview.png`)).arrayBuffer();
     const previous = await (await getStorage().download(`${t.base}/preview.png`)).arrayBuffer();
     const currentIndex = requestBody.indexOf(Buffer.from(current).toString("base64"));

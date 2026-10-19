@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import sharp from "sharp";
 import { and, eq, inArray } from "drizzle-orm";
 import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -9,7 +10,7 @@ import { executeAssetVersionJob } from "./model-pipeline.server";
 import { DATA } from "./storage.server";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
-const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhFcAAAAASUVORK5CYII=", "base64");
+const png = await sharp({ create: { width: 1024, height: 1024, channels: 3, background: "#284e3c" } }).png().toBuffer();
 
 integration("multipart versions review every file, resume without regeneration and revise the selected source parts", async () => {
   const projectId = crypto.randomUUID(), modelId = crypto.randomUUID(), batchId = crypto.randomUUID(), jobId = crypto.randomUUID();
