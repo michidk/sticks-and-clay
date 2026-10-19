@@ -30,10 +30,11 @@ integration.each([0, 2])("SVG collection review resumes without duplicate calls;
     expect(batch.error).toBe(judgeIterations ? "Collection review: Second icon has inconsistent weight" : null);
     expect(batch.preview).toEqual({ sheet: `${directory}/sheet.png` });
     expect(await storage.exists(`${directory}/sheet-24.png`)).toBe(Boolean(judgeIterations));
+    expect(await storage.exists(`${directory}/sheet-16.png`)).toBe(Boolean(judgeIterations));
     expect(await db.select().from(runs).where(eq(runs.batchId, batchId))).toHaveLength(1);
     expect((await db.select().from(assetVersions).where(eq(assetVersions.batchId, batchId))).every((v) => v.verdict === "approved" && !v.acceptedAt)).toBe(true);
   } finally {
-    for (const key of [...keys, ...["sheet.png", "sheet-64.png", "sheet-24.png"].map((name) => `${directory}/${name}`)]) if (await storage.exists(key)) await storage.delete(key);
+    for (const key of [...keys, ...["sheet.png", "sheet-64.png", "sheet-24.png", "sheet-16.png"].map((name) => `${directory}/${name}`)]) if (await storage.exists(key)) await storage.delete(key);
     await db.delete(jobs).where(eq(jobs.id, jobId));
     await db.delete(runs).where(eq(runs.projectId, projectId));
     await db.delete(assetVersions).where(inArray(assetVersions.id, ids));

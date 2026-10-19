@@ -23,6 +23,7 @@ export type Candidate = {
   parts?: { name: string; key: string }[];
   /** Raster images of the candidate, in the order the judge is told about them. */
   previews: { key: string; label: string }[];
+  referenceEvidence?: { key: string; label: string }[];
   analysis: unknown;
   /** Engine-ready files derived from this version (pixel sprite sheets and import descriptions), by name. */
   exports?: Record<string, string>;
@@ -116,7 +117,8 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
         judge: async (node) => {
           if (!candidate) throw new Error("Nothing to review");
           // An SVG source (an earlier version being revised) is markup the judge cannot view as an image.
-          const styleReferences = viewableReferences(ctx.references).slice(0, 3);
+          const references = candidate.referenceEvidence ?? viewableReferences(ctx.references).slice(0, 3)
+            .map((key) => ({ key, label: "reference material" }));
           const size = kind.format === "svg" ? "Square vector canvas (1:1)"
             : batch.workshop?.resolution ? `${batch.workshop.resolution.width}x${batch.workshop.resolution.height}`
             : kind.format === "pixel" ? "Native grid from the design, up to 128×128 pixels" : batch.imageSize;
@@ -125,7 +127,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
             current: candidate.previews.map(({ key, label }) => ({ path: key, label })),
             previous: previousCandidate?.previews.filter((p) => !p.key.endsWith(".svg"))
               .map(({ key, label }) => ({ path: key, label })),
-            references: styleReferences.map((path) => ({ path, label: "style reference" })),
+            references: references.map(({ key, label }) => ({ path: key, label })),
             parameters: { size },
             technical: candidate.analysis,
             findings: review,
@@ -137,7 +139,9 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
             const { result: reading } = await runRole({
               role: "svg-reader", stepId: readingStep, iteration: node.iteration,
               projectId: model.projectId, batchId: batch.id, modelId: model.id,
-              input: await roleInput("svg-reader", {}),
+              input: await roleInput("svg-reader", {
+                images: candidate.previews.map(({ label }, index) => `Image ${index + 1}: ${label}`).join("\n"),
+              }),
               images: candidate.previews.map(({ key }) => key),
             });
             await assertJobActive();

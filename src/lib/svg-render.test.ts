@@ -28,3 +28,17 @@ test("24-unit icons have native-size evidence and sharp enlarged vector renders"
   const native = await sharp(Buffer.from(source), { density: 2304 }).flatten({ background: "#ffffff" }).raw().toBuffer();
   expect((await sharp(rendered.full).removeAlpha().raw().toBuffer()).equals(native)).toBe(true);
 });
+
+test("16px theme evidence changes currentColor but preserves fixed paints and transparent holes", async () => {
+  const sharp = (await import("sharp")).default;
+  const source = doc('<path fill="currentColor" fill-rule="evenodd" d="M10 10H90V90H10Z M40 40H60V60H40Z"/><rect x="10" y="10" width="20" height="20" fill="#ff0000"/>');
+  const output = await renderSvg(source);
+  expect(await sharp(output.tiny).metadata()).toMatchObject({ width: 16, height: 16 });
+  expect(await sharp(output.darkTiny).metadata()).toMatchObject({ width: 16, height: 16 });
+  const pixel = async (image: Buffer, left: number, top: number) => Array.from(await sharp(image).extract({ left, top, width: 1, height: 1 }).removeAlpha().raw().toBuffer());
+  expect(await pixel(output.darkSmall, 12, 12)).toEqual([255, 0, 0]);
+  expect(await pixel(output.small, 45, 45)).toEqual([0, 0, 0]);
+  expect(await pixel(output.darkSmall, 45, 45)).toEqual([245, 245, 245]);
+  expect(await pixel(output.small, 32, 32)).toEqual([255, 255, 255]);
+  expect(await pixel(output.darkSmall, 32, 32)).toEqual([24, 24, 27]);
+});

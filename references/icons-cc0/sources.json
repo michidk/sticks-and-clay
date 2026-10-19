@@ -1,0 +1,33 @@
+[
+  {
+    "file": "maki-coffee.svg",
+    "source": "https://raw.githubusercontent.com/mapbox/maki/28e2a3602e4bde033a1dd388e86e9c117b425e34/icons/cafe.svg",
+    "sha256": "183ec9cbbf2fe0edd61672b9e83e1134e6a2b0511c89f3c334c3115bda0d29ea",
+    "license": "CC0-1.0"
+  },
+  {
+    "file": "maki-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/mapbox/maki/28e2a3602e4bde033a1dd388e86e9c117b425e34/LICENSE.txt",
+    "sha256": "36ffd9dc085d529a7e60e1276d73ae5a030b020313e6c5408593a6ae2af39673",
+    "license": "CC0-1.0"
+  },
+  {
+    "file": "temaki-coffee.svg",
+    "source": "https://raw.githubusercontent.com/rapideditor/temaki/6d9ac860d1d615d4449aab049f630d25d036c19e/icons/coffee.svg",
+    "sha256": "fa64008d8ae9f191440287c1fdcd076f27833b7d724d71a45964e4e41f1fe6c3",
+    "license": "CC0-1.0"
+  },
+  {
+    "file": "temaki-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/rapideditor/temaki/6d9ac860d1d615d4449aab049f630d25d036c19e/LICENSE.md",
+    "sha256": "32e9b76c6886b3b17c7a96ec0fbe6fb96b7ebf41cdd1f344f28b748631f95b8b",
+    "license": "CC0-1.0"
+  },
+  {
+    "file": "espresso-gear.jpg",
+    "source": "https://commons.wikimedia.org/wiki/File:Espresso_Coffee_Gear.jpg",
+    "author": "TheHolyCessna553",
+    "license": "CC0-1.0",
+    "sha256": "21b342d56e843a7461ce68558c7823aedf3439f1d70350134572ea5882ff25a0"
+  }
+]

@@ -116,6 +116,10 @@ for (const mode of ["unreviewed", "legacy-review", "saved-reading"] as const) in
           { key: key.replace("graphic.svg", "preview.png") },
           { key: key.replace("graphic.svg", "preview-64.png") },
           { key: key.replace("graphic.svg", "preview-24.png") },
+          { key: key.replace("graphic.svg", "preview-16.png") },
+          { key: key.replace("graphic.svg", "preview-dark-64.png") },
+          { key: key.replace("graphic.svg", "preview-dark-24.png") },
+          { key: key.replace("graphic.svg", "preview-dark-16.png") },
         ],
       });
       expect(
@@ -133,7 +137,10 @@ for (const mode of ["unreviewed", "legacy-review", "saved-reading"] as const) in
       );
       expect(await response.text()).toBe(svg);
     } finally {
-      if (await getStorage().exists(key)) await getStorage().delete(key);
+      for (const name of ["graphic.svg", "preview.png", "preview-64.png", "preview-24.png", "preview-16.png", "preview-dark-64.png", "preview-dark-24.png", "preview-dark-16.png"]) {
+        const path = key.replace("graphic.svg", name);
+        if (await getStorage().exists(path)) await getStorage().delete(path);
+      }
       await db.delete(jobs).where(eq(jobs.id, jobId));
       await db.delete(runs).where(eq(runs.projectId, projectId));
       await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));

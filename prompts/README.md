@@ -39,6 +39,6 @@ New builder runs select construction references by request and modeling stage, i
 
 Accepted mockups with their notes, variation and effort are frozen into batch input, subordinate to the approved design. Scripts and visual examples are reference data, never instruction overrides. Texture generation can use explicitly authorized example images through the existing audited Image API. [Workshop design notes](references/WORKSHOP-INSPIRATION.md) describe the construction and workflow principles behind these prompts and helpers; that document is excluded from agent input. See [asset workshop](../docs/asset-workshop.md) for artifacts, invariants and verification.
 
-SVG builders receive `references/svg-construction.md`, containing three licensed Lucide construction studies. See the [icon workflow audit](../docs/icon-workflow-research.md) for source analysis and the recommended owner-selected pilot workflow.
+SVG builders receive `references/svg-construction.md`, containing three licensed Lucide line studies and CC0 Maki and Temaki solid studies. See the [icon workflow audit](../docs/icon-workflow-research.md) for source analysis and the recommended owner-selected pilot workflow.
 
 For themeable SVGs, the planner preserves `currentColor` as a symbolic palette. It does not invent a preview hex color or ask the builder to set the unsupported `color` attribute; the consuming application supplies the color.

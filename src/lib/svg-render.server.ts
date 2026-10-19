@@ -1,6 +1,7 @@
 import sharp from "sharp";
+import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 
-const SIZES = { full: 768, small: 64, icon: 24 } as const;
+const SIZES = { full: 768, small: 64, icon: 24, tiny: 16 } as const;
 
 async function render(svg: string, size: number) {
   return sharp(Buffer.from(svg), { density: 144 })
@@ -33,13 +34,21 @@ async function inkBounds(svg: string) {
   };
 }
 
-/** White-backed previews for the vision judge plus pixel measurements of the render. */
+/** Theme previews change inherited currentColor only; fixed paints retain their real contrast. */
 export async function renderSvg(svg: string) {
   const flat = async (size: number) => (await render(svg, size)).flatten({ background: "#ffffff" }).png().toBuffer();
+  const document = new DOMParser().parseFromString(svg, "image/svg+xml");
+  document.documentElement!.setAttribute("color", "#f5f5f5");
+  const darkSource = new XMLSerializer().serializeToString(document);
+  const dark = async (size: number) => (await render(darkSource, size)).flatten({ background: "#18181b" }).png().toBuffer();
   return {
     full: await flat(SIZES.full),
     small: await flat(SIZES.small),
     icon: await flat(SIZES.icon),
+    tiny: await flat(SIZES.tiny),
+    darkSmall: await dark(SIZES.small),
+    darkIcon: await dark(SIZES.icon),
+    darkTiny: await dark(SIZES.tiny),
     ink: await inkBounds(svg),
   };
 }

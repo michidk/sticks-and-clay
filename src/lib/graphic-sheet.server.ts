@@ -13,7 +13,7 @@ const CELL = 384, PAD = 24, LABEL = 36;
 const escape = (text: string) => text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** Lay the images out on one ivory sheet, each on a white card with its name beneath. */
-export async function composeSheet(tiles: { name: string; image: Buffer }[], artworkSize: 24 | 64 | 384 = CELL) {
+export async function composeSheet(tiles: { name: string; image: Buffer }[], artworkSize: 16 | 24 | 64 | 384 = CELL) {
   const cell = artworkSize === CELL ? CELL : 128;
   const columns = Math.min(tiles.length, Math.ceil(Math.sqrt(tiles.length)));
   const rows = Math.ceil(tiles.length / columns);
@@ -66,16 +66,17 @@ export async function renderGraphicSheet(batchId: string) {
   const directory = job?.checkpoint["graphic-sheet-directory"] ?? `collections/${batchId}/${crypto.randomUUID()}`;
   if (job && !job.checkpoint["graphic-sheet-directory"]) await checkpoint("graphic-sheet-directory", directory);
   const key = `${directory}/sheet.png`;
-  const saveSheet = async (path: string, size: 24 | 64 | 384) => {
+  const saveSheet = async (path: string, size: 16 | 24 | 64 | 384) => {
     const sheet = await composeSheet(tiles, size);
     await getStorage().upload(new Blob([new Uint8Array(sheet)], { type: "image/png" }), path);
   };
   await saveSheet(key, CELL);
   let collectionError: string | null = null;
   if (project.assetType === "svg" && batch.judgeIterations > 0 && ready.length >= 2) {
-    const images = [key, `${directory}/sheet-64.png`, `${directory}/sheet-24.png`];
+    const images = [key, `${directory}/sheet-64.png`, `${directory}/sheet-24.png`, `${directory}/sheet-16.png`];
     await saveSheet(images[1], 64);
     await saveSheet(images[2], 24);
+    await saveSheet(images[3], 16);
     await assertJobActive();
     const { result } = await runRole({
       role: "svg-collection-judge", stepId: "svg-collection-review",
@@ -83,8 +84,8 @@ export async function renderGraphicSheet(batchId: string) {
       images,
       input: await roleInput("svg-collection-judge", {
         design: batch.design, name: "Completed SVG collection", request: batch.prompt,
-        size: "Same collection at 384px, 64px and 24px per asset; white cards do not change scale",
-        images: "Image 1: enlarged collection. Image 2: 64px collection. Image 3: 24px collection. Names are printed below each asset.",
+        size: "Same collection at 384px, 64px, 24px and 16px per asset; white cards do not change scale",
+        images: "Image 1: enlarged collection. Image 2: 64px collection. Image 3: 24px collection. Image 4: 16px collection. Names are printed below each asset.",
         analysis: JSON.stringify(ready.map((asset, index) => ({
           name: asset.name, brief: asset.prompt, ...analyzeSvg(tiles[index].image.toString("utf8")),
         }))),

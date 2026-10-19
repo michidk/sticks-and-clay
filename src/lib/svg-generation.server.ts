@@ -21,7 +21,7 @@ export async function attachedImages(previousPreviews: { key: string; label: str
   const entries = [
     ...previous,
     ...sourceRenders.map((key) => ({ key, note: "render of the SAVED SOURCE SVG, on white" })),
-    ...viewableReferences(references).map((key) => ({ key, note: "style reference, not the artwork to copy" })),
+    ...viewableReferences(references).map((key) => ({ key, note: "reference material; use the brief and reference notes to distinguish anatomy from style" })),
   ];
   return {
     keys: entries.map((entry) => entry.key),
@@ -31,7 +31,7 @@ export async function attachedImages(previousPreviews: { key: string; label: str
 
 /** A PNG render saved beside an SVG, made now for sources that have none. */
 async function renderOf(svgKey: string) {
-  const key = svgKey.replace(/[^/]+$/, "preview.png");
+  const key = `${svgKey}.reference.png`;
   const storage = getStorage();
   if (!(await storage.exists(key)))
     await storage.upload(png((await renderSvg(await (await readStoredFile(svgKey)).text())).full), key);
@@ -50,9 +50,14 @@ export const svgKind: AssetKind = {
     const base = `graphics/${model.id}/${ctx.attempt}`;
     const directory = node.iteration ? `${base}/iteration-${node.iteration}` : base;
     const starting = batch.workshop?.startingPoint;
-    const sourceKeys = [...(starting?.format === "svg" ? [starting.key.replace(/source\.svg$/, "editable.svg")] : []), ...ctx.references.filter((key) => key.endsWith(".svg"))];
+    const startingSources = starting?.format === "svg" ? [starting.key.replace(/source\.svg$/, "editable.svg")] : [];
+    const sourceKeys = [...startingSources, ...ctx.references.filter((key) => key.endsWith(".svg"))];
+    const referenceEvidence = await Promise.all(ctx.references.map(async (key) => ({
+      key: key.endsWith(".svg") ? await renderOf(key) : key,
+      label: "reference material; anatomy or style as specified in the brief and reference notes",
+    })));
     const source = await Promise.all(sourceKeys.map(async (key) => (await readStoredFile(key)).text()));
-    const images = await attachedImages(previous?.previews ?? [], [...(starting?.preview ? [starting.preview] : []), ...await Promise.all(sourceKeys.map(renderOf))], ctx.references);
+    const images = await attachedImages(previous?.previews ?? [], [...(starting?.preview ? [starting.preview] : []), ...await Promise.all(startingSources.map(renderOf))], referenceEvidence.map(({ key }) => key));
     const { result, runId } = await runRole({
       role: "svg",
       stepId: node.iteration ? node.id : "svg",
@@ -86,6 +91,10 @@ export const svgKind: AssetKind = {
       { key: `${directory}/preview.png`, label: "full-size render (768 px) on white", data: rendered.full },
       { key: `${directory}/preview-64.png`, label: "64 px render on white, for legibility at small size", data: rendered.small },
       { key: `${directory}/preview-24.png`, label: "24 px render on white, for UI icon legibility when requested", data: rendered.icon },
+      { key: `${directory}/preview-16.png`, label: "16 px render on white", data: rendered.tiny },
+      { key: `${directory}/preview-dark-64.png`, label: "64 px render on dark; currentColor is light, fixed paints unchanged", data: rendered.darkSmall },
+      { key: `${directory}/preview-dark-24.png`, label: "24 px render on dark; currentColor is light, fixed paints unchanged", data: rendered.darkIcon },
+      { key: `${directory}/preview-dark-16.png`, label: "16 px render on dark; currentColor is light, fixed paints unchanged", data: rendered.darkTiny },
     ];
     await storage.upload(new Blob([svg], { type: "image/svg+xml" }), key);
     for (const preview of previews) await storage.upload(png(preview.data), preview.key);
@@ -94,6 +103,6 @@ export const svgKind: AssetKind = {
     const dimensionErrors = viewBox && viewBox[2] !== viewBox[3]
       ? ["Output dimension error: SVG requires a square viewBox (1:1). The returned vector canvas is not square."] : [];
     await db.update(runs).set({ result: { ...result, key, analysis, dimensionErrors, previews: previews.map(({ key, label }) => ({ key, label })) } }).where(eq(runs.id, runId));
-    return { key, dimensionErrors, previews: previews.map(({ key, label }) => ({ key, label })), analysis };
+    return { key, dimensionErrors, referenceEvidence, previews: previews.map(({ key, label }) => ({ key, label })), analysis };
   },
 };

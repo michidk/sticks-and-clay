@@ -56,6 +56,9 @@ Every model is a real Blender file you can open, edit, and rebuild. Every
 attempt, review, render, and dollar spent stays in its history, including the
 ones that failed.
 
+SVG review includes native 16px and 24px evidence on light and dark backgrounds.
+A [CC0 reference pack and three-candidate exploration runner](docs/icon-workflow-research.md#cc0-references-and-silhouette-exploration) support comparing silhouettes before owner-selected refinement.
+
 ## 🔁 How it works
 
 Generation is a pipeline with explicit human checkpoints. AI does the

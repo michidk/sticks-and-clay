@@ -1,0 +1,33 @@
+{
+  "subject": "Portafilter",
+  "design": "Editable monochrome fine-line coffee equipment UI icons. Transparent background, viewBox=\"0 0 24 24\", stroke=\"currentColor\", fill=\"none\", 1.5-unit rounded strokes. Keep functional sharp edges and natural proportions. Intended at 24px and 16px on light and dark backgrounds. Roughly 2-unit clear outer margins. No text, shading, gradients, decorative steam, backgrounds or badges.",
+  "brief": "Draw a detached espresso portafilter. Establish a shallow metal basket with visible opening, short locking tabs at the rim, short neck and slim attached handle. Use the photograph to understand real relative proportions and connections. Do not turn the basket into a deep saucepan or add an oversized pan handle. Preserve connected components and useful negative space.",
+  "references": [
+    {
+      "file": "references/icons-cc0/espresso-gear.jpg",
+      "note": "CC0 anatomy photo: the central diagonal portafilter. Ignore all neighboring equipment. The basket is at upper left of its attached handle."
+    },
+    {
+      "file": "references/icons-cc0/maki-coffee.svg",
+      "note": "CC0 construction study only: economical silhouette and clear handle opening; not the requested subject or line style."
+    },
+    {
+      "file": "references/icons-cc0/temaki-coffee.svg",
+      "note": "CC0 coffee-bean construction study only: continuous outer contour and an open curved central seam. Do not copy the bean subject or filled style."
+    }
+  ],
+  "alternatives": [
+    {
+      "name": "A \u00b7 shallow three-quarter",
+      "brief": "Shallow three-quarter view with basket at left and handle extending right, nearly horizontal. Show basket depth sparingly and keep the rim opening readable."
+    },
+    {
+      "name": "B \u00b7 diagonal",
+      "brief": "Diagonal three-quarter view, basket upper left and handle lower right, following the anatomy photo. Keep a compact silhouette and a readable basket opening."
+    },
+    {
+      "name": "C \u00b7 near top",
+      "brief": "Near-top view, basket left and handle right. Prioritize the circular basket opening, short locking tabs and attached narrow neck; omit hidden depth."
+    }
+  ]
+}

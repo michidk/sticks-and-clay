@@ -1,1 +1,3 @@
-Read the same artwork at these sizes, in attachment order: full-size, 64px, 24px. Describe what is recognizable at 24px and what only becomes clear when enlarged.
+Read the same artwork in the attached renders. Size and background labels follow in attachment order. Describe recognition at each supplied small size and what only becomes clear when enlarged. Do not assume that enlargement restores detail absent at native size.
+
+{{images}}

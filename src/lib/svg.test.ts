@@ -67,7 +67,7 @@ test("the SVG model is shown renders of the earlier versions before the style re
     "Image 1: render of the PREVIOUS ATTEMPT SVG: full-size",
     "Image 2: render of the PREVIOUS ATTEMPT SVG: 24 px",
     "Image 3: render of the SAVED SOURCE SVG, on white",
-    "Image 4: style reference, not the artwork to copy",
+    "Image 4: reference material; use the brief and reference notes to distinguish anatomy from style",
   ]);
   expect((await attachedImages([], [], [])).notes).toBe("None");
 });
@@ -76,7 +76,7 @@ test("a restored SVG source preview is rendered to PNG before attaching it", asy
   const { attachedImages } = await import("./svg-generation.server");
   const { getStorage, readStoredFile } = await import("./storage.server");
   const directory = `graphics/${crypto.randomUUID()}`;
-  const source = `${directory}/graphic.svg`, preview = `${directory}/preview.png`;
+  const source = `${directory}/graphic.svg`, preview = `${source}.reference.png`;
   const storage = getStorage();
   try {
     await storage.upload(new Blob([svg('<circle cx="5" cy="5" r="4"/>')], { type: "image/svg+xml" }), source);
@@ -86,5 +86,25 @@ test("a restored SVG source preview is rendered to PNG before attaching it", asy
     expect((await attachedImages([{ key: source, label: "restored SVG" }], [], [])).keys).toEqual([preview]);
   } finally {
     for (const key of [source, preview]) if (await storage.exists(key)) await storage.delete(key);
+  }
+});
+
+test("SVGs in one folder keep distinct reference renders", async () => {
+  const { attachedImages } = await import("./svg-generation.server");
+  const { getStorage, readStoredFile } = await import("./storage.server");
+  const sharp = (await import("sharp")).default;
+  const storage = getStorage(), directory = `references/${crypto.randomUUID()}`;
+  const sources = [`${directory}/red.svg`, `${directory}/blue.svg`];
+  try {
+    for (const [index, key] of sources.entries()) await storage.upload(new Blob([svg(`<rect width="100" height="100" fill="${index ? '#0000ff' : '#ff0000'}"/>`)]), key);
+    const evidence = await attachedImages(sources.map((key) => ({ key, label: "saved" })), [], []);
+    expect(new Set(evidence.keys).size).toBe(2);
+    for (const [index, key] of evidence.keys.entries()) {
+      const bytes = Buffer.from(await (await readStoredFile(key)).arrayBuffer());
+      const center = await sharp(bytes).extract({ left: 384, top: 384, width: 1, height: 1 }).removeAlpha().raw().toBuffer();
+      expect([...center]).toEqual(index ? [0, 0, 255] : [255, 0, 0]);
+    }
+  } finally {
+    for (const key of sources.flatMap((source) => [source, `${source}.reference.png`])) if (await storage.exists(key)) await storage.delete(key);
   }
 });
