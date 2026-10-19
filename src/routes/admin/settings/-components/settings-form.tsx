@@ -24,9 +24,13 @@ export function SettingsForm() {
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [openaiImageKey, setOpenaiImageKey] = useState(false);
   useEffect(() => {
-    request<{ settings: RuntimeSettings }>("settings")
-      .then(({ settings }) => setSettings(settings))
+    request<{ settings: RuntimeSettings; openaiImageKey: boolean }>("settings")
+      .then(({ settings, openaiImageKey }) => {
+        setSettings(settings);
+        setOpenaiImageKey(openaiImageKey);
+      })
       .catch((cause) => setError(cause.message));
   }, []);
 
@@ -47,6 +51,7 @@ export function SettingsForm() {
         "settings",
         json({
           textPreset: settings.textPreset,
+          imageProvider: settings.imageProvider,
           timeouts: settings.timeouts,
           generationDefaults: settings.generationDefaults,
         }, "PATCH"),
@@ -75,7 +80,7 @@ export function SettingsForm() {
         <Card className="panel settings-section">
           <div className="settings-section-heading">
             <h2>AI models</h2>
-            <p>New runs use the preset's models for every text role. Per-role overrides on the Agents page still win, image generation always uses GPT Image, and running work keeps its model.</p>
+            <p>New runs use the preset's models for every text role. Per-role overrides on the Agents page still win, image generation always uses GPT Image through the selected image provider, and running work keeps its model.</p>
           </div>
           <div className="settings-grid">
             <Label>Model preset
@@ -86,6 +91,20 @@ export function SettingsForm() {
                 <SelectContent>
                   <SelectItem value="gpt">GPT (default)</SelectItem>
                   <SelectItem value="claude">Claude</SelectItem>
+                </SelectContent>
+              </Select>
+            </Label>
+            <Label>Image provider
+              <span>{settings.imageProvider === "openai"
+                ? openaiImageKey ? "Billed per image at API rates" : "OPENAI_IMAGES_API_KEY is not set; image runs will fail"
+                : "Uses your Codex subscription; it ignores requested quality and size"}</span>
+              <Select value={settings.imageProvider}
+                onValueChange={(imageProvider: RuntimeSettings["imageProvider"]) =>
+                  setSettings({ ...settings, imageProvider })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="gateway">Codex gateway (default)</SelectItem>
+                  <SelectItem value="openai">OpenAI API</SelectItem>
                 </SelectContent>
               </Select>
             </Label>

@@ -32,3 +32,12 @@ export async function provider() {
   if (!key) throw new Error("No configured API credential available");
   return { key, url };
 }
+
+/** The Codex gateway overrides requested quality and size; the official Images API honours them. */
+export async function imageProvider(kind: "gateway" | "openai") {
+  if (kind === "gateway") return provider();
+  const key = process.env.OPENAI_IMAGES_API_KEY;
+  if (!key)
+    throw new Error("Set OPENAI_IMAGES_API_KEY to use the official OpenAI image provider");
+  return { key, url: "https://api.openai.com/v1" };
+}

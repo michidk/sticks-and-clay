@@ -220,7 +220,9 @@ python3 -m venv .venv-cad
 
 Edit `.env` privately. Set `EVE_PASSWORD` to a random secret of at least 32
 characters. Set `OPENAI_API_KEY` and `OPENAI_BASE_URL` for your provider, or
-use an existing Codex provider configuration. The app, worker, and Eve must
+use an existing Codex provider configuration. To honour requested image quality
+and size, set `OPENAI_IMAGES_API_KEY` and choose the OpenAI API image provider in
+Admin → Settings. The app, worker, and Eve must
 use the same credentials and storage settings. Set `BLENDER_BIN` if Blender is
 outside your `PATH`.
 

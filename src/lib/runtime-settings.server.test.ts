@@ -122,3 +122,15 @@ test("the model preset persists, defaults to gpt for saved files, and is patchab
   expect((await updateRuntimeSettings({ queue: { paused: true } }, path)).textPreset).toBe("claude");
   await expect(updateRuntimeSettings({ textPreset: "other" }, path)).rejects.toThrow();
 });
+
+test("the image provider defaults to the gateway for saved files and is patchable", async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), "studio-settings-"));
+  temporary.push(directory);
+  const path = resolve(directory, "settings.json");
+  const { imageProvider: _omitted, ...saved } = runtimeSettingsDefaults();
+  await writeFile(path, JSON.stringify(saved));
+  expect((await loadRuntimeSettings(path)).imageProvider).toBe("gateway");
+  expect((await updateRuntimeSettings({ imageProvider: "openai" }, path)).imageProvider).toBe("openai");
+  expect((await updateRuntimeSettings({ textPreset: "claude" }, path)).imageProvider).toBe("openai");
+  await expect(updateRuntimeSettings({ imageProvider: "other" }, path)).rejects.toThrow();
+});

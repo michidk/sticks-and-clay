@@ -1,4 +1,4 @@
-import { provider } from "./provider.server";
+import { imageProvider } from "./provider.server";
 import {
   requestImage,
   type ImageSize,
@@ -118,7 +118,7 @@ export async function imageRequest(
     engine: "imagegen",
     model: profile.model,
     effort: profile.quality,
-    systemPrompt: `Image API · ${args.size || "1024x1024"} · ${profile.quality} quality`,
+    systemPrompt: `Image API · ${args.size || "1024x1024"} · ${profile.quality} quality · ${profile.settings.imageProvider === "openai" ? "OpenAI API" : "gateway"}`,
     promptVersion: "image-api-v3",
     input: args.prompt,
     rates,
@@ -131,7 +131,7 @@ export async function imageRequest(
   }, 500);
   try {
     const response = await requestImage({
-      provider: await provider(),
+      provider: await imageProvider(profile.settings.imageProvider),
       model: profile.model,
       quality: profile.quality,
       size: args.size,

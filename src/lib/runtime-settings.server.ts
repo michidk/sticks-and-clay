@@ -73,6 +73,7 @@ export async function updateRuntimeSettings(
       {
         ...current,
         textPreset: patch.textPreset ?? current.textPreset,
+        imageProvider: patch.imageProvider ?? current.imageProvider,
         timeouts: { ...current.timeouts, ...patch.timeouts },
         queue: { ...current.queue, ...patch.queue },
         agents: mergeOverrides(current.agents, patch.agents),

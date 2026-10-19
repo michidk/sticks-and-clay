@@ -132,7 +132,10 @@ export async function adminAction(request: Request, path: string[]) {
   }
   if (path[0] === "settings") {
     if (request.method === "GET")
-      return reply({ settings: await loadRuntimeSettings() });
+      return reply({
+        settings: await loadRuntimeSettings(),
+        openaiImageKey: Boolean(process.env.OPENAI_IMAGES_API_KEY),
+      });
     if (request.method === "PUT")
       return reply({
         settings: await saveRuntimeSettings(await request.json()),

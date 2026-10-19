@@ -48,10 +48,13 @@ export const textModelOptions = [
 ];
 export const imageModelOptions = ["gpt-image-2"];
 export const textPresetSchema = z.enum(["gpt", "claude"]);
+/** "gateway" reuses the text provider; "openai" calls api.openai.com with OPENAI_IMAGES_API_KEY. */
+export const imageProviderSchema = z.enum(["gateway", "openai"]);
 export const runtimeSettingsSchema = z
   .object({
     version: z.literal(3),
     textPreset: textPresetSchema.default("gpt"),
+    imageProvider: imageProviderSchema.default("gateway"),
     timeouts: timeoutSettingsSchema,
     queue: queueSettingsSchema,
     agents: z.record(z.string(), agentOverrideSchema),
@@ -68,6 +71,7 @@ export const runtimeSettingsSchema = z
   });
 export const runtimeSettingsPatchSchema = z.object({
   textPreset: textPresetSchema.optional(),
+  imageProvider: imageProviderSchema.optional(),
   timeouts: timeoutSettingsSchema.partial().optional(),
   queue: queueSettingsSchema.partial().optional(),
   agents: z.record(z.string(), agentOverrideSchema.nullable()).optional(),
