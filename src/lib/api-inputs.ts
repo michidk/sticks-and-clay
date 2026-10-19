@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { effortSchema, imageSizeSchema } from "./contracts";
+import { effortSchema, imageSizeSchema, resolutionSchema } from "./contracts";
 import { materialSchema } from "./materials";
 import { spriteOptionsSchema } from "./sprites";
 import { objectReferenceSchema } from "./object-reference";
@@ -19,6 +19,7 @@ export const designInput = z.object({
 });
 
 export const generationInput = z.object({
+  resolution: resolutionSchema.nullable().optional(),
   startingPoint: startingPointSchema.optional(),
   visualTargetMode: z.enum(["review", "skip"]).optional(),
   prompt: z.string().trim().max(12000).default(""),

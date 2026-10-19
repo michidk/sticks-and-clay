@@ -111,13 +111,16 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
         if (!candidate) throw new Error("Nothing to review");
         // An SVG source (an earlier version being revised) is markup the judge cannot view as an image.
         const styleReferences = viewableReferences(ctx.references).slice(0, 3);
+        const size = kind.format === "svg" ? "Square vector canvas (1:1)"
+          : batch.workshop?.resolution ? `${batch.workshop.resolution.width}x${batch.workshop.resolution.height}`
+          : kind.format === "pixel" ? "Native grid from the design, up to 128×128 pixels" : batch.imageSize;
         const evidence = reviewEvidence({
           buildId: `${ctx.attempt}:${node.iteration}`,
           current: candidate.previews.map(({ key, label }) => ({ path: key, label })),
           previous: previousCandidate?.previews.filter((p) => !p.key.endsWith(".svg"))
             .map(({ key, label }) => ({ path: key, label })),
           references: styleReferences.map((path) => ({ path, label: "style reference" })),
-          parameters: { size: batch.imageSize },
+          parameters: { size },
           technical: candidate.analysis,
           findings: review,
         });
@@ -133,7 +136,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
             design: batch.design,
             name: model.name,
             request: ctx.request + workshopContext(batch.workshop, false),
-            size: batch.imageSize,
+            size,
             images: evidence.labels,
             analysis: JSON.stringify(candidate.analysis, null, 2),
             feedback: review ? JSON.stringify(review, null, 2) : "None",

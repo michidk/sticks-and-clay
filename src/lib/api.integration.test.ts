@@ -299,7 +299,7 @@ for (const assetType of ["graphic", "svg"] as const) integration(`${assetType} p
       .from(batches)
       .where(eq(batches.id, batchId));
     expect(batch.judgeIterations).toBe(2);
-    expect(batch.imageSize).toBe("1536x1024");
+    expect(batch.imageSize).toBe(assetType === "svg" ? "1024x1024" : "1536x1024");
   } finally {
     const projectBatches = await db
       .select()

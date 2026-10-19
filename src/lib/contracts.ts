@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+export const resolutionSchema = z.object({
+  width: z.number().int().min(4).max(8192),
+  height: z.number().int().min(4).max(8192),
+});
+export type Resolution = z.infer<typeof resolutionSchema>;
+
 const timeoutMs = z.number().int().min(60_000).max(24 * 60 * 60 * 1000);
 export const effortSchema = z.enum(["low", "medium", "high"]);
 export const imageQualitySchema = z.enum(["low", "medium", "high"]);

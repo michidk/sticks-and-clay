@@ -1,3 +1,4 @@
+import { ProjectResolution } from "./-components/project-resolution";
 import { GenerationDialog } from "./-components/generation-dialog";
 import { AssetDrafts } from "./-components/asset-drafts";
 import { ExportPanel } from "./-components/export";
@@ -352,18 +353,26 @@ function ProjectPage() {
           </LightboxProvider>
         )}
         {activeTab === "design" && designView === "reference" && (
-          <DesignReference
-            key={projectId}
-            project={p}
-            revisions={data.revisions}
-            updates={data.designUpdates || []}
-            updating={designUpdating}
-            onOpenMockups={() => setTab("mockups")}
-            onSaved={async (approved) => {
-              await load();
-              if (approved) setTab(firstStage);
-            }}
-          />
+          <>
+            {(p.assetType === "pixel" || p.assetType === "graphic") && (
+              <ProjectResolution
+                projectId={projectId} type={p.assetType} workshop={p.workshop}
+                disabled={Boolean(p.archivedAt)} onSaved={load}
+              />
+            )}
+            <DesignReference
+              key={projectId}
+              project={p}
+              revisions={data.revisions}
+              updates={data.designUpdates || []}
+              updating={designUpdating}
+              onOpenMockups={() => setTab("mockups")}
+              onSaved={async (approved) => {
+                await load();
+                if (approved) setTab(firstStage);
+              }}
+            />
+          </>
         )}
         {activeTab === "export" && (
           <>

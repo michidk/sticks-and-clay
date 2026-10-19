@@ -158,3 +158,23 @@ Material tests check every recipe, seed determinism, physical normal derivatives
 Select a mesh in the 3D view or scene inspector before writing a change request. Its name and hierarchy appear above the composer; remove the reference with its close button, click empty space in the viewer, or press Escape while the viewer is focused. Iterate and Fork variant send that reference with the selected saved version. Changing versions clears the selection. The submitted message keeps a link to its source version, and the builder receives the object name, parent path and archived GLB identifier.
 
 New modeling prompts require stable descriptive names and meaningful parent hierarchies so parts remain identifiable across passes. Existing assets retain their original naming; ambiguous references must be reported by the builder rather than silently matched to another part.
+
+## Graphic and pixel-art resolution
+
+The Design tab has an optional project width and height. Each asset can override
+both in Generation settings; leaving both blank inherits the project setting.
+Clearing the project setting lets generation choose. New batches freeze the
+resolved size and attach it to planning, generation and review prompts. Existing
+queued versions retain their snapshots.
+
+Pixel art supports 4–128 pixels per dimension. The generated grid must match an
+explicit resolution; a mismatch uses the existing repair attempt and fails if
+still wrong. Graphics accept requested dimensions from 4–8192 pixels. These are
+prompt instructions, not a promise of exact raster output: the current image
+adapter sends one of 1024×1024, 1024×1536 or 1536×1024, choosing a canvas near the
+requested aspect ratio. It does not resize or crop the returned image. Provider
+and model support can vary. Without a resolution, existing saved canvas settings
+remain the fallback.
+
+SVG generation always requests a square viewBox with a 1:1 aspect ratio. SVG
+coordinates describe vector units, not a raster output resolution.

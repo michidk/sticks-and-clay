@@ -1,3 +1,4 @@
+import { imageCanvas } from "./resolution";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { runs } from "../db/schema";
@@ -43,7 +44,7 @@ const graphicKind: AssetKind = {
         prompt: basePrompt + (part
           ? `\n\nNAMED PART OUTPUT\nGenerate only part ${JSON.stringify(part.name)} of this asset: ${part.brief}\nThe other named parts are generated as separate files in this same version. Keep their shared scale, alignment, palette and visual language consistent. Do not include other parts or a contact sheet in this file.`
           : "") + revision,
-        size: batch.imageSize,
+        size: imageCanvas(batch.workshop?.resolution, batch.imageSize),
         images: [...(previousKey ? [previousKey] : batch.workshop?.startingPoint?.preview ? [batch.workshop.startingPoint.preview] : []), ...ctx.references],
         assertActive: assertJobActive,
       });

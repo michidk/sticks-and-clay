@@ -61,7 +61,7 @@ export const svgKind: AssetKind = {
         design: batch.design,
         name: model.name,
         request: ctx.request + workshopContext(batch.workshop, false),
-        size: batch.imageSize,
+        size: "Square vector canvas, 1:1 aspect ratio. Use a square viewBox; vector units are not a raster resolution.",
         source: source.join("\n\n"),
         images: images.notes,
         previous: previous ? await (await readStoredFile(previous.key)).text() : "None",

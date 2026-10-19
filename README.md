@@ -155,10 +155,11 @@ configuration, scopes, and deployment behind an auth proxy.
   target. "Completed with issues" stays distinct from approval and from
   technical failure.
 - 🎨 **Graphics and SVG.** One-shot images through an OpenAI-compatible Image
-  API, or editable vector artwork with previews, variants, junction diagnostics, and safe SVG output
+  API with optional project resolution and per-asset overrides, or square editable
+  vector artwork with previews, variants, junction diagnostics, and safe SVG output
   (no scripts, external content, or embedded rasters).
 - 👾 **Pixel art.** Drawn cell by cell on a grid (a palette and one row of text
-  per row) instead of generated, with targeted repairs for malformed rows, rendered exactly by the app, reviewed on a
+  per row), with optional project resolution and per-asset overrides, instead of generated, with targeted repairs for malformed rows, rendered exactly by the app, reviewed on a
   sheet (1x on dark and light, silhouette, values) with craft measurements,
   with editable design palettes and reference swatches. AI design drafts propose
   colors; sprites enforce the approved palette. Optionally animated or split into paperdoll layers, and exported as a

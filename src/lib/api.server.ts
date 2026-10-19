@@ -22,6 +22,7 @@ import {
 } from "./api-inputs";
 import { exportAssets, setModelAccepted } from "./asset-export.server";
 import { recordedAnalysis } from "../modules/model-analysis/report";
+import { validateResolution } from "./resolution";
 import { workshopSchema } from "./workshop";
 import { imageKeys, thumbnail, warmThumbnails } from "./thumbnail.server";
 import { workshopAction } from "./workshop-actions.server";
@@ -847,6 +848,7 @@ export async function api(request: Request) {
       }
       if (path[2] === "workshop" && request.method === "PUT") {
         const input = workshopSchema.parse(await request.json());
+        validateResolution(project.assetType, input.resolution);
         const previous = workshopSchema.parse(project.workshop || {});
         if (input.version !== previous.version)
           throw new Error("Collection settings changed; reload before saving");

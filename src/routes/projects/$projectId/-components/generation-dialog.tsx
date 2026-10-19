@@ -29,6 +29,7 @@ import type { AssetDraft } from "./asset-drafts";
 import type { RuntimeSettings } from "@/lib/contracts";
 import type { AssetType } from "@/lib/asset-types";
 import type { StartingPoint } from "@/lib/starting-point";
+import { ResolutionFields, resolutionFromForm } from "@/components/resolution-fields";
 import { StartingPointField } from "./starting-point-field";
 
 type GenerationDialogProps = {
@@ -79,8 +80,8 @@ export function GenerationDialog({
   const [skipVisualMock, setSkipVisualMock] = useState(idea?.input.visualTargetMode === "skip");
   const [spriteEnabled, setSpriteEnabled] = useState(Boolean(idea?.input.spriteTarget));
   const [judgeIterations, setJudgeIterations] = useState(idea?.input.judgeIterations ?? 2);
-  const [imageSize, setImageSize] =
-    useState<RuntimeSettings["generationDefaults"]["imageSize"]>(idea?.input.imageSize ?? "1024x1024");
+
+  const [imageSize, setImageSize] = useState<RuntimeSettings["generationDefaults"]["imageSize"]>(idea?.input.imageSize ?? "1024x1024");
   const [briefing, setBriefing] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
   const assetPlural = "asset";
@@ -104,6 +105,7 @@ export function GenerationDialog({
         if (!active) return;
         setJudgeIterations(settings.generationDefaults.judgeIterations);
         setImageSize(settings.generationDefaults.imageSize);
+
       })
       .catch((error) => {
         if (active) setError(error.message);
@@ -160,7 +162,8 @@ export function GenerationDialog({
           count: 1,
           parts: parts.length ? parts : undefined,
           judgeIterations: Number(f.get("iterations")),
-          imageSize: isGraphics && type !== "cad" ? f.get("imageSize") : "1024x1024",
+          imageSize: type === "graphic" ? imageSize : "1024x1024",
+          resolution: type === "pixel" || type === "graphic" ? resolutionFromForm(f) : undefined,
         }, savedAssetId ? "PUT" : "POST"),
       );
       const assetId = saved.id ?? savedAssetId;
@@ -304,23 +307,7 @@ export function GenerationDialog({
                 <div className="space-y-2">
                   {isGraphics && type !== "cad" ? (
                     <>
-                      <Label htmlFor="idea-canvas">Canvas</Label>
-                      <Select
-                        name="imageSize"
-                        value={imageSize}
-                        onValueChange={(value: typeof imageSize) =>
-                          setImageSize(value)
-                        }
-                      >
-                        <SelectTrigger id="idea-canvas" className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1024x1024">Square</SelectItem>
-                          <SelectItem value="1024x1536">Portrait</SelectItem>
-                          <SelectItem value="1536x1024">Landscape</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      {type === "svg" ? <p className="muted">Square vector canvas (1:1).</p> : <ResolutionFields key={idea?.id ?? "new"} type={type} value={idea?.input.resolution} inherited />}
                     </>
                   ) : (
                     <>

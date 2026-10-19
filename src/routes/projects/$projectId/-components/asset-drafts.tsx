@@ -23,7 +23,7 @@ export type AssetDraft = {
 export const ideaBrief = (idea: AssetDraft) => idea.input.prompt?.trim() || "AI proposes assets from the approved design.";
 export const ideaTitle = (idea: AssetDraft) => idea.title?.trim() || ideaBrief(idea).split("\n")[0];
 export const ideaSettings = (idea: AssetDraft, isGraphics: boolean, assetType?: AssetType) =>
-  `${isGraphics && assetType !== "cad" ? `Canvas ${idea.input.imageSize} · ` : ""}${idea.input.judgeIterations} review rounds`
+  `${isGraphics && assetType !== "cad" ? `Canvas ${assetType === "svg" ? "square vector" : idea.input.resolution ? `${idea.input.resolution.width}×${idea.input.resolution.height}` : "project default"} · ` : ""}${idea.input.judgeIterations} review rounds`
   + (isGraphics ? "" : idea.input.visualTargetMode === "skip" ? " · No visual mock" : " · Visual target approval")
   + (idea.input.spriteTarget ? ` · Sprites ${idea.input.spriteTarget.size}px` : "");
 

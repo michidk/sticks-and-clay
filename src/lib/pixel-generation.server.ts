@@ -128,6 +128,9 @@ export const pixelKind: AssetKind = {
           }
           rowRepair = { runId: repair.runId, rows: problems.length };
         }
+        const resolution = batch.workshop?.resolution;
+        if (resolution && (grid.width !== resolution.width || grid.height !== resolution.height))
+          throw new PixelGridError(`Use the requested ${resolution.width}×${resolution.height} pixel grid, not ${grid.width}×${grid.height}`);
         validatePixelGrid(grid); // the cells first, so a malformed drawing is named before its colors
         if (paletteContract === "2") {
           const outside = analyzePixels(grid, palettes).colorsOutsideNamedPalette;

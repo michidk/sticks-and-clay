@@ -119,3 +119,5 @@ TEST_DATABASE=1 DATABASE_URL=postgres://... bun test src/modules/mcp src/lib/api
 ```
 
 Tests exercise the official SDK client, current and legacy transport, permission filtering, upload validation, artifact boundaries, OAuth consent/PKCE/resource binding, refresh replay, durable atomic consumption, immediate revocation, and real API approval/version conflicts. They do not call paid AI providers.
+
+`update_workshop` accepts optional `resolution: { width, height }` for graphic and pixel-art projects. Asset creation, updates and generation accept the same override. Omit it or use `null` to inherit the project setting; use `null` in `update_workshop` to clear the project default. Sizes are frozen into new batches and included in prompts. Pixel dimensions are 4–128; graphic requests are 4–8192 and remain subject to image-provider output limits. SVG generation assumes square vectors.

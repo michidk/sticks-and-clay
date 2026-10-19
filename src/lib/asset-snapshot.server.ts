@@ -20,12 +20,16 @@ export function assetSnapshot(
   const references = [...new Set([...projectReferences, ...asset.references, ...mockupReferences(base)])];
   if (references.length > MAX_REFERENCE_IMAGES)
     throw new Error(`Use at most ${MAX_REFERENCE_IMAGES} reference images across the project and asset`);
+  const projectResolution = base
+    ? base.projectResolution !== undefined ? base.projectResolution : base.resolution
+    : project.workshop?.resolution;
   return {
     ...(base ?? snapshotWorkshop(project, project.workshop)),
     projectReferences: [...projectReferences],
     projectReferenceNotes: { ...projectReferenceNotes },
     references,
     referenceNotes: referenceNotesFor(references, { ...projectReferenceNotes, ...asset.referenceNotes }),
+    resolution: asset.input.resolution ?? projectResolution,
     parts: asset.input.parts,
     startingPoint: asset.input.startingPoint,
   };

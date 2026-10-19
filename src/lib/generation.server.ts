@@ -7,10 +7,12 @@ import { assertNotArchived } from "./project-lifecycle.server";
 import { assetSnapshot } from "./asset-snapshot.server";
 import { snapshotWorkshop } from "./workshop.server";
 import { validateStartingPoint } from "./starting-point.server";
+import { validateResolution } from "./resolution";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export function validateGeneration(project: typeof projects.$inferSelect, input: GenerationInput) {
+  validateResolution(project.assetType, input.resolution ?? project.workshop?.resolution);
   if (project.assetType !== "model" && input.spriteTarget)
     throw new Error("Sprite targets require a 3D collection");
   if (project.assetType === "model" && input.imageSize !== "1024x1024")
@@ -27,9 +29,10 @@ export async function insertGeneration(tx: Transaction, project: typeof projects
   validateGeneration(project, input);
   await validateStartingPoint(project.id, project.assetType, input.startingPoint);
   const id = crypto.randomUUID();
-  const workshop = asset ? assetSnapshot(project, asset) : { ...snapshotWorkshop(project, project.workshop), startingPoint: input.startingPoint, ...(input.parts ? { parts: input.parts } : {}) };
+  const workshop = asset ? assetSnapshot(project, asset) : { ...snapshotWorkshop(project, project.workshop), startingPoint: input.startingPoint, resolution: input.resolution ?? project.workshop?.resolution, ...(input.parts ? { parts: input.parts } : {}) };
   await tx.insert(batches).values({
     id, projectId: project.id, ...input,
+    imageSize: project.assetType === "svg" ? "1024x1024" : input.imageSize,
     visualTargetMode: input.visualTargetMode ?? "review",
     design: project.design, designVersion: project.designVersion, workshop,
   });

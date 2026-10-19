@@ -4,8 +4,10 @@ export function snapshotWorkshop(
   project: { references: string[]; referenceNotes: Record<string, string> },
   value: unknown,
 ): WorkshopSnapshot {
+  const settings = workshopSchema.parse(value || {});
   return {
-    ...workshopSchema.parse(value || {}),
+    ...settings,
+    projectResolution: settings.resolution ?? null,
     references: [...project.references],
     projectReferences: [...project.references],
     projectReferenceNotes: { ...project.referenceNotes },
