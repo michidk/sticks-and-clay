@@ -2003,7 +2003,7 @@ a.board-card-title:hover { text-decoration: underline; }
   margin: 0;
   font-size: clamp(36px, 4.2vw, 54px);
   line-height: 1.05;
-  letter-spacing: -2px;
+  letter-spacing: -0.04em;
   font-weight: 540;
 }
 .landing-hero h1 em { display: block; font-family: Georgia, serif; font-weight: 400; color: #76846a; }
@@ -2057,7 +2057,17 @@ a.board-card-title:hover { text-decoration: underline; }
 .landing-split svg { color: var(--primary); margin-bottom: 14px; }
 .landing-split p { margin: 14px 0 0; font-size: 15px; line-height: 1.7; color: #68745f; }
 .landing-split > div > a { display: inline-block; margin-top: 16px; font-weight: 600; color: var(--primary); }
-.landing-host { grid-template-columns: minmax(0, 1fr); }
+.landing-host {
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: 64px;
+  padding: 48px 40px;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+.landing-host p, .landing-host svg { max-width: 620px; margin-inline: auto; }
+.landing-host .landing-actions { justify-content: center; }
 .landing-footer {
   width: 100%;
   max-width: 1330px;
@@ -2081,5 +2091,6 @@ a.board-card-title:hover { text-decoration: underline; }
   .landing-steps, .landing-kinds, .landing-pair { grid-template-columns: 1fr; }
   .landing-actions > * { width: 100%; }
   .landing-section { padding: 48px 0; }
+  .landing-host { margin-bottom: 40px; padding: 36px 20px; }
   .landing-footer { flex-direction: column; }
 }
