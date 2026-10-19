@@ -47,7 +47,7 @@ export async function insertGeneration(tx: Transaction, project: typeof projects
   }
   if (asset) {
     await tx.update(assetEntries).set({ batchId: id, inIdea: false }).where(eq(assetEntries.id, asset.id));
-    await tx.insert(assetVersions).values({ id: crypto.randomUUID(), assetId: asset.id, projectId: project.id, batchId: id, name: asset.title || "Asset", prompt: input.prompt });
+    await tx.insert(assetVersions).values({ id: crypto.randomUUID(), assetId: asset.id, projectId: project.id, batchId: id, name: asset.title || "Asset", prompt: input.prompt || project.design });
   }
   await tx.insert(jobs).values({ id: crypto.randomUUID(), kind: "plan", targetId: id });
   return id;

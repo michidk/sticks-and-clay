@@ -26,9 +26,10 @@ const writeTitle: TitleWriter = async (projectId, brief) =>
   (await runRole({ projectId, role: "idea-title", input: await roleInput("idea-title", { brief }) })).result.title;
 
 /** The owner's title wins; a blank one is written by a small paid AI call from the brief.
- * A provider failure rejects the save, so no idea is stored untitled. */
-const resolveTitle = (titleFor: TitleWriter, projectId: string, title: string, brief: string) =>
-  title ? title : titleFor(projectId, brief);
+ * A provider failure rejects the save, so no idea with a brief is stored untitled.
+ * Without a title or a brief it stays null and the planner names the asset. */
+const resolveTitle = async (titleFor: TitleWriter, projectId: string, title: string, brief: string) =>
+  title || (brief ? titleFor(projectId, brief) : null);
 
 export async function createAsset(
   project: typeof projects.$inferSelect, { title: requested, ...input }: IdeaInput, titleFor: TitleWriter = writeTitle,

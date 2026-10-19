@@ -137,7 +137,7 @@ export function createStudioMcpServer(options: {
       if (input.file) form.set("file", new File([new Uint8Array(Buffer.from(input.file.base64, "base64"))], input.file.filename));
       return { path: `projects/${input.projectId}/assets/${input.assetId}/starting-point`, method: "POST", body: form };
     });
-  register("create_asset", "Create an asset in Ideas with its required brief, optional named parts and generation settings. Omit title for a small paid AI title request. The same asset keeps its identity through Ready, In progress, Review and Done.", write,
+  register("create_asset", "Create an asset in Ideas with an optional brief (empty follows the approved design), optional named parts and generation settings. Omit title for a small paid AI title request. The same asset keeps its identity through Ready, In progress, Review and Done.", write,
     ideaInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/assets`, method: "POST", body: input }));
   register("update_asset", "Replace an asset's brief, title, parts and settings for future versions in any stage. An empty title uses a small paid AI request. Saved versions stay unchanged.", write,
     ideaUpdateInput.extend(assetId.shape), (input) => ({ path: `projects/${input.projectId}/assets/${input.assetId}`, method: "PUT", body: input }));

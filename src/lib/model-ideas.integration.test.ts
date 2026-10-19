@@ -39,7 +39,6 @@ integration("ideas persist without jobs, require approval to start, and queue on
     ]);
     const projectIds = [id, other].sort();
     for (const count of [0, 2, 21, 1.5]) expect((await send(id, "", { ...input, count })).status).toBe(400);
-    for (const prompt of ["", "   "]) expect((await send(id, "", { ...input, prompt })).status).toBe(400);
     const saved = await send(id, "", input);
     expect(saved.status).toBe(201);
     const created = await saved.json();
@@ -48,7 +47,6 @@ integration("ideas persist without jobs, require approval to start, and queue on
     const detail = await (await api(new Request(`http://localhost/api/projects/${id}`))).json();
     expect(detail.ideas).toMatchObject([{ id: ideaId, projectId: id, title: "Test idea", input }]);
     expect(detail.ideas[0].input).not.toHaveProperty("title");
-    expect((await send(id, `/${ideaId}`, { ...input, prompt: "" }, "PUT")).status).toBe(400);
     expect(detail.batches).toEqual([]);
     expect(await db.select().from(jobs).where(eq(jobs.targetId, ideaId))).toEqual([]);
     expect((await send(other, `/${ideaId}`, input, "PUT")).status).toBe(400);
@@ -157,8 +155,11 @@ integration("a blank title is written from the brief, and an AI failure stores n
     const named = await createAsset(project, ideaInput.parse({ ...body, title: "  My title " }), writer);
     expect(named.title).toBe("My title");
     expect(calls).toHaveLength(1);
+    // No brief and no title costs no call; the planner names it later.
+    expect((await createAsset(project, ideaInput.parse({ ...body, prompt: "" }), writer)).title).toBeNull();
+    expect(calls).toHaveLength(1);
     await expect(createAsset(project, ideaInput.parse(body), failing)).rejects.toThrow("Provider unavailable");
-    expect(await db.select().from(assetEntries).where(eq(assetEntries.projectId, id))).toHaveLength(2);
+    expect(await db.select().from(assetEntries).where(eq(assetEntries.projectId, id))).toHaveLength(3);
     // An edit that clears the title rewrites it from the new brief; a kept title costs no call.
     await updateAsset(project, generated.id, ideaInput.parse({ ...body, prompt: "A red pickup" }), writer);
     expect((await db.select().from(assetEntries).where(eq(assetEntries.id, generated.id)))[0].title).toBe("Titled: A red pickup");

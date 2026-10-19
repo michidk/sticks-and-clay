@@ -136,7 +136,6 @@ export function GenerationDialog({
       !idea &&
       ready &&
       (e.nativeEvent as SubmitEvent).submitter?.getAttribute("name") === "start";
-    if (!modelBrief.trim()) return setError("Write a brief for this asset, or draft one with AI.");
     setBusy(start ? "start" : "save");
     setError("");
     try {
@@ -237,7 +236,7 @@ export function GenerationDialog({
               onUnits={setSourceUnits} onRemove={() => { setSourceRemoved(true); setSourceFile(null); setSourceRun(""); }} />
             <div className="brief-field">
               <div className="field-heading flex-wrap">
-                <Label htmlFor="model-brief">Brief</Label>
+                <Label htmlFor="model-brief">Brief (optional)</Label>
                 <Button
                   variant="outline"
                   size="sm"
@@ -268,7 +267,7 @@ export function GenerationDialog({
               >
                 {briefing
                   ? "Writing a brief from the approved design…"
-                  : "Drafting with AI is a paid request recorded in Activity."}
+                  : "Leave empty to let AI propose the asset from the approved design. Drafting with AI is a paid request recorded in Activity."}
               </p>
             </div>
             <div className="space-y-2">
@@ -282,7 +281,7 @@ export function GenerationDialog({
                 placeholder="AI writes it from the brief"
               />
               <p className="m-0 text-xs text-muted-foreground">
-                Leave empty and AI writes a short title from the brief, a small paid request recorded in Activity.
+                Leave empty and AI writes a short title from the brief, a small paid request recorded in Activity. Without a brief or title, the planner names the asset.
               </p>
             </div>
             <fieldset disabled={locked} className="space-y-3">

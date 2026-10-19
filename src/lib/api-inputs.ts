@@ -31,10 +31,9 @@ export const generationInput = z.object({
 });
 export type GenerationInput = z.infer<typeof generationInput>;
 
-/** Saved ideas need a brief; a blank title is written by AI from it. Started batches keep the looser contract. */
+/** The brief is optional (generation then follows the approved design); a blank title is written by AI from a brief. */
 export const ideaInput = generationInput.extend({
   count: z.literal(1).default(1),
-  prompt: z.string().trim().min(1, "Write a brief for this idea").max(12000),
   title: z.string().trim().max(100).default(""),
 });
 export type IdeaInput = z.infer<typeof ideaInput>;

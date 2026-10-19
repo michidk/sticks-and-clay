@@ -41,15 +41,15 @@ test("generated project names are trimmed and bounded", () => {
   );
 });
 
-test("idea titles are trimmed and bounded; saved ideas need a brief", async () => {
+test("idea titles are trimmed and bounded; saved ideas may omit the brief", async () => {
   const { ideaInput } = await import("./api-inputs");
   const { ideaTitleResult } = await import("./contracts");
   expect(ideaTitleResult.parse({ title: "  Oak Chair " })).toEqual({ title: "Oak Chair" });
   expect(ideaTitleResult.safeParse({ title: "" }).success).toBe(false);
   expect(ideaTitleResult.safeParse({ title: "x".repeat(101) }).success).toBe(false);
   const idea = { count: 1, judgeIterations: 0 };
-  expect(ideaInput.safeParse(idea).success).toBe(false);
-  expect(ideaInput.safeParse({ ...idea, prompt: "   " }).success).toBe(false);
+  expect(ideaInput.parse(idea).prompt).toBe("");
+  expect(ideaInput.parse({ ...idea, prompt: "   " }).prompt).toBe("");
   expect(ideaInput.safeParse({ ...idea, prompt: "A chair", title: "x".repeat(101) }).success).toBe(false);
   expect(ideaInput.parse({ ...idea, prompt: " A chair " })).toMatchObject({ prompt: "A chair", title: "" });
 });
