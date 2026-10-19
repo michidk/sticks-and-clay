@@ -166,8 +166,11 @@ function ProjectPage() {
     }),
     { cost: 0, unpriced: 0 },
   );
-  const collection = collectionSummary(data.assetVersions, data.batches);
-  const modelGroups = collectionAssetGroups(data.assetVersions);
+  // Assets returned to Ideas (an aborted first attempt) keep their versions but leave the collection.
+  const inIdeas = new Set(data.assets?.filter((asset: any) => asset.inIdea).map((asset: any) => asset.id));
+  const collectionVersions = data.assetVersions.filter((version: any) => !inIdeas.has(version.assetId));
+  const collection = collectionSummary(collectionVersions, data.batches);
+  const modelGroups = collectionAssetGroups(collectionVersions);
   const collectionModels = modelGroups.map((group) => group.representative);
   const modelGroupByRepresentative = new Map(
     modelGroups.map((group) => [group.representative.id, group]),
@@ -177,7 +180,7 @@ function ProjectPage() {
   const state = activeWork
     ? { label: `${queueKindLabels[activeWork.kind] || activeWork.kind} · ${activeWork.status}`, tone: activeWork.status === "queued" ? "queued" : "running" }
     : projectState(p.status, collection);
-  const pending = pendingCollectionItems(data.batches, data.assetVersions);
+  const pending = pendingCollectionItems(data.batches, collectionVersions);
   // Collection renders that failed after the models existed belong on those models' cards.
   const renderFailureByRepresentative = new Map(
     modelGroups.map((group) => [

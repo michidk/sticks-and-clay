@@ -65,10 +65,12 @@ export function collectionAssetGroups<T extends Asset>(assets: T[]) {
     group.assets.push(item.asset);
     const currentTime = new Date(group.representative.createdAt || 0).getTime();
     const candidateTime = new Date(item.asset.createdAt || 0).getTime();
-    if (
+    const newer =
       candidateTime > currentTime ||
-      (candidateTime === currentTime && item.index > group.latestIndex)
-    ) {
+      (candidateTime === currentTime && item.index > group.latestIndex);
+    // A cancelled attempt never replaces an earlier version, so aborting returns the card to it.
+    const cancelled = (a: Asset) => a.status === "cancelled";
+    if (cancelled(item.asset) === cancelled(group.representative) ? newer : cancelled(group.representative)) {
       group.representative = item.asset;
       group.latestIndex = item.index;
     }

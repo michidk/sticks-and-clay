@@ -142,6 +142,16 @@ export const assetVersions = pgTable("asset_versions", {
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),
   createdAt: created(),
 });
+/** Append-only log of an asset's states and edits. Database triggers write it (see the migration),
+ * so every status change is recorded whichever code path makes it. */
+export const assetHistory = pgTable("asset_history", {
+  id: text().primaryKey().default(sql`gen_random_uuid()::text`),
+  assetId: text("asset_id").notNull().references(() => assetEntries.id, { onDelete: "cascade" }),
+  versionId: text("version_id"),
+  kind: text().$type<"created" | "edited" | "ready" | "unready" | "started" | "returned_to_ideas" | "references" | "version" | "status" | "accepted" | "unaccepted">().notNull(),
+  detail: jsonb().$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: created(),
+}, (table) => [index("asset_history_asset_id_idx").on(table.assetId, table.createdAt)]);
 export const runs = pgTable(
   "agent_runs",
   {

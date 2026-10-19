@@ -3,7 +3,7 @@ import { AssetReferences } from "@/components/asset-references";
 import { describeError } from "@/lib/error-message";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Boxes, Download } from "lucide-react";
+import { Boxes, Download, Square } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -79,6 +79,17 @@ export function AssetCard({
   };
   const working = !finished.includes(m.status);
   const outdated = !!batch && batch.designVersion < currentDesignVersion;
+  async function abort() {
+    setResuming(true);
+    try {
+      await request("asset-versions/" + m.id + "/abort", json({}));
+      await onRefresh();
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setResuming(false);
+    }
+  }
   async function resume() {
     setResuming(true);
     try {
@@ -207,6 +218,12 @@ export function AssetCard({
           <span>Est. {costSummary(cost)}</span>
         </div>
         <div className="card-actions">
+          {working && !archived && (
+            <Button variant="outline" disabled={resuming || activeJobs.some((job) => job.status === "cancelling")} onClick={abort}
+              title="Stop generating. The asset returns to its previous state; the attempt stays in history.">
+              <Square size={14} /> {resuming ? "Stopping…" : "Abort"}
+            </Button>
+          )}
           {m.status === "failed" && (
             <Button variant="outline" disabled={resuming} onClick={resume}>
               {resuming ? "Resuming…" : "Resume"}

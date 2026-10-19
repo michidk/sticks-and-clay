@@ -42,6 +42,21 @@ versions remain available. A newer version requires a new
 acceptance decision. Design and visual-target approval remain separate human
 checkpoints.
 
+**Abort** stops queued or running generation, including planning, and returns
+the asset to its previous state. A first attempt returns to Ideas (still Ready if
+it was Ready); an iteration leaves the earlier version as the card, in Review
+or Done. The cancelled attempt stays in version history and accounting, and
+already incurred provider costs remain.
+
+Each asset page shows a **History** of every state its versions entered and every
+change to the asset: creation, edits to its title, brief and settings (with the
+brief before and after), Ready, starts, returns to Ideas, reference changes,
+new versions, status changes, and acceptance. Database triggers on `assets` and
+`asset_versions` write the append-only `asset_history` table, so any code path
+that changes a status is recorded. Entries from before the log existed were
+reconstructed from saved timestamps and are marked as such; their intermediate
+states were not kept.
+
 The project workspace lists these stages as a left-to-right strip, and the
 global board shows them as columns with each asset's project and a project
 filter. Both offer the same actions.

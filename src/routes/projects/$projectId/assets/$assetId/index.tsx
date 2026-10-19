@@ -10,6 +10,7 @@ import { request } from "@/lib/client";
 import type { BoardAsset, BoardProject } from "@/lib/board-data";
 import { GenerationDialog } from "../../-components/generation-dialog";
 import { ideaTitle, ideaBrief } from "../../-components/asset-drafts";
+import { AssetHistory, type AssetHistoryEntry } from "../../-components/asset-history";
 
 export const Route = createFileRoute("/projects/$projectId/assets/$assetId/")({ component: AssetPage });
 type AssetWorkspace = Omit<BoardProject, "project" | "models"> & { project: BoardProject["project"]; assets: BoardAsset[]; assetVersions: BoardProject["models"] };
@@ -18,23 +19,29 @@ function AssetPage() {
   const [data, setData] = useState<AssetWorkspace | null>(null);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
+  const [history, setHistory] = useState<AssetHistoryEntry[]>([]);
+  const fetchAll = useCallback(() => Promise.all([
+    request<AssetWorkspace>(`projects/${projectId}?summary=true&versions=false`),
+    request<AssetHistoryEntry[]>(`projects/${projectId}/assets/${assetId}/history`),
+  ]), [projectId, assetId]);
   const refresh = useCallback(async () => {
-    const data = await request<AssetWorkspace>(`projects/${projectId}?summary=true&versions=false`);
-    setData(data); setError("");
-  }, [projectId]);
+    const [data, history] = await fetchAll();
+    setData(data); setHistory(history); setError("");
+  }, [fetchAll]);
   useEffect(() => {
     let active = true;
     setData(null);
+    setHistory([]);
     const load = async () => {
       try {
-        const data = await request<AssetWorkspace>(`projects/${projectId}?summary=true&versions=false`);
-        if (active) { setData(data); setError(""); }
+        const [data, history] = await fetchAll();
+        if (active) { setData(data); setHistory(history); setError(""); }
       } catch (error) { if (active) setError(error instanceof Error ? error.message : "Could not load this asset"); }
     };
     void load();
     const timer = window.setInterval(() => { if (document.visibilityState === "visible") void load(); }, 5000);
     return () => { active = false; window.clearInterval(timer); };
-  }, [projectId, assetId]);
+  }, [fetchAll]);
   const asset = data?.assets.find((asset) => asset.id === assetId);
   const versions = data?.assetVersions.filter((version) => version.assetId === assetId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) ?? [];
   return <main>
@@ -55,6 +62,10 @@ function AssetPage() {
           <time className="muted" dateTime={new Date(version.createdAt).toISOString()}>{new Date(version.createdAt).toLocaleString()}</time>
           {version.acceptedAt && <span className="muted">Accepted</span>}
         </li>)}</ul>}
+      </section>
+      <section className="my-8"><h2>History</h2><p className="muted">Every state this asset was in and every change made to it.</p>
+        <AssetHistory projectId={projectId} entries={history} view={data.project.assetType === "model" ? "3d" : "target"}
+          versionNumbers={new Map(versions.map((version, index) => [version.id, versions.length - index]))} />
       </section>
     </>}
   </main>;

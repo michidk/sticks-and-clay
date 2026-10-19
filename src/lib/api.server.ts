@@ -1,6 +1,6 @@
 import { designPalette } from "./pixel-design-palette";
 import { DEMO_MODE } from "./build-mode";
-import { plannerReservations } from "./queue.server";
+import { abortGeneration, plannerReservations } from "./queue.server";
 import { updateStartingPoint, startingPointVersions } from "./starting-point.server";
 import { getGlobalBoard } from "./global-board.server";
 import { assetSnapshot } from "./asset-snapshot.server";
@@ -79,7 +79,7 @@ import {
   startDesign,
 } from "./project-lifecycle.server";
 import { queueGeneration, regenerateAsset } from "./generation.server";
-import { discardAssetDraft, listAssetDrafts, reopenVersionAsIdea, createAsset, setAssetReady, startAsset, updateAsset } from "./assets.server";
+import { discardAssetDraft, listAssetDrafts, listAssetHistory, reopenVersionAsIdea, createAsset, setAssetReady, startAsset, updateAsset } from "./assets.server";
 async function resumeJob(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   kinds: string[],
@@ -504,6 +504,9 @@ export async function api(request: Request) {
         .from(projects)
         .where(eq(projects.id, id));
       if (!project) return reply({ error: "Project not found" }, 404);
+      if (path[2] === "assets" && path[3] && path[4] === "history" && request.method === "GET") {
+        return reply(await listAssetHistory(id, uuid.parse(path[3])));
+      }
       if (path[2] === "starting-points" && request.method === "GET") {
         return reply({ sources: await startingPointVersions(project) });
       }
@@ -1137,6 +1140,14 @@ export async function api(request: Request) {
         }
       });
       return reply({ ok: true });
+    }
+    if (path[0] === "models" && path[1] && path[2] === "abort" && request.method === "POST") {
+      const [model] = await db.select({ batchId: assetVersions.batchId }).from(assetVersions).where(eq(assetVersions.id, uuid.parse(path[1])));
+      if (!model) throw new Error("Version not found");
+      return reply({ status: await abortGeneration(model.batchId, path[1]) });
+    }
+    if (path[0] === "batches" && path[1] && path[2] === "abort" && request.method === "POST") {
+      return reply({ status: await abortGeneration(uuid.parse(path[1])) });
     }
     if (
       path[0] === "batches" &&

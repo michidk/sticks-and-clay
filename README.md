@@ -175,7 +175,8 @@ configuration, scopes, and deployment behind an auth proxy.
 - 🎞️ **Sprites from 3D.** Render pixel or smooth sprite sheets with 1, 4, or
   8 directions, animation frames, shared palettes and outlines, with Unity and
   Godot import descriptions, plus LODs.
-- 🗂️ **Board and export.** Ideas → Ready → In progress → Review → Done, and a
+- 🗂️ **Board and export.** Ideas → Ready → In progress → Review → Done, abort
+  back to the previous stage, a per-asset history of states and edits, and a
   ZIP export of accepted assets.
 - 🔁 **Durable jobs.** A PostgreSQL-backed worker with checkpoints, resume,
   and retry that survives restarts and lost sandboxes.

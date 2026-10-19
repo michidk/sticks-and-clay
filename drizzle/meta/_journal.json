@@ -183,6 +183,13 @@
       "when": 1792269835711,
       "tag": "0025_short_retro_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792418463962,
+      "tag": "0026_ancient_shadowcat",
+      "breakpoints": true
     }
   ]
 }

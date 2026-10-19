@@ -105,3 +105,12 @@ test("an asset ID prevents legacy parent metadata from joining another asset", (
   ]);
   expect(groups.map((group) => group.assets.map((version) => version.id))).toEqual([["a"], ["b"]]);
 });
+
+test("a cancelled newer attempt leaves the earlier version as the card", () => {
+  const [group] = collectionAssetGroups([
+    { id: "a", assetId: "x", status: "done", createdAt: "2026-01-01" },
+    { id: "b", assetId: "x", status: "cancelled", createdAt: "2026-01-02" },
+  ]);
+  expect(group.representative.id).toBe("a");
+  expect(group.assets).toHaveLength(2);
+});

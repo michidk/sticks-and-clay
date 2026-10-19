@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Boxes, Check, Play, Trash2, Undo2, Images } from "lucide-react";
+import { Boxes, Check, Play, Trash2, Undo2, Images, Square } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -89,6 +89,7 @@ function VersionCard({ version, root, count, entry, showProject, onRefresh }: Co
 
       </>}
       {stage === "done" && <Button size="sm" variant="ghost" disabled={pending.has(`models/${version.id}/accept`)} onClick={() => send(`models/${version.id}/accept`, { accepted: false })}><Undo2 size={14} /> Back to review</Button>}
+      {stage === "progress" && !["failed", "cancelled"].includes(version.status) && <Button size="sm" variant="outline" disabled={pending.has(`models/${version.id}/abort`)} title="Stop generating and return to the previous state" onClick={() => send(`models/${version.id}/abort`, {})}><Square size={14} /> {pending.has(`models/${version.id}/abort`) ? "Stopping…" : "Abort"}</Button>}
       {version.status === "failed" && <Button size="sm" variant="outline" disabled={pending.has(`models/${version.id}/retry`)} onClick={() => send(`models/${version.id}/retry`, {})}>Resume</Button>}
       {version.status === "awaiting_approval" && <Button size="sm" variant="outline" asChild><Link {...link} search={{ view: "target", section: "review" }}>Review target</Link></Button>}
       <References asset={asset} projectId={project.id} onRefresh={onRefresh} />
@@ -104,6 +105,7 @@ function PendingCard({ batch, owed, entry, showProject, onRefresh }: Context & {
     <div className="board-card-meta"><StatusBadge status={batch.status} /><span className="muted">{owed} planned</span></div>
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     {batch.status === "failed" && !entry.project.archivedAt && <Button size="sm" variant="outline" disabled={pending.has(`batches/${batch.id}/resume`)} onClick={() => send(`batches/${batch.id}/resume`, {})}>Resume</Button>}
+    {["queued", "planning"].includes(batch.status) && !entry.project.archivedAt && <Button size="sm" variant="outline" disabled={pending.has(`batches/${batch.id}/abort`)} title="Stop planning and return to the previous state" onClick={() => send(`batches/${batch.id}/abort`, {})}><Square size={14} /> Abort</Button>}
   </li>;
 }
 

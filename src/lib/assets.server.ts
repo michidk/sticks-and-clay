@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { assetEntries, assetVersions, projects } from "../db/schema";
+import { assetEntries, assetHistory, assetVersions, projects } from "../db/schema";
 import { generationInput, type IdeaInput, type IdeaUpdateInput } from "./api-inputs";
 import { roleInput, runRole } from "../modules/ai/index.server";
 import { insertGeneration, validateGeneration } from "./generation.server";
@@ -11,6 +11,14 @@ export async function listAssetDrafts(projectId: string) {
   return db.select().from(assetEntries).where(and(
     eq(assetEntries.projectId, projectId), eq(assetEntries.inIdea, true),
   )).orderBy(desc(assetEntries.createdAt));
+}
+
+/** Newest first. The project check keeps one project's history out of another's URL. */
+export async function listAssetHistory(projectId: string, assetId: string) {
+  return db.select({ id: assetHistory.id, versionId: assetHistory.versionId, kind: assetHistory.kind, detail: assetHistory.detail, createdAt: assetHistory.createdAt })
+    .from(assetHistory).innerJoin(assetEntries, eq(assetEntries.id, assetHistory.assetId))
+    .where(and(eq(assetHistory.assetId, assetId), eq(assetEntries.projectId, projectId)))
+    .orderBy(desc(assetHistory.createdAt), desc(assetHistory.id));
 }
 
 type TitleWriter = (projectId: string, brief: string) => Promise<string>;
