@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { assetEntries, assetVersions, projects } from "../db/schema";
-import { generationInput, type IdeaInput } from "./api-inputs";
+import { generationInput, type IdeaInput, type IdeaUpdateInput } from "./api-inputs";
 import { roleInput, runRole } from "../modules/ai/index.server";
 import { insertGeneration, validateGeneration } from "./generation.server";
 import { assertNotArchived } from "./project-lifecycle.server";
@@ -35,16 +35,21 @@ export async function createAsset(
 }
 
 export async function updateAsset(
-  project: typeof projects.$inferSelect, ideaId: string, { title: requested, ...input }: IdeaInput, titleFor: TitleWriter = writeTitle,
+  project: typeof projects.$inferSelect, ideaId: string, { title: requested, ...updates }: IdeaUpdateInput, titleFor: TitleWriter = writeTitle,
 ) {
   assertNotArchived(project);
-  validateGeneration(project, input);
-  await validateStartingPoint(project.id, project.assetType, input.startingPoint);
   const ownedAsset = and(eq(assetEntries.id, ideaId), eq(assetEntries.projectId, project.id));
   // Check ownership before charging for a title.
   const [existing] = await db.select().from(assetEntries).where(ownedAsset);
   if (!existing)
     throw new Error("Asset is no longer available for editing");
+  const input = {
+    ...updates,
+    imageSize: updates.imageSize ?? existing.input.imageSize,
+    resolution: updates.resolution === undefined ? existing.input.resolution : updates.resolution,
+  };
+  validateGeneration(project, input);
+  await validateStartingPoint(project.id, project.assetType, input.startingPoint);
   if (input.startingPoint && !existing.inIdea && input.startingPoint.sha256 !== existing.input.startingPoint?.sha256)
     throw new Error("Return the asset to Ideas before changing its starting point");
   input.startingPoint ??= existing.input.startingPoint;

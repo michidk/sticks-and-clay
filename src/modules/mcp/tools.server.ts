@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import {
-  acceptInput, agentInput, assetBriefInput, branchInput, exportInput, ideaInput, readyInput, designInput, designUpdateInput,
+  acceptInput, agentInput, assetBriefInput, branchInput, exportInput, ideaInput, ideaUpdateInput, readyInput, designInput, designUpdateInput,
   visualTargetDecisionInput, generationInput, materialAssignmentInput, materialInput, presentationInput,
 } from "../../lib/api-inputs";
 import { runtimeSettingsPatchSchema, runtimeSettingsSchema } from "../../lib/contracts";
@@ -140,7 +140,7 @@ export function createStudioMcpServer(options: {
   register("create_asset", "Create an asset in Ideas with its required brief, optional named parts and generation settings. Omit title for a small paid AI title request. The same asset keeps its identity through Ready, In progress, Review and Done.", write,
     ideaInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/assets`, method: "POST", body: input }));
   register("update_asset", "Replace an asset's brief, title, parts and settings for future versions in any stage. An empty title uses a small paid AI request. Saved versions stay unchanged.", write,
-    ideaInput.extend(assetId.shape), (input) => ({ path: `projects/${input.projectId}/assets/${input.assetId}`, method: "PUT", body: input }));
+    ideaUpdateInput.extend(assetId.shape), (input) => ({ path: `projects/${input.projectId}/assets/${input.assetId}`, method: "PUT", body: input }));
   register("discard_asset", "Discard an asset that has no saved versions. Generated history cannot be deleted through MCP.", write,
     assetId, ({ projectId, assetId }) => ({ path: `projects/${projectId}/assets/${assetId}`, method: "DELETE" }), { destructive: true });
   register("mark_asset_ready", "Mark a draft asset Ready or move it back to Ideas. This does not start paid generation.", write,

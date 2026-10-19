@@ -267,3 +267,35 @@ integration("custom design palettes override named presets only for the new cont
     }
   }
 });
+
+integration("a reviewer cannot change the established pixel grid; mismatches complete with a review error", async () => {
+  const resized = { ...drawing(3), width: 8, rows: ["........", "ooo.....", "........", "........"] };
+  const t = await scenario(2, [
+    { step: "pixel", role: "pixel", iteration: 0, result: drawing(1) },
+    { step: "judge:0", role: "pixel-judge", iteration: 0, result: verdict(false, "Make the icon larger") },
+    { step: "builder:1", role: "pixel", iteration: 1, result: resized },
+    { step: "judge:1", role: "pixel-judge", iteration: 1, result: verdict(true, "Looks good") },
+  ]);
+  try {
+    const model = await t.run();
+    expect(model.status).toBe("done");
+    expect(model.verdict).toBe("limit_reached");
+    expect(model.phase).toBe("Complete · output dimension error");
+    expect(model.feedback).toMatchObject({ passed: false, summary: expect.stringContaining("requested 4×4 pixels, received 8×4") });
+    const grid = JSON.parse(await (await getStorage().download(`${t.base}/iteration-1/grid.json`)).text());
+    expect(grid.width).toBe(8);
+    const [job] = await db.select().from(jobs).where(eq(jobs.targetId, model.id));
+    expect(JSON.parse(job.checkpoint?.["output:resolution"] ?? "null")).toEqual({ width: 4, height: 4 });
+  } finally { await t.cleanup(); }
+});
+
+integration("explicit pixel dimension mismatch is shown even with zero review rounds", async () => {
+  const t = await scenario(0, [{ step: "pixel", role: "pixel", iteration: 0, result: drawing(1) }]);
+  try {
+    await db.update(batches).set({ workshop: { version: 0, variation: 25, effort: "standard", resolution: { width: 8, height: 8 } } }).where(eq(batches.id, t.batchId));
+    const model = await t.run();
+    expect(model.status).toBe("done");
+    expect(model.verdict).toBe("limit_reached");
+    expect(model.feedback).toMatchObject({ passed: false, summary: expect.stringContaining("requested 8×8 pixels, received 4×4") });
+  } finally { await t.cleanup(); }
+});

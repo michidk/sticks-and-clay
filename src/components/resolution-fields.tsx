@@ -20,6 +20,6 @@ export function ResolutionFields({ type, value, inherited = false }: { type: Ass
         <Input id={`${id}-${dimension}`} name={dimension === "width" ? "resolutionWidth" : "resolutionHeight"} type="number" min={4} max={type === "pixel" ? 128 : 8192} step={1} defaultValue={value?.[dimension] ?? ""} placeholder="Auto" />
       </div>)}
     </div>
-    <p className="muted">{inherited ? "Leave both blank to use the project resolution. " : "Leave both blank to let generation choose. "}{type === "pixel" ? "4–128 pixels per dimension." : "Added to the prompt; the image provider may return a different size."}</p>
+    <p className="muted">{inherited ? "Leave both blank to use the project resolution. " : "Leave both blank to let generation choose. "}{type === "pixel" ? "4–128 pixels per dimension." : "Exact dimensions are requested. Unsupported sizes or mismatches are shown as review errors; no automatic resizing."}</p>
   </div>;
 }

@@ -136,3 +136,13 @@ integration("revision review transports labeled current and previous evidence wi
     await t.cleanup();
   }
 });
+
+integration("non-square SVG completes with a dimension error instead of an unreviewed success", async () => {
+  const t = await scenario(0, [{ step: "svg", role: "svg", iteration: 0, result: { svg: svg("#284e3c", 30).replace("0 0 100 100", "0 0 100 80") } }]);
+  try {
+    const model = await t.run();
+    expect(model.status).toBe("done");
+    expect(model.verdict).toBe("limit_reached");
+    expect(model.feedback).toMatchObject({ passed: false, summary: expect.stringContaining("square viewBox") });
+  } finally { await t.cleanup(); }
+});

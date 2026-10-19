@@ -87,7 +87,10 @@ export const svgKind: AssetKind = {
     await storage.upload(new Blob([svg], { type: "image/svg+xml" }), key);
     for (const preview of previews) await storage.upload(png(preview.data), preview.key);
     const analysis = { ...analyzeSvg(svg), render: rendered.ink };
-    await db.update(runs).set({ result: { ...result, key, analysis } }).where(eq(runs.id, runId));
-    return { key, previews: previews.map(({ key, label }) => ({ key, label })), analysis };
+    const viewBox = analysis.viewBox?.trim().split(/[\s,]+/).map(Number);
+    const dimensionErrors = viewBox && viewBox[2] !== viewBox[3]
+      ? ["Output dimension error: SVG requires a square viewBox (1:1). The returned vector canvas is not square."] : [];
+    await db.update(runs).set({ result: { ...result, key, analysis, dimensionErrors } }).where(eq(runs.id, runId));
+    return { key, dimensionErrors, previews: previews.map(({ key, label }) => ({ key, label })), analysis };
   },
 };

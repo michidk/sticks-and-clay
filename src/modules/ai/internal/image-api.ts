@@ -1,3 +1,6 @@
+import { UnsupportedResolution } from "../../../lib/resolution";
+import { z } from "zod";
+
 export type ImageUsage = {
   input_tokens: number;
   output_tokens: number;
@@ -9,7 +12,7 @@ export type ImageApiResult = {
   data?: { b64_json?: string }[];
   usage?: ImageUsage;
 };
-export type ImageSize = "1024x1024" | "1024x1536" | "1536x1024";
+export type ImageSize = `${number}x${number}`;
 
 /** One request, no automatic retries: failed/ambiguous requests stay in audit history. */
 export async function requestImage(args: {
@@ -53,6 +56,12 @@ export async function requestImage(args: {
     },
   );
   if (!response.ok) {
+    if (response.status === 400 || response.status === 422) {
+      const parsed = z.object({ error: z.object({ param: z.string().nullable().optional(), code: z.string().nullable().optional() }) })
+        .safeParse(await response.json().catch(() => null));
+      if (parsed.success && (parsed.data.error.param === "size" || ["invalid_size", "unsupported_size"].includes(parsed.data.error.code ?? "")))
+        throw new UnsupportedResolution(`Output dimension error: the image provider rejected ${fields.size}. Choose a model that supports this size or explicitly change the resolution. No fallback size was used.`);
+    }
     // Provider response bodies can echo credentials or prompt text. Keep them private.
     throw new Error(
       `Image API request failed (HTTP ${response.status}). ${response.status === 401 || response.status === 403 ? "Check provider credentials and image access." : "Check provider availability and model support."}`,

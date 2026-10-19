@@ -158,7 +158,8 @@ configuration, scopes, and deployment behind an auth proxy.
 - 🎨 **Graphics and SVG.** One-shot images through an OpenAI-compatible Image
   API with optional project resolution and per-asset overrides, or square editable
   vector artwork with previews, variants, junction diagnostics, and safe SVG output
-  (no scripts, external content, or embedded rasters).
+  (no scripts, external content, or embedded rasters). Dimension mismatches are
+  shown for review without failing the job or automatically resizing the output.
 - 👾 **Pixel art.** Drawn cell by cell on a grid (a palette and one row of text
   per row), with optional project resolution and per-asset overrides, instead of generated, with targeted repairs for malformed rows, rendered exactly by the app, reviewed on a
   sheet (1x on dark and light, silhouette, values) with craft measurements,

@@ -81,7 +81,8 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
   const parts = selectedParts.success ? selectedParts.data.parts
     : (!current || current.id === builds.at(-1)?.id) && latestParts.success ? latestParts.data : [];
   const partGallery = parts.map((part) => ({ src: fileUrl(part.key), title: `${name} · ${part.name}` }));
-  const review: Review | undefined = current ? reviewOf(current) : model.feedback;
+  const review: Review | undefined = !current || (current.id === builds.at(-1)?.id && model.phase === "Complete · output dimension error")
+    ? model.feedback : reviewOf(current);
   const batch = (data.batches as any[]).find((item) => item.id === model.batchId);
   const outdated = !!batch && batch.designVersion < data.project.designVersion;
   const archived = Boolean(data.project.archivedAt);

@@ -85,3 +85,31 @@ test("errors redact provider bodies and are never retried; abort is honored", as
     server.stop(true);
   }
 });
+
+test("exact custom dimensions reach generation and edit requests unchanged", async () => {
+  const sizes: unknown[] = [];
+  const server = Bun.serve({ port: 0, fetch: async (request) => {
+    sizes.push(request.headers.get("content-type")?.includes("application/json")
+      ? (await request.json()).size : (await request.formData()).get("size"));
+    return Response.json({ data: [{ b64_json: "fixture" }] });
+  } });
+  try {
+    const provider = { key: "test-only", url: `http://127.0.0.1:${server.port}/v1` };
+    await requestImage({ ...base, provider, size: "1920x1080" });
+    await requestImage({ ...base, provider, size: "720x1280", references: [new File(["a"], "a.png", { type: "image/png" })] });
+    expect(sizes).toEqual(["1920x1080", "720x1280"]);
+  } finally { server.stop(true); }
+});
+
+test("unsupported size reports the exact resolution without a fallback request", async () => {
+  let calls = 0;
+  const server = Bun.serve({ port: 0, fetch: () => {
+    calls++;
+    return Response.json({ error: { param: "size", code: "invalid_value", message: "private provider detail" } }, { status: 400 });
+  } });
+  try {
+    const provider = { key: "test-only", url: `http://127.0.0.1:${server.port}/v1` };
+    await expect(requestImage({ ...base, provider, size: "64x64" })).rejects.toThrow("rejected 64x64");
+    expect(calls).toBe(1);
+  } finally { server.stop(true); }
+});

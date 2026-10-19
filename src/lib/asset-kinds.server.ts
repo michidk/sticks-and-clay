@@ -1,4 +1,7 @@
-import { imageCanvas } from "./resolution";
+import { resolutionSchema } from "./contracts";
+import { checkpoint, readCheckpoint } from "./checkpoint.server";
+import { pngResolution } from "./resolution.server";
+import { dimensionError, imageCanvas } from "./resolution";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { runs } from "../db/schema";
@@ -27,11 +30,19 @@ const graphicKind: AssetKind = {
       workshopContext(batch.workshop, false);
     const parts = batch.workshop?.parts ?? [];
     const outputs = [];
+    const dimensionErrors: string[] = [];
     const generated = [];
     for (const [index, part] of (parts.length ? parts : [undefined]).entries()) {
       const previousKey = part
         ? previous?.parts?.find((item) => item.name === part.name)?.key
         : previous?.key;
+      const sourceKey = previousKey ?? batch.workshop?.startingPoint?.preview;
+      const checkpointKey = `output:resolution:${index}`;
+      const frozen = readCheckpoint(checkpointKey, resolutionSchema);
+      const resolution = batch.workshop?.resolution ?? frozen ?? (sourceKey ? await pngResolution(sourceKey) : undefined);
+      const size = imageCanvas(resolution, batch.imageSize);
+      const [width, height] = size.split("x").map(Number);
+      if (!frozen) await checkpoint(checkpointKey, JSON.stringify({ width, height }));
       const image = await runImageRole({
         role: "graphic",
         name: part ? `part-${index + 1}-${node.iteration}` : node.iteration ? `graphic-${node.iteration}` : "graphic",
@@ -44,22 +55,25 @@ const graphicKind: AssetKind = {
         prompt: basePrompt + (part
           ? `\n\nNAMED PART OUTPUT\nGenerate only part ${JSON.stringify(part.name)} of this asset: ${part.brief}\nThe other named parts are generated as separate files in this same version. Keep their shared scale, alignment, palette and visual language consistent. Do not include other parts or a contact sheet in this file.`
           : "") + revision,
-        size: imageCanvas(batch.workshop?.resolution, batch.imageSize),
+        size,
         images: [...(previousKey ? [previousKey] : batch.workshop?.startingPoint?.preview ? [batch.workshop.startingPoint.preview] : []), ...ctx.references],
         assertActive: assertJobActive,
       });
+      const mismatch = dimensionError(await pngResolution(image.key), { width, height });
+      if (mismatch) dimensionErrors.push(part ? `${part.name}: ${mismatch}` : mismatch);
       generated.push(image);
       outputs.push({ name: part?.name ?? model.name, key: image.key });
     }
     const [first] = outputs;
     if (!first) throw new Error("No graphic was produced");
     const previews = outputs.map(({ name, key }) => ({ key, label: parts.length ? `named part ${JSON.stringify(name)}` : "the generated graphic" }));
-    const analysis = parts.length ? { parts: outputs.map(({ name }) => name) } : {};
-    if (parts.length) for (const image of generated) await db.update(runs)
+    const analysis = { ...(parts.length ? { parts: outputs.map(({ name }) => name) } : {}), ...(dimensionErrors.length ? { dimensionErrors } : {}) };
+    if (parts.length || dimensionErrors.length) for (const image of generated) await db.update(runs)
       .set({ result: { ...image, parts: outputs, previews, analysis } })
       .where(eq(runs.id, image.runId));
     return {
       key: first.key,
+      dimensionErrors,
       ...(parts.length ? { parts: outputs } : {}),
       previews,
       analysis,

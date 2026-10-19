@@ -38,6 +38,8 @@ export const ideaInput = generationInput.extend({
   title: z.string().trim().max(100).default(""),
 });
 export type IdeaInput = z.infer<typeof ideaInput>;
+export const ideaUpdateInput = ideaInput.extend({ imageSize: imageSizeSchema.optional() });
+export type IdeaUpdateInput = z.infer<typeof ideaUpdateInput>;
 
 export const branchInput = z.object({
   kind: z.enum(["iterate", "fork"]),

@@ -169,14 +169,22 @@ Clearing the project setting lets generation choose. New batches freeze the
 resolved size and attach it to planning, generation and review prompts. Existing
 queued versions retain their snapshots.
 
-Pixel art supports 4–128 pixels per dimension. The generated grid must match an
-explicit resolution; a mismatch uses the existing repair attempt and fails if
-still wrong. Graphics accept requested dimensions from 4–8192 pixels. These are
-prompt instructions, not a promise of exact raster output: the current image
-adapter sends one of 1024×1024, 1024×1536 or 1536×1024, choosing a canvas near the
-requested aspect ratio. It does not resize or crop the returned image. Provider
-and model support can vary. Without a resolution, existing saved canvas settings
-remain the fallback.
+Pixel art supports 4–128 pixels per dimension. An explicit resolution is fixed;
+otherwise the source grid or first generated grid establishes the dimensions for
+all review rounds and recovery. Graphics accept requested dimensions from 4–8192
+pixels and send that exact size to the image API. Without an explicit resolution,
+the source image dimensions or saved canvas setting are used. Provider and model
+support can vary. The app never substitutes a nearby preset, resizes or crops to
+hide a mismatch.
+
+Dimension mismatches finish with issues rather than failing the job. The returned
+artifact stays available, and Review shows the requested and actual dimensions,
+even with zero judge rounds. An AI judge cannot approve a mismatched output.
+An explicit provider rejection of the size also finishes with a dimension finding;
+if no image was produced there is no new artifact. Recovery does not retry that
+rejected request automatically. Only the owner should change or clear dimensions.
+Unrelated project and asset edits preserve omitted resolution and canvas fields.
 
 SVG generation always requests a square viewBox with a 1:1 aspect ratio. SVG
-coordinates describe vector units, not a raster output resolution.
+coordinates describe vector units, not a raster output resolution. A non-square
+viewBox is a dimension review finding.

@@ -12,8 +12,14 @@ export function resolutionLabel(resolution: Resolution) {
   return `${resolution.width}×${resolution.height}`;
 }
 
-export function imageCanvas(resolution: Resolution | null | undefined, fallback: "1024x1024" | "1024x1536" | "1536x1024") {
-  if (!resolution) return fallback;
-  const ratio = resolution.width / resolution.height;
-  return ratio > 1.25 ? "1536x1024" : ratio < 0.8 ? "1024x1536" : "1024x1024";
+export function imageCanvas(resolution: Resolution | null | undefined, fallback: `${number}x${number}`): `${number}x${number}` {
+  return resolution ? `${resolution.width}x${resolution.height}` : fallback;
+}
+
+export class UnsupportedResolution extends Error {}
+
+export function dimensionError(actual: Resolution, expected: Resolution | null | undefined) {
+  return expected && (actual.width !== expected.width || actual.height !== expected.height)
+    ? `Output dimension error: requested ${resolutionLabel(expected)} pixels, received ${resolutionLabel(actual)}. The requested resolution has not been changed.`
+    : undefined;
 }

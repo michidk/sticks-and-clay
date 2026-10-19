@@ -1,3 +1,4 @@
+import { dimensionError } from "./resolution";
 import { generationPalettes } from "./pixel-design-palette";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
@@ -6,7 +7,8 @@ import { runRole, roleInput } from "../modules/ai/index.server";
 import type { AssetKind } from "./reviewed-asset.server";
 import { getStorage, readStoredFile } from "./storage.server";
 import { ZodError } from "zod";
-import { checkpoint, jobContext } from "./checkpoint.server";
+import { resolutionSchema } from "./contracts";
+import { checkpoint, jobContext, readCheckpoint } from "./checkpoint.server";
 import {
   analyzePixels, enforcePalette, enlarged, MAX_FRAMES, MAX_LAYERS, MAX_PIXELS, PIXEL_FORMAT, PixelGridError,
   pixelGridSchema, resolvePixelAnswer, snapToPalette, validatePixelGrid, type PixelGrid,
@@ -77,7 +79,11 @@ export const pixelKind: AssetKind = {
       await checkpoint("pixel:palette-contract", Object.keys(job.checkpoint).some((key) => /^step:(pixel|builder:)/.test(key)) ? "1" : "4");
     const paletteContract = job.checkpoint["pixel:palette-contract"];
     const palettes = paletteContract === "4" ? generationPalettes(batch.design, ctx.request) : namedPalettes(batch.design, ctx.request);
-    // Repair a few malformed rows in place first; whole-grid or palette errors retain the existing redraw retry.
+    const resolution = batch.workshop?.resolution ?? readCheckpoint("output:resolution", resolutionSchema) ?? previousGrid;
+    if (resolution && !job.checkpoint["output:resolution"])
+      await checkpoint("output:resolution", JSON.stringify({ width: resolution.width, height: resolution.height }));
+    const sizeInstruction = resolution ? `\nKeep the output grid exactly ${resolution.width}×${resolution.height} pixels. Review feedback cannot change these dimensions.` : "";
+    // Repair malformed rows before the existing whole-grid or palette redraw retry.
     let problem = "None";
     for (let attempt = 0; ; attempt++) {
       let runId: string | undefined;
@@ -93,7 +99,7 @@ export const pixelKind: AssetKind = {
           input: await roleInput("pixel", {
             design: batch.design,
             name: model.name,
-            request: ctx.request + workshopContext(batch.workshop, false),
+            request: ctx.request + workshopContext(batch.workshop, false) + sizeInstruction,
             limit: `${MAX_PIXELS}x${MAX_PIXELS} cells at most; up to ${MAX_FRAMES} animation frames or ${MAX_LAYERS} layers`,
             palettes: palettePromptText(palettes),
             source: sources.join("\n\n") || "None",
@@ -128,9 +134,6 @@ export const pixelKind: AssetKind = {
           }
           rowRepair = { runId: repair.runId, rows: problems.length };
         }
-        const resolution = batch.workshop?.resolution;
-        if (resolution && (grid.width !== resolution.width || grid.height !== resolution.height))
-          throw new PixelGridError(`Use the requested ${resolution.width}×${resolution.height} pixel grid, not ${grid.width}×${grid.height}`);
         validatePixelGrid(grid); // the cells first, so a malformed drawing is named before its colors
         if (paletteContract === "2") {
           const outside = analyzePixels(grid, palettes).colorsOutsideNamedPalette;
@@ -139,9 +142,13 @@ export const pixelKind: AssetKind = {
           if (attempt === 0) enforcePalette(grid, palettes);
           else ({ grid, snapped } = snapToPalette(grid, palettes));
         }
-        const analysis = analyzePixels(grid, palettes, snapped);
+        if (!job.checkpoint["output:resolution"])
+          await checkpoint("output:resolution", JSON.stringify({ width: grid.width, height: grid.height }));
+        const mismatch = dimensionError(grid, resolution);
+        const dimensionErrors = mismatch ? [mismatch] : [];
+        const analysis = { ...analyzePixels(grid, palettes, snapped), dimensionErrors };
         const rendered = await renderPixels(grid);
-        return await save({ grid, analysis, rendered, result: { ...answer.result, ...(rowRepair ? { rowRepair } : {}) }, runId, directory });
+        return { ...await save({ grid, analysis, rendered, result: { ...answer.result, ...(rowRepair ? { rowRepair } : {}) }, runId, directory }), dimensionErrors };
       } catch (error) {
         if (runId) await db.update(runs).set({ status: "failed", error: String(error) }).where(eq(runs.id, runId));
         if (attempt || !(error instanceof PixelGridError || error instanceof ZodError)) throw error;

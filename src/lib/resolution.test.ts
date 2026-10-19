@@ -30,9 +30,9 @@ test("resolution validates dimensions and asset type", () => {
   expect(() => validateResolution("pixel", { width: 128, height: 4 })).not.toThrow();
 });
 
-test("image API uses a supported canvas near the requested aspect ratio", () => {
-  expect(imageCanvas({ width: 1920, height: 1080 }, "1024x1024")).toBe("1536x1024");
-  expect(imageCanvas({ width: 720, height: 1280 }, "1024x1024")).toBe("1024x1536");
-  expect(imageCanvas({ width: 512, height: 512 }, "1536x1024")).toBe("1024x1024");
+test("image API keeps exact requested dimensions without substituting a preset", () => {
+  expect(imageCanvas({ width: 1920, height: 1080 }, "1024x1024")).toBe("1920x1080");
+  expect(imageCanvas({ width: 720, height: 1280 }, "1024x1024")).toBe("720x1280");
+  expect(imageCanvas({ width: 512, height: 512 }, "1536x1024")).toBe("512x512");
   expect(imageCanvas(undefined, "1536x1024")).toBe("1536x1024");
 });

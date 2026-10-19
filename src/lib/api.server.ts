@@ -18,6 +18,7 @@ import {
   acceptInput,
   exportInput,
   ideaInput,
+  ideaUpdateInput,
   readyInput,
 } from "./api-inputs";
 import { exportAssets, setModelAccepted } from "./asset-export.server";
@@ -702,7 +703,7 @@ export async function api(request: Request) {
           return reply(await createAsset(project, ideaInput.parse(await request.json())), 201);
         }
         if (path.length === 4 && request.method === "PUT")
-          return reply({ ok: true, ...(await updateAsset(project, uuid.parse(path[3]), ideaInput.parse(await request.json()))) });
+          return reply({ ok: true, ...(await updateAsset(project, uuid.parse(path[3]), ideaUpdateInput.parse(await request.json()))) });
         if (path.length === 4 && request.method === "DELETE") {
           await discardAssetDraft(id, uuid.parse(path[3]));
           return reply({ ok: true });
@@ -850,6 +851,7 @@ export async function api(request: Request) {
         const input = workshopSchema.parse(await request.json());
         validateResolution(project.assetType, input.resolution);
         const previous = workshopSchema.parse(project.workshop || {});
+        if (input.resolution === undefined) input.resolution = previous.resolution;
         if (input.version !== previous.version)
           throw new Error("Collection settings changed; reload before saving");
         const [updated] = await db
