@@ -163,7 +163,7 @@ export function LandingPage() {
           </figure>
         </section>
 
-        <section className="landing-section landing-split" aria-labelledby="landing-host">
+        <section className="landing-section landing-split landing-host" aria-labelledby="landing-host">
           <div>
             <Server size={26} strokeWidth={1.6} aria-hidden="true" />
             <h2 id="landing-host">Yours to run</h2>
@@ -181,15 +181,6 @@ export function LandingPage() {
               </Button>
             </div>
           </div>
-          <figure className="landing-shot landing-phone">
-            <img
-              src="/landing/model-mobile.png"
-              alt="The 3D model viewer on a phone"
-              width={390}
-              height={844}
-              loading="lazy"
-            />
-          </figure>
         </section>
       </main>
 

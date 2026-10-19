@@ -29,8 +29,9 @@ test("the tracked repository excludes private state and generated runtime files"
   const forbidden = files.filter((file) => {
     const parts = file.split("/");
     const name = parts.at(-1) ?? "";
+    const materialFixture = /^demo\/files\/materials\/[^/]+\/output\/(?:build-receipt|calibration|manifest|material)\.json$/.test(file);
     return (
-      parts.some((part) => privateDirectories.has(part)) ||
+      parts.some((part) => privateDirectories.has(part) && !(part === "output" && materialFixture)) ||
       (name.startsWith(".env") && file !== ".env.example") ||
       /\.(?:pem|key|p12|pfx|log|pyc|bak|tmp)$/.test(name) ||
       /\.local\.[^.]+$/.test(name) ||

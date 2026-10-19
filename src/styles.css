@@ -2057,7 +2057,7 @@ a.board-card-title:hover { text-decoration: underline; }
 .landing-split svg { color: var(--primary); margin-bottom: 14px; }
 .landing-split p { margin: 14px 0 0; font-size: 15px; line-height: 1.7; color: #68745f; }
 .landing-split > div > a { display: inline-block; margin-top: 16px; font-weight: 600; color: var(--primary); }
-.landing-phone { justify-self: center; width: min(260px, 100%); }
+.landing-host { grid-template-columns: minmax(0, 1fr); }
 .landing-footer {
   width: 100%;
   max-width: 1330px;
