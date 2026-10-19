@@ -20,11 +20,13 @@ export function GraphicVariant({
   sourceRunId,
   onSaved,
   kind = "fork",
+  designReady = true,
 }: {
   model: any;
   sourceRunId?: string;
   onSaved: () => Promise<unknown>;
   kind?: "fork" | "iterate";
+  designReady?: boolean;
 }) {
   const iterate = kind === "iterate";
   const [open, setOpen] = useState(false),
@@ -37,10 +39,14 @@ export function GraphicVariant({
     setBusy(true);
     setError("");
     try {
-      await request(
-        `asset-versions/${model.id}/branch`,
-        json({ kind, sourceRunId, ...(iterate ? {} : { name }), prompt, judgeIterations: 2 }),
-      );
+      if (iterate && !prompt.trim()) {
+        await request(`asset-versions/${model.id}/regenerate`, json({}));
+      } else {
+        await request(
+          `asset-versions/${model.id}/branch`,
+          json({ kind, sourceRunId, ...(iterate ? {} : { name }), prompt, judgeIterations: 2 }),
+        );
+      }
       setOpen(false);
       void onSaved().catch(() => {
         setError(
@@ -58,7 +64,8 @@ export function GraphicVariant({
       <Button
         variant="outline"
         size={iterate ? "sm" : undefined}
-        disabled={!sourceRunId}
+        disabled={!sourceRunId || (iterate && !designReady)}
+        title={iterate && !designReady ? "Approve the design before iterating" : undefined}
         onClick={() => setOpen(true)}
       >
         {iterate ? "Iterate" : "Fork asset"}
@@ -70,7 +77,7 @@ export function GraphicVariant({
             <DialogTitle>{iterate ? "Iterate" : "Fork asset"}</DialogTitle>
             <DialogDescription>
               {iterate
-                ? "Creates a new version of this asset that returns to Review. The current version is kept. Paid generation request."
+                ? "Creates a new version of this asset that returns to Review. The current version is kept. Leave the comment blank to use the current approved design and latest saved result. Paid generation request."
                 : "Creates a separate asset from this saved build. The original asset and its history are kept. Paid generation request."}
             </DialogDescription>
           </DialogHeader>
@@ -91,14 +98,14 @@ export function GraphicVariant({
               />
             </>}
             <Label htmlFor={`variant-prompt-${model.id}-${kind}`}>
-              Requested change
+              {iterate ? "Comment (optional)" : "Requested change"}
             </Label>
             <Textarea
               id={`variant-prompt-${model.id}-${kind}`}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              required
-              minLength={3}
+              required={!iterate}
+              minLength={prompt.trim() ? 3 : undefined}
               maxLength={12000}
             />
             <DialogFooter>

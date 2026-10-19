@@ -34,9 +34,10 @@ idea's own title, written by the owner or by AI, is kept.
 
 A passing AI review does not accept the asset. Exhausting AI review rounds
 can produce a finished version with issues for the owner to assess. The owner
-can accept it, iterate with instructions, or choose **Regenerate** to create another
-version using the current approved design and saved result. Regenerate is available
-on every Review card, even when the design version has not changed. Previous
+can accept it or choose **Iterate** to create another version, with an optional
+comment. Leaving the comment blank uses the current approved design and latest
+saved result, just like regeneration. Iterate is available on every Review card,
+even when the design version has not changed. Previous
 versions remain available. A newer version requires a new
 acceptance decision. Design and visual-target approval remain separate human
 checkpoints.

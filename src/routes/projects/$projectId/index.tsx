@@ -19,7 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Empty } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { assetStage, boardStages, boardStageTitles, type BoardStage } from "@/lib/board";
+import { assetStage, boardStages, boardStageTitles, latestSourceRun, type BoardStage } from "@/lib/board";
 import { StageStrip, stageHints, stageMeanings } from "./-components/stage-strip";
 import { WorkspaceSkeleton } from "@/components/loading";
 import { AssetImage } from "@/components/asset-image";
@@ -33,7 +33,7 @@ import remarkGfm from "remark-gfm";
 import { z } from "zod";
 import { Activity as ActivityIcon, Plus } from "lucide-react";
 import { request, json, costSummary, fileUrl, previewUrl } from "../../../lib/client";
-import { assetTypeLabels, isFlatRole, type AssetType } from "@/lib/asset-types";
+import { assetTypeLabels, type AssetType } from "@/lib/asset-types";
 import { PendingModel } from "./-components/pending-model";
 import { failedBatchFor, pendingCollectionItems } from "./-lib/collection";
 import { History } from "./-components/history";
@@ -546,14 +546,7 @@ function ProjectPage() {
                             (a: number, r: any) => a + (r.estimatedCost || 0),
                             0,
                           )}
-                        sourceRunId={
-                          rs.find(
-                            (r: any) =>
-                              isFlatRole(r.role) &&
-                              r.modelId === m.id &&
-                              r.status === "done",
-                          )?.id
-                        }
+                        sourceRunId={latestSourceRun(rs, m.id)}
                         previewing={previewModelId === m.id}
                         onPreview={setPreviewModelId}
                         onRefresh={load}

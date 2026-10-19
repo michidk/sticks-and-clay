@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Boxes, Check, Play, Trash2, Undo2, Images, RotateCw } from "lucide-react";
+import { Boxes, Check, Play, Trash2, Undo2, Images } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -84,14 +84,9 @@ function VersionCard({ version, root, count, entry, showProject, onRefresh }: Co
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     {!project.archivedAt && <div className="board-card-actions">
       {stage === "review" && <>
-        <Button size="sm" variant="outline"
-          disabled={project.status !== "ready" || pending.has(`asset-versions/${version.id}/regenerate`)}
-          title={project.status !== "ready" ? "Approve the design before regenerating" : "Create another version using the current design. Previous versions stay available."}
-          onClick={() => send(`asset-versions/${version.id}/regenerate`, {})}>
-          <RotateCw size={14} /> {pending.has(`asset-versions/${version.id}/regenerate`) ? "Regenerating…" : "Regenerate"}
-        </Button>
+        <GraphicVariant kind="iterate" model={version} sourceRunId={latestSourceRun(entry.runs, version.id)} designReady={project.status === "ready"} onSaved={onRefresh} />
         <Button size="sm" disabled={pending.has(`models/${version.id}/accept`)} onClick={() => send(`models/${version.id}/accept`, { accepted: true })}><Check size={14} /> Accept</Button>
-        {isGraphics ? <GraphicVariant kind="iterate" model={version} sourceRunId={latestSourceRun(entry.runs, version.id)} onSaved={onRefresh} /> : <Button size="sm" variant="outline" asChild><Link {...link} search={{ view: "3d", section: "review" }}>Iterate</Link></Button>}
+
       </>}
       {stage === "done" && <Button size="sm" variant="ghost" disabled={pending.has(`models/${version.id}/accept`)} onClick={() => send(`models/${version.id}/accept`, { accepted: false })}><Undo2 size={14} /> Back to review</Button>}
       {version.status === "failed" && <Button size="sm" variant="outline" disabled={pending.has(`models/${version.id}/retry`)} onClick={() => send(`models/${version.id}/retry`, {})}>Resume</Button>}

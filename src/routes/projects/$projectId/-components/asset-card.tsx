@@ -3,7 +3,7 @@ import { AssetReferences } from "@/components/asset-references";
 import { describeError } from "@/lib/error-message";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Boxes, Download, RotateCw } from "lucide-react";
+import { Boxes, Download } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -79,18 +79,6 @@ export function AssetCard({
   };
   const working = !finished.includes(m.status);
   const outdated = !!batch && batch.designVersion < currentDesignVersion;
-  async function regenerate() {
-    if (resuming || !designReady) return;
-    setResuming(true);
-    try {
-      await request(`asset-versions/${m.id}/regenerate`, json({}));
-      await onRefresh();
-    } catch (e) {
-      onError((e as Error).message);
-    } finally {
-      setResuming(false);
-    }
-  }
   async function resume() {
     setResuming(true);
     try {
@@ -225,10 +213,13 @@ export function AssetCard({
             </Button>
           )}
           {(outdated || assetStage(m) === "review") && !archived && !working && (
-            <Button variant="outline" disabled={resuming || !designReady} onClick={regenerate}
-              title={!designReady ? "Approve the design before regenerating" : "Create another version using the current design. Previous versions stay available."}>
-              <RotateCw size={14} /> {resuming ? "Regenerating…" : outdated ? `Regenerate on v${currentDesignVersion}` : "Regenerate"}
-            </Button>
+            <GraphicVariant
+              kind="iterate"
+              model={m}
+              sourceRunId={sourceRunId}
+              designReady={designReady}
+              onSaved={onRefresh}
+            />
           )}
           {renderFailure && onResumeBatch && (
             <Button

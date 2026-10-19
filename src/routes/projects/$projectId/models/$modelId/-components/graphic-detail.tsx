@@ -125,18 +125,9 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
             </Button>
           )}
           {current && !archived && !working && <>
-            <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} kind="iterate" />
+            <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} kind="iterate" designReady={data.project.status === "ready"} />
             <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} />
           </>}
-          {outdated && !archived && !working && builds.length > 0 && (
-            <Button variant="outline" disabled={busy}
-              onClick={() => void act(async () => {
-                await request(`asset-versions/${modelId}/regenerate`, json({}));
-                void navigate({ to: "/projects/$projectId", params: { projectId } });
-              })}>
-              Regenerate on v{data.project.designVersion}
-            </Button>
-          )}
           {!archived && (
             <ReopenAsIdea id={modelId} name={name}
               onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "idea" } })} />
