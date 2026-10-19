@@ -91,7 +91,7 @@ flowchart LR
    polish passes in isolated Blender processes. A vision judge inspects the
    rendered views and sends fixes back until the asset passes or the review
    rounds are spent. Major or critical findings block a pass.
-6. **Review.** Accept finished assets, iterate on them with a written request,
+6. **Review.** Accept finished assets, regenerate them, iterate on them with a written request,
    or fork a variant. The stage strip and the global board track everything
    from Ideas to Done.
 

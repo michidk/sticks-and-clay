@@ -1,8 +1,9 @@
+import { assetStage } from "@/lib/board";
 import { AssetReferences } from "@/components/asset-references";
 import { describeError } from "@/lib/error-message";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Boxes, Download } from "lucide-react";
+import { Boxes, Download, RotateCw } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -30,6 +31,7 @@ export function AssetCard({
   lineage,
   batch,
   currentDesignVersion,
+  designReady,
   archived = false,
   deleteTarget,
   renderFailure,
@@ -52,6 +54,7 @@ export function AssetCard({
   /** The generation request this asset came from; its design version is frozen. */
   batch?: { designVersion: number };
   currentDesignVersion: number;
+  designReady: boolean;
   archived?: boolean;
   /** The collection entry to delete (its root asset) and how many versions it holds. */
   deleteTarget?: { id: string; versions: number };
@@ -77,7 +80,7 @@ export function AssetCard({
   const working = !finished.includes(m.status);
   const outdated = !!batch && batch.designVersion < currentDesignVersion;
   async function regenerate() {
-    if (!batch) return;
+    if (resuming || !designReady) return;
     setResuming(true);
     try {
       await request(`asset-versions/${m.id}/regenerate`, json({}));
@@ -221,9 +224,10 @@ export function AssetCard({
               {resuming ? "Resuming…" : "Resume"}
             </Button>
           )}
-          {outdated && !archived && !working && (
-            <Button variant="outline" disabled={resuming} onClick={regenerate}>
-              Regenerate on v{currentDesignVersion}
+          {(outdated || assetStage(m) === "review") && !archived && !working && (
+            <Button variant="outline" disabled={resuming || !designReady} onClick={regenerate}
+              title={!designReady ? "Approve the design before regenerating" : "Create another version using the current design. Previous versions stay available."}>
+              <RotateCw size={14} /> {resuming ? "Regenerating…" : outdated ? `Regenerate on v${currentDesignVersion}` : "Regenerate"}
             </Button>
           )}
           {renderFailure && onResumeBatch && (

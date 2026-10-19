@@ -532,6 +532,7 @@ function ProjectPage() {
                         lineage={lineage || undefined}
                         batch={data.batches.find((b: any) => b.id === m.batchId)}
                         currentDesignVersion={p.designVersion}
+                        designReady={ready}
                         archived={!!p.archivedAt}
                         deleteTarget={{ id: root.id, versions: group?.assets.length ?? 1 }}
                         renderFailure={renderFailureByRepresentative.get(m.id)}
