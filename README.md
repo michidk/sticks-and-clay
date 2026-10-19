@@ -279,6 +279,7 @@ running worker; Python and real Blender checks run separately. See
 | [Model viewer](docs/model-viewer.md) | Camera modes, screenshots, component options |
 | [Prompt guide](prompts/README.md) | Authored instructions and third-party attribution |
 | [Design guide](design.md) | Interface theme and component conventions |
+| [OpenPencil views](design/README.md) | Editable desktop and phone views, tokens, capture, and editor |
 | [Development and operations](docs/development.md) | Source map, services, persistence, tests |
 
 ## 📁 Project layout

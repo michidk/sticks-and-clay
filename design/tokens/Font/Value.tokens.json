@@ -1,0 +1,32 @@
+{
+  "font": {
+    "display": {
+      "$type": "fontFamily",
+      "$value": "Inter",
+      "$extensions": {
+        "dev.openpencil": {
+          "codeSyntax": {
+            "WEB": "var(--font-display)"
+          },
+          "scopes": [
+            "FONT_FAMILY"
+          ]
+        }
+      }
+    },
+    "body": {
+      "$type": "fontFamily",
+      "$value": "Inter",
+      "$extensions": {
+        "dev.openpencil": {
+          "codeSyntax": {
+            "WEB": "var(--font-sans)"
+          },
+          "scopes": [
+            "FONT_FAMILY"
+          ]
+        }
+      }
+    }
+  }
+}

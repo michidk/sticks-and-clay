@@ -51,6 +51,15 @@ vibepod-preview doctor asset-studio
 
 The managed preview supplies its port and public URL. `--preview` re-creates the local Compose database container using `data/postgres/`, waits for database readiness, provisions Eve, starts the backend services, and then starts the web command. It leaves PostgreSQL data intact when stopped and terminates the web process and backend services together. The web log is `data/logs/web.log`; startup failures appear in `vibepod-preview logs asset-studio`. Use an absolute path to an isolated build's `server/index.mjs` when other tasks may rebuild `.output` concurrently. Subsequent starts use `vibepod-preview restart asset-studio`.
 
+## OpenPencil design workspace
+
+[The design workspace](../design/README.md) contains the native OpenPencil
+document, view inventory, capture toolkit, and editor setup. It captures desktop
+and phone layouts from the running workshop. Browser-only fixtures cover
+missing review and error states without writing to the database or starting
+generation. The shared `open-pencil` preview can open both this project and
+Roastbook.
+
 ## Container deployment
 
 `docker build -t sticks-and-clay .` builds the Linux x64 runtime with Bun, Node, Python dependencies, and checksum-verified Blender 4.5.4. The build context excludes local credentials, assets, Eve sessions, and tool state. `scripts/services.sh --production` applies migrations to `DATABASE_URL`, builds the bundled Eve agent, then supervises Blender, Eve, the worker, and the web server. Service output goes to container logs. Kubernetes restarts the container if a supervised service exits.

@@ -1,0 +1,284 @@
+{
+  "background": {
+    "$type": "color",
+    "$value": "#f5f5ee",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--background)"
+        },
+        "scopes": [
+          "FRAME_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "foreground": {
+    "$type": "color",
+    "$value": "#273b33",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--foreground)"
+        },
+        "scopes": [
+          "TEXT_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "card": {
+    "$type": "color",
+    "$value": "#fcfcf8",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--card)"
+        },
+        "scopes": [
+          "FRAME_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "card-foreground": {
+    "$type": "color",
+    "$value": "#273b33",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--card-foreground)"
+        },
+        "scopes": [
+          "TEXT_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "popover": {
+    "$type": "color",
+    "$value": "#fafbf5",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--popover)"
+        },
+        "scopes": [
+          "FRAME_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "popover-foreground": {
+    "$type": "color",
+    "$value": "#273b33",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--popover-foreground)"
+        },
+        "scopes": [
+          "TEXT_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "primary": {
+    "$type": "color",
+    "$value": "#284e3c",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--primary)"
+        },
+        "scopes": [
+          "FRAME_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "primary-foreground": {
+    "$type": "color",
+    "$value": "#fbffe9",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--primary-foreground)"
+        },
+        "scopes": [
+          "TEXT_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "secondary": {
+    "$type": "color",
+    "$value": "#e7ebdf",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--secondary)"
+        },
+        "scopes": [
+          "FRAME_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "secondary-foreground": {
+    "$type": "color",
+    "$value": "#516747",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--secondary-foreground)"
+        },
+        "scopes": [
+          "TEXT_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "muted": {
+    "$type": "color",
+    "$value": "#eff2e8",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--muted)"
+        },
+        "scopes": [
+          "FRAME_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "muted-foreground": {
+    "$type": "color",
+    "$value": "#68745f",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--muted-foreground)"
+        },
+        "scopes": [
+          "TEXT_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "accent": {
+    "$type": "color",
+    "$value": "#e8ecdf",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--accent)"
+        },
+        "scopes": [
+          "FRAME_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "accent-foreground": {
+    "$type": "color",
+    "$value": "#284e3c",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--accent-foreground)"
+        },
+        "scopes": [
+          "TEXT_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "destructive": {
+    "$type": "color",
+    "$value": "#9a5142",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--destructive)"
+        },
+        "scopes": [
+          "FRAME_FILL",
+          "SHAPE_FILL",
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "border": {
+    "$type": "color",
+    "$value": "#dce1d5",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--border)"
+        },
+        "scopes": [
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "input": {
+    "$type": "color",
+    "$value": "#d6dfcd",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--input)"
+        },
+        "scopes": [
+          "STROKE"
+        ]
+      }
+    }
+  },
+  "ring": {
+    "$type": "color",
+    "$value": "#648a65",
+    "$extensions": {
+      "dev.openpencil": {
+        "codeSyntax": {
+          "WEB": "var(--ring)"
+        },
+        "scopes": [
+          "STROKE"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,971 @@
+{
+  "views": [
+    {
+      "name": "Public landing",
+      "path": "http://localhost:33323/"
+    },
+    {
+      "name": "Projects",
+      "path": "/projects"
+    },
+    {
+      "name": "New project",
+      "path": "/projects",
+      "clicks": [
+        "role=button[name=\"New project\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "Asset board",
+      "path": "/board"
+    },
+    {
+      "name": "Admin - Queue",
+      "path": "/admin/queue"
+    },
+    {
+      "name": "Admin - Settings",
+      "path": "/admin/settings"
+    },
+    {
+      "name": "Admin - Agents",
+      "path": "/admin/agents"
+    },
+    {
+      "name": "Admin - Diagnostics",
+      "path": "/admin/diagnostics"
+    },
+    {
+      "name": "Admin - Mcp",
+      "path": "/admin/mcp"
+    },
+    {
+      "name": "3D - Design",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=design"
+    },
+    {
+      "name": "3D - Mockups",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=mockups"
+    },
+    {
+      "name": "3D - Idea",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=idea"
+    },
+    {
+      "name": "3D - Ready",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=ready"
+    },
+    {
+      "name": "3D - Progress",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=progress"
+    },
+    {
+      "name": "3D - Review",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=review"
+    },
+    {
+      "name": "3D - Done",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=done"
+    },
+    {
+      "name": "3D - Export",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=export"
+    },
+    {
+      "name": "3D - History",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=history"
+    },
+    {
+      "name": "3D - Materials",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=design&view=materials"
+    },
+    {
+      "name": "3D - Add asset",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=idea",
+      "clicks": [
+        "role=button[name=\"Add asset\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "3D - Asset history",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/assets/1fb2bb43-84d4-436d-93e7-c4b1b4a8dcbe"
+    },
+    {
+      "name": "3D version - 3d",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=3d&section=review"
+    },
+    {
+      "name": "3D version - renders",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=renders&section=review"
+    },
+    {
+      "name": "3D version - textures",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=textures&section=review"
+    },
+    {
+      "name": "3D version - target",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=target&section=review"
+    },
+    {
+      "name": "3D version - Checks",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=3d&section=checks"
+    },
+    {
+      "name": "3D version - Tools",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=3d&section=tools"
+    },
+    {
+      "name": "3D version - Versions",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=3d&section=versions"
+    },
+    {
+      "name": "3D version - Activity",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=3d&section=activity"
+    },
+    {
+      "name": "3D version - Debug",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=3d&section=debug"
+    },
+    {
+      "name": "Graphics - Design",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0?tab=design"
+    },
+    {
+      "name": "Graphics - Review",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0?tab=review"
+    },
+    {
+      "name": "Graphics - Export",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0?tab=export"
+    },
+    {
+      "name": "Graphics - History",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0?tab=history"
+    },
+    {
+      "name": "Graphics - Add asset",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0?tab=idea",
+      "clicks": [
+        "role=button[name=\"Add asset\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "Graphics - Asset history",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0/assets/3eee2849-5c4a-4281-b54e-895cfa62740a"
+    },
+    {
+      "name": "Graphics - Version",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0/models/36769f38-278b-4c2f-979e-e68a699749e0"
+    },
+    {
+      "name": "SVG - Design",
+      "path": "/projects/96d7ee0c-a6d2-4339-8fe9-d83b09bdd98e?tab=design"
+    },
+    {
+      "name": "SVG - Review",
+      "path": "/projects/96d7ee0c-a6d2-4339-8fe9-d83b09bdd98e?tab=review"
+    },
+    {
+      "name": "SVG - Export",
+      "path": "/projects/96d7ee0c-a6d2-4339-8fe9-d83b09bdd98e?tab=export"
+    },
+    {
+      "name": "SVG - History",
+      "path": "/projects/96d7ee0c-a6d2-4339-8fe9-d83b09bdd98e?tab=history"
+    },
+    {
+      "name": "SVG - Add asset",
+      "path": "/projects/96d7ee0c-a6d2-4339-8fe9-d83b09bdd98e?tab=idea",
+      "clicks": [
+        "role=button[name=\"Add asset\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "SVG - Asset history",
+      "path": "/projects/96d7ee0c-a6d2-4339-8fe9-d83b09bdd98e/assets/523e082b-1076-417b-ba44-c1843cb766e8"
+    },
+    {
+      "name": "SVG - Version",
+      "path": "/projects/96d7ee0c-a6d2-4339-8fe9-d83b09bdd98e/models/78f16243-d3ab-4673-b820-032407edf174"
+    },
+    {
+      "name": "Pixel art - Design",
+      "path": "/projects/cf76437f-2cb4-43e5-b848-c2c1d15316b5?tab=design"
+    },
+    {
+      "name": "Pixel art - Review",
+      "path": "/projects/cf76437f-2cb4-43e5-b848-c2c1d15316b5?tab=review"
+    },
+    {
+      "name": "Pixel art - Export",
+      "path": "/projects/cf76437f-2cb4-43e5-b848-c2c1d15316b5?tab=export"
+    },
+    {
+      "name": "Pixel art - History",
+      "path": "/projects/cf76437f-2cb4-43e5-b848-c2c1d15316b5?tab=history"
+    },
+    {
+      "name": "Pixel art - Add asset",
+      "path": "/projects/cf76437f-2cb4-43e5-b848-c2c1d15316b5?tab=idea",
+      "clicks": [
+        "role=button[name=\"Add asset\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "Pixel art - Asset history",
+      "path": "/projects/cf76437f-2cb4-43e5-b848-c2c1d15316b5/assets/2c2dae17-0fc6-4675-9a42-8e6883559414"
+    },
+    {
+      "name": "Pixel art - Version",
+      "path": "/projects/cf76437f-2cb4-43e5-b848-c2c1d15316b5/models/af77d17b-628a-491f-a36a-674b3d5ac69b"
+    },
+    {
+      "name": "Projects - Empty fixture",
+      "path": "/projects",
+      "fixture": "empty"
+    },
+    {
+      "name": "Projects - Error fixture",
+      "path": "/projects",
+      "fixture": "error"
+    },
+    {
+      "name": "Design - Designing fixture",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=design",
+      "fixture": "designing"
+    },
+    {
+      "name": "Design - Failed fixture",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=design",
+      "fixture": "failed"
+    },
+    {
+      "name": "Design - Review fixture",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=design",
+      "fixture": "review"
+    },
+    {
+      "name": "CAD - Design fixture",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=design",
+      "fixture": "cad"
+    },
+    {
+      "name": "CAD - Add asset fixture",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=idea",
+      "clicks": [
+        "role=button[name=\"Add asset\"] >> nth=0"
+      ],
+      "fixture": "cad"
+    },
+    {
+      "name": "3D - Import model",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=review",
+      "clicks": [
+        "role=button[name=\"Import model\"]"
+      ]
+    },
+    {
+      "name": "Graphics - Iterate",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0/models/36769f38-278b-4c2f-979e-e68a699749e0",
+      "clicks": [
+        "role=button[name=\"Iterate\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "Graphics - Fork asset",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0/models/36769f38-278b-4c2f-979e-e68a699749e0",
+      "clicks": [
+        "role=button[name=\"Fork asset\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "SVG - Iterate",
+      "path": "/projects/96d7ee0c-a6d2-4339-8fe9-d83b09bdd98e/models/78f16243-d3ab-4673-b820-032407edf174",
+      "clicks": [
+        "role=button[name=\"Iterate\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "SVG - Fork asset",
+      "path": "/projects/96d7ee0c-a6d2-4339-8fe9-d83b09bdd98e/models/78f16243-d3ab-4673-b820-032407edf174",
+      "clicks": [
+        "role=button[name=\"Fork asset\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "Pixel art - Iterate",
+      "path": "/projects/cf76437f-2cb4-43e5-b848-c2c1d15316b5/models/af77d17b-628a-491f-a36a-674b3d5ac69b",
+      "clicks": [
+        "role=button[name=\"Iterate\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "Pixel art - Fork asset",
+      "path": "/projects/cf76437f-2cb4-43e5-b848-c2c1d15316b5/models/af77d17b-628a-491f-a36a-674b3d5ac69b",
+      "clicks": [
+        "role=button[name=\"Fork asset\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "3D - Edit asset",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/assets/1fb2bb43-84d4-436d-93e7-c4b1b4a8dcbe",
+      "clicks": [
+        "role=button[name=\"Edit asset\"]"
+      ]
+    },
+    {
+      "name": "Graphics - Edit asset",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0/assets/3eee2849-5c4a-4281-b54e-895cfa62740a",
+      "clicks": [
+        "role=button[name=\"Edit asset\"]"
+      ]
+    },
+    {
+      "name": "SVG - Edit asset",
+      "path": "/projects/96d7ee0c-a6d2-4339-8fe9-d83b09bdd98e/assets/523e082b-1076-417b-ba44-c1843cb766e8",
+      "clicks": [
+        "role=button[name=\"Edit asset\"]"
+      ]
+    },
+    {
+      "name": "Pixel art - Edit asset",
+      "path": "/projects/cf76437f-2cb4-43e5-b848-c2c1d15316b5/assets/2c2dae17-0fc6-4675-9a42-8e6883559414",
+      "clicks": [
+        "role=button[name=\"Edit asset\"]"
+      ]
+    },
+    {
+      "name": "3D - Edit design",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478?tab=design",
+      "clicks": [
+        "role=button[name=\"Edit\"] >> nth=0"
+      ]
+    },
+    {
+      "name": "3D - Sprite export",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=3d&section=tools",
+      "clicks": [
+        "role=button[name=\"Export 3D sprites\"]"
+      ]
+    },
+    {
+      "name": "Graphics - Lightbox",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0/models/36769f38-278b-4c2f-979e-e68a699749e0",
+      "clicks": [
+        "role=button[name=\"Open full size\"]"
+      ]
+    },
+    {
+      "name": "3D - Visual target approval fixture",
+      "path": "/projects/393af222-5493-4771-a653-2f2e4b640478/models/080a948a-7d53-4ce4-addd-6b836d403ac4?view=target&section=review",
+      "fixture": "visual-target"
+    },
+    {
+      "name": "CAD - Output layout fixture",
+      "path": "/projects/7a3b13af-3660-4a0f-83b6-1847d920e4d0/models/36769f38-278b-4c2f-979e-e68a699749e0",
+      "fixture": "cad-output"
+    }
+  ],
+  "artboards": [
+    {
+      "id": "930801690:57",
+      "name": "Public landing — Desktop"
+    },
+    {
+      "id": "930801690:242",
+      "name": "Public landing — Mobile"
+    },
+    {
+      "id": "930801690:421",
+      "name": "Projects — Desktop"
+    },
+    {
+      "id": "930801690:641",
+      "name": "Projects — Mobile"
+    },
+    {
+      "id": "930801690:859",
+      "name": "New project — Desktop"
+    },
+    {
+      "id": "930801690:1195",
+      "name": "New project — Mobile"
+    },
+    {
+      "id": "930801690:1509",
+      "name": "Asset board — Desktop"
+    },
+    {
+      "id": "930801690:2231",
+      "name": "Asset board — Mobile"
+    },
+    {
+      "id": "930801690:2951",
+      "name": "Admin - Queue — Desktop"
+    },
+    {
+      "id": "930801690:4113",
+      "name": "Admin - Queue — Mobile"
+    },
+    {
+      "id": "930801690:5202",
+      "name": "Admin - Settings — Desktop"
+    },
+    {
+      "id": "930801690:5365",
+      "name": "Admin - Settings — Mobile"
+    },
+    {
+      "id": "930801690:5510",
+      "name": "Admin - Agents — Desktop"
+    },
+    {
+      "id": "930801690:7027",
+      "name": "Admin - Agents — Mobile"
+    },
+    {
+      "id": "930801690:8526",
+      "name": "Admin - Diagnostics — Desktop"
+    },
+    {
+      "id": "930801690:8722",
+      "name": "Admin - Diagnostics — Mobile"
+    },
+    {
+      "id": "930801690:8899",
+      "name": "Admin - Mcp — Desktop"
+    },
+    {
+      "id": "930801690:9320",
+      "name": "Admin - Mcp — Mobile"
+    },
+    {
+      "id": "930801690:9723",
+      "name": "3D - Design — Desktop"
+    },
+    {
+      "id": "930801690:10047",
+      "name": "3D - Design — Mobile"
+    },
+    {
+      "id": "930801690:10371",
+      "name": "3D - Mockups — Desktop"
+    },
+    {
+      "id": "930801690:10491",
+      "name": "3D - Mockups — Mobile"
+    },
+    {
+      "id": "930801690:10610",
+      "name": "3D - Idea — Desktop"
+    },
+    {
+      "id": "930801690:10703",
+      "name": "3D - Idea — Mobile"
+    },
+    {
+      "id": "930801690:10795",
+      "name": "3D - Ready — Desktop"
+    },
+    {
+      "id": "930801690:10880",
+      "name": "3D - Ready — Mobile"
+    },
+    {
+      "id": "930801690:10965",
+      "name": "3D - Progress — Desktop"
+    },
+    {
+      "id": "930801690:11050",
+      "name": "3D - Progress — Mobile"
+    },
+    {
+      "id": "930801690:11135",
+      "name": "3D - Review — Desktop"
+    },
+    {
+      "id": "930801690:11563",
+      "name": "3D - Review — Mobile"
+    },
+    {
+      "id": "930801690:11989",
+      "name": "3D - Done — Desktop"
+    },
+    {
+      "id": "930801690:12074",
+      "name": "3D - Done — Mobile"
+    },
+    {
+      "id": "930801690:12159",
+      "name": "3D - Export — Desktop"
+    },
+    {
+      "id": "930801690:12277",
+      "name": "3D - Export — Mobile"
+    },
+    {
+      "id": "930801690:12392",
+      "name": "3D - History — Desktop"
+    },
+    {
+      "id": "930801690:14053",
+      "name": "3D - History — Mobile"
+    },
+    {
+      "id": "930801690:15635",
+      "name": "3D - Materials — Desktop"
+    },
+    {
+      "id": "930801690:15957",
+      "name": "3D - Materials — Mobile"
+    },
+    {
+      "id": "930801690:16275",
+      "name": "3D - Add asset — Desktop"
+    },
+    {
+      "id": "930801690:16489",
+      "name": "3D - Add asset — Mobile"
+    },
+    {
+      "id": "930801690:16701",
+      "name": "3D - Asset history — Desktop"
+    },
+    {
+      "id": "930801690:16925",
+      "name": "3D - Asset history — Mobile"
+    },
+    {
+      "id": "930801690:17147",
+      "name": "3D version - 3d — Desktop"
+    },
+    {
+      "id": "930801690:17960",
+      "name": "3D version - 3d — Mobile"
+    },
+    {
+      "id": "930801690:18330",
+      "name": "3D version - renders — Desktop"
+    },
+    {
+      "id": "930801690:19176",
+      "name": "3D version - renders — Mobile"
+    },
+    {
+      "id": "930801690:19585",
+      "name": "3D version - textures — Desktop"
+    },
+    {
+      "id": "930801690:20779",
+      "name": "3D version - textures — Mobile"
+    },
+    {
+      "id": "930801690:21536",
+      "name": "3D version - target — Desktop"
+    },
+    {
+      "id": "930801690:22307",
+      "name": "3D version - target — Mobile"
+    },
+    {
+      "id": "930801690:22641",
+      "name": "3D version - Checks — Desktop"
+    },
+    {
+      "id": "930801690:23467",
+      "name": "3D version - Checks — Mobile"
+    },
+    {
+      "id": "930801690:23850",
+      "name": "3D version - Tools — Desktop"
+    },
+    {
+      "id": "930801690:24635",
+      "name": "3D version - Tools — Mobile"
+    },
+    {
+      "id": "930801690:24977",
+      "name": "3D version - Versions — Desktop"
+    },
+    {
+      "id": "930801690:25976",
+      "name": "3D version - Versions — Mobile"
+    },
+    {
+      "id": "930801690:26532",
+      "name": "3D version - Activity — Desktop"
+    },
+    {
+      "id": "930801690:27539",
+      "name": "3D version - Activity — Mobile"
+    },
+    {
+      "id": "930801690:28097",
+      "name": "3D version - Debug — Desktop"
+    },
+    {
+      "id": "930801690:29622",
+      "name": "3D version - Debug — Mobile"
+    },
+    {
+      "id": "930801690:30704",
+      "name": "Graphics - Design — Desktop"
+    },
+    {
+      "id": "930801690:30919",
+      "name": "Graphics - Design — Mobile"
+    },
+    {
+      "id": "930801690:31134",
+      "name": "Graphics - Review — Desktop"
+    },
+    {
+      "id": "930801690:31559",
+      "name": "Graphics - Review — Mobile"
+    },
+    {
+      "id": "930801690:31983",
+      "name": "Graphics - Export — Desktop"
+    },
+    {
+      "id": "930801690:32097",
+      "name": "Graphics - Export — Mobile"
+    },
+    {
+      "id": "930801690:32207",
+      "name": "Graphics - History — Desktop"
+    },
+    {
+      "id": "930801690:32549",
+      "name": "Graphics - History — Mobile"
+    },
+    {
+      "id": "930801690:32873",
+      "name": "Graphics - Add asset — Desktop"
+    },
+    {
+      "id": "930801690:33082",
+      "name": "Graphics - Add asset — Mobile"
+    },
+    {
+      "id": "930801690:33289",
+      "name": "Graphics - Asset history — Desktop"
+    },
+    {
+      "id": "930801690:33421",
+      "name": "Graphics - Asset history — Mobile"
+    },
+    {
+      "id": "930801690:33551",
+      "name": "Graphics - Version — Desktop"
+    },
+    {
+      "id": "930801690:33685",
+      "name": "Graphics - Version — Mobile"
+    },
+    {
+      "id": "930801690:33816",
+      "name": "SVG - Design — Desktop"
+    },
+    {
+      "id": "930801690:34021",
+      "name": "SVG - Design — Mobile"
+    },
+    {
+      "id": "930801690:34226",
+      "name": "SVG - Review — Desktop"
+    },
+    {
+      "id": "930801690:34827",
+      "name": "SVG - Review — Mobile"
+    },
+    {
+      "id": "930801690:35427",
+      "name": "SVG - Export — Desktop"
+    },
+    {
+      "id": "930801690:35541",
+      "name": "SVG - Export — Mobile"
+    },
+    {
+      "id": "930801690:35651",
+      "name": "SVG - History — Desktop"
+    },
+    {
+      "id": "930801690:36251",
+      "name": "SVG - History — Mobile"
+    },
+    {
+      "id": "930801690:36806",
+      "name": "SVG - Add asset — Desktop"
+    },
+    {
+      "id": "930801690:37004",
+      "name": "SVG - Add asset — Mobile"
+    },
+    {
+      "id": "930801690:37200",
+      "name": "SVG - Asset history — Desktop"
+    },
+    {
+      "id": "930801690:37332",
+      "name": "SVG - Asset history — Mobile"
+    },
+    {
+      "id": "930801690:37462",
+      "name": "SVG - Version — Desktop"
+    },
+    {
+      "id": "930801690:37621",
+      "name": "SVG - Version — Mobile"
+    },
+    {
+      "id": "930801690:37777",
+      "name": "Pixel art - Design — Desktop"
+    },
+    {
+      "id": "930801690:38057",
+      "name": "Pixel art - Design — Mobile"
+    },
+    {
+      "id": "930801690:38337",
+      "name": "Pixel art - Review — Desktop"
+    },
+    {
+      "id": "930801690:38851",
+      "name": "Pixel art - Review — Mobile"
+    },
+    {
+      "id": "930801690:39364",
+      "name": "Pixel art - Export — Desktop"
+    },
+    {
+      "id": "930801690:39482",
+      "name": "Pixel art - Export — Mobile"
+    },
+    {
+      "id": "930801690:39596",
+      "name": "Pixel art - History — Desktop"
+    },
+    {
+      "id": "930801690:40294",
+      "name": "Pixel art - History — Mobile"
+    },
+    {
+      "id": "930801690:40957",
+      "name": "Pixel art - Add asset — Desktop"
+    },
+    {
+      "id": "930801690:41170",
+      "name": "Pixel art - Add asset — Mobile"
+    },
+    {
+      "id": "930801690:41381",
+      "name": "Pixel art - Asset history — Desktop"
+    },
+    {
+      "id": "930801690:41513",
+      "name": "Pixel art - Asset history — Mobile"
+    },
+    {
+      "id": "930801690:41643",
+      "name": "Pixel art - Version — Desktop"
+    },
+    {
+      "id": "930801690:41800",
+      "name": "Pixel art - Version — Mobile"
+    },
+    {
+      "id": "930801690:41954",
+      "name": "Projects - Empty fixture — Desktop"
+    },
+    {
+      "id": "930801690:41996",
+      "name": "Projects - Empty fixture — Mobile"
+    },
+    {
+      "id": "930801690:42035",
+      "name": "Projects - Error fixture — Desktop"
+    },
+    {
+      "id": "930801690:42080",
+      "name": "Projects - Error fixture — Mobile"
+    },
+    {
+      "id": "930801690:42122",
+      "name": "Design - Designing fixture — Desktop"
+    },
+    {
+      "id": "930801690:42175",
+      "name": "Design - Designing fixture — Mobile"
+    },
+    {
+      "id": "930801690:42225",
+      "name": "Design - Failed fixture — Desktop"
+    },
+    {
+      "id": "930801690:42270",
+      "name": "Design - Failed fixture — Mobile"
+    },
+    {
+      "id": "930801690:42312",
+      "name": "Design - Review fixture — Desktop"
+    },
+    {
+      "id": "930801690:42648",
+      "name": "Design - Review fixture — Mobile"
+    },
+    {
+      "id": "930801690:42983",
+      "name": "CAD - Design fixture — Desktop"
+    },
+    {
+      "id": "930801690:43160",
+      "name": "CAD - Design fixture — Mobile"
+    },
+    {
+      "id": "930801690:43337",
+      "name": "CAD - Add asset fixture — Desktop"
+    },
+    {
+      "id": "930801690:43537",
+      "name": "CAD - Add asset fixture — Mobile"
+    },
+    {
+      "id": "930801690:43734",
+      "name": "3D - Import model — Desktop"
+    },
+    {
+      "id": "930801690:44192",
+      "name": "3D - Import model — Mobile"
+    },
+    {
+      "id": "930801690:44648",
+      "name": "Graphics - Iterate — Desktop"
+    },
+    {
+      "id": "930801690:44799",
+      "name": "Graphics - Iterate — Mobile"
+    },
+    {
+      "id": "930801690:44947",
+      "name": "Graphics - Fork asset — Desktop"
+    },
+    {
+      "id": "930801690:45101",
+      "name": "Graphics - Fork asset — Mobile"
+    },
+    {
+      "id": "930801690:45252",
+      "name": "SVG - Iterate — Desktop"
+    },
+    {
+      "id": "930801690:45428",
+      "name": "SVG - Iterate — Mobile"
+    },
+    {
+      "id": "930801690:45601",
+      "name": "SVG - Fork asset — Desktop"
+    },
+    {
+      "id": "930801690:45780",
+      "name": "SVG - Fork asset — Mobile"
+    },
+    {
+      "id": "930801690:45956",
+      "name": "Pixel art - Iterate — Desktop"
+    },
+    {
+      "id": "930801690:46130",
+      "name": "Pixel art - Iterate — Mobile"
+    },
+    {
+      "id": "930801690:46301",
+      "name": "Pixel art - Fork asset — Desktop"
+    },
+    {
+      "id": "930801690:46478",
+      "name": "Pixel art - Fork asset — Mobile"
+    },
+    {
+      "id": "930801690:46652",
+      "name": "3D - Edit asset — Desktop"
+    },
+    {
+      "id": "930801690:46993",
+      "name": "3D - Edit asset — Mobile"
+    },
+    {
+      "id": "930801690:47331",
+      "name": "Graphics - Edit asset — Desktop"
+    },
+    {
+      "id": "930801690:47575",
+      "name": "Graphics - Edit asset — Mobile"
+    },
+    {
+      "id": "930801690:47816",
+      "name": "SVG - Edit asset — Desktop"
+    },
+    {
+      "id": "930801690:48049",
+      "name": "SVG - Edit asset — Mobile"
+    },
+    {
+      "id": "930801690:48279",
+      "name": "Pixel art - Edit asset — Desktop"
+    },
+    {
+      "id": "930801690:48523",
+      "name": "Pixel art - Edit asset — Mobile"
+    },
+    {
+      "id": "930801690:48764",
+      "name": "3D - Edit design — Desktop"
+    },
+    {
+      "id": "930801690:49098",
+      "name": "3D - Edit design — Mobile"
+    },
+    {
+      "id": "930801690:49431",
+      "name": "3D - Sprite export — Desktop"
+    },
+    {
+      "id": "930801690:50293",
+      "name": "3D - Sprite export — Mobile"
+    },
+    {
+      "id": "930801690:50712",
+      "name": "Graphics - Lightbox — Desktop"
+    },
+    {
+      "id": "930801690:50865",
+      "name": "Graphics - Lightbox — Mobile"
+    },
+    {
+      "id": "930801690:51015",
+      "name": "3D - Visual target approval fixture — Desktop"
+    },
+    {
+      "id": "930801690:51742",
+      "name": "3D - Visual target approval fixture — Mobile"
+    },
+    {
+      "id": "930801690:52085",
+      "name": "CAD - Output layout fixture — Desktop"
+    },
+    {
+      "id": "930801690:52240",
+      "name": "CAD - Output layout fixture — Mobile"
+    }
+  ],
+  "nodes": 52585,
+  "components": {
+    "components": 63,
+    "sets": 0,
+    "instances": 4146
+  },
+  "framesOffAfterComponentizing": 0,
+  "framesOffAfterReopening": 0
+}

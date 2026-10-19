@@ -1,0 +1,3697 @@
+{
+  "shadow": {},
+  "Small": {
+    "550": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 550,
+        "lineHeight": {
+          "value": 18,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 550,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 18,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "560": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 560,
+        "lineHeight": {
+          "value": 12,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 560,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 12,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 18,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 18,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular 20.4": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 20.4,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 20.4,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Semibold": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "lineHeight": {
+          "value": 18,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 600,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 18,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Bold": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 700,
+        "lineHeight": {
+          "value": 19.8,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 700,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 19.8,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Medium": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 500,
+        "lineHeight": {
+          "value": 17.14,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 500,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 17.14,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular 19.8": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 19.8,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 19.8,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular 21": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 21,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 21,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular 19.2": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 19.2,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 19.2,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular 21.6": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 21.6,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 21.6,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "560 18": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 560,
+        "lineHeight": {
+          "value": 18,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 560,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 18,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular 17.14": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 17.14,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 17.14,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Semibold 19.8": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "lineHeight": {
+          "value": 19.8,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 600,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 19.8,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Bold 18": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 700,
+        "lineHeight": {
+          "value": 18,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 700,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 18,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular 18.6": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 18.6,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 12,
+            "lineHeight": 18.6,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    }
+  },
+  "Display": {
+    "9": {
+      "650": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 9,
+            "unit": "px"
+          },
+          "fontWeight": 650,
+          "lineHeight": {
+            "value": 13.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 650,
+              "italic": false,
+              "fontSize": 9,
+              "lineHeight": 13.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 9,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 13.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 9,
+              "lineHeight": 13.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "10": {
+      "560": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 560,
+          "lineHeight": {
+            "value": 10,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 560,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 10,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Semibold": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 600,
+          "lineHeight": {
+            "value": 13,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 13,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 15,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 15,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Semibold caps": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 600,
+          "lineHeight": {
+            "value": 15,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0.8,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 15,
+              "letterSpacing": 0.8,
+              "textDecoration": "NONE",
+              "textCase": "UPPER"
+            }
+          }
+        }
+      },
+      "Medium": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 15,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 15,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Semibold 15": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 600,
+          "lineHeight": {
+            "value": 15,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 15,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 17": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 17,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 17,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 13.5": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 13.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 13.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 10": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 10,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 10,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "560 15": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 560,
+          "lineHeight": {
+            "value": 15,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 560,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 15,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "11": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 16.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 16.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "560": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 560,
+          "lineHeight": {
+            "value": 11,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 560,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 11,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "650": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 650,
+          "lineHeight": {
+            "value": 18.15,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 650,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 18.15,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 16.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 16.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "560 17.6": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 560,
+          "lineHeight": {
+            "value": 17.6,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 560,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 17.6,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Medium": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 16.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 16.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Semibold": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 600,
+          "lineHeight": {
+            "value": 16.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 16.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Medium 15.71": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 15.71,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 15.71,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 18.7": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 18.7,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 18.7,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Medium 16.5": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 16.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.4,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 16.5,
+              "letterSpacing": -0.4,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 17.05": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 17.05,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 17.05,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Medium 14.67": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 14.67,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -1.2,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 14.67,
+              "letterSpacing": -1.2,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "13": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 19.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 19.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "570": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 570,
+          "lineHeight": {
+            "value": 19.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 570,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 19.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "900": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 900,
+          "lineHeight": {
+            "value": 19.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 900,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 19.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 19.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 19.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Bold": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 700,
+          "lineHeight": {
+            "value": 19.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 700,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 19.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 20.8": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 20.8,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 20.8,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 23.4": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 23.4,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 23.4,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 21.45": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 21.45,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 21.45,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 24.05": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 24.05,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 24.05,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Medium": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 19.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 19.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Semibold": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 600,
+          "lineHeight": {
+            "value": 19.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 19.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Semibold 19.5": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 600,
+          "lineHeight": {
+            "value": 19.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.4,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 19.5,
+              "letterSpacing": -0.4,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Medium 13": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 13,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 13,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Semibold 22.1": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 600,
+          "lineHeight": {
+            "value": 22.1,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 22.1,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "15": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 15,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 22.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.4,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 15,
+              "lineHeight": 22.5,
+              "letterSpacing": -0.4,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "570": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 15,
+            "unit": "px"
+          },
+          "fontWeight": 570,
+          "lineHeight": {
+            "value": 22.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 570,
+              "italic": false,
+              "fontSize": 15,
+              "lineHeight": 22.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Semibold": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 15,
+            "unit": "px"
+          },
+          "fontWeight": 600,
+          "lineHeight": {
+            "value": 22.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "italic": false,
+              "fontSize": 15,
+              "lineHeight": 22.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 15,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 25.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 15,
+              "lineHeight": 25.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "16": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 16,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 24,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.3,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 16,
+              "lineHeight": 24,
+              "letterSpacing": -0.3,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "570": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 16,
+            "unit": "px"
+          },
+          "fontWeight": 570,
+          "lineHeight": {
+            "value": 24,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 570,
+              "italic": false,
+              "fontSize": 16,
+              "lineHeight": 24,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 16,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 25.6,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 16,
+              "lineHeight": 25.6,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 27.2": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 16,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 27.2,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 16,
+              "lineHeight": 27.2,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "17": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 17,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 25.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.4,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 17,
+              "lineHeight": 25.5,
+              "letterSpacing": -0.4,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "570": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 17,
+            "unit": "px"
+          },
+          "fontWeight": 570,
+          "lineHeight": {
+            "value": 25.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 570,
+              "italic": false,
+              "fontSize": 17,
+              "lineHeight": 25.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "550 25.5": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 17,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 25.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.3,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 17,
+              "lineHeight": 25.5,
+              "letterSpacing": -0.3,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "20": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 20,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 30,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.4,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 20,
+              "lineHeight": 30,
+              "letterSpacing": -0.4,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "570": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 20,
+            "unit": "px"
+          },
+          "fontWeight": 570,
+          "lineHeight": {
+            "value": 20,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 570,
+              "italic": false,
+              "fontSize": 20,
+              "lineHeight": 20,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "550 20": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 20,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 20,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.4,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 20,
+              "lineHeight": 20,
+              "letterSpacing": -0.4,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "550 25": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 20,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 25,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.4,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 20,
+              "lineHeight": 25,
+              "letterSpacing": -0.4,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "550 31.11": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 20,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 31.11,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.4,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 20,
+              "lineHeight": 31.11,
+              "letterSpacing": -0.4,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "21": {
+      "Semibold": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 21,
+            "unit": "px"
+          },
+          "fontWeight": 600,
+          "lineHeight": {
+            "value": 25.2,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.5,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 600,
+              "italic": false,
+              "fontSize": 21,
+              "lineHeight": 25.2,
+              "letterSpacing": -0.5,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "22": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 22,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 33,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.4,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 22,
+              "lineHeight": 33,
+              "letterSpacing": -0.4,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "23": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 23,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 28.75,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -0.4,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 23,
+              "lineHeight": 28.75,
+              "letterSpacing": -0.4,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "26": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 26,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 29.9,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -1.2,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 26,
+              "lineHeight": 29.9,
+              "letterSpacing": -1.2,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "32": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 32,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 48,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -1,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 32,
+              "lineHeight": 48,
+              "letterSpacing": -1,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "38": {
+      "550": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 38,
+            "unit": "px"
+          },
+          "fontWeight": 550,
+          "lineHeight": {
+            "value": 43.7,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -1.2,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 550,
+              "italic": false,
+              "fontSize": 38,
+              "lineHeight": 43.7,
+              "letterSpacing": -1.2,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "42": {
+      "530": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 42,
+            "unit": "px"
+          },
+          "fontWeight": 530,
+          "lineHeight": {
+            "value": 46.2,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -2.8,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 530,
+              "italic": false,
+              "fontSize": 42,
+              "lineHeight": 46.2,
+              "letterSpacing": -2.8,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "44": {
+      "Medium": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 44,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 44,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -2,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 44,
+              "lineHeight": 44,
+              "letterSpacing": -2,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "56": {
+      "530": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 56,
+            "unit": "px"
+          },
+          "fontWeight": 530,
+          "lineHeight": {
+            "value": 61.6,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": -2.8,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 530,
+              "italic": false,
+              "fontSize": 56,
+              "lineHeight": 61.6,
+              "letterSpacing": -2.8,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "12.5": {
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 12.5,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 20.63,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 12.5,
+              "lineHeight": 20.63,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "10.5": {
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10.5,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 14,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 10.5,
+              "lineHeight": 14,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 17.33": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10.5,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 17.33,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 10.5,
+              "lineHeight": 17.33,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Medium": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10.5,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 14,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 10.5,
+              "lineHeight": 14,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Bold": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 10.5,
+            "unit": "px"
+          },
+          "fontWeight": 700,
+          "lineHeight": {
+            "value": 14,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0.26,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 700,
+              "italic": false,
+              "fontSize": 10.5,
+              "lineHeight": 14,
+              "letterSpacing": 0.26,
+              "textDecoration": "NONE",
+              "textCase": "UPPER"
+            }
+          }
+        }
+      }
+    },
+    "12.25": {
+      "Medium": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 12.25,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 17.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 12.25,
+              "lineHeight": 17.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 12.25,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 17.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 12.25,
+              "lineHeight": 17.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 17.5": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "{font.display}",
+          "fontSize": {
+            "value": 12.25,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 17.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "Inter",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 12.25,
+              "lineHeight": 17.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "TITLE"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Body": {
+    "550": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 550,
+        "lineHeight": {
+          "value": 21,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": -0.4,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 550,
+            "italic": false,
+            "fontSize": 14,
+            "lineHeight": 21,
+            "letterSpacing": -0.4,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "570": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 570,
+        "lineHeight": {
+          "value": 21,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 570,
+            "italic": false,
+            "fontSize": 14,
+            "lineHeight": 21,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 21,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 14,
+            "lineHeight": 21,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular 22.4": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 22.4,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 14,
+            "lineHeight": 22.4,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Bold": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 700,
+        "lineHeight": {
+          "value": 21,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 700,
+            "italic": false,
+            "fontSize": 14,
+            "lineHeight": 21,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Regular 24.5": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "lineHeight": {
+          "value": 24.5,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 400,
+            "italic": false,
+            "fontSize": 14,
+            "lineHeight": 24.5,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Semibold": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "lineHeight": {
+          "value": 21,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 600,
+            "italic": false,
+            "fontSize": 14,
+            "lineHeight": 21,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Medium": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 500,
+        "lineHeight": {
+          "value": 21,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 500,
+            "italic": false,
+            "fontSize": 14,
+            "lineHeight": 21,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Semibold 18.2": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "lineHeight": {
+          "value": 18.2,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": -0.4,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 600,
+            "italic": false,
+            "fontSize": 14,
+            "lineHeight": 18.2,
+            "letterSpacing": -0.4,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    }
+  },
+  "Text": {
+    "10": {
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "ui-monospace",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 15,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "ui-monospace",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 15,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 11": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "monospace",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 11,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "monospace",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 11,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Semibold": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "monospace",
+          "fontSize": {
+            "value": 10,
+            "unit": "px"
+          },
+          "fontWeight": 600,
+          "lineHeight": {
+            "value": 13,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "monospace",
+              "fontWeight": 600,
+              "italic": false,
+              "fontSize": 10,
+              "lineHeight": 13,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "11": {
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "-apple-system",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 13.75,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "-apple-system",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 13.75,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Regular 19.8": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "ui-monospace",
+          "fontSize": {
+            "value": 11,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 19.8,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "ui-monospace",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 11,
+              "lineHeight": 19.8,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "12": {
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "ui-monospace",
+          "fontSize": {
+            "value": 12,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 19.2,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "ui-monospace",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 12,
+              "lineHeight": 19.2,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "13": {
+      "Medium": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "-apple-system",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 19.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "-apple-system",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 19.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      },
+      "Medium 13": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "-apple-system",
+          "fontSize": {
+            "value": 13,
+            "unit": "px"
+          },
+          "fontWeight": 500,
+          "lineHeight": {
+            "value": 13,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "-apple-system",
+              "fontWeight": 500,
+              "italic": false,
+              "fontSize": 13,
+              "lineHeight": 13,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "10.5": {
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "ui-monospace",
+          "fontSize": {
+            "value": 10.5,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 14,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "ui-monospace",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 10.5,
+              "lineHeight": 14,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    },
+    "12.25": {
+      "Regular": {
+        "$type": "typography",
+        "$value": {
+          "fontFamily": "ui-monospace",
+          "fontSize": {
+            "value": 12.25,
+            "unit": "px"
+          },
+          "fontWeight": 400,
+          "lineHeight": {
+            "value": 17.5,
+            "unit": "px"
+          },
+          "letterSpacing": {
+            "value": 0,
+            "unit": "px"
+          }
+        },
+        "$extensions": {
+          "dev.openpencil": {
+            "text": {
+              "fontFamily": "ui-monospace",
+              "fontWeight": 400,
+              "italic": false,
+              "fontSize": 12.25,
+              "lineHeight": 17.5,
+              "letterSpacing": 0,
+              "textDecoration": "NONE",
+              "textCase": "ORIGINAL"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Card title": {
+    "550": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 18,
+          "unit": "px"
+        },
+        "fontWeight": 550,
+        "lineHeight": {
+          "value": 27,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": -0.4,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 550,
+            "italic": false,
+            "fontSize": 18,
+            "lineHeight": 27,
+            "letterSpacing": -0.4,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "Bold": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 18,
+          "unit": "px"
+        },
+        "fontWeight": 700,
+        "lineHeight": {
+          "value": 29.7,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": -0.5,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 700,
+            "italic": false,
+            "fontSize": 18,
+            "lineHeight": 29.7,
+            "letterSpacing": -0.5,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    }
+  },
+  "Section title": {
+    "550": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 24,
+          "unit": "px"
+        },
+        "fontWeight": 550,
+        "lineHeight": {
+          "value": 36,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": -1,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 550,
+            "italic": false,
+            "fontSize": 24,
+            "lineHeight": 36,
+            "letterSpacing": -1,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    },
+    "560": {
+      "$type": "typography",
+      "$value": {
+        "fontFamily": "{font.display}",
+        "fontSize": {
+          "value": 24,
+          "unit": "px"
+        },
+        "fontWeight": 560,
+        "lineHeight": {
+          "value": 24,
+          "unit": "px"
+        },
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "$extensions": {
+        "dev.openpencil": {
+          "text": {
+            "fontFamily": "Inter",
+            "fontWeight": 560,
+            "italic": false,
+            "fontSize": 24,
+            "lineHeight": 24,
+            "letterSpacing": 0,
+            "textDecoration": "NONE",
+            "textCase": "ORIGINAL"
+          }
+        }
+      }
+    }
+  }
+}
