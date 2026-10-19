@@ -53,6 +53,7 @@ import { ModelPipeline } from "./-components/pipeline";
 import { ModelConversation } from "./-components/model-conversation";
 import { ModelMedia } from "./-components/media";
 import { ReviewNotes } from "./-components/review";
+import { BuildTrace } from "./-components/build-trace";
 import {
   resolveBuild,
   buildLabel,
@@ -62,7 +63,7 @@ import {
 const searchSchema = z.object({
   view: z.enum(["3d", "renders", "textures", "target"]).catch("3d"),
   section: z
-    .enum(["review", "checks", "tools", "versions", "activity"])
+    .enum(["review", "checks", "tools", "versions", "activity", "debug"])
     .catch("review"),
   version: z.string().uuid().optional().catch(undefined),
 });
@@ -603,6 +604,7 @@ function ModelPage() {
                       Builds <span>{versions.length}</span>
                     </TabsTrigger>
                     <TabsTrigger value="activity">Activity</TabsTrigger>
+                    <TabsTrigger value="debug">Debug</TabsTrigger>
                   </TabsList>
                   <TabsContent
                     value={search.section}
@@ -633,6 +635,9 @@ function ModelPage() {
                         artifacts={artifacts}
                         review={selected.feedback}
                       />
+                    )}
+                    {search.section === "debug" && (
+                      <BuildTrace modelId={modelId} working={!["done", "failed", "cancelled"].includes(model.status)} />
                     )}
                     {search.section === "activity" && (
                       <History runs={runs} models={[model]} />

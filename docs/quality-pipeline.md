@@ -51,6 +51,10 @@ New attempts perform separate persisted blockout, shape refinement, materials an
 
 `prompts/models/modeling-pass.md` defines concrete work and a before/after summary for each pass; `prompts/models/modeling-review.md` gives that summary to the judge as claims to verify against the actual photographs. These are additional build sessions, so elapsed time and estimated cost increase. No time, tool-call or polygon quota substitutes for visible quality. Each run retains normal history, usage accounting and resume identity.
 
+## Debug view
+
+The model page's **Debug** tab (a collapsible section on graphic pages) shows how a version was built, one card per agent run: role, modeling pass, duration, cost, and condensed steps. Steps are the agent's narration, its reasoning headings, each tool call in plain words (script read, write, edit and Blender run, with triangle and material counts or the error line), the renders it inspected as thumbnails, and the run's result. `GET /api/models/<id>/trace` builds this from the saved Eve events in `src/lib/build-trace.ts`; full prompts, outputs and raw events stay in Activity.
+
 ## Visual target approval
 
 New 3D generation pauses after the visual target. Approve & build queues the existing job; Revise visual target uses feedback and the previous image to generate another target for approval. Each image run remains in Activity. Waiting models release their worker slot and remain waiting across restarts. Approval is tied to the exact current image, so an outdated browser cannot approve a newer revision.

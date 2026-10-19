@@ -1,3 +1,4 @@
+import { BuildTrace } from "./build-trace";
 import { AssetReferences } from "@/components/asset-references";
 import { useState } from "react";
 import { z } from "zod";
@@ -221,6 +222,10 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
           </Card>
         </div>
       </div>
+      <details className="panel p-4">
+        <summary className="cursor-pointer">Debug: how the agents made this</summary>
+        <div className="mt-4"><BuildTrace modelId={modelId} working={working} /></div>
+      </details>
       {!archived && data.assets?.filter((asset) => asset.id === model.assetId).map((asset) => <details key={asset.id} className="panel p-4">
         <summary className="cursor-pointer">Asset references</summary>
         <AssetReferences projectId={projectId} assetId={asset.id} references={asset.references} referenceNotes={asset.referenceNotes} onRefresh={reload} />

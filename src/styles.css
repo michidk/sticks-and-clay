@@ -1718,6 +1718,9 @@ a.board-card-title:hover { text-decoration: underline; }
 .model-version-list details { font-size: 12px; }
 .model-version-list details > summary { min-height: 36px; align-content: center; }
 .model-version-list article > button { justify-self: start; margin-top: 4px; }
+/* Debug trace: one bordered card per agent run; global details padding would remove its inset. */
+.build-trace-run { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; }
+.build-trace-run > summary { min-height: 36px; align-content: center; color: inherit; }
 
 /* Activity records adapt to the inspector column, not just the viewport. */
 @container inspector (max-width: 640px) {

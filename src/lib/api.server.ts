@@ -1,6 +1,7 @@
 import { designPalette } from "./pixel-design-palette";
 import { DEMO_MODE } from "./build-mode";
 import { abortGeneration, plannerReservations } from "./queue.server";
+import { buildTrace, traceEventTypes } from "./build-trace";
 import { updateStartingPoint, startingPointVersions } from "./starting-point.server";
 import { getGlobalBoard } from "./global-board.server";
 import { assetSnapshot } from "./asset-snapshot.server";
@@ -1170,6 +1171,17 @@ export async function api(request: Request) {
           .where(eq(batches.id, id));
       });
       return reply({ ok: true });
+    }
+    if (path[0] === "models" && path[1] && path[2] === "trace" && request.method === "GET") {
+      const history = await db.select({
+        id: runs.id, role: runs.role, stepId: runs.stepId, iteration: runs.iteration, status: runs.status, error: runs.error,
+        estimatedCost: runs.estimatedCost, inputTokens: runs.inputTokens, outputTokens: runs.outputTokens,
+        createdAt: runs.createdAt, finishedAt: runs.finishedAt,
+      }).from(runs).where(eq(runs.modelId, uuid.parse(path[1]))).orderBy(runs.createdAt);
+      const log = history.length ? await db.select({ runId: events.runId, type: events.type, payload: events.payload, createdAt: events.createdAt })
+        .from(events).where(and(inArray(events.runId, history.map((run) => run.id)), inArray(events.type, traceEventTypes)))
+        .orderBy(events.createdAt) : [];
+      return reply({ runs: history.map((run) => ({ ...run, steps: buildTrace(log.filter((event) => event.runId === run.id)) })) });
     }
     if (path[0] === "runs" && path[1] && path[2] === "details" && request.method === "GET") {
       const [run] = await db.select().from(runs).where(eq(runs.id, uuid.parse(path[1])));
