@@ -8,8 +8,8 @@ import { getStorage } from "./storage.server";
 import { api } from "./api.server";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
-integration(
-  "SVG resumes a saved response, publishes vectors and completes without Blender or duplicate runs",
+for (const mode of ["unreviewed", "legacy-review", "saved-reading"] as const) integration(
+  `SVG resumes ${mode}, publishes vectors and completes without duplicate runs`,
   async () => {
     const projectId = crypto.randomUUID(),
       batchId = crypto.randomUUID(),
@@ -35,7 +35,7 @@ integration(
         projectId,
         prompt: "circle",
         count: 1,
-        judgeIterations: 0,
+        judgeIterations: mode === "unreviewed" ? 0 : 1,
         design: "Green circles",
         designVersion: 1,
         status: "building",
@@ -66,7 +66,21 @@ integration(
         rates: { input: 0, output: 0, cached: 0, source: "test" },
         result: { svg },
       });
-    const checkpoint = { "step:svg": runId };
+    const checkpoint: Record<string, string> = { "step:svg": runId };
+    for (const role of mode === "unreviewed" ? [] : mode === "legacy-review" ? ["svg-judge"] : ["svg-reader", "svg-judge"]) {
+      const id = crypto.randomUUID();
+      const stepId = role === "svg-reader" ? "judge:0:reading" : "judge:0";
+      await db.insert(runs).values({
+        id, projectId, batchId, modelId, role, stepId, iteration: 0,
+        engine: "tanstack", status: "done", model: "fixture",
+        promptVersion: "test", systemPrompt: "test", input: "test",
+        rates: { input: 0, output: 0, cached: 0, source: "test" },
+        result: role === "svg-reader"
+          ? { subject: "circle", alternatives: [], visibleFeatures: "round", smallSizeReading: "circle" }
+          : { passed: true, score: 90, summary: "circle", improvements: [] },
+      });
+      checkpoint[`step:${stepId}`] = id;
+    }
     await db
       .insert(jobs)
       .values({
@@ -95,9 +109,15 @@ integration(
         (await db.select().from(batches).where(eq(batches.id, batchId)))[0]
           .status,
       ).toBe("done");
-      expect(
-        await db.select().from(runs).where(eq(runs.modelId, modelId)),
-      ).toHaveLength(1);
+      const savedRuns = await db.select().from(runs).where(eq(runs.modelId, modelId));
+      expect(savedRuns).toHaveLength(mode === "unreviewed" ? 1 : mode === "legacy-review" ? 2 : 3);
+      expect(savedRuns.find((run) => run.role === "svg")?.result).toMatchObject({
+        previews: [
+          { key: key.replace("graphic.svg", "preview.png") },
+          { key: key.replace("graphic.svg", "preview-64.png") },
+          { key: key.replace("graphic.svg", "preview-24.png") },
+        ],
+      });
       expect(
         await db
           .select()

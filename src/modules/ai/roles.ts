@@ -52,7 +52,12 @@ export const roles = {
     z.object({ plan: z.string().max(4000).optional(), svg: z.string().min(1).max(500_000) }),
     "gpt-6-sol",
     "high",
+    ["references/svg-construction"],
   ),
+  "svg-reader": role("tanstack", "svg/reader", z.object({
+    subject: z.string(), alternatives: z.array(z.string()),
+    visibleFeatures: z.string(), smallSizeReading: z.string(),
+  }), "gpt-6-sol", "high"),
   "svg-judge": {
     ...role("tanstack", "svg/svg-judge", judgeResult, "gpt-6-astra", "high"),
     inputTemplate: "graphics/graphic-judge-input",

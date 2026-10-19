@@ -60,3 +60,7 @@ The model page's **Debug** tab (a collapsible section on graphic pages) shows ho
 New 3D generation pauses after the visual target. Approve & build queues the existing job; Revise visual target uses feedback and the previous image to generate another target for approval. Each image run remains in Activity. Waiting models release their worker slot and remain waiting across restarts. Approval is tied to the exact current image, so an outdated browser cannot approve a newer revision.
 
 Skip visual mock in the model idea dialog builds directly from the approved design and brief without an image-generation call. The choice is saved with the idea and batch. Graphics keep their one-shot generation flow. Existing batches retain automatic progression through their saved pipeline; the migration does not introduce a new approval requirement into ongoing work.
+
+## SVG recognition review
+
+New SVG review rounds first send the current full-size, 64px and 24px PNGs to `svg-reader` without the asset name or brief. The SVG judge then receives that reading alongside measurements and the approved design. Ambiguity is evidence for a visible finding, not an automatic exact-name rejection. This adds one accounted call per review round; zero rounds skips both reader and judge. Saved legacy judge checkpoints replay without a new reading, and saved reader calls resume through their own step checkpoint. Human acceptance remains separate. See the [source audit and pilot workflow](icon-workflow-research.md).

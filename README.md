@@ -157,7 +157,7 @@ configuration, scopes, and deployment behind an auth proxy.
   technical failure.
 - 🎨 **Graphics and SVG.** One-shot images through an OpenAI-compatible Image
   API with optional project resolution and per-asset overrides, or square editable
-  vector artwork with shared icon specifications, actual-size repair previews, collection
+  vector artwork with shared icon specifications, unlabeled recognition checks, actual-size repair previews, collection
   consistency review, variants, junction diagnostics, and safe SVG output
   (no scripts, external content, or embedded rasters). Dimension mismatches are
   shown for review without failing the job or automatically resizing the output.

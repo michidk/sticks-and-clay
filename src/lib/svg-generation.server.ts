@@ -93,7 +93,7 @@ export const svgKind: AssetKind = {
     const viewBox = analysis.viewBox?.trim().split(/[\s,]+/).map(Number);
     const dimensionErrors = viewBox && viewBox[2] !== viewBox[3]
       ? ["Output dimension error: SVG requires a square viewBox (1:1). The returned vector canvas is not square."] : [];
-    await db.update(runs).set({ result: { ...result, key, analysis, dimensionErrors } }).where(eq(runs.id, runId));
+    await db.update(runs).set({ result: { ...result, key, analysis, dimensionErrors, previews: previews.map(({ key, label }) => ({ key, label })) } }).where(eq(runs.id, runId));
     return { key, dimensionErrors, previews: previews.map(({ key, label }) => ({ key, label })), analysis };
   },
 };

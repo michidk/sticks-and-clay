@@ -130,6 +130,19 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
             technical: candidate.analysis,
             findings: review,
           });
+          let analysis = candidate.analysis;
+          const readingStep = `${node.id}:reading`;
+          // Legacy reviews replay without adding a new paid call; interrupted readings resume.
+          if (kind.format === "svg" && (job.checkpoint[`step:${readingStep}`] || !job.checkpoint[`step:${node.id}`])) {
+            const { result: reading } = await runRole({
+              role: "svg-reader", stepId: readingStep, iteration: node.iteration,
+              projectId: model.projectId, batchId: batch.id, modelId: model.id,
+              input: await roleInput("svg-reader", {}),
+              images: candidate.previews.map(({ key }) => key),
+            });
+            await assertJobActive();
+            analysis = { measurements: candidate.analysis, unlabeledReading: reading };
+          }
           const { result, runId } = await runRole({
             role: kind.judge,
             stepId: node.id,
@@ -144,7 +157,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
               request: ctx.request + workshopContext(batch.workshop, false),
               size,
               images: evidence.labels,
-              analysis: JSON.stringify(candidate.analysis, null, 2),
+              analysis: JSON.stringify(analysis, null, 2),
               feedback: review ? JSON.stringify(review, null, 2) : "None",
             }),
           });
