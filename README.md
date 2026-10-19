@@ -93,7 +93,8 @@ flowchart LR
    rounds are spent. Major or critical findings block a pass.
 6. **Review.** Accept finished assets, iterate on them with an optional comment,
    or fork a variant. The stage strip and the global board track everything
-   from Ideas to Done.
+   from Ideas to Done. Finished asset images and rendered photos can also be
+   reused as design reference images.
 
 <p align="center">
   <img src=".github/images/design-chat.png"

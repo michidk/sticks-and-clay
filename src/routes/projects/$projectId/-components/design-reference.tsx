@@ -1,3 +1,5 @@
+import { FinishedAssetReferences } from "./finished-asset-references";
+import type { finishedAssetReferences } from "../-lib/finished-asset-references";
 import { DesignPalette } from "./design-palette";
 import { DesignConversation, type DesignRevision, type DesignUpdate } from "./design-conversation";
 import { useEffect, useState } from "react";
@@ -17,6 +19,7 @@ import { json, request } from "@/lib/client";
 /** Design document editor with references and revision history. */
 export function DesignReference({
   project,
+  assetImages = [],
   revisions,
   onSaved,
   onOpenMockups,
@@ -24,6 +27,7 @@ export function DesignReference({
   updates = [],
 }: {
   project: any;
+  assetImages?: ReturnType<typeof finishedAssetReferences>;
   revisions: DesignRevision[];
   onSaved: (approved: boolean) => Promise<unknown>;
   onOpenMockups: () => void;
@@ -244,6 +248,8 @@ export function DesignReference({
             disabled={saving}
             isBusy={uploader.isBusy}
           />
+          <FinishedAssetReferences images={assetImages} count={uploader.images.length}
+            disabled={saving || stale} onAdd={uploader.addSavedImage} />
           <p className="muted">
             Reference changes are saved with the document. They do not rewrite
             it.

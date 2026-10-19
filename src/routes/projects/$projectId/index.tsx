@@ -1,3 +1,4 @@
+import { finishedAssetReferences } from "./-lib/finished-asset-references";
 import { ProjectResolution } from "./-components/project-resolution";
 import { GenerationDialog } from "./-components/generation-dialog";
 import { AssetDrafts } from "./-components/asset-drafts";
@@ -363,6 +364,7 @@ function ProjectPage() {
             <DesignReference
               key={projectId}
               project={p}
+              assetImages={finishedAssetReferences(data.assetVersions, data.runs)}
               revisions={data.revisions}
               updates={data.designUpdates || []}
               updating={designUpdating}

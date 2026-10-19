@@ -81,6 +81,12 @@ export function useImageUpload() {
     }
   }
   const addFiles = (files: readonly File[]) => intake(async () => files);
+  const addSavedImage = (key: string) => intake(async () => {
+    const response = await fetch(fileUrl(key));
+    if (!response.ok) throw new Error("Could not load the finished asset image. Try again.");
+    const blob = await response.blob();
+    return [new File([blob], key.split("/").pop() || "asset.png", { type: blob.type })];
+  });
   const importFromUrl = (url: string) =>
     intake(async () => {
       if (current.current.length >= MAX_REFERENCE_IMAGES)
@@ -106,6 +112,7 @@ export function useImageUpload() {
     images,
     isBusy,
     addFiles,
+    addSavedImage,
     importFromUrl,
     remove,
     reset,
