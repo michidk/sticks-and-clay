@@ -1,0 +1,269 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "name": "materialcache.py",
+      "sha256": "9b228cd21b3015e60d6ab30638227e760e06dafad8c15fef3b457519d5e1ec00"
+    },
+    {
+      "name": "materialcore.py",
+      "sha256": "d64ec568304f170c79fec45d65d7f36ed46d19522342e3c7cd97ee3cee0bd577"
+    },
+    {
+      "name": "materialkit.py",
+      "sha256": "aa06aab1263826e1167c1a09df0fd689944cd14284f8a7f9433abc3a9fabf628"
+    },
+    {
+      "name": "requirements.txt",
+      "sha256": "170569426540ccc4e8a5294f25d7d4d381d9df2d8f955ec3a8091002cb4c9f19"
+    },
+    {
+      "name": "output/orm.png",
+      "sha256": "3c04f11dcfafd4997fd70947e1764a21aa6d8cf7bc46efa5d14da83f8749d01c"
+    },
+    {
+      "name": "output/calibration.json",
+      "sha256": "23f6c408dffce240114787cf4e798989f87fd9df0d6cb887d7d5996cfae9a38d"
+    },
+    {
+      "name": "output/review.png",
+      "sha256": "0058c51352f2b549b05fbfdc6735ed1d68c5585eb1bd12859c5d979daf2c1f43"
+    },
+    {
+      "name": "output/ao.png",
+      "sha256": "5917685f08ed56047c09b39c30a6fe9a4138e558d294d834812bb3d792d6dc54"
+    },
+    {
+      "name": "output/lighting.png",
+      "sha256": "e2135c135c38a9548a1e40eb731f0b7aa44329621a4f44e881371754b80514f6"
+    },
+    {
+      "name": "output/metallic.png",
+      "sha256": "ef2a4c8949cdab1ef24e678bdb88cc276b1fd75e62066e47011c2ce53996efe6"
+    },
+    {
+      "name": "output/manifest.json",
+      "sha256": "e8799bda83532090b02a4c953f0ac76b97c3875484a483a9331503be27142469"
+    },
+    {
+      "name": "output/albedo.png",
+      "sha256": "8c44e6665bfb0cf5b2f3f7c2affedcba03b9bdc4049a2bfa39407995544050a7"
+    },
+    {
+      "name": "output/normal.png",
+      "sha256": "a5810867843e54f562d0608a02ff0afe5f13fb0567c1f33a816f4b27819ab570"
+    },
+    {
+      "name": "output/height.png",
+      "sha256": "f327843217b43519f06f131c674e161f54b47e337f5557e4f863813fd2b8e150"
+    },
+    {
+      "name": "output/roughness.png",
+      "sha256": "bda77f38de04287829fd2772ca005bf5f49492bacb9ab193f360889209a68b85"
+    },
+    {
+      "name": "output/build-receipt.json",
+      "sha256": "6b5d3104a4dc070d60da6826b218dc8b5ed524e90ad73a3358ac00b4dad24fc1"
+    },
+    {
+      "name": "output/material.json",
+      "sha256": "d692a1f19b612c89b80c14c8c8b3f4f373cca0596c00c23af3a2e2bb5fa54b17"
+    },
+    {
+      "name": "params.json",
+      "sha256": "8a7d942c6ce2954aefd0c7a9489bf8e29902b064db5e05760cdd635e894f90d2"
+    },
+    {
+      "name": "materialrecipes.py",
+      "sha256": "3f4d12a08f4b636d92a3d50464a259d66491de6606cc94ebd091097dbe77cd8d"
+    },
+    {
+      "name": "README.txt",
+      "sha256": "0836b991891bfbc968f0c27ff127cf025c253c4c10c4f1505253dbcc5a31b1c2"
+    },
+    {
+      "name": "iterations/0/materialcache.py",
+      "sha256": "9b228cd21b3015e60d6ab30638227e760e06dafad8c15fef3b457519d5e1ec00"
+    },
+    {
+      "name": "iterations/0/materialcore.py",
+      "sha256": "d64ec568304f170c79fec45d65d7f36ed46d19522342e3c7cd97ee3cee0bd577"
+    },
+    {
+      "name": "iterations/0/materialkit.py",
+      "sha256": "aa06aab1263826e1167c1a09df0fd689944cd14284f8a7f9433abc3a9fabf628"
+    },
+    {
+      "name": "iterations/0/requirements.txt",
+      "sha256": "170569426540ccc4e8a5294f25d7d4d381d9df2d8f955ec3a8091002cb4c9f19"
+    },
+    {
+      "name": "iterations/0/output/orm.png",
+      "sha256": "3c04f11dcfafd4997fd70947e1764a21aa6d8cf7bc46efa5d14da83f8749d01c"
+    },
+    {
+      "name": "iterations/0/output/calibration.json",
+      "sha256": "23f6c408dffce240114787cf4e798989f87fd9df0d6cb887d7d5996cfae9a38d"
+    },
+    {
+      "name": "iterations/0/output/review.png",
+      "sha256": "0058c51352f2b549b05fbfdc6735ed1d68c5585eb1bd12859c5d979daf2c1f43"
+    },
+    {
+      "name": "iterations/0/output/ao.png",
+      "sha256": "5917685f08ed56047c09b39c30a6fe9a4138e558d294d834812bb3d792d6dc54"
+    },
+    {
+      "name": "iterations/0/output/lighting.png",
+      "sha256": "e2135c135c38a9548a1e40eb731f0b7aa44329621a4f44e881371754b80514f6"
+    },
+    {
+      "name": "iterations/0/output/metallic.png",
+      "sha256": "ef2a4c8949cdab1ef24e678bdb88cc276b1fd75e62066e47011c2ce53996efe6"
+    },
+    {
+      "name": "iterations/0/output/manifest.json",
+      "sha256": "e8799bda83532090b02a4c953f0ac76b97c3875484a483a9331503be27142469"
+    },
+    {
+      "name": "iterations/0/output/albedo.png",
+      "sha256": "8c44e6665bfb0cf5b2f3f7c2affedcba03b9bdc4049a2bfa39407995544050a7"
+    },
+    {
+      "name": "iterations/0/output/normal.png",
+      "sha256": "a5810867843e54f562d0608a02ff0afe5f13fb0567c1f33a816f4b27819ab570"
+    },
+    {
+      "name": "iterations/0/output/height.png",
+      "sha256": "f327843217b43519f06f131c674e161f54b47e337f5557e4f863813fd2b8e150"
+    },
+    {
+      "name": "iterations/0/output/roughness.png",
+      "sha256": "bda77f38de04287829fd2772ca005bf5f49492bacb9ab193f360889209a68b85"
+    },
+    {
+      "name": "iterations/0/output/build-receipt.json",
+      "sha256": "6b5d3104a4dc070d60da6826b218dc8b5ed524e90ad73a3358ac00b4dad24fc1"
+    },
+    {
+      "name": "iterations/0/output/material.json",
+      "sha256": "d692a1f19b612c89b80c14c8c8b3f4f373cca0596c00c23af3a2e2bb5fa54b17"
+    },
+    {
+      "name": "iterations/0/params.json",
+      "sha256": "8a7d942c6ce2954aefd0c7a9489bf8e29902b064db5e05760cdd635e894f90d2"
+    },
+    {
+      "name": "iterations/0/materialrecipes.py",
+      "sha256": "3f4d12a08f4b636d92a3d50464a259d66491de6606cc94ebd091097dbe77cd8d"
+    },
+    {
+      "name": "iterations/0/render.py",
+      "sha256": "186faa069873774ca4d085ec8a80077198751f0cd712a5d2de57eda8b6a35950"
+    },
+    {
+      "name": "iterations/0/process.log",
+      "sha256": "4e3194d8000ac063d16f6fa870b077ccdfa9a8a27d6225375019542ff567a0cd"
+    },
+    {
+      "name": "iterations/0/calibration-targets.json",
+      "sha256": "08824e3232b9b9da2b83b67deeb13ba73f5f11c22612b2db579c77d844a9119b"
+    },
+    {
+      "name": "iterations/0/asset.py",
+      "sha256": "210804fc17d611158f274ee78694c5aa2d0601a32390bd66bc7981c0f1a4de82"
+    },
+    {
+      "name": "iterations/0/materialoutput.py",
+      "sha256": "46075c3a4cbb56d140f7e1c469337e7cf7a1172bbf2cef3401797908dbcabc48"
+    },
+    {
+      "name": "iterations/0/build_artifacts.py",
+      "sha256": "2433b7edf49f0c55612895413a62b8c0ab2ed849a5216b4762a08d0928deae48"
+    },
+    {
+      "name": "iterations/0/preview/orm.png",
+      "sha256": "5498b97558ab3ca8b344f01dd77669d21347625b36629aa122aad5d7979748a3"
+    },
+    {
+      "name": "iterations/0/preview/calibration.json",
+      "sha256": "423d1f1d3ba946376d75226d1367c0dacf1bc3df6685551cb579ce018935986d"
+    },
+    {
+      "name": "iterations/0/preview/review.png",
+      "sha256": "84d41cae50a6061134f8a12f64417f3f32d405bce26a4cb27ff2be03562ed40c"
+    },
+    {
+      "name": "iterations/0/preview/ao.png",
+      "sha256": "09d1bd64b7e17ac810a702ab11e630efd7fa512ff74069576b09cd6b11627d30"
+    },
+    {
+      "name": "iterations/0/preview/lighting.png",
+      "sha256": "90ee4d4731800b68c5925ebff0b0895f406dc97684cf18efa91ff26ff2175fd0"
+    },
+    {
+      "name": "iterations/0/preview/metallic.png",
+      "sha256": "99ff0b3aac9b9f3f257ac04938f62d1817c6fdadd2c6a4040830dc3965598968"
+    },
+    {
+      "name": "iterations/0/preview/manifest.json",
+      "sha256": "5d58a74a7093868185615c6831ff8ec23217974027f3a9b2bf214984750afa5e"
+    },
+    {
+      "name": "iterations/0/preview/albedo.png",
+      "sha256": "dbe62f0bab3c76257c3e972ee87c92eb6923efdc5fc4d41ed130c3dbe5051375"
+    },
+    {
+      "name": "iterations/0/preview/normal.png",
+      "sha256": "acd1c404780d87a170649abcc67ac7f8ccbb1f64fd44034cf89beb6880c2b866"
+    },
+    {
+      "name": "iterations/0/preview/height.png",
+      "sha256": "00f4ddd303ccd330dfa136f26850d510e2e91529099eba49446f1d1bb4fad500"
+    },
+    {
+      "name": "iterations/0/preview/roughness.png",
+      "sha256": "61189d2b79827aea26c9e5c16ae2e313740a0ce0030810288a81f49c36aafec5"
+    },
+    {
+      "name": "iterations/0/preview/build-receipt.json",
+      "sha256": "e5a2ca3cf5041e1df64ac53daa9369d3ec7208e12c9d0630f0523618c49d77fb"
+    },
+    {
+      "name": "iterations/0/preview/material.json",
+      "sha256": "3eab91181701f2efb9b4a680b6f2e4ececb6256eeb0e813e10c99da6a826fdbf"
+    },
+    {
+      "name": "iterations/0/materialcalibration.py",
+      "sha256": "ebe0d2313935bce8a379e46a6e6c3a32cfc40fe7a802540e4b4032f4b3d75a6e"
+    },
+    {
+      "name": "build-request.json",
+      "sha256": "93fc8436011a32ae6be7210e2a2680e10421f0b5e19ac7d52133896e822c9c06"
+    },
+    {
+      "name": "render.py",
+      "sha256": "186faa069873774ca4d085ec8a80077198751f0cd712a5d2de57eda8b6a35950"
+    },
+    {
+      "name": "calibration-targets.json",
+      "sha256": "08824e3232b9b9da2b83b67deeb13ba73f5f11c22612b2db579c77d844a9119b"
+    },
+    {
+      "name": "asset.py",
+      "sha256": "210804fc17d611158f274ee78694c5aa2d0601a32390bd66bc7981c0f1a4de82"
+    },
+    {
+      "name": "materialoutput.py",
+      "sha256": "46075c3a4cbb56d140f7e1c469337e7cf7a1172bbf2cef3401797908dbcabc48"
+    },
+    {
+      "name": "build_artifacts.py",
+      "sha256": "2433b7edf49f0c55612895413a62b8c0ab2ed849a5216b4762a08d0928deae48"
+    },
+    {
+      "name": "materialcalibration.py",
+      "sha256": "ebe0d2313935bce8a379e46a6e6c3a32cfc40fe7a802540e4b4032f4b3d75a6e"
+    }
+  ]
+}

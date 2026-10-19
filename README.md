@@ -187,7 +187,7 @@ configuration, scopes, and deployment behind an auth proxy.
 
 ## Read-only demo
 
-The demo includes a public homepage and an exported project you can explore
+The demo includes a public homepage and exported projects you can explore
 without a database or AI credentials. Generation and changes are disabled.
 Build it with `bun run build:demo`; see [the demo guide](docs/demo-mode.md).
 
