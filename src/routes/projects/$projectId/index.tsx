@@ -200,9 +200,6 @@ function ProjectPage() {
     review: collectionModels.filter((m: any) => assetStage(m) === "review").length,
     done: collectionModels.filter((m: any) => assetStage(m) === "done").length,
   };
-  const attention =
-    collectionModels.filter(needsAttention).length +
-    pending.filter((item) => item.batch.status === "failed").length;
   // An approved project opens on the stage that needs the owner next: running work, then reviews, then unstarted ideas.
   const firstStage = (["progress", "review", "idea", "ready", "done"] as const).find((id) => stageCounts[id]) ?? "idea";
   const activeTab: ProjectTab = search.tab ?? (ready ? firstStage : "design");
@@ -236,13 +233,17 @@ function ProjectPage() {
   const steps = [
     { id: "design", title: "Design", hint: ready ? `v${p.designVersion} approved` : "Awaiting approval" },
     { id: "mockups", title: "Mockups", count: mockups.length, hint: "Concept images" },
-    ...boardStages.map((id) => ({
-      id,
-      title: boardStageTitles[id],
-      count: stageCounts[id],
-      hint: id === "progress" && attention ? (attention === 1 ? "1 needs attention" : `${attention} need attention`) : stageHints[id],
-      warn: id === "progress" && attention > 0,
-    })),
+    ...boardStages.map((id) => {
+      const attention = collectionModels.filter((model: any) => assetStage(model) === id && needsAttention(model)).length +
+        (id === "progress" ? pending.filter((item) => item.batch.status === "failed").length : 0);
+      return {
+        id,
+        title: boardStageTitles[id],
+        count: stageCounts[id],
+        hint: attention ? (attention === 1 ? "1 needs attention" : `${attention} need attention`) : stageHints[id],
+        warn: attention > 0,
+      };
+    }),
     { id: "export", title: "Export", count: stageCounts.done, hint: "Download a zip" },
   ] satisfies { id: ProjectTab; title: string; hint: string; count?: number; warn?: boolean }[];
   const stageEmpty: Record<BoardStage, [string, string]> = {
