@@ -70,6 +70,7 @@ export async function agent<T>(
       args.role,
       saved?.systemPrompt,
       args.construction,
+      args.guides,
     ),
     images = args.images || [];
   if (!saved || restart)

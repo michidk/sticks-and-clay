@@ -11,7 +11,7 @@ import { reviewPassed, type judgeResult } from "./contracts";
 import { reviewEvidence } from "../modules/pipelines/evidence";
 import { z } from "zod";
 import { viewableReferences } from "./svg";
-import { workshopContext } from "./workshop";
+import { svgGuides, svgIntentOf, workshopContext } from "./workshop";
 
 export type Review = z.infer<typeof judgeResult>;
 /** One produced version of an asset plus what the judge needs to see of it. */
@@ -135,7 +135,9 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
           let analysis = candidate.analysis;
           const readingStep = `${node.id}:reading`;
           // Legacy reviews replay without adding a new paid call; interrupted readings resume.
-          if (kind.format === "svg" && (job.checkpoint[`step:${readingStep}`] || !job.checkpoint[`step:${node.id}`])) {
+          // Only icons are read without their brief; logos and illustrations are judged directly.
+          const intent = svgIntentOf(batch.workshop);
+          if (kind.format === "svg" && intent === "icon" && (job.checkpoint[`step:${readingStep}`] || !job.checkpoint[`step:${node.id}`])) {
             const { result: reading } = await runRole({
               role: "svg-reader", stepId: readingStep, iteration: node.iteration,
               projectId: model.projectId, batchId: batch.id, modelId: model.id,
@@ -164,6 +166,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
               analysis: JSON.stringify(analysis, null, 2),
               feedback: review ? JSON.stringify(review, null, 2) : "None",
             }),
+            ...(kind.format === "svg" ? { guides: svgGuides("judge", intent) } : {}),
           });
           await assertJobActive();
           review = result;

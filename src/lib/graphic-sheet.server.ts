@@ -8,6 +8,7 @@ import { runRole, roleInput } from "../modules/ai/index.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { analyzeSvg } from "./svg";
 import { reviewPassed } from "./contracts";
+import { svgIntentOf } from "./workshop";
 
 const CELL = 384, PAD = 24, LABEL = 36;
 const escape = (text: string) => text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -73,10 +74,11 @@ export async function renderGraphicSheet(batchId: string) {
   await saveSheet(key, CELL);
   let collectionError: string | null = null;
   if (project.assetType === "svg" && batch.judgeIterations > 0 && ready.length >= 2) {
-    const images = [key, `${directory}/sheet-64.png`, `${directory}/sheet-24.png`, `${directory}/sheet-16.png`];
-    await saveSheet(images[1], 64);
-    await saveSheet(images[2], 24);
-    await saveSheet(images[3], 16);
+    // Icons are judged at UI sizes, logos down to favicon size, illustrations only at 64 px and above.
+    const intent = svgIntentOf(batch.workshop);
+    const sizes = (intent === "icon" ? [64, 24, 16] : intent === "logo" ? [64, 16] : [64]) as (16 | 24 | 64)[];
+    const images = [key, ...sizes.map((size) => `${directory}/sheet-${size}.png`)];
+    for (const [index, size] of sizes.entries()) await saveSheet(images[index + 1], size);
     await assertJobActive();
     const { result } = await runRole({
       role: "svg-collection-judge", stepId: "svg-collection-review",
@@ -84,8 +86,8 @@ export async function renderGraphicSheet(batchId: string) {
       images,
       input: await roleInput("svg-collection-judge", {
         design: batch.design, name: "Completed SVG collection", request: batch.prompt,
-        size: "Same collection at 384px, 64px, 24px and 16px per asset; white cards do not change scale",
-        images: "Image 1: enlarged collection. Image 2: 64px collection. Image 3: 24px collection. Image 4: 16px collection. Names are printed below each asset.",
+        size: `Intent: ${intent}. Same collection at 384px${sizes.map((size) => `, ${size}px`).join("")} per asset; white cards do not change scale`,
+        images: `Image 1: enlarged collection. ${sizes.map((size, index) => `Image ${index + 2}: ${size}px collection.`).join(" ")} Names are printed below each asset.`,
         analysis: JSON.stringify(ready.map((asset, index) => ({
           name: asset.name, brief: asset.prompt, ...analyzeSvg(tiles[index].image.toString("utf8")),
         }))),

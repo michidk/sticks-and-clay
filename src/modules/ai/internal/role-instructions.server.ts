@@ -11,6 +11,7 @@ export async function roleInstructions(
     stage: string;
     outputTarget?: "model" | "sprite";
   },
+  guides?: readonly string[],
 ) {
   if (saved != null) return saved;
   const definition = roles[role];
@@ -19,7 +20,7 @@ export async function roleInstructions(
       definition.prompt,
       ...(role === "builder" && construction
         ? constructionGuides(construction.request, construction.stage)
-        : definition.references),
+        : (guides ?? definition.references)),
       ...(construction?.outputTarget === "sprite"
         ? ["references/sprite-target"]
         : []),

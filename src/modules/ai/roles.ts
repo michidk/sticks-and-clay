@@ -52,14 +52,15 @@ export const roles = {
     z.object({ plan: z.string().max(4000).optional(), svg: z.string().min(1).max(500_000) }),
     "gpt-6-sol",
     "high",
-    ["references/svg-construction"],
+    // The intent guides each SVG build chooses from; see `svgGuides`.
+    ["svg/builder-icon", "svg/builder-logo", "svg/builder-illustration", "references/svg-construction"],
   ),
   "svg-reader": role("tanstack", "svg/reader", z.object({
     subject: z.string(), alternatives: z.array(z.string()),
     visibleFeatures: z.string(), smallSizeReading: z.string(),
   }), "gpt-6-sol", "high"),
   "svg-judge": {
-    ...role("tanstack", "svg/svg-judge", judgeResult, "gpt-6-astra", "high"),
+    ...role("tanstack", "svg/svg-judge", judgeResult, "gpt-6-astra", "high", ["svg/judge-icon", "svg/judge-logo", "svg/judge-illustration"]),
     inputTemplate: "graphics/graphic-judge-input",
   },
   "svg-collection-judge": {
@@ -162,6 +163,8 @@ export type RunInput<R extends Role = Role> = {
     stage: string;
     outputTarget?: "model" | "sprite";
   };
+  /** Reference prompts to use instead of the role's full list, chosen by the caller. */
+  guides?: readonly string[];
   onActivity?: (tool: string) => Promise<void>;
 };
 

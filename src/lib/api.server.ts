@@ -856,6 +856,7 @@ export async function api(request: Request) {
         validateResolution(project.assetType, input.resolution);
         const previous = workshopSchema.parse(project.workshop || {});
         if (input.resolution === undefined) input.resolution = previous.resolution;
+        input.svgIntent = project.assetType === "svg" ? input.svgIntent ?? previous.svgIntent : undefined;
         if (input.version !== previous.version)
           throw new Error("Collection settings changed; reload before saving");
         const [updated] = await db

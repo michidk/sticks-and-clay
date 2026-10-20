@@ -5,6 +5,7 @@ import { projects, batches, assetVersions, runs, jobs } from "../db/schema";
 import { jobContext } from "./checkpoint.server";
 import { executeAssetVersionJob } from "./model-pipeline.server";
 import { getStorage } from "./storage.server";
+import { workshopSchema, type WorkshopSnapshot } from "./workshop";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 const svg = (fill: string, r: number) =>
@@ -16,10 +17,10 @@ const verdict = (passed: boolean, summary: string) => ({
   improvements: passed ? [] : [{ priority: "major", issue: "Too small", action: "Increase r to 36", view: "full" }],
 });
 
-async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[]) {
+async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], workshop?: WorkshopSnapshot) {
   const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
   await db.insert(projects).values({ id: projectId, name: "Review fixture", description: "test", assetType: "svg", status: "ready" });
-  await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design: "Green circles", designVersion: 1, status: "building" });
+  await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design: "Green circles", designVersion: 1, status: "building", ...(workshop ? { workshop } : {}) });
   await db.insert(assetVersions).values({ id: modelId, projectId, batchId, name: "Circle", prompt: "A green circle" });
   const checkpoint: Record<string, string> = {};
   for (const item of saved) {
@@ -146,4 +147,25 @@ integration("non-square SVG completes with a dimension error instead of an unrev
     expect(model.verdict).toBe("limit_reached");
     expect(model.feedback).toMatchObject({ passed: false, summary: expect.stringContaining("square viewBox") });
   } finally { await t.cleanup(); }
+});
+
+integration.each([
+  ["logo", ["preview.png", "preview-64.png", "preview-16.png", "preview-dark-64.png", "preview-dark-16.png"], ["preview-24.png", "preview-dark-24.png"]],
+  ["illustration", ["preview.png", "preview-64.png"], ["preview-24.png", "preview-16.png", "preview-dark-64.png"]],
+] as const)("%s intent publishes only the previews its review needs", async (svgIntent, kept, skipped) => {
+  const t = await scenario(1, [
+    { step: "svg", role: "svg", iteration: 0, result: { svg: svg("#284e3c", 36) } },
+    { step: "judge:0", role: "svg-judge", iteration: 0, result: verdict(true, "Distinctive mark") },
+    // A saved reading is reopened (and rejected as another role's run) only if the review wrongly takes the icon path.
+    { step: "judge:0:reading", role: "svg-judge", iteration: 0, result: {} },
+  ], { ...workshopSchema.parse({}), svgIntent });
+  try {
+    const model = await t.run();
+    expect(model.status).toBe("done");
+    expect(model.verdict).toBe("approved");
+    for (const file of kept) expect(await getStorage().exists(`${t.base}/${file}`)).toBe(true);
+    for (const file of skipped) expect(await getStorage().exists(`${t.base}/${file}`)).toBe(false);
+  } finally {
+    await t.cleanup();
+  }
 });

@@ -21,6 +21,6 @@ export const assetTypeHints: Record<AssetType, string> = {
   cad: "CadQuery Python, STEP and STL with a 3D preview",
   model: "GLB with a Blender source",
   graphic: "PNG images",
-  svg: "Editable vector graphics",
+  svg: "Icons, logos and vector illustrations",
   pixel: "PNG drawn cell by cell on a grid",
 };

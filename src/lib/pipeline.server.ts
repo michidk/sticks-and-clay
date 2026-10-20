@@ -10,7 +10,7 @@ import { assetRoles } from "../modules/ai/roles";
 import type { AssetType } from "./asset-types";
 import { photographProject } from "./project-photography.server";
 import { renderCollection } from "./collection.server";
-import { mockupReferences, workshopContext } from "./workshop";
+import { mockupReferences, svgIntentOf, workshopContext } from "./workshop";
 import { renderPresentation } from "./workshop-actions.server";
 import { renderMaterial } from "./materials.server";
 import { checkpoint, jobContext } from "./checkpoint.server";
@@ -214,7 +214,7 @@ export async function executeJob(kind: string, targetId: string) {
       const reserved = await tx.select().from(assetVersions).where(eq(assetVersions.batchId, batch.id)).orderBy(assetVersions.createdAt, assetVersions.id);
       const slots = await tx.select().from(assetEntries).where(eq(assetEntries.batchId, batch.id)).orderBy(assetEntries.createdAt, assetEntries.id);
       for (const [index, planned] of result.models.entries()) {
-        const contract = "iconContract" in result ? result.iconContract : undefined;
+        const contract = "iconContract" in result && svgIntentOf(batch.workshop) === "icon" ? result.iconContract : undefined;
         const model = { ...planned, prompt: typeof contract === "string" && contract.trim()
           ? `${planned.prompt}\n\nSHARED ICON CONSTRUCTION\n${contract}\nThe approved design and explicit user requirements take precedence.`
           : planned.prompt };

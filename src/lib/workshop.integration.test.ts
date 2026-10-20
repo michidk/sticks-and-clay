@@ -279,6 +279,39 @@ integration(
     }
   },
 );
+integration(
+  "an SVG project keeps its intent across workshop saves and freezes it into new batches; other types drop it",
+  async () => {
+    const svgId = crypto.randomUUID(), modelId = crypto.randomUUID();
+    for (const [id, assetType] of [[svgId, "svg"], [modelId, "model"]] as const)
+      await db.insert(projects).values({ id, name: "Intent fixture", description: "test", design: "Approved design", designVersion: 1, status: "ready", assetType });
+    try {
+      expect((await send(`projects/${svgId}/workshop`, { version: 0, svgIntent: "logo" }, "PUT")).status).toBe(200);
+      // A save that omits the intent, as MCP clients and older pages do, keeps it.
+      expect((await send(`projects/${svgId}/workshop`, { version: 1, effort: "quick" }, "PUT")).status).toBe(200);
+      expect((await send(`projects/${svgId}/workshop`, { version: 2, svgIntent: "mural" }, "PUT")).status).toBe(400);
+      const [svgProject] = await db.select().from(projects).where(eq(projects.id, svgId));
+      expect(svgProject.workshop?.svgIntent).toBe("logo");
+      const response = await send(`projects/${svgId}/generate`, { count: 1, judgeIterations: 0 });
+      expect(response.status).toBe(201);
+      const [batch] = await db.select().from(batches).where(eq(batches.projectId, svgId));
+      expect(batch.workshop?.svgIntent).toBe("logo");
+      await send(`projects/${svgId}/workshop`, { version: 2, svgIntent: "icon" }, "PUT");
+      expect((await db.select().from(batches).where(eq(batches.id, batch.id)))[0].workshop?.svgIntent).toBe("logo");
+      expect((await send(`projects/${modelId}/workshop`, { version: 0, svgIntent: "logo" }, "PUT")).status).toBe(200);
+      const [modelProject] = await db.select().from(projects).where(eq(projects.id, modelId));
+      expect(modelProject.workshop?.svgIntent).toBeUndefined();
+    } finally {
+      for (const id of [svgId, modelId]) {
+        const rows = await db.select().from(batches).where(eq(batches.projectId, id));
+        if (rows.length) await db.delete(jobs).where(inArray(jobs.targetId, rows.map((b) => b.id)));
+        await db.delete(assetVersions).where(eq(assetVersions.projectId, id));
+        await db.delete(batches).where(eq(batches.projectId, id));
+        await db.delete(projects).where(eq(projects.id, id));
+      }
+    }
+  },
+);
 for (const assetType of ["graphic", "svg"] as const) integration(
   `${assetType} variants retain the actual source as an edit reference and keep their review rounds`,
   async () => {

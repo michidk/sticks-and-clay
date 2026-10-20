@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { roleInstructions } from "./internal/role-instructions.server";
 import { agentSettings } from "./index.server";
+import { svgGuides } from "../../lib/workshop";
 test("conditional guides follow the asset and stage while saved bundles win", async () => {
   const bundle = await roleInstructions("builder", undefined, {
     request: "a tree",
@@ -71,4 +72,21 @@ test("graphic roles stay focused on two-dimensional deliverables", async () => {
   expect(designer).not.toContain("ground-center origins");
   expect(planner).toContain("distinct, useful graphics");
   expect(planner).not.toContain("grounded dimensions");
+});
+
+test("SVG builders and judges receive only the guide for their intent", async () => {
+  const icon = await roleInstructions("svg", undefined, undefined, svgGuides("builder", "icon"));
+  expect(icon).toContain("## Outline icons");
+  expect(icon).toContain("SVG construction studies");
+  for (const intent of ["logo", "illustration"] as const) {
+    const bundle = await roleInstructions("svg", undefined, undefined, svgGuides("builder", intent));
+    expect(bundle).toContain(`## Intent: ${intent}`);
+    expect(bundle).not.toContain("## Outline icons");
+    expect(bundle).not.toContain("SVG construction studies");
+    const judge = await roleInstructions("svg-judge", undefined, undefined, svgGuides("judge", intent));
+    expect(judge).toContain(`## Intent: ${intent}`);
+    expect(judge).not.toContain("unlabeled reading");
+    expect(judge).not.toContain("Junction audit");
+  }
+  expect(await roleInstructions("svg-judge", undefined, undefined, svgGuides("judge", "icon"))).toContain("unlabeled reading");
 });

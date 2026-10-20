@@ -39,7 +39,7 @@ export async function draftBrief(args: RunInput) {
   }
   const profile = await textRoleProfile(args.role);
   const id = crypto.randomUUID(),
-    system = await roleInstructions(args.role, undefined, args.construction);
+    system = await roleInstructions(args.role, undefined, args.construction, args.guides);
   const model = profile.model;
   const rates = pricingSnapshot(model);
   await recordRun(args, {

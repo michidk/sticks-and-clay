@@ -1,5 +1,6 @@
 import { finishedAssetReferences } from "./-lib/finished-asset-references";
 import { ProjectResolution } from "./-components/project-resolution";
+import { ProjectSvgIntent } from "./-components/project-svg-intent";
 import { GenerationDialog } from "./-components/generation-dialog";
 import { AssetDrafts } from "./-components/asset-drafts";
 import { ExportPanel } from "./-components/export";
@@ -362,6 +363,12 @@ function ProjectPage() {
             {(p.assetType === "pixel" || p.assetType === "graphic") && (
               <ProjectResolution
                 projectId={projectId} type={p.assetType} workshop={p.workshop}
+                disabled={Boolean(p.archivedAt)} onSaved={load}
+              />
+            )}
+            {p.assetType === "svg" && (
+              <ProjectSvgIntent
+                projectId={projectId} workshop={p.workshop}
                 disabled={Boolean(p.archivedAt)} onSaved={load}
               />
             )}

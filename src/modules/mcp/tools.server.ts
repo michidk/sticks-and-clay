@@ -121,7 +121,7 @@ export function createStudioMcpServer(options: {
     assetBriefInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/model-brief`, method: "POST", body: input }), { paid: true });
   register("save_design", "Save a new design revision using the current version from get_project. approve=true approves it for generation. To restore history, save the selected old revision with the current version.", write,
     designInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/design`, method: "PUT", body: input }));
-  register("update_workshop", "Save optional pixel-art or graphic resolution, collection variation and 3D self-review effort using the current workshop version. Future batches snapshot them together with the notes on the project's reference images.", write,
+  register("update_workshop", "Save optional pixel-art or graphic resolution, the SVG intent (icon, logo or illustration), collection variation and 3D self-review effort using the current workshop version. Future batches snapshot them together with the notes on the project's reference images.", write,
     workshopSchema.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/workshop`, method: "PUT", body: input }));
   register("generate_asset", "Queue one asset from the approved design. Returns an execution batch ID; poll the project instead of repeating it. Paid AI. judgeIterations controls review rounds. Visual targets require user approval unless visualTargetMode is skip.", write,
     generationInput.omit({ count: true }).extend({ ...projectId.shape, prompt: z.string().trim().min(1).max(12000) }),

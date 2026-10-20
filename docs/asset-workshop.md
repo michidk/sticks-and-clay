@@ -185,6 +185,6 @@ if no image was produced there is no new artifact. Recovery does not retry that
 rejected request automatically. Only the owner should change or clear dimensions.
 Unrelated project and asset edits preserve omitted resolution and canvas fields.
 
-SVG generation always requests a square viewBox with a 1:1 aspect ratio. SVG
+An SVG project has an intent (icon, logo or illustration; see [SVG recognition review](quality-pipeline.md#svg-recognition-review)) that each new batch freezes; unset means icon. SVG generation always requests a square viewBox with a 1:1 aspect ratio. SVG
 coordinates describe vector units, not a raster output resolution. A non-square
 viewBox is a dimension review finding.

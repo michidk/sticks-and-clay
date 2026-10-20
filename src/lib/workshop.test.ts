@@ -5,6 +5,8 @@ import {
   mockupReferences,
   referenceNotesFor,
   constructionGuides,
+  svgGuides,
+  svgIntentOf,
 } from "./workshop";
 import { sourceZip } from "./source-bundle.server";
 import { measureStyle, compareStyle } from "./asset-style";
@@ -99,4 +101,15 @@ test("style comparisons detect palette and image-count drift without depending o
   const warnings = compareStyle(drift, [{ style: reference }], 0).warnings;
   expect(warnings.some((warning) => warning.includes("baseColors"))).toBe(true);
   expect(warnings.some((warning) => warning.includes("imageCount"))).toBe(true);
+});
+
+test("SVG batches without an intent are icons, and an explicit intent reaches the prompts", () => {
+  expect(svgIntentOf(workshopSchema.parse({}))).toBe("icon");
+  expect(svgIntentOf(null)).toBe("icon");
+  expect(workshopContext(workshopSchema.parse({}))).not.toContain("SVG intent");
+  const logo = workshopSchema.parse({ svgIntent: "logo" });
+  expect(workshopContext(logo)).toContain("SVG intent: logo");
+  expect(workshopSchema.safeParse({ svgIntent: "mural" }).success).toBe(false);
+  expect(svgGuides("builder", "icon")).toEqual(["svg/builder-icon", "references/svg-construction"]);
+  expect(svgGuides("judge", "logo")).toEqual(["svg/judge-logo"]);
 });

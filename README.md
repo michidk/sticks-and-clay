@@ -56,7 +56,7 @@ Every model is a real Blender file you can open, edit, and rebuild. Every
 attempt, review, render, and dollar spent stays in its history, including the
 ones that failed.
 
-SVG review includes native 16px and 24px evidence on light and dark backgrounds.
+SVG projects choose an intent (icons, logos or illustrations). Icon review includes native 16px and 24px evidence on light and dark backgrounds; logos add the 16px size, and illustrations are judged at full size and 64px.
 A [CC0 reference pack and three-candidate exploration runner](docs/icon-workflow-research.md#cc0-references-and-silhouette-exploration) support comparing silhouettes before owner-selected refinement.
 
 ## 🔁 How it works
@@ -160,7 +160,7 @@ configuration, scopes, and deployment behind an auth proxy.
   technical failure.
 - 🎨 **Graphics and SVG.** One-shot images through an OpenAI-compatible Image
   API with optional project resolution and per-asset overrides, or square editable
-  vector artwork with shared icon specifications, unlabeled recognition checks, actual-size repair previews, collection
+  vector artwork for icons, logos or illustrations (icons add shared specifications, unlabeled recognition checks and actual-size repair previews), collection
   consistency review, variants, junction diagnostics, and safe SVG output
   (no scripts, external content, or embedded rasters). Dimension mismatches are
   shown for review without failing the job or automatically resizing the output.

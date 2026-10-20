@@ -6,7 +6,7 @@ import type { AssetKind } from "./reviewed-asset.server";
 import { getStorage, readStoredFile } from "./storage.server";
 import { analyzeSvg, validateSvg, viewableReferences } from "./svg";
 import { renderSvg } from "./svg-render.server";
-import { workshopContext } from "./workshop";
+import { svgGuides, svgIntentOf, workshopContext } from "./workshop";
 
 const png = (data: Buffer) => new Blob([new Uint8Array(data)], { type: "image/png" });
 
@@ -46,6 +46,7 @@ export const svgKind: AssetKind = {
   judge: "svg-judge",
   async build(ctx, { node, previous, feedback }) {
     const { model, batch } = ctx;
+    const intent = svgIntentOf(batch.workshop);
     // Iteration 0 keeps the one-shot layout so jobs saved before review rounds resume unchanged.
     const base = `graphics/${model.id}/${ctx.attempt}`;
     const directory = node.iteration ? `${base}/iteration-${node.iteration}` : base;
@@ -76,6 +77,7 @@ export const svgKind: AssetKind = {
         feedback: feedback ? JSON.stringify(feedback, null, 2) : "None",
       }),
       images: images.keys,
+      guides: svgGuides("builder", intent),
     });
     let svg: string;
     try {
@@ -87,15 +89,17 @@ export const svgKind: AssetKind = {
     const rendered = await renderSvg(svg);
     const storage = getStorage();
     const key = `${directory}/graphic.svg`;
-    const previews = [
-      { key: `${directory}/preview.png`, label: "full-size render (768 px) on white", data: rendered.full },
-      { key: `${directory}/preview-64.png`, label: "64 px render on white, for legibility at small size", data: rendered.small },
-      { key: `${directory}/preview-24.png`, label: "24 px render on white, for UI icon legibility when requested", data: rendered.icon },
-      { key: `${directory}/preview-16.png`, label: "16 px render on white", data: rendered.tiny },
-      { key: `${directory}/preview-dark-64.png`, label: "64 px render on dark; currentColor is light, fixed paints unchanged", data: rendered.darkSmall },
-      { key: `${directory}/preview-dark-24.png`, label: "24 px render on dark; currentColor is light, fixed paints unchanged", data: rendered.darkIcon },
-      { key: `${directory}/preview-dark-16.png`, label: "16 px render on dark; currentColor is light, fixed paints unchanged", data: rendered.darkTiny },
+    const all = [
+      { key: `${directory}/preview.png`, label: "full-size render (768 px) on white", data: rendered.full, intents: ["icon", "logo", "illustration"] },
+      { key: `${directory}/preview-64.png`, label: "64 px render on white, for legibility at small size", data: rendered.small, intents: ["icon", "logo", "illustration"] },
+      { key: `${directory}/preview-24.png`, label: "24 px render on white, for UI icon legibility when requested", data: rendered.icon, intents: ["icon"] },
+      { key: `${directory}/preview-16.png`, label: "16 px render on white", data: rendered.tiny, intents: ["icon", "logo"] },
+      { key: `${directory}/preview-dark-64.png`, label: "64 px render on dark; currentColor is light, fixed paints unchanged", data: rendered.darkSmall, intents: ["icon", "logo"] },
+      { key: `${directory}/preview-dark-24.png`, label: "24 px render on dark; currentColor is light, fixed paints unchanged", data: rendered.darkIcon, intents: ["icon"] },
+      { key: `${directory}/preview-dark-16.png`, label: "16 px render on dark; currentColor is light, fixed paints unchanged", data: rendered.darkTiny, intents: ["icon", "logo"] },
     ];
+    // Illustrations are judged at full size and 64 px; logos add the favicon size and dark backgrounds.
+    const previews = all.filter((preview) => preview.intents.includes(intent));
     await storage.upload(new Blob([svg], { type: "image/svg+xml" }), key);
     for (const preview of previews) await storage.upload(png(preview.data), preview.key);
     const analysis = { ...analyzeSvg(svg), render: rendered.ink };
