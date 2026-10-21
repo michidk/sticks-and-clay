@@ -2,9 +2,11 @@ import { defineAgent, defineDynamic } from "eve";
 import { createOpenAI } from "@ai-sdk/openai";
 import { wrapLanguageModel } from "ai";
 import { statelessResponses } from "./stateless";
+import { responsesFetch } from "../../src/lib/responses-stream";
 const provider = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   baseURL: process.env.OPENAI_BASE_URL,
+  fetch: responsesFetch,
 });
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
