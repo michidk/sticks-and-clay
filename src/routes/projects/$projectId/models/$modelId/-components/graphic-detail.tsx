@@ -19,11 +19,10 @@ import { ReopenAsIdea } from "../../../-components/reopen-as-idea";
 import { GraphicVariant } from "../../../-components/graphic-variant";
 import { PixelExports } from "./pixel-exports";
 import { CadExports } from "./cad-exports";
-import type { Workspace } from "../-lib/model";
+import { ReviewNotes } from "./review";
+import type { Review, Workspace } from "../-lib/model";
 
 const namedParts = z.array(z.object({ name: z.string(), key: z.string() }));
-
-type Review = { score?: number; passed?: boolean; summary?: string; improvements?: { priority: string; issue: string }[] };
 
 /** One generated graphic or SVG: the image large, its versions, the review, and the actions on it. */
 export function GraphicDetail({
@@ -203,15 +202,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
           <Card className="panel">
             <h2>Review</h2>
             {review?.summary ? (
-              <>
-                <p><strong>{review.score}/100</strong> · {review.passed ? "Passed" : "Changes requested"}</p>
-                <p>{review.summary}</p>
-                {!!review.improvements?.length && (
-                  <ul className="list-disc pl-5">
-                    {review.improvements.map((item, index) => <li key={index}>[{item.priority}] {item.issue}</li>)}
-                  </ul>
-                )}
-              </>
+              <ReviewNotes review={review} />
             ) : (
               <p className="muted">{working ? "The review appears when the first build is judged." : "This round was not reviewed."}</p>
             )}
