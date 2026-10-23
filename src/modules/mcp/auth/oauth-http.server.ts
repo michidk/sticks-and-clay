@@ -87,6 +87,13 @@ export function scopeInputName(scope: McpScope) {
   return `scope_${scope.replaceAll(":", "_").replaceAll("-", "_")}`;
 }
 
+function consentRequestBinding(url: URL) {
+  const params = [...url.searchParams.entries()].sort(([a, av], [b, bv]) =>
+    a === b ? av.localeCompare(bv) : a.localeCompare(b),
+  );
+  return hashOAuthSecret(`${url.pathname}?${new URLSearchParams(params)}`);
+}
+
 function consentCookie(token: string, config: McpConfig, clear = false) {
   return `${cookieName}=${token}; Path=/oauth/authorize; HttpOnly; SameSite=Lax; Max-Age=${clear ? 0 : 600}${config.serverUrl.protocol === "https:" ? "; Secure" : ""}`;
 }
@@ -218,7 +225,7 @@ async function validConsent(
         audience: "owner-consent",
       },
     );
-    if (payload.request !== hashOAuthSecret(url.pathname + url.search))
+    if (payload.request !== consentRequestBinding(url))
       return false;
     return await store.consumeConsentTransaction(csrf);
   } catch {
@@ -365,7 +372,7 @@ export function createOAuthHttpHandler(config: McpConfig, store: OAuthStore) {
         if (request.method === "GET") {
           const expiry = new Date(Date.now() + 600_000);
           const token = await new SignJWT({
-            request: hashOAuthSecret(url.pathname + url.search),
+            request: consentRequestBinding(url),
           })
             .setProtectedHeader({ alg: "HS256", typ: "mcp-consent+jwt" })
             .setIssuer(config.issuer.toString())
