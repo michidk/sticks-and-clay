@@ -1,5 +1,6 @@
 import { test, expect } from "bun:test";
 import { requestImage } from "./image-api";
+import { imageModel } from "./provider.server";
 const base = {
   model: "gpt-image-2",
   quality: "medium",
@@ -7,6 +8,12 @@ const base = {
   references: [] as File[],
   signal: new AbortController().signal,
 };
+
+test("gateway image requests use the provider's namespaced model id", () => {
+  expect(imageModel("gateway", "gpt-image-2")).toBe("codex/gpt-image-2");
+  expect(imageModel("gateway", "codex/gpt-image-2")).toBe("codex/gpt-image-2");
+  expect(imageModel("openai", "gpt-image-2")).toBe("gpt-image-2");
+});
 test("image adapter sends generation and multipart reference requests with usage", async () => {
   const received: Request[] = [];
   const server = Bun.serve({

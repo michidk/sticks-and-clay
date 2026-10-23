@@ -98,7 +98,7 @@ integration("partial mockups reuse completed runs, generate remaining images onc
     globalThis.fetch = Object.assign(async (_url: string | URL | Request, init?: RequestInit) => {
       providerRequests++;
       expect(JSON.parse(String(init?.body))).toMatchObject({
-        model: "gpt-image-2", quality: "medium", prompt: "Saved concept two", size: "1536x1024", n: 1,
+        model: "codex/gpt-image-2", quality: "medium", prompt: "Saved concept two", size: "1536x1024", n: 1,
       });
       return Response.json({ data: [{ b64_json: png.toString("base64") }], usage: { input_tokens: 12, output_tokens: 24 } });
     }, { preconnect: originalFetch.preconnect });

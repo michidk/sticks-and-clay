@@ -230,6 +230,11 @@ Admin → Settings. The app, worker, and Eve must
 use the same credentials and storage settings. Set `BLENDER_BIN` if Blender is
 outside your `PATH`.
 
+The gateway image provider sends unqualified image model names such as
+`gpt-image-2` as `codex/gpt-image-2` to select the Codex subscription route.
+Explicitly qualified model overrides are sent unchanged. The OpenAI API
+provider uses the model name unchanged.
+
 Start PostgreSQL, apply migrations, and start the background services:
 
 ```sh

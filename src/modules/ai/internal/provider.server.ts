@@ -41,3 +41,8 @@ export async function imageProvider(kind: "gateway" | "openai") {
     throw new Error("Set OPENAI_IMAGES_API_KEY to use the official OpenAI image provider");
   return { key, url: "https://api.openai.com/v1" };
 }
+
+/** The gateway namespaces OpenAI image models under its Codex provider. */
+export function imageModel(kind: "gateway" | "openai", model: string) {
+  return kind === "gateway" && !model.includes("/") ? `codex/${model}` : model;
+}

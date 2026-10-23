@@ -1,4 +1,4 @@
-import { imageProvider } from "./provider.server";
+import { imageModel, imageProvider } from "./provider.server";
 import {
   requestImage,
   type ImageSize,
@@ -39,6 +39,7 @@ export async function imageRequest(
 ): Promise<{ path: string; key: string; runId: string; name: string }> {
   await args.assertActive();
   const profile = await imageRoleProfile(args.role);
+  const requestModel = imageModel(profile.settings.imageProvider, profile.model);
   if (!(
     /^models\/[0-9a-f-]+\/[0-9a-f-]+\/(concept|iteration-\d+\/textures)$/.test(
       args.directory,
@@ -116,7 +117,7 @@ export async function imageRequest(
     stepId,
     images: args.images || [],
     engine: "imagegen",
-    model: profile.model,
+    model: requestModel,
     effort: profile.quality,
     systemPrompt: `Image API · ${args.size || "1024x1024"} · ${profile.quality} quality · ${profile.settings.imageProvider === "openai" ? "OpenAI API" : "gateway"}`,
     promptVersion: "image-api-v3",
@@ -132,7 +133,7 @@ export async function imageRequest(
   try {
     const response = await requestImage({
       provider: await imageProvider(profile.settings.imageProvider),
-      model: profile.model,
+      model: requestModel,
       quality: profile.quality,
       size: args.size,
       prompt: args.prompt,
