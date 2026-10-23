@@ -372,7 +372,7 @@ export function createOAuthHttpHandler(config: McpConfig, store: OAuthStore) {
         if (request.method === "GET") {
           const expiry = new Date(Date.now() + 600_000);
           const token = await new SignJWT({
-            request: consentRequestBinding(url),
+            request: consentRequestBinding(authorizationUrl),
           })
             .setProtectedHeader({ alg: "HS256", typ: "mcp-consent+jwt" })
             .setIssuer(config.issuer.toString())
