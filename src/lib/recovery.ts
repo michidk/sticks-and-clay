@@ -15,6 +15,7 @@ export function recoveryAction(events: readonly Event[], failedResult = false) {
     );
   const index = boundary ? events.indexOf(boundary) : -1;
   const failure = boundary?.type === "turn.failed" ? JSON.stringify(boundary.data) ?? "" : "";
+  const finalizationFailure = failure.includes("structured output finalization produced no result");
   if (
     index >= start &&
     (boundary?.type === "session.failed" ||
@@ -36,7 +37,8 @@ export function recoveryAction(events: readonly Event[], failedResult = false) {
     ["turn.failed", "turn.cancelled"].includes(
       boundary.type,
     ) ||
-    failedResult
+    failedResult ||
+    finalizationFailure
   )
     return "continue";
   return "replay";

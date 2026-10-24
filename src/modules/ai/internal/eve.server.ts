@@ -340,6 +340,8 @@ export async function agent<T>(
     }
     signal.throwIfAborted();
     if (!complete) throw new Error("Agent stream ended without completion");
+    if (result === undefined)
+      throw new Error("Result validation: structured output finalization produced no result");
     await assertJobActive();
     let parsed: T;
     try {

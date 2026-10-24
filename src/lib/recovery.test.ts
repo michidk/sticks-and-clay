@@ -27,6 +27,10 @@ test("failed turns continue, operator input stays blocked, invalid results can b
   expect(recoveryAction(events("turn.started", "turn.completed"), true)).toBe(
     "continue",
   );
+  expect(recoveryAction([
+    { type: "turn.started" },
+    { type: "turn.failed", data: { message: "structured output finalization produced no result" } },
+  ])).toBe("continue");
 });
 test("dead workflows and lost sandbox state need a new run, ordinary failures retain the session", () => {
   expect(recoveryAction(events("session.failed"))).toBe("restart");
