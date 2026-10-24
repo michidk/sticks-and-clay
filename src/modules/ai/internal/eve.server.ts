@@ -34,7 +34,7 @@ const client = () =>
     },
   });
 export async function agent<T>(
-  args: RunInput & { schema: any },
+  args: RunInput & { schema: any; retryFinalization?: boolean },
 ): Promise<{ result: T; runId: string }> {
   await assertJobActive();
   const key = args.stepId
@@ -378,6 +378,15 @@ export async function agent<T>(
         finishedAt: new Date(),
       })
       .where(eq(runs.id, id));
+    // Eve can occasionally lose the structured result during finalization even
+    // though the turn has otherwise completed. Replay that turn once so a
+    // transient gateway/runtime omission does not strand the job for manual
+    // recovery. The guard keeps persistent failures visible and bounded.
+    if (
+      !args.retryFinalization &&
+      String(error).includes("structured output finalization produced no result")
+    )
+      return agent({ ...args, retryFinalization: true });
     throw error;
   } finally {
     if (!reportedSteps && !estimatedSteps) {
