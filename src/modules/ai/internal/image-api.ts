@@ -4,7 +4,13 @@ import { z } from "zod";
 export type ImageUsage = {
   input_tokens: number;
   output_tokens: number;
-  input_tokens_details?: { text_tokens?: number; image_tokens?: number };
+  input_tokens_details?: {
+    text_tokens?: number;
+    image_tokens?: number;
+    cached_tokens?: number;
+    cached_text_tokens?: number;
+    cached_image_tokens?: number;
+  };
   output_tokens_details?: { text_tokens?: number; image_tokens?: number };
   [key: string]: unknown;
 };

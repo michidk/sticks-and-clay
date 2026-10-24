@@ -291,12 +291,22 @@ export async function agent<T>(
         contextChars += stepOutputChars;
         stepActive = false;
       }
-      if (event.type === "action.result")
-        contextChars += JSON.stringify(data, (_key, value) =>
-          value && typeof value === "object" && value.type === "image"
-            ? { type: "image", estimatedTokens: 1000 }
-            : value,
-        ).length;
+      if (event.type === "action.result") {
+        // Image payloads are intentionally replaced before they are persisted,
+        // so their serialized placeholder is only a few characters long. Keep
+        // the text estimate and add the documented 1,000-token image estimate
+        // explicitly; otherwise vision turns are dramatically underpriced when
+        // Eve does not report provider usage.
+        let imageCount = 0;
+        const serialized = JSON.stringify(data, (_key, value) => {
+          if (value && typeof value === "object" && value.type === "image") {
+            imageCount++;
+            return { type: "image" };
+          }
+          return value;
+        });
+        contextChars += serialized.length + imageCount * 4_000;
+      }
       if (event.type === "message.completed") output = data.message || output;
       if (event.type === "result.completed") {
         result = data.result;

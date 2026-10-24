@@ -86,20 +86,43 @@ export function imagePrice(
   usage: {
     input_tokens?: number;
     output_tokens?: number;
-    input_tokens_details?: { text_tokens?: number; image_tokens?: number };
-    output_tokens_details?: { image_tokens?: number };
+    input_tokens_details?: {
+      text_tokens?: number;
+      image_tokens?: number;
+      cached_tokens?: number;
+      cached_text_tokens?: number;
+      cached_image_tokens?: number;
+    };
+    output_tokens_details?: { text_tokens?: number; image_tokens?: number };
   },
   rates: PricingSnapshot,
 ) {
   if (rates.unavailable) return null;
   const inputText = usage.input_tokens_details?.text_tokens;
   const inputImage = usage.input_tokens_details?.image_tokens;
+  const cachedText = usage.input_tokens_details?.cached_text_tokens ?? 0;
+  const cachedImage = usage.input_tokens_details?.cached_image_tokens ?? 0;
+  const cachedTotal = usage.input_tokens_details?.cached_tokens ?? 0;
+  const outputText = usage.output_tokens_details?.text_tokens;
   const outputImage = usage.output_tokens_details?.image_tokens;
-  if (inputText !== undefined || inputImage !== undefined || outputImage !== undefined)
+  if (
+    inputText !== undefined ||
+    inputImage !== undefined ||
+    outputText !== undefined ||
+    outputImage !== undefined
+  )
     return (
-      (inputText || 0) * (rates.textInput ?? rates.input) +
-      (inputImage || 0) * (rates.imageInput ?? rates.input) +
-      (outputImage ?? usage.output_tokens ?? 0) * (rates.imageOutput ?? rates.output)
+      Math.max(0, (inputText || 0) - cachedText) * (rates.textInput ?? rates.input) +
+      cachedText * (rates.cachedTextInput ?? rates.cached ?? rates.input) +
+      Math.max(0, (inputImage || 0) - cachedImage) * (rates.imageInput ?? rates.input) +
+      cachedImage * (rates.cachedImageInput ?? rates.cached ?? rates.input) +
+      // Some providers report only aggregate cached input tokens. Use them only
+      // for the remaining input so detailed cached classes are never double-
+      // counted.
+      Math.max(0, cachedTotal - cachedText - cachedImage) * rates.cached +
+      (outputText || 0) * rates.output +
+      (outputImage ?? (outputText === undefined ? usage.output_tokens || 0 : 0)) *
+        (rates.imageOutput ?? rates.output)
     ) / 1e6;
   return (
     (usage.input_tokens || 0) * rates.input +
