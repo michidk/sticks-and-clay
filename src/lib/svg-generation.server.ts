@@ -69,7 +69,7 @@ export const svgKind: AssetKind = {
       input: await roleInput("svg", {
         design: batch.design,
         name: model.name,
-        request: ctx.request + workshopContext(batch.workshop, false),
+        request: ctx.request + workshopContext(batch.workshop, false, "svg"),
         size: "Square vector canvas, 1:1 aspect ratio. Use a square viewBox; vector units are not a raster resolution.",
         source: source.join("\n\n"),
         images: images.notes,
