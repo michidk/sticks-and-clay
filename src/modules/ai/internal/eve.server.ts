@@ -34,7 +34,7 @@ const client = () =>
     },
   });
 export async function agent<T>(
-  args: RunInput & { schema: any; retryFinalization?: boolean },
+  args: RunInput & { schema: any; retryFinalization?: number; restart?: boolean },
 ): Promise<{ result: T; runId: string }> {
   await assertJobActive();
   const key = args.stepId
@@ -63,7 +63,7 @@ export async function agent<T>(
         throw error;
       })
     : undefined;
-  const restart = savedSnapshot && recoveryAction(savedSnapshot.events) === "restart";
+  const restart = args.restart || (savedSnapshot && recoveryAction(savedSnapshot.events) === "restart");
   // A dead workflow or lost sandbox cannot continue. Retain its run and usage.
   const id = (!restart && saved?.id) || crypto.randomUUID(),
     systemPrompt = await roleInstructions(
@@ -383,10 +383,13 @@ export async function agent<T>(
     // transient gateway/runtime omission does not strand the job for manual
     // recovery. The guard keeps persistent failures visible and bounded.
     if (
-      !args.retryFinalization &&
-      String(error).includes("structured output finalization produced no result")
+      String(error).includes("structured output finalization produced no result") &&
+      (args.retryFinalization ?? 0) < 2
     )
-      return agent({ ...args, retryFinalization: true });
+      // A missing final result is a gateway/runtime race. Start a fresh Eve
+      // session for the bounded retry; reattaching the same session can replay
+      // the already-corrupted finalization state.
+      return agent({ ...args, retryFinalization: (args.retryFinalization ?? 0) + 1, restart: true });
     throw error;
   } finally {
     if (!reportedSteps && !estimatedSteps) {
