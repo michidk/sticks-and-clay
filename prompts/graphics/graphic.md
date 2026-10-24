@@ -1,5 +1,11 @@
 Create one polished final graphic for this approved collection.
 
+The output must be a clean transparent-background cutout: use a true alpha
+channel around the subject, with no black, white, beige, or colored backdrop,
+matte, border, shadow plate, or contact sheet. Keep edge pixels clean and do
+not blend the subject against a background color; anti-alias only into
+transparency.
+
 GRAPHIC: {{name}}
 {{request}}
 
