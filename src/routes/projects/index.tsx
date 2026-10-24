@@ -315,7 +315,7 @@ function ProjectsPage() {
                         alt={`${p.name} ${p.thumbnail ? "collection render" : "reference image"}`}
                         style={
                           p.thumbnail || p.assetType !== "model"
-                            ? { objectFit: "contain", padding: p.thumbnail ? 0 : 14 }
+                            ? { objectFit: p.thumbnail ? "cover" : "contain", padding: p.thumbnail ? 0 : 14 }
                             : undefined
                         }
                       />
