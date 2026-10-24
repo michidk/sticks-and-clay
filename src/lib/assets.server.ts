@@ -56,6 +56,8 @@ export async function updateAsset(
     ...updates,
     imageSize: updates.imageSize ?? existing.input.imageSize,
     resolution: updates.resolution === undefined ? existing.input.resolution : updates.resolution,
+    template: updates.template ?? existing.input.template,
+    transparentBackground: updates.transparentBackground === undefined ? existing.input.transparentBackground : updates.transparentBackground,
   };
   validateGeneration(project, input);
   await validateStartingPoint(project.id, project.assetType, input.startingPoint);

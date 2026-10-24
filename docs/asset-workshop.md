@@ -2,6 +2,10 @@
 
 The workshop adds reusable construction and visual correction to the existing v4 generation graph. It keeps approved design snapshots, four required modeling passes, immutable versions, separate artistic judging, and existing run/session/cost recovery. The prompts and helpers support staged construction, reusable modeling vocabulary and collection consistency. See [workshop design notes](../prompts/references/WORKSHOP-INSPIRATION.md).
 
+## Output templates
+
+Graphic and SVG generations can use output templates for favicons, logo marks and app icons. A template is frozen with the batch and adds focused guidance for square output, small-size legibility, transparency and safe padding while preserving the approved design and brief. Custom keeps the existing behavior. Graphic requests also save their transparency setting and output resolution with the idea.
+
 ## Idea starting points
 
 An idea can carry one primary starting point separately from appearance references. Upload a file or select a compatible completed version in the project; CAD saved versions seed from their STEP geometry. Source receipts contain the original filename, format, SHA-256, units, derived previews and import mode. Replacement/removal uses the current hash to reject stale edits. Source changes are restricted to Ideas, and every new generation freezes its own receipt in the batch snapshot. Old sources and previous versions remain intact. Generated variants continue from their selected version before considering the original idea source.
