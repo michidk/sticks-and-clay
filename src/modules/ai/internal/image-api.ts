@@ -21,6 +21,7 @@ export async function requestImage(args: {
   quality: string;
   size?: ImageSize;
   prompt: string;
+  transparentBackground?: boolean;
   references: File[];
   signal: AbortSignal;
 }): Promise<ImageApiResult> {
@@ -29,12 +30,10 @@ export async function requestImage(args: {
     quality: args.quality,
     prompt: args.prompt,
     size: args.size || "1024x1024",
-    // Graphics are exported as cutouts. Asking the provider for an alpha
-    // channel avoids the black/colored matte that the judge currently sees.
-    background: "transparent",
     output_format: "png",
     n: "1",
   };
+  if (args.transparentBackground) (fields as Record<string, string>).background = "transparent";
   const headers: Record<string, string> = {
     Authorization: `Bearer ${args.provider.key}`,
   };

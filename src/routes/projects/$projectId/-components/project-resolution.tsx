@@ -15,7 +15,7 @@ export function ProjectResolution({ projectId, type, workshop, disabled, onSaved
     const form = new FormData(event.currentTarget);
     setBusy(true); setError("");
     try {
-      await request(`projects/${projectId}/workshop`, json({ ...workshopSchema.parse(workshop ?? {}), resolution: resolutionFromForm(form) }, "PUT"));
+      await request(`projects/${projectId}/workshop`, json({ ...workshopSchema.parse(workshop ?? {}), resolution: resolutionFromForm(form), ...(type === "graphic" ? { transparentBackground: form.get("transparentBackground") === "on" } : {}) }, "PUT"));
       await onSaved();
     } catch (error) { setError(error instanceof Error ? error.message : String(error)); }
     finally { setBusy(false); }
@@ -23,6 +23,7 @@ export function ProjectResolution({ projectId, type, workshop, disabled, onSaved
   return <form onSubmit={save} className="panel mb-6 space-y-3">
     <fieldset disabled={disabled || busy} className="space-y-3">
       <ResolutionFields key={workshop?.version ?? 0} type={type} value={workshop?.resolution} />
+      {type === "graphic" && <label className="flex items-center gap-2"><input name="transparentBackground" type="checkbox" defaultChecked={workshop?.transparentBackground !== false} /> Transparent background</label>}
       <p className="muted">Applies to future versions. Each asset can override this setting.</p>
       <Button type="submit" variant="outline">{busy ? "Saving…" : "Save project resolution"}</Button>
     </fieldset>

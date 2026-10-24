@@ -54,10 +54,11 @@ const graphicKind: AssetKind = {
         directory: `graphics/${model.id}/${ctx.attempt}`,
         prompt: basePrompt + (part
           ? `\n\nNAMED PART OUTPUT\nGenerate only part ${JSON.stringify(part.name)} of this asset: ${part.brief}\nThe other named parts are generated as separate files in this same version. Keep their shared scale, alignment, palette and visual language consistent. Do not include other parts or a contact sheet in this file.`
-          : "") + revision,
+          : "") + revision + (batch.workshop?.transparentBackground !== false ? "\n\nOUTPUT: Use a true transparent alpha background with no matte, border, or colored backdrop." : ""),
         size,
         images: [...(previousKey ? [previousKey] : batch.workshop?.startingPoint?.preview ? [batch.workshop.startingPoint.preview] : []), ...ctx.references],
         assertActive: assertJobActive,
+        transparentBackground: batch.workshop?.transparentBackground !== false,
       });
       const mismatch = dimensionError(await pngResolution(image.key), { width, height });
       if (mismatch) dimensionErrors.push(part ? `${part.name}: ${mismatch}` : mismatch);

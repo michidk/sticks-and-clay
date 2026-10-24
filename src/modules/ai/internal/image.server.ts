@@ -32,6 +32,7 @@ export type ImageInput = {
   iteration?: number;
   stepId?: string;
   images?: string[];
+  transparentBackground?: boolean;
   assertActive: () => Promise<void>;
 };
 export async function imageRequest(
@@ -137,6 +138,7 @@ export async function imageRequest(
       quality: profile.quality,
       size: args.size,
       prompt: args.prompt,
+      transparentBackground: args.transparentBackground,
       references,
       signal: controller.signal,
     });

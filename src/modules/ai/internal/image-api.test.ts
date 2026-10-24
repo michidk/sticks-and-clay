@@ -26,7 +26,6 @@ test("image adapter sends generation and multipart reference requests with usage
           quality: "medium",
           prompt: "A clay barn",
           size: "1024x1024",
-          background: "transparent",
           output_format: "png",
           n: 1,
         });

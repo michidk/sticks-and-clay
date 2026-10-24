@@ -23,6 +23,7 @@ export const svgGuides = (role: "builder" | "judge", intent: SvgIntent) =>
 
 export const workshopSchema = z.object({
   resolution: resolutionSchema.nullable().optional(),
+  transparentBackground: z.boolean().optional(),
   svgIntent: z.enum(svgIntents).optional(),
   version: z.number().int().min(0).default(0),
   variation: z.number().int().min(0).max(100).default(25),
