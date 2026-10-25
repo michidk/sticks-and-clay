@@ -59,6 +59,11 @@ test("analysis reports structure, palette and stroke widths for the judge", () =
   });
 });
 
+test("analysis exposes executable icon construction quality", () => {
+  const analysis = analyzeSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2L22 2"/><path d="M2 2L22 2"/></g></svg>');
+  expect(analysis.quality).toMatchObject({ square24: true, consistentStroke: true, duplicateSegments: 1 });
+});
+
 test("SVG sources are not sent to vision models as images", () => {
   expect(viewableReferences(["graphics/a.svg", "references/b.png", "references/c.jpg"])).toEqual(["references/b.png", "references/c.jpg"]);
 });

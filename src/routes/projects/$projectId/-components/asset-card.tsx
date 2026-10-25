@@ -198,6 +198,23 @@ export function AssetCard({
             )}
           </details>
         )}
+        {isGraphics && m.artifacts?.format === "svg" && m.artifacts.image?.endsWith("graphic.svg") && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground" aria-label="Native SVG previews">
+            <span>Native size</span>
+            <AssetImage
+              src={fileUrl(m.artifacts.image.replace(/graphic\.svg$/, "preview-24.png"))}
+              width={"full"}
+              alt={`${name} at 24 pixels`}
+              className="h-6 w-6 rounded border border-border bg-white"
+            />
+            <AssetImage
+              src={fileUrl(m.artifacts.image.replace(/graphic\.svg$/, "preview-16.png"))}
+              width={"full"}
+              alt={`${name} at 16 pixels`}
+              className="h-4 w-4 rounded border border-border bg-white"
+            />
+          </div>
+        )}
         {m.error && (
           <Alert variant="destructive" className="error">
             <AlertDescription>{describeError(m.error)}</AlertDescription>

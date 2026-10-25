@@ -107,16 +107,19 @@ export const svgKind: AssetKind = {
     const dimensionErrors = viewBox && viewBox[2] !== viewBox[3]
       ? ["Output dimension error: SVG requires a square viewBox (1:1). The returned vector canvas is not square."] : [];
     const touchesEdge = rendered.ink.empty ? [] : rendered.ink.touchesEdge;
+    const tightMargins = rendered.ink.empty ? [] : Object.entries(rendered.ink.margins)
+      .filter(([, margin]) => margin < 0.08)
+      .map(([side]) => side);
     const iconQualityIssues = intent === "icon" ? [
       ...(analysis.quality?.square24 ? [] : ["Icon construction should use viewBox=\"0 0 24 24\" unless the approved design explicitly specifies another grid."]),
       ...(analysis.quality?.consistentStroke ? [] : ["Icon strokes do not share one width, cap, and join; normalize the shared construction before export."]),
       ...(rendered.ink.empty ? ["The rendered icon contains no visible ink."] : []),
       ...(touchesEdge.length ? [`Icon ink touches the canvas edge: ${touchesEdge.join(", ")}. Leave a visible safety margin.`] : []),
+      ...(tightMargins.length ? [`Icon ink is closer than 2 user units to the ${tightMargins.join(", ")} edge. Increase the safety margin.`] : []),
       ...(analysis.quality?.duplicateSegments ? [`${analysis.quality.duplicateSegments} duplicate stroke segment(s) detected; draw shared edges once.`] : []),
-      ...(analysis.quality?.nearEndpointPairs ? [`${analysis.quality.nearEndpointPairs} near endpoint pair(s) detected; inspect handles, rims, and interior details for accidental tangencies.`] : []),
     ] : [];
     const enrichedAnalysis = { ...analysis, quality: { ...analysis.quality, issues: iconQualityIssues } };
     await db.update(runs).set({ result: { ...result, key, analysis: enrichedAnalysis, dimensionErrors, previews: previews.map(({ key, label }) => ({ key, label })) } }).where(eq(runs.id, runId));
-    return { key, dimensionErrors, referenceEvidence, previews: previews.map(({ key, label }) => ({ key, label })), analysis: enrichedAnalysis };
+    return { key, dimensionErrors, qualityErrors: intent === "icon" ? iconQualityIssues : [], referenceEvidence, previews: previews.map(({ key, label }) => ({ key, label })), analysis: enrichedAnalysis };
   },
 };
