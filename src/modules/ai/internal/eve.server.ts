@@ -33,6 +33,16 @@ const client = () =>
       },
     },
   });
+
+export function parseStructuredOutput(output: string): unknown {
+  if (!output.trim()) return undefined;
+  try {
+    return JSON.parse(output.replace(/^```(?:json)?\s*|\s*```$/g, ""));
+  } catch {
+    return undefined;
+  }
+}
+
 export async function agent<T>(
   args: RunInput & { schema: any; retryFinalization?: number; restart?: boolean },
 ): Promise<{ result: T; runId: string }> {
@@ -350,14 +360,16 @@ export async function agent<T>(
     }
     signal.throwIfAborted();
     if (!complete) throw new Error("Agent stream ended without completion");
-    if (result === undefined)
+    // Eve normally emits result.completed, but a completed turn can lose that
+    // event while retaining the final JSON message. Recover that payload before
+    // treating the run as a missing-result failure.
+    const structuredResult = result === undefined ? parseStructuredOutput(output) : result;
+    if (structuredResult === undefined)
       throw new Error("Result validation: structured output finalization produced no result");
     await assertJobActive();
     let parsed: T;
     try {
-      parsed = args.schema.parse(
-        result ?? JSON.parse(output.replace(/^```(?:json)?\s*|\s*```$/g, "")),
-      ) as T;
+      parsed = args.schema.parse(structuredResult) as T;
     } catch (error) {
       throw new Error("Result validation: " + String(error));
     }
