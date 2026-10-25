@@ -207,6 +207,14 @@ export async function executeJob(kind: string, targetId: string) {
     }
     await assertJobActive();
     await db.transaction(async (tx) => {
+      const iconContract = "iconContract" in result && typeof result.iconContract === "string" ? result.iconContract.trim() : undefined;
+      if (iconContract && svgIntentOf(batch.workshop) === "icon")
+        await tx.update(batches).set({ workshop: {
+          ...(batch.workshop ?? {}), iconContract,
+          version: batch.workshop?.version ?? 0,
+          variation: batch.workshop?.variation ?? 25,
+          effort: batch.workshop?.effort ?? "standard",
+        } }).where(eq(batches.id, batch.id));
       await tx
         .update(jobs)
         .set({ checkpoint: { ...job.checkpoint, applied: "yes" } })
@@ -214,7 +222,7 @@ export async function executeJob(kind: string, targetId: string) {
       const reserved = await tx.select().from(assetVersions).where(eq(assetVersions.batchId, batch.id)).orderBy(assetVersions.createdAt, assetVersions.id);
       const slots = await tx.select().from(assetEntries).where(eq(assetEntries.batchId, batch.id)).orderBy(assetEntries.createdAt, assetEntries.id);
       for (const [index, planned] of result.models.entries()) {
-        const contract = "iconContract" in result && svgIntentOf(batch.workshop) === "icon" ? result.iconContract : undefined;
+        const contract = iconContract;
         const model = { ...planned, prompt: typeof contract === "string" && contract.trim()
           ? `${planned.prompt}\n\nSHARED ICON CONSTRUCTION\n${contract}\nThe approved design and explicit user requirements take precedence.`
           : planned.prompt };

@@ -17,6 +17,7 @@ export type Review = z.infer<typeof judgeResult>;
 /** One produced version of an asset plus what the judge needs to see of it. */
 export type Candidate = {
   dimensionErrors?: string[];
+  qualityErrors?: string[];
   requiredChecksPassed?: boolean;
   key: string;
   /** Named files that together form this version; `key` remains its cover image. */
@@ -181,6 +182,13 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
             })));
             await db.update(runs).set({ result }).where(eq(runs.id, runId));
           }
+          if (candidate.qualityErrors?.length) {
+            result.passed = false;
+            result.improvements.push(...candidate.qualityErrors.map((issue) => ({
+              priority: "major" as const, issue, action: "Repair the SVG geometry and re-render at native icon sizes before approval", view: "construction",
+            })));
+            await db.update(runs).set({ result }).where(eq(runs.id, runId));
+          }
           result.passed = reviewPassed(result);
           passed = result.passed;
           await db
@@ -202,20 +210,21 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
   if (!candidate && !unsupportedResolution) throw new Error("No graphic was produced");
   await assertJobActive();
   const dimensionErrors = unsupportedResolution ? [unsupportedResolution] : candidate?.dimensionErrors ?? [];
-  if (dimensionErrors.length) review = {
-    passed: false, score: review?.score ?? 0, summary: dimensionErrors.join("\n"),
-    improvements: dimensionErrors.map((issue) => ({ priority: "major", issue, action: "Review the output dimensions. Change the resolution only if you intend to override it.", view: "dimensions" })),
+  const qualityErrors = candidate?.qualityErrors ?? [];
+  if (dimensionErrors.length || qualityErrors.length) review = {
+    passed: false, score: review?.score ?? 0, summary: [...dimensionErrors, ...qualityErrors].join("\n"),
+    improvements: [...dimensionErrors.map((issue) => ({ priority: "major" as const, issue, action: "Review the output dimensions. Change the resolution only if you intend to override it.", view: "dimensions" })), ...qualityErrors.map((issue) => ({ priority: "major" as const, issue, action: "Repair the SVG geometry and re-render at native icon sizes before approval", view: "construction" }))],
   };
-  const verdict = dimensionErrors.length ? "limit_reached" : !reviewed ? "unreviewed" : passed ? "approved" : "limit_reached";
+  const verdict = dimensionErrors.length || qualityErrors.length ? "limit_reached" : !reviewed ? "unreviewed" : passed ? "approved" : "limit_reached";
   await db.transaction(async (tx) => {
     await tx
       .update(assetVersions)
       .set({
         status: "done",
         progress: 100,
-        ...(dimensionErrors.length ? { feedback: review } : {}),
+        ...(dimensionErrors.length || qualityErrors.length ? { feedback: review } : {}),
         phase:
-          dimensionErrors.length ? "Complete · output dimension error" : verdict === "approved"
+          dimensionErrors.length || qualityErrors.length ? "Complete · output quality error" : verdict === "approved"
             ? "Approved"
             : verdict === "unreviewed"
               ? `${kind.format === "cad" ? "CAD" : "Graphic"} ready · no review requested`

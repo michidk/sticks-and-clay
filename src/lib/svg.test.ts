@@ -11,6 +11,10 @@ test("editable vector artwork preserves gradients, shapes and text", () => {
   expect(validateSvg(source)).toBe(source);
   expect(fileMimeType("graphics/test.svg")).toBe("image/svg+xml");
 });
+test("accepts non-scaling strokes for responsive icon previews", () => {
+  const source = svg('<path d="M2 2L22 22" vector-effect="non-scaling-stroke" stroke="currentColor" stroke-width="2"/>');
+  expect(validateSvg(source)).toBe(source);
+});
 for (const body of [
   "<script>alert(1)</script>",
   '<rect onclick="alert(1)"/>',
@@ -53,6 +57,11 @@ test("analysis reports structure, palette and stroke widths for the judge", () =
     strokeWidths: [2, 3],
     hasText: true,
   });
+});
+
+test("analysis exposes executable icon construction quality", () => {
+  const analysis = analyzeSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 2L22 2"/><path d="M2 2L22 2"/></g></svg>');
+  expect(analysis.quality).toMatchObject({ square24: true, consistentStroke: true, duplicateSegments: 1 });
 });
 
 test("SVG sources are not sent to vision models as images", () => {

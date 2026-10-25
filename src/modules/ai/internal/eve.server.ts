@@ -33,8 +33,18 @@ const client = () =>
       },
     },
   });
+
+export function parseStructuredOutput(output: string): unknown {
+  if (!output.trim()) return undefined;
+  try {
+    return JSON.parse(output.replace(/^```(?:json)?\s*|\s*```$/g, ""));
+  } catch {
+    return undefined;
+  }
+}
+
 export async function agent<T>(
-  args: RunInput & { schema: any; retryFinalization?: boolean },
+  args: RunInput & { schema: any; retryFinalization?: number; restart?: boolean },
 ): Promise<{ result: T; runId: string }> {
   await assertJobActive();
   const key = args.stepId
@@ -63,7 +73,7 @@ export async function agent<T>(
         throw error;
       })
     : undefined;
-  const restart = savedSnapshot && recoveryAction(savedSnapshot.events) === "restart";
+  const restart = args.restart || (savedSnapshot && recoveryAction(savedSnapshot.events) === "restart");
   // A dead workflow or lost sandbox cannot continue. Retain its run and usage.
   const id = (!restart && saved?.id) || crypto.randomUUID(),
     systemPrompt = await roleInstructions(
@@ -291,12 +301,22 @@ export async function agent<T>(
         contextChars += stepOutputChars;
         stepActive = false;
       }
-      if (event.type === "action.result")
-        contextChars += JSON.stringify(data, (_key, value) =>
-          value && typeof value === "object" && value.type === "image"
-            ? { type: "image", estimatedTokens: 1000 }
-            : value,
-        ).length;
+      if (event.type === "action.result") {
+        // Image payloads are intentionally replaced before they are persisted,
+        // so their serialized placeholder is only a few characters long. Keep
+        // the text estimate and add the documented 1,000-token image estimate
+        // explicitly; otherwise vision turns are dramatically underpriced when
+        // Eve does not report provider usage.
+        let imageCount = 0;
+        const serialized = JSON.stringify(data, (_key, value) => {
+          if (value && typeof value === "object" && value.type === "image") {
+            imageCount++;
+            return { type: "image" };
+          }
+          return value;
+        });
+        contextChars += serialized.length + imageCount * 4_000;
+      }
       if (event.type === "message.completed") output = data.message || output;
       if (event.type === "result.completed") {
         result = data.result;
@@ -340,14 +360,16 @@ export async function agent<T>(
     }
     signal.throwIfAborted();
     if (!complete) throw new Error("Agent stream ended without completion");
-    if (result === undefined)
+    // Eve normally emits result.completed, but a completed turn can lose that
+    // event while retaining the final JSON message. Recover that payload before
+    // treating the run as a missing-result failure.
+    const structuredResult = result === undefined ? parseStructuredOutput(output) : result;
+    if (structuredResult === undefined)
       throw new Error("Result validation: structured output finalization produced no result");
     await assertJobActive();
     let parsed: T;
     try {
-      parsed = args.schema.parse(
-        result ?? JSON.parse(output.replace(/^```(?:json)?\s*|\s*```$/g, "")),
-      ) as T;
+      parsed = args.schema.parse(structuredResult) as T;
     } catch (error) {
       throw new Error("Result validation: " + String(error));
     }
@@ -383,10 +405,13 @@ export async function agent<T>(
     // transient gateway/runtime omission does not strand the job for manual
     // recovery. The guard keeps persistent failures visible and bounded.
     if (
-      !args.retryFinalization &&
-      String(error).includes("structured output finalization produced no result")
+      String(error).includes("structured output finalization produced no result") &&
+      (args.retryFinalization ?? 0) < 2
     )
-      return agent({ ...args, retryFinalization: true });
+      // A missing final result is a gateway/runtime race. Start a fresh Eve
+      // session for the bounded retry; reattaching the same session can replay
+      // the already-corrupted finalization state.
+      return agent({ ...args, retryFinalization: (args.retryFinalization ?? 0) + 1, restart: true });
     throw error;
   } finally {
     if (!reportedSteps && !estimatedSteps) {
