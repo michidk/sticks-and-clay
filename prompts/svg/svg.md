@@ -14,6 +14,9 @@ Study any attached construction reference before drawing. Borrow contour and jun
 - Construct in layers: silhouette, main forms, secondary details, then highlights. Draw back to front; stacking order decides occlusion, so check it.
 - Use integer or half-integer coordinates for simple straight edges where practical. Curves, diagonals and optical adjustments may leave the grid; do not distort the subject to satisfy snapping.
 - Keep every shape at least 4% inside the canvas edge unless the design calls for a full-bleed background. Leave visible gaps (at least 2% of the canvas) between intentionally separate elements; this does not apply to connected parts of one mark.
+- For a 24×24 icon, keep visible ink inside x=2..22 and y=2..22, including stroke extents. Keep interior details at least 1.5 user units from the outer silhouette unless they intentionally connect.
+- Use one shared stroke construction for icons: one width, cap style and join style inherited from a named group. Draw shared edges once; never retrace an edge or hide a mistake with a background-colored patch.
+- Build recognition from the silhouette first. Use primitives for rims, openings, housings and handles, then add only the two or three details that distinguish the subject at 24 px.
 - Keep outlined parts at the family stroke weight, caps and joins. Filled and duotone parts can be unstroked. Use a radius system scaled to each part, with sharp functional edges; do not round every object into a capsule.
 - Balance optically, not just geometrically: dense areas read heavier, so adjust weight and spacing until the mark feels centered and evenly weighted.
 - Limit the palette to the colors in your plan. Use gradients sparingly and only when the design's finish calls for them; give each gradient and clipPath a short unique id such as `grad-sky` or `clip-body`.

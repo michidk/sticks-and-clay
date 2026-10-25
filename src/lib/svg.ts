@@ -7,7 +7,7 @@ const elements = new Set(
   ),
 );
 const attributes = new Set(
-  "xmlns id viewBox width height x y x1 y1 x2 y2 cx cy r rx ry d points transform fill fill-opacity fill-rule stroke stroke-width stroke-opacity stroke-linecap stroke-linejoin stroke-miterlimit stroke-dasharray stroke-dashoffset opacity clip-path clip-rule offset stop-color stop-opacity gradientUnits gradientTransform spreadMethod fx fy fr font-family font-size font-weight text-anchor dominant-baseline dx dy rotate textLength lengthAdjust preserveAspectRatio".split(
+  "xmlns id viewBox width height x y x1 y1 x2 y2 cx cy r rx ry d points transform fill fill-opacity fill-rule stroke stroke-width stroke-opacity stroke-linecap stroke-linejoin stroke-miterlimit stroke-dasharray stroke-dashoffset vector-effect opacity clip-path clip-rule offset stop-color stop-opacity gradientUnits gradientTransform spreadMethod fx fy fr font-family font-size font-weight text-anchor dominant-baseline dx dy rotate textLength lengthAdjust preserveAspectRatio".split(
     " ",
   ),
 );
@@ -91,6 +91,16 @@ export function analyzeSvg(svg: string) {
     if (width > 0) strokeWidths.add(width);
     pathCommands += (node.getAttribute("d")?.match(/[a-z]/gi) || []).length;
   }
+  const geometry = doc.documentElement ? svgGeometry(doc.documentElement) : null;
+  const viewBoxValues = (doc.documentElement?.getAttribute("viewBox") ?? "").trim().split(/[\s,]+/).map(Number);
+  const quality = geometry ? {
+    square24: viewBoxValues.length === 4 && viewBoxValues[2] === 24 && viewBoxValues[3] === 24,
+    consistentStroke: !geometry.mixedStrokeSettings.width && !geometry.mixedStrokeSettings.cap && !geometry.mixedStrokeSettings.join,
+    mixedStrokeSettings: geometry.mixedStrokeSettings,
+    duplicateSegments: geometry.findings.filter((finding) => finding.kind === "duplicate-segment").length,
+    nearEndpointPairs: geometry.findings.filter((finding) => finding.kind === "near-endpoints").length,
+    openSubpaths: geometry.openSubpaths,
+  } : null;
   return {
     viewBox: doc.documentElement?.getAttribute("viewBox") ?? null,
     bytes: svg.length,
@@ -100,7 +110,8 @@ export function analyzeSvg(svg: string) {
     colors: [...colors].sort(),
     strokeWidths: [...strokeWidths].sort((a, b) => a - b),
     hasText: Boolean(elements.text),
-    geometry: doc.documentElement ? svgGeometry(doc.documentElement) : null,
+    geometry,
+    quality,
   };
 }
 

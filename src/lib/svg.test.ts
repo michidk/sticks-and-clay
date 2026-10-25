@@ -11,6 +11,10 @@ test("editable vector artwork preserves gradients, shapes and text", () => {
   expect(validateSvg(source)).toBe(source);
   expect(fileMimeType("graphics/test.svg")).toBe("image/svg+xml");
 });
+test("accepts non-scaling strokes for responsive icon previews", () => {
+  const source = svg('<path d="M2 2L22 22" vector-effect="non-scaling-stroke" stroke="currentColor" stroke-width="2"/>');
+  expect(validateSvg(source)).toBe(source);
+});
 for (const body of [
   "<script>alert(1)</script>",
   '<rect onclick="alert(1)"/>',
