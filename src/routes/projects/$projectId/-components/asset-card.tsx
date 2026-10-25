@@ -3,7 +3,7 @@ import { AssetReferences } from "@/components/asset-references";
 import { describeError } from "@/lib/error-message";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Boxes, Download, Square } from "lucide-react";
+import { Boxes, Check, Download, Square } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -71,6 +71,7 @@ export function AssetCard({
   activeJobs?: { id: string; kind: string; status: string }[];
 }) {
   const [resuming, setResuming] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const m = model;
   const name = m.name.replaceAll("_", " ");
   const modelLink = {
@@ -88,6 +89,17 @@ export function AssetCard({
       onError((e as Error).message);
     } finally {
       setResuming(false);
+    }
+  }
+  async function accept() {
+    setAccepting(true);
+    try {
+      await request("models/" + m.id + "/accept", json({ accepted: true }));
+      await onRefresh();
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setAccepting(false);
     }
   }
   async function resume() {
@@ -227,6 +239,11 @@ export function AssetCard({
           {m.status === "failed" && (
             <Button variant="outline" disabled={resuming} onClick={resume}>
               {resuming ? "Resuming…" : "Resume"}
+            </Button>
+          )}
+          {assetStage(m) === "review" && !archived && !working && (
+            <Button disabled={accepting} onClick={accept}>
+              <Check size={14} /> {accepting ? "Accepting…" : "Accept"}
             </Button>
           )}
           {(outdated || assetStage(m) === "review") && !archived && !working && (
