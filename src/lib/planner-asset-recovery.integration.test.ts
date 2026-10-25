@@ -118,6 +118,12 @@ integration("the planner names the assets of a multi-asset request, but an idea 
     await plan(started, ["Rotary dimmer"]);
     expect((await db.select().from(assetVersions).where(eq(assetVersions.batchId, started)))[0].name).toBe("Hallway dimmer");
     expect((await db.select().from(assetEntries).where(eq(assetEntries.id, idea.id)))[0].title).toBe("Hallway dimmer");
+
+    const untitled = await createAsset(project, { title: "", prompt: "", count: 1, judgeIterations: 0, imageSize: "1024x1024" } as never, async () => "unused");
+    const startedUntitled = await startAsset(projectId, untitled.id);
+    await plan(startedUntitled, ["Toggle switch"]);
+    expect((await db.select().from(assetVersions).where(eq(assetVersions.batchId, startedUntitled)))[0].name).toBe("Toggle switch");
+    expect((await db.select().from(assetEntries).where(eq(assetEntries.id, untitled.id)))[0].title).toBe("Toggle switch");
   } finally {
     const batchIds = (await db.select({ id: batches.id }).from(batches).where(eq(batches.projectId, projectId))).map((b) => b.id);
     const versionIds = (await db.select({ id: assetVersions.id }).from(assetVersions).where(eq(assetVersions.projectId, projectId))).map((v) => v.id);

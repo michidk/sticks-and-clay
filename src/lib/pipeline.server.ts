@@ -229,9 +229,9 @@ export async function executeJob(kind: string, targetId: string) {
         const existing = reserved[index];
         const id = existing?.id || crypto.randomUUID();
         // A request for several assets only had a stand-in title (its first line) until now; the planner names
-        // each one. A title the owner or AI wrote for an idea differs from the stand-in and is kept.
+        // each one, as it does an idea started without a title. A title the owner or AI wrote is kept.
         const slot = slots[index];
-        const named = !!slot && slot.title === placeholderTitle(slot.input.prompt || batch.design);
+        const named = !!slot && (!slot.title || slot.title === placeholderTitle(slot.input.prompt || batch.design));
         if (named) await tx.update(assetEntries).set({ title: model.name, input: { ...slot.input, prompt: model.prompt } }).where(eq(assetEntries.id, slot.id));
         if (existing) await tx.update(assetVersions).set({ prompt: model.prompt, ...(named ? { name: model.name } : {}), status: "queued", phase: "Queued", progress: 0, error: null }).where(eq(assetVersions.id, id));
         else await tx.insert(assetVersions).values({
