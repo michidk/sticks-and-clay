@@ -30,6 +30,8 @@ export async function insertGeneration(tx: Transaction, project: typeof projects
   await validateStartingPoint(project.id, project.assetType, input.startingPoint);
   const id = crypto.randomUUID();
   const workshop = asset ? assetSnapshot(project, asset) : { ...snapshotWorkshop(project, project.workshop), startingPoint: input.startingPoint, resolution: input.resolution ?? project.workshop?.resolution, ...(input.parts ? { parts: input.parts } : {}) };
+  workshop.template = input.template ?? "custom";
+  if (input.transparentBackground !== undefined) workshop.transparentBackground = input.transparentBackground;
   await tx.insert(batches).values({
     id, projectId: project.id, ...input,
     imageSize: project.assetType === "svg" ? "1024x1024" : input.imageSize,

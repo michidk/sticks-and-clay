@@ -31,6 +31,7 @@ import type { AssetType } from "@/lib/asset-types";
 import type { StartingPoint } from "@/lib/starting-point";
 import { ResolutionFields, resolutionFromForm } from "@/components/resolution-fields";
 import { StartingPointField } from "./starting-point-field";
+import { assetTemplateHints, assetTemplateLabels, assetTemplates, type AssetTemplate } from "@/lib/asset-templates";
 
 type GenerationDialogProps = {
   assetType?: AssetType;
@@ -80,6 +81,8 @@ export function GenerationDialog({
   const [skipVisualMock, setSkipVisualMock] = useState(idea?.input.visualTargetMode === "skip");
   const [spriteEnabled, setSpriteEnabled] = useState(Boolean(idea?.input.spriteTarget));
   const [judgeIterations, setJudgeIterations] = useState(idea?.input.judgeIterations ?? 2);
+  const [template, setTemplate] = useState<AssetTemplate>(idea?.input.template ?? "custom");
+  const [transparentBackground, setTransparentBackground] = useState(idea?.input.transparentBackground ?? true);
 
   const [imageSize, setImageSize] = useState<RuntimeSettings["generationDefaults"]["imageSize"]>(idea?.input.imageSize ?? "1024x1024");
   const [briefing, setBriefing] = useState(false);
@@ -92,6 +95,8 @@ export function GenerationDialog({
     setSpriteEnabled(Boolean(idea?.input.spriteTarget));
     setSkipVisualMock(idea?.input.visualTargetMode === "skip");
     setParts(idea?.input.parts ?? []);
+    setTemplate(idea?.input.template ?? "custom");
+    setTransparentBackground(idea?.input.transparentBackground ?? true);
     uploader.reset(idea?.references ?? []);
     setReferenceNotes(idea?.referenceNotes ?? {});
     setSavedAssetId(idea?.id);
@@ -162,6 +167,8 @@ export function GenerationDialog({
           parts: parts.length ? parts : undefined,
           judgeIterations: Number(f.get("iterations")),
           imageSize: type === "graphic" ? imageSize : "1024x1024",
+          template,
+          transparentBackground: type === "graphic" ? transparentBackground : undefined,
           resolution: type === "pixel" || type === "graphic" ? resolutionFromForm(f) : undefined,
         }, savedAssetId ? "PUT" : "POST"),
       );
@@ -304,6 +311,14 @@ export function GenerationDialog({
               <legend>Generation settings</legend>
               <div className="idea-settings-grid">
                 <div className="space-y-2">
+                  {isGraphics && type !== "cad" && <>
+                    <Label htmlFor="idea-template">Output template</Label>
+                    <Select value={template} onValueChange={(value) => setTemplate(value as AssetTemplate)}>
+                      <SelectTrigger id="idea-template"><SelectValue /></SelectTrigger>
+                      <SelectContent>{assetTemplates.map((value) => <SelectItem key={value} value={value}>{assetTemplateLabels[value]}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <p className="muted">{assetTemplateHints[template]}</p>
+                  </>}
                   {isGraphics && type !== "cad" ? (
                     <>
                       {type === "svg" ? <p className="muted">Square vector canvas (1:1).</p> : <ResolutionFields key={idea?.id ?? "new"} type={type} value={idea?.input.resolution} inherited />}
@@ -327,6 +342,10 @@ export function GenerationDialog({
                   )}
                 </div>
               </div>
+              {type === "graphic" && <div className="flex items-center gap-2">
+                <input id="idea-transparent" type="checkbox" className="workshop-checkbox" checked={transparentBackground} onChange={(event) => setTransparentBackground(event.target.checked)} />
+                <Label htmlFor="idea-transparent">Transparent background</Label>
+              </div>}
               {isGraphics && type !== "cad" && (
                 <div className="space-y-2">
                   <Label htmlFor="idea-rounds">Review rounds</Label>

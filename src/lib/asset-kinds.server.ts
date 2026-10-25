@@ -27,7 +27,7 @@ const graphicKind: AssetKind = {
       : "";
     const basePrompt =
       (await prompt("graphics/graphic", { design: batch.design, name: model.name, request: ctx.request })) +
-      workshopContext(batch.workshop, false);
+      workshopContext(batch.workshop, false, "graphic");
     const parts = batch.workshop?.parts ?? [];
     const outputs = [];
     const dimensionErrors: string[] = [];

@@ -113,3 +113,9 @@ test("SVG batches without an intent are icons, and an explicit intent reaches th
   expect(svgGuides("builder", "icon")).toEqual(["svg/builder-icon", "references/svg-construction"]);
   expect(svgGuides("judge", "logo")).toEqual(["svg/judge-logo"]);
 });
+
+test("output templates add focused guidance to the frozen prompt context", () => {
+  const context = workshopContext({ ...workshopSchema.parse({ template: "favicon" }), version: 1 }, false, "graphic");
+  expect(context).toContain("OUTPUT TEMPLATE: Favicon set");
+  expect(context).toContain("16 and 32 px");
+});

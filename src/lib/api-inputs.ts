@@ -4,6 +4,7 @@ import { materialSchema } from "./materials";
 import { spriteOptionsSchema } from "./sprites";
 import { objectReferenceSchema } from "./object-reference";
 import { startingPointSchema } from "./starting-point";
+import { assetTemplates } from "./asset-templates";
 
 const uuid = z.string().uuid();
 
@@ -27,6 +28,8 @@ export const generationInput = z.object({
   judgeIterations: z.number().int().min(0).max(5),
   spriteTarget: spriteOptionsSchema.optional(),
   imageSize: imageSizeSchema.default("1024x1024"),
+  template: z.enum(assetTemplates).optional(),
+  transparentBackground: z.boolean().optional(),
   parts: z.array(z.object({ name: z.string().trim().min(1).max(80), brief: z.string().trim().min(1).max(2000) })).min(1).max(8).refine((parts) => new Set(parts.map((part) => part.name.toLowerCase())).size === parts.length, "Part names must be unique").optional(),
 });
 export type GenerationInput = z.infer<typeof generationInput>;
