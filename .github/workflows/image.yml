@@ -1,6 +1,7 @@
 # @orcastrate
 # template: projects/sticks-and-clay/image
 # @end-orcastrate
+
 name: Container image
 
 on:
