@@ -1,3 +1,6 @@
+# @orcastrate
+# template: projects/sticks-and-clay/verify
+# @end-orcastrate
 name: Verify
 
 on:
