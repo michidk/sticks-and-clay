@@ -80,7 +80,7 @@ integration("partial mockups reuse completed runs, generate remaining images onc
     await mkdir(resolve(DATA, directory), { recursive: true });
     for (const [index, text] of input.prompts.slice(0, 1).entries()) {
       const runId = crypto.randomUUID();
-      const digest = createHash("sha256").update(JSON.stringify([text, [], "1536x1024"])).digest("hex").slice(0, 16);
+      const digest = createHash("sha256").update(JSON.stringify([text, [], "1024x1024"])).digest("hex").slice(0, 16);
       const identity = `mockup-${index + 1}-${digest}.png`;
       const key = `${directory}/saved-${index}.png`;
       await writeFile(resolve(DATA, key), png);
@@ -98,7 +98,7 @@ integration("partial mockups reuse completed runs, generate remaining images onc
     globalThis.fetch = Object.assign(async (_url: string | URL | Request, init?: RequestInit) => {
       providerRequests++;
       expect(JSON.parse(String(init?.body))).toMatchObject({
-        model: "codex/gpt-image-2", quality: "medium", prompt: "Saved concept two", size: "1536x1024", n: 1,
+        model: "codex/gpt-image-2", quality: "medium", prompt: "Saved concept two", size: "1024x1024", n: 1,
       });
       return Response.json({ data: [{ b64_json: png.toString("base64") }], usage: { input_tokens: 12, output_tokens: 24 } });
     }, { preconnect: originalFetch.preconnect });

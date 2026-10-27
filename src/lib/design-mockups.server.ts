@@ -132,7 +132,8 @@ export async function generateDesignMockups(projectId: string) {
         prompt: text,
         projectId,
         directory: `mockups/${projectId}/${job.id}`,
-        size: "1536x1024",
+        // Keep concept requests within the image gateway's response window.
+        size: "1024x1024",
         images: input.references,
         assertActive: assertJobActive,
       });
