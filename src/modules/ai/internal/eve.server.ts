@@ -243,6 +243,7 @@ export async function agent<T>(
           yield { event, historical: false };
     }
     const seen = new Set<string>();
+    const finalOutputCallIds = new Set<string>();
     for await (const { event, historical } of replay()) {
       if (!historical) await assertJobActive();
       if (event.type === "turn.started") {
@@ -255,8 +256,11 @@ export async function agent<T>(
       if (seen.has(fingerprint)) continue;
       seen.add(fingerprint);
       if (!historical && event.type === "actions.requested")
-        for (const action of data.actions || [])
+        for (const action of data.actions || []) {
+          if (action.toolName === "final_output" && action.callId)
+            finalOutputCallIds.add(action.callId);
           await args.onActivity?.(action.toolName || "");
+        }
       if (event.type === "step.started") {
         modelStarted = true;
         stepActive = true;
@@ -302,6 +306,13 @@ export async function agent<T>(
         stepActive = false;
       }
       if (event.type === "action.result") {
+        // Some Eve versions emit the structured final_output only as an action
+        // result and omit result.completed. Preserve it as the run result.
+        const actionResult = data.result;
+        if (actionResult && finalOutputCallIds.has(actionResult.callId)) {
+          const value = actionResult.result ?? actionResult.output ?? actionResult;
+          if (value && typeof value === "object") result = value;
+        }
         // Image payloads are intentionally replaced before they are persisted,
         // so their serialized placeholder is only a few characters long. Keep
         // the text estimate and add the documented 1,000-token image estimate
