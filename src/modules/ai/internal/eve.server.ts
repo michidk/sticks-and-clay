@@ -308,13 +308,14 @@ export async function agent<T>(
       if (event.type === "action.result") {
         // Some Eve versions emit the structured final_output only as an action
         // result and omit result.completed. Preserve it as the run result.
-        const actionResult = data.result;
-        if (actionResult && (
+        const actionResult = data.result ?? data;
+        const isFinalOutput = actionResult && (
           finalOutputCallIds.has(actionResult.callId) ||
           actionResult.toolName === "final_output" ||
           actionResult.name === "final_output"
-        )) {
-          const value = actionResult.result ?? actionResult.output ?? actionResult;
+        );
+        const value = actionResult && (actionResult.output ?? actionResult.result ?? actionResult.value);
+        if (isFinalOutput || value !== undefined) {
           if (value && typeof value === "object") result = value;
           else if (typeof value === "string") {
             const parsed = parseStructuredOutput(value);
