@@ -257,8 +257,8 @@ export async function agent<T>(
       seen.add(fingerprint);
       if (!historical && event.type === "actions.requested")
         for (const action of data.actions || []) {
-          if (action.toolName === "final_output" && action.callId)
-            finalOutputCallIds.add(action.callId);
+          if ((action.toolName || action.name) === "final_output" && (action.callId || action.id))
+            finalOutputCallIds.add(action.callId || action.id);
           await args.onActivity?.(action.toolName || "");
         }
       if (event.type === "step.started") {
@@ -309,7 +309,11 @@ export async function agent<T>(
         // Some Eve versions emit the structured final_output only as an action
         // result and omit result.completed. Preserve it as the run result.
         const actionResult = data.result;
-        if (actionResult && finalOutputCallIds.has(actionResult.callId)) {
+        if (actionResult && (
+          finalOutputCallIds.has(actionResult.callId) ||
+          actionResult.toolName === "final_output" ||
+          actionResult.name === "final_output"
+        )) {
           const value = actionResult.result ?? actionResult.output ?? actionResult;
           if (value && typeof value === "object") result = value;
         }
