@@ -255,11 +255,11 @@ export async function agent<T>(
       const fingerprint = event.meta.id;
       if (seen.has(fingerprint)) continue;
       seen.add(fingerprint);
-      if (!historical && event.type === "actions.requested")
+      if (event.type === "actions.requested")
         for (const action of data.actions || []) {
           if ((action.toolName || action.name) === "final_output" && (action.callId || action.id))
             finalOutputCallIds.add(action.callId || action.id);
-          await args.onActivity?.(action.toolName || "");
+          if (!historical) await args.onActivity?.(action.toolName || action.name || "");
         }
       if (event.type === "step.started") {
         modelStarted = true;
@@ -316,6 +316,10 @@ export async function agent<T>(
         )) {
           const value = actionResult.result ?? actionResult.output ?? actionResult;
           if (value && typeof value === "object") result = value;
+          else if (typeof value === "string") {
+            const parsed = parseStructuredOutput(value);
+            if (parsed !== undefined) result = parsed;
+          }
         }
         // Image payloads are intentionally replaced before they are persisted,
         // so their serialized placeholder is only a few characters long. Keep
