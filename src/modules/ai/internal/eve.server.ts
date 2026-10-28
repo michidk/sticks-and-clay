@@ -379,6 +379,28 @@ export async function agent<T>(
     }
     signal.throwIfAborted();
     if (!complete) throw new Error("Agent stream ended without completion");
+    // The live stream can end at turn.completed before the durable event tail
+    // is visible. Re-read the session tail once before declaring the result
+    // missing; this also covers reconnects where action.result was persisted
+    // after the stream cursor stopped.
+    if (result === undefined && sessionId) {
+      const tail = await client().sessions.attach(sessionId).snapshot({ signal });
+      for (const event of tail.events) {
+        const data = ("data" in event ? event.data : {}) as any;
+        if (event.type === "result.completed" && data.result !== undefined)
+          result = data.result;
+        if (event.type === "action.result") {
+          const action = data.result ?? data;
+          const value = action?.output ?? action?.result ?? action?.value;
+          if (value && typeof value === "object") result = value;
+          else if (typeof value === "string") {
+            const parsed = parseStructuredOutput(value);
+            if (parsed !== undefined) result = parsed;
+          }
+        }
+        if (result !== undefined) break;
+      }
+    }
     // Eve normally emits result.completed, but a completed turn can lose that
     // event while retaining the final JSON message. Recover that payload before
     // treating the run as a missing-result failure.
