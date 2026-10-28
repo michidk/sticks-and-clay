@@ -376,7 +376,6 @@ export async function agent<T>(
             data.code ||
             "Agent stopped or requested operator input",
         );
-      if (!historical && event.type === "turn.completed") break;
     }
     signal.throwIfAborted();
     if (!complete) throw new Error("Agent stream ended without completion");
