@@ -36,11 +36,15 @@ const client = () =>
 
 export function parseStructuredOutput(output: string): unknown {
   if (!output.trim()) return undefined;
-  try {
-    return JSON.parse(output.replace(/^```(?:json)?\s*|\s*```$/g, ""));
-  } catch {
-    return undefined;
+  const cleaned = output.replace(/^```(?:json)?\s*|\s*```$/g, "").trim();
+  try { return JSON.parse(cleaned); } catch {}
+  // Providers sometimes add a short lead-in around the JSON object.
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start >= 0 && end > start) {
+    try { return JSON.parse(cleaned.slice(start, end + 1)); } catch {}
   }
+  return undefined;
 }
 
 export async function agent<T>(
