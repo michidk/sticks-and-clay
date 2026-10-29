@@ -419,6 +419,7 @@ export async function executeAssetVersionJob(targetId: string) {
         if (!job.checkpoint[capabilityKey])
           await checkpoint(capabilityKey, capability);
         await mkdir(resolve(DATA, directory), { recursive: true });
+        await mkdir(resolve(DATA, "capabilities"), { recursive: true });
         await writeFile(
           resolve(DATA, "capabilities", capability + ".json"),
           JSON.stringify({
