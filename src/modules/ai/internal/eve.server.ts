@@ -48,7 +48,7 @@ export function parseStructuredOutput(output: string): unknown {
 }
 
 export async function agent<T>(
-  args: RunInput & { schema: any; retryFinalization?: number; restart?: boolean },
+  args: RunInput & { schema: any; retryFinalization?: number; retryInfrastructure?: number; restart?: boolean },
 ): Promise<{ result: T; runId: string }> {
   await assertJobActive();
   const key = args.stepId
@@ -458,8 +458,9 @@ export async function agent<T>(
     // though the turn has otherwise completed. Replay that turn once so a
     // transient gateway/runtime omission does not strand the job for manual
     // recovery. The guard keeps persistent failures visible and bounded.
+    const errorText = String(error);
     if (
-      String(error).includes("structured output finalization produced no result") &&
+      errorText.includes("structured output finalization produced no result") &&
       (args.retryFinalization ?? 0) < 2
     )
       // A missing final result is a gateway/runtime race. Start a fresh Eve
@@ -469,6 +470,15 @@ export async function agent<T>(
         ...args,
         input: `${args.input}\n\nYour previous attempt completed without delivering its required structured result. Re-run the task and finish by returning the required structured output through final_output. Do not stop after prose or tool activity.`,
         retryFinalization: (args.retryFinalization ?? 0) + 1,
+        restart: true,
+      });
+    const infrastructureFailure =
+      errorText.includes("FileNotFoundError") && errorText.includes("capabilities/") ||
+      errorText.includes("Unknown image artifact");
+    if (infrastructureFailure && (args.retryInfrastructure ?? 0) < 1)
+      return agent({
+        ...args,
+        retryInfrastructure: (args.retryInfrastructure ?? 0) + 1,
         restart: true,
       });
     throw error;
