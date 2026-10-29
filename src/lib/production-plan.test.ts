@@ -43,7 +43,7 @@ test("production plans reject a generated texture without a normal strategy", ()
 });
 
 test("plans allow flat colors, vertex colors and saved plans without a strategy", () => {
-  for (const surfaceStrategy of [undefined, "flat-color", "vertex-colors"]) {
+  for (const surfaceStrategy of [undefined, "flat-color", "vertex-colors"] as const) {
     const plan = productionPlanResult.parse({
       version: 1, surfaceStrategy,
       summary: "Broad painted color variation follows the rock geometry without image textures.",
