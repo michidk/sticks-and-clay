@@ -62,7 +62,7 @@ export default defineTool({
       if (error.code === "ENOENT") return undefined;
       throw error;
     });
-    if (artifactId) {
+    if (artifactId || receiptText) {
       const receipt = receiptText ? JSON.parse(receiptText) : { artifacts: [] };
       const id =
         artifactId || (view.startsWith("preview_") ? view.slice(8) : view);
@@ -70,15 +70,17 @@ export default defineTool({
         (a: { id: string; mime: string }) =>
           a.id === id && a.mime === "image/png",
       );
-      if (!artifact || !/^[a-zA-Z0-9_.-]+\.png$/.test(artifact.path)) {
+      if (artifactId && (!artifact || !/^[a-zA-Z0-9_.-]+\.png$/.test(artifact.path))) {
         const available = receipt.artifacts
           .filter((a: { mime?: string; id?: string }) => a.mime === "image/png" && a.id)
           .map((a: { id: string }) => a.id)
           .join(", ");
         throw new Error(`Unknown image artifact "${id}". Available PNG artifacts: ${available || "none"}`);
       }
-      artifactPath = artifact.path;
-      artifactHash = artifact.sha256;
+      if (artifact && /^[a-zA-Z0-9_.-]+\.png$/.test(artifact.path)) {
+        artifactPath = artifact.path;
+        artifactHash = artifact.sha256;
+      }
     }
     const path = await realpath(
       resolve(
