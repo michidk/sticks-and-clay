@@ -66,7 +66,15 @@ export async function agent<T>(
   validateCheckpoint(saved, args, "eve");
   if (saved?.status === "done")
     return { result: args.schema.parse(saved.result) as T, runId: saved.id };
-  if (saved) args = { ...args, input: saved.input, images: saved.images };
+  if (saved)
+    args = {
+      ...args,
+      // A finalization retry carries an explicit recovery instruction; do not
+      // replace it with the failed run's original prompt while loading the
+      // checkpoint.
+      input: args.retryFinalization ? args.input : saved.input,
+      images: saved.images,
+    };
   const savedSnapshot = saved?.sessionId
     ? await client().sessions.attach(saved.sessionId).snapshot({
         signal: AbortSignal.timeout(agentTimeoutMs(args.role, profile.settings)),
