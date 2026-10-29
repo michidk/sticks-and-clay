@@ -509,7 +509,8 @@ export async function executeAssetVersionJob(targetId: string) {
           })
           .where(eq(assetVersions.id, model.id));
       },
-      judge: async ({ iteration, stage, stopOnFail, workPass }) => {
+      judge: async (node) => {
+        const { iteration, stage, workPass } = node;
         const analysis = await analyzeModel(
           resolve(DATA, String(artifacts.glb)),
         );
@@ -596,7 +597,8 @@ export async function executeAssetVersionJob(targetId: string) {
         feedback = result;
         passed = result.passed;
         geometryBlocked =
-          stage === "geometry" && Boolean(stopOnFail) && !passed;
+          geometryBlocked ||
+          (stage === "geometry" && node.iteration === rounds && !passed);
         await db
           .update(assetVersions)
           .set({
@@ -616,7 +618,7 @@ export async function executeAssetVersionJob(targetId: string) {
   await assertJobActive();
   const verdict = !batch.judgeIterations
     ? "unreviewed"
-    : passed
+    : passed && !geometryBlocked
       ? "approved"
       : "limit_reached";
   await db
@@ -630,7 +632,7 @@ export async function executeAssetVersionJob(targetId: string) {
           : verdict === "unreviewed"
             ? "Complete · no judge requested"
             : geometryBlocked
-              ? "Geometry review limit reached · surface work withheld"
+              ? "Geometry review limit reached · materials completed"
               : "Complete · review limit reached",
       verdict,
       artifacts,

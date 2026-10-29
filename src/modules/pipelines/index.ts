@@ -115,7 +115,7 @@ export function refinementPipeline(
       const following =
         i + 1 < stageBuilds
           ? `builder:${iteration + 1}`
-          : stage === "geometry" && !rounds
+          : stage === "geometry"
             ? `builder:${stageBuilds}`
             : null;
       nodes.push({
@@ -145,7 +145,6 @@ export function refinementPipeline(
           ...(stage === "geometry"
             ? {
                 passNext: `builder:${stageBuilds}`,
-                stopOnFail: i + 1 === stageBuilds,
               }
             : { stopOnPass: true }),
         });

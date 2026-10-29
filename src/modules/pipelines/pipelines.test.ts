@@ -158,7 +158,7 @@ test("v4 cannot approve before separate refinement and polish; zero rounds still
   }
 });
 
-test("v4 bounds revisions and blocks materials when geometry reviews are exhausted", async () => {
+test("v4 bounds revisions and still reviews materials when geometry is exhausted", async () => {
   const { refinementPipeline } = await import("./index");
   for (const geometryPass of [false, true]) {
     const builds: string[] = [], judges: string[] = [];
@@ -172,8 +172,10 @@ test("v4 bounds revisions and blocks materials when geometry reviews are exhaust
     });
     expect(builds).toEqual(geometryPass
       ? ["blockout", "refinement", "materials", "polish", "polish"]
-      : ["blockout", "refinement", "refinement"]);
-    expect(judges).toEqual(geometryPass ? ["geometry", "surface", "surface"] : ["geometry", "geometry"]);
+      : ["blockout", "refinement", "refinement", "materials", "polish", "polish"]);
+    expect(judges).toEqual(geometryPass
+      ? ["geometry", "surface", "surface"]
+      : ["geometry", "geometry", "surface", "surface"]);
   }
 });
 
