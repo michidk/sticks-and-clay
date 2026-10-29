@@ -70,8 +70,13 @@ export default defineTool({
         (a: { id: string; mime: string }) =>
           a.id === id && a.mime === "image/png",
       );
-      if (!artifact || !/^[a-zA-Z0-9_.-]+\.png$/.test(artifact.path))
-        throw new Error("Unknown image artifact");
+      if (!artifact || !/^[a-zA-Z0-9_.-]+\.png$/.test(artifact.path)) {
+        const available = receipt.artifacts
+          .filter((a: { mime?: string; id?: string }) => a.mime === "image/png" && a.id)
+          .map((a: { id: string }) => a.id)
+          .join(", ");
+        throw new Error(`Unknown image artifact "${id}". Available PNG artifacts: ${available || "none"}`);
+      }
       artifactPath = artifact.path;
       artifactHash = artifact.sha256;
     }
