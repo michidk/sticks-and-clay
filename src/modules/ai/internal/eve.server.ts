@@ -456,7 +456,12 @@ export async function agent<T>(
       // A missing final result is a gateway/runtime race. Start a fresh Eve
       // session for the bounded retry; reattaching the same session can replay
       // the already-corrupted finalization state.
-      return agent({ ...args, retryFinalization: (args.retryFinalization ?? 0) + 1, restart: true });
+      return agent({
+        ...args,
+        input: `${args.input}\n\nYour previous attempt completed without delivering its required structured result. Re-run the task and finish by returning the required structured output through final_output. Do not stop after prose or tool activity.`,
+        retryFinalization: (args.retryFinalization ?? 0) + 1,
+        restart: true,
+      });
     throw error;
   } finally {
     if (!reportedSteps && !estimatedSteps) {
