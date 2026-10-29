@@ -62,7 +62,7 @@ export default defineTool({
       if (error.code === "ENOENT") return undefined;
       throw error;
     });
-    if (artifactId || receiptText) {
+    if (artifactId) {
       const receipt = receiptText ? JSON.parse(receiptText) : { artifacts: [] };
       const id =
         artifactId || (view.startsWith("preview_") ? view.slice(8) : view);
