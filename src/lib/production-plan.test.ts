@@ -4,6 +4,7 @@ import { productionPlanResult } from "./production-plan";
 test("production plans require explicit texture targets and export checks", () => {
   const result = productionPlanResult.safeParse({
     version: 1,
+    surfaceStrategy: "image-textures",
     summary: "A rounded rock needs a stable hull, a restrained snow cap and deliberate surface bindings.",
     materials: [{
       name: "rock",
@@ -31,6 +32,7 @@ test("production plans require explicit texture targets and export checks", () =
 test("production plans reject a generated texture without a normal strategy", () => {
   const result = productionPlanResult.safeParse({
     version: 1,
+    surfaceStrategy: "image-textures",
     summary: "A valid enough summary for the schema boundary.",
     materials: [],
     textures: [{ mode: "generate", name: "stone", purpose: "Stone texture", targets: ["body"], baseColorPrompt: "Flat stone swatch without lighting or shadows." }],

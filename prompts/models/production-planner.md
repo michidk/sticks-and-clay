@@ -4,4 +4,6 @@ For a 3D model, plan the named parts and parent relationships, material slots, U
 
 For CAD, plan solids, dimensions, interfaces and required measured checks. For graphics, SVG and pixel art, plan the layers, paths, palette, canvas/grid constraints and review checks. For a PBR material, plan the recipe features and all required maps and channel checks. Keep the approved design and asset brief authoritative. Do not add process instructions that the builder cannot execute.
 
+Choose the simplest surface strategy that serves the approved design: `image-textures`, `flat-color`, `vertex-colors`, or `procedural-material`. You may decide to use no image textures at all. Use `flat-color` for a quiet uniform surface, `vertex-colors` for broad painted variation that should follow the geometry, and `procedural-material` for shader-generated detail without archived image maps. Use `image-textures` only when an authored image improves the result. If you use a color-only image texture, state that it carries color only and explicitly say whether a normal map is unnecessary.
+
 Return JSON matching the supplied schema. `materials` and `textures` may be empty for non-material deliverables, but `steps` and `checks` must always be concrete. Keep names stable across revisions so later builders can preserve bindings.
