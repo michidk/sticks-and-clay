@@ -94,7 +94,7 @@ export default defineTool({
       throw new Error("Artifact changed since its build receipt");
     if (crop) {
       const script =
-        "import sys,io;from PIL import Image;im=Image.open(sys.argv[1]);x,y,w,h=map(int,sys.argv[2:]);assert x+w<=im.width and y+h<=im.height,'Crop outside image';out=io.BytesIO();im.crop((x,y,x+w,y+h)).save(out,format='PNG');sys.stdout.buffer.write(out.getvalue())";
+        "import sys,io;from PIL import Image;im=Image.open(sys.argv[1]);x,y,w,h=map(int,sys.argv[2:]);x=min(x,im.width-1);y=min(y,im.height-1);w=min(w,im.width-x);h=min(h,im.height-y);out=io.BytesIO();im.crop((x,y,x+w,y+h)).save(out,format='PNG');sys.stdout.buffer.write(out.getvalue())";
       const python =
         process.env.STUDIO_PYTHON ||
         resolve(
