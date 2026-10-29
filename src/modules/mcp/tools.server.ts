@@ -117,13 +117,13 @@ export function createStudioMcpServer(options: {
     projectSetupInput, async (input) => ({ path: "projects/brief", method: "POST", body: await projectForm(input) }), { paid: true });
   register("create_project", "Create a 3D, graphic, SVG or pixel-art project and queue paid design generation. Optional draftId finishes a saved draft. Poll get_project with returned id instead of repeating this tool.", write,
     projectSetupInput, async (input) => ({ path: "projects", method: "POST", body: await projectForm(input) }), { paid: true });
-  register("draft_asset_brief", "Suggest the next assets using the approved design and existing assets. Uses paid AI. The project must be ready.", write,
+  register("draft_asset_brief", "Suggest a numbered list of distinct, one-deliverable asset ideas using the approved design and existing assets. Each item should have its own title and self-contained brief; do not combine unrelated models as named parts. Uses paid AI. The project must be ready.", write,
     assetBriefInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/model-brief`, method: "POST", body: input }), { paid: true });
   register("save_design", "Save a new design revision using the current version from get_project. approve=true approves it for generation. To restore history, save the selected old revision with the current version.", write,
     designInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/design`, method: "PUT", body: input }));
   register("update_workshop", "Save optional pixel-art or graphic resolution, the SVG intent (icon, logo or illustration), collection variation and 3D self-review effort using the current workshop version. Future batches snapshot them together with the notes on the project's reference images.", write,
     workshopSchema.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/workshop`, method: "PUT", body: input }));
-  register("generate_asset", "Queue one asset from the approved design. Returns an execution batch ID; poll the project instead of repeating it. Paid AI. judgeIterations controls review rounds. Visual targets require user approval unless visualTargetMode is skip.", write,
+  register("generate_asset", "Queue exactly one standalone deliverable from the approved design. Do not put multiple unrelated models in one prompt; create separate Assets for them. Returns an execution batch ID; poll the project instead of repeating it. Paid AI. judgeIterations controls review rounds. Visual targets require user approval unless visualTargetMode is skip.", write,
     generationInput.omit({ count: true }).extend({ ...projectId.shape, prompt: z.string().trim().min(1).max(12000) }),
     (input) => ({ path: `projects/${input.projectId}/generate`, method: "POST", body: { ...input, count: 1 } }), { paid: true });
   const assetId = projectId.extend({ assetId: uuid });
@@ -137,7 +137,7 @@ export function createStudioMcpServer(options: {
       if (input.file) form.set("file", new File([new Uint8Array(Buffer.from(input.file.base64, "base64"))], input.file.filename));
       return { path: `projects/${input.projectId}/assets/${input.assetId}/starting-point`, method: "POST", body: form };
     });
-  register("create_asset", "Create an asset in Ideas with an optional brief (empty follows the approved design), optional named parts and generation settings. Omit title for a small paid AI title request. The same asset keeps its identity through Ready, In progress, Review and Done.", write,
+  register("create_asset", "Create one standalone asset idea in Ideas with an optional self-contained brief (empty follows the approved design), optional named parts and generation settings. For multiple unrelated deliverables, call this once per deliverable. Use named parts only for an inseparable assembly or intentionally grouped image set. Omit title for a small paid AI title request. The same asset keeps its identity through Ready, In progress, Review and Done.", write,
     ideaInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/assets`, method: "POST", body: input }));
   register("update_asset", "Replace an asset's brief, title, parts and settings for future versions in any stage. An empty title uses a small paid AI request. Saved versions stay unchanged.", write,
     ideaUpdateInput.extend(assetId.shape), (input) => ({ path: `projects/${input.projectId}/assets/${input.assetId}`, method: "PUT", body: input }));
