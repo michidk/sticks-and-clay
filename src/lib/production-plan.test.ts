@@ -41,3 +41,17 @@ test("production plans reject a generated texture without a normal strategy", ()
   });
   expect(result.success).toBe(false);
 });
+
+test("plans allow flat colors, vertex colors and saved plans without a strategy", () => {
+  for (const surfaceStrategy of [undefined, "flat-color", "vertex-colors"]) {
+    const plan = productionPlanResult.parse({
+      version: 1, surfaceStrategy,
+      summary: "Broad painted color variation follows the rock geometry without image textures.",
+      materials: [], textures: [],
+      steps: ["Bind the chosen colors to the exported material."],
+      checks: ["Verify colors survive GLB export in every rendered view."],
+    });
+    expect(plan.textures).toEqual([]);
+    expect(plan.surfaceStrategy).toBe(surfaceStrategy);
+  }
+});

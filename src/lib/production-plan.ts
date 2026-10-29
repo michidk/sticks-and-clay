@@ -32,7 +32,7 @@ const texturePlan = z.discriminatedUnion("mode", [
 export const productionPlanResult = z.object({
   version: z.literal(1),
   summary: z.string().min(40).max(4000),
-  surfaceStrategy: z.enum(["image-textures", "flat-color", "vertex-colors", "procedural-material"]),
+  surfaceStrategy: z.enum(["image-textures", "flat-color", "vertex-colors", "procedural-material"]).optional(),
   materials: z.array(z.object({
     name: z.string().min(1).max(80),
     purpose: z.string().min(10).max(500),

@@ -323,3 +323,5 @@ state stay out of the repository.
   <img src="public/brand/sticks-and-clay-mark-v2.png" alt="" width="48"><br>
   <sub>Sticks for structure, clay for form. You for judgment.</sub>
 </p>
+
+Production planning chooses surfaces per asset: image textures, color-only palettes, flat materials or vertex colors. Builders and reviewers follow that choice; image textures and normal maps are not required for deliberately untextured assets.
