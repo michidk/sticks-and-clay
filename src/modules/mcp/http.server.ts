@@ -13,6 +13,7 @@ import { DrizzleOAuthStore, type OAuthStore } from "./auth/oauth-store.server";
 import { MAX_MCP_BODY_BYTES, MCP_SCOPE_VALUES } from "./catalog";
 import { createStudioMcpServer } from "./tools.server";
 import { defaultMcpPolicy, loadMcpPolicy, type McpPolicy } from "./settings.server";
+import { api } from "../../lib/api.server";
 import type { AppApi } from "./api.server";
 
 const MCP_PATH = "/api/mcp";
@@ -74,7 +75,7 @@ export function createMcpHttpHandler(config: McpConfig, store: OAuthStore, optio
   const loadPolicy = options.policy ?? (async () => defaultMcpPolicy);
   const oauth = createOAuthHttpHandler(config, store);
   const protocol = createMcpHandler(({ authInfo }) => createStudioMcpServer({
-    scopes: authInfo?.scopes ?? [], publicUrl: config.serverUrl, store, api: options.api, readFile: options.readFile,
+    scopes: authInfo?.scopes ?? [], publicUrl: config.serverUrl, store, api: options.api ?? api, readFile: options.readFile,
     disabledTools: new Set((authInfo?.extra?.disabledTools as string[] | undefined) ?? []),
   }), { maxRequestBodySize: MAX_MCP_BODY_BYTES });
   const authenticate = requireBearerAuth({

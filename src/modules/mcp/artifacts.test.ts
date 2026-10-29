@@ -9,6 +9,7 @@ type ReadFile = NonNullable<Parameters<typeof createStudioMcpServer>[0]["readFil
 async function session(readFile: ReadFile) {
   const handler = createMcpHandler(() => createStudioMcpServer({
     scopes: ["sticks-and-clay:read"], publicUrl, readFile,
+    api: async () => { throw new Error("Artifact reads must not call the application API"); },
   }), { keepAliveMs: 0 });
   const client = new Client({ name: "artifact-test", version: "1" }, {
     versionNegotiation: { mode: { pin: "2026-07-28" } },

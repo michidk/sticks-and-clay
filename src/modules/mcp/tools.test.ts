@@ -262,7 +262,7 @@ test("MCP reference bytes become multipart files and explicit reference removal 
 });
 
 test("legacy HTTP initialization and discovery remain available alongside modern clients", async () => {
-  const handler = createMcpHandler(() => createStudioMcpServer({ scopes: [read], publicUrl }), { keepAliveMs: 0 });
+  const handler = createMcpHandler(() => createStudioMcpServer({ scopes: [read], publicUrl, api: async () => { throw new Error("Discovery must not call the application API"); } }), { keepAliveMs: 0 });
   const send = (body: object) => handler.fetch(new Request(new URL("/mcp", publicUrl), {
     method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", "MCP-Protocol-Version": "2025-11-25" }, body: JSON.stringify(body),
   }));

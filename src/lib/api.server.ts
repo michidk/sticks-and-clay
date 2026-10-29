@@ -980,6 +980,8 @@ export async function api(request: Request) {
           : "Create a fresh variation of this model while preserving its core identity."
         : input.prompt;
       const fullPrompt = `${parent.prompt}\n\nRequested change from saved version:\n${change}`;
+      if (!generationInput.shape.prompt.safeParse(fullPrompt).success)
+        throw new Error("The original prompt plus requested change exceeds the 12,000-character limit. Shorten the requested change.");
       const [asset] = await db.select().from(assetEntries).where(eq(assetEntries.id, parent.assetId));
       if (!asset) throw new Error("Source asset is unavailable");
       const variationReferences = variationImage && !asset.references.includes(variationImage)
@@ -998,6 +1000,7 @@ export async function api(request: Request) {
           design: parentBatch.design,
           designVersion: parentBatch.designVersion,
           imageSize: parentBatch.imageSize,
+          spriteTarget: parentBatch.spriteTarget,
           workshop,
           status: "building",
         });

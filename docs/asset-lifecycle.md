@@ -11,6 +11,9 @@ AI requests, costs, source files, and rendered results stay in history.
 The model page can also create a variation from a saved model. It copies the
 model prompt, adds optional variation context, and uses the model's first
 saved render as a reference image on a new asset. The source asset is unchanged.
+Branches preserve the source version's sprite-generation settings. The original
+prompt, requested change, and connecting text must fit the 12,000-character
+prompt limit; an oversized branch request is rejected before creating records.
 Retrying a failed job resumes that version with its saved checkpoints and Eve
 session. It does not create a version.
 

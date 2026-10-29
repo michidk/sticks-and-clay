@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { CallToolResult } from "@modelcontextprotocol/server";
-import { api } from "../../lib/api.server";
 
 export type AppApi = (request: Request) => Promise<Response>;
 export type ApiRequest = {
@@ -28,7 +27,7 @@ export function result(value: ToolData, isError = false): CallToolResult {
   };
 }
 
-export async function callApi(spec: ApiRequest, handle: AppApi = api) {
+export async function callApi(spec: ApiRequest, handle: AppApi) {
   const form = spec.body instanceof FormData;
   const response = await handle(new Request(`http://localhost/api/${spec.path}`, {
     method: spec.method ?? "GET",

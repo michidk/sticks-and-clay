@@ -50,6 +50,7 @@ integration(
       prompt: "Original",
       count: 1,
       judgeIterations: 1,
+      spriteTarget: { size: 128, directions: 4, frameCount: 3, pixel: false, loop: false, clip: "", fps: 12, elevation: 30, zoom: 1, padding: 0.08, anchor: "ground", colors: 16, outline: "" },
       design: "# Snapshotted design",
       designVersion: 2,
       status: "done",
@@ -130,6 +131,7 @@ integration(
       const [variationJob] = await db.select().from(jobs).where(eq(jobs.targetId, variationId));
       expect(variationAsset.references).toContain("models/front.png");
       expect(variationBatch.workshop?.references).toContain("models/front.png");
+      expect(variationBatch.spriteTarget).toMatchObject({ size: 128, directions: 4, frameCount: 3, pixel: false, loop: false });
       expect(JSON.parse(variationJob.checkpoint["branch-references"])).toContain("models/front.png");
       expect(variationVersion.prompt).toContain("A detailed stone marker");
       expect(variationVersion.changePrompt).toContain("Make it taller");
@@ -149,9 +151,17 @@ integration(
       expect(referencedModel.prompt).toContain("Widen this part");
       expect(referencedModel.prompt).not.toContain("Selected object from saved version");
       expect(referencedModel.prompt).not.toContain('"nodeId"');
+      const beforeOverLimit = await db.select({ id: assetVersions.id }).from(assetVersions);
+      const overLimit = await api(new Request(`http://localhost/api/models/${modelId}/branch`, {
+        method: "POST",
+        body: JSON.stringify({ kind: "fork", variation: true, sourceRunId: runId, prompt: "Create a variation", variationContext: "x".repeat(12000), judgeIterations: 0 }),
+      }));
+      expect(overLimit.status).toBe(400);
+      expect((await overLimit.json()).error).toContain("12,000-character limit");
+      expect((await db.select({ id: assetVersions.id }).from(assetVersions))).toHaveLength(beforeOverLimit.length);
       const builderInput = await roleInput("builder", {
         version: 2, design: "# Snapshotted design", name: "Marker", request: referencedChange(referencedModel.prompt, runId, referencedModel.objectReference!),
-        capability: "poly", directory: "/tmp/fixture", previous: "models/source.blend", feedback: "null", stage: "geometry", target: "None",
+        capability: "poly", directory: "/tmp/fixture", previous: "models/source.blend", feedback: "null", stage: "geometry", productionPlan: "None", target: "None",
       });
       expect(builderInput).toContain(`Selected object from saved version ${runId}`);
       expect(builderInput).toContain('"path": [');

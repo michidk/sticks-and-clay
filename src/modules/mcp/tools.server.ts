@@ -26,7 +26,7 @@ const projectSections = ["overview", "assets", "assetVersions", "ideas", "builds
 
 export function createStudioMcpServer(options: {
   scopes: readonly string[];
-  api?: AppApi;
+  api: AppApi;
   publicUrl: URL;
   store?: Pick<OAuthStore, "listClients" | "revokeClient">;
   readFile?: typeof readStoredFile;
@@ -281,6 +281,7 @@ export function studioToolCatalog(): StudioToolInfo[] {
     const server = createStudioMcpServer({
       scopes: [read, write, admin].slice(0, [read, write, admin].indexOf(scope) + 1),
       publicUrl: new URL("https://catalog.invalid"), store,
+      api: async () => { throw new Error("Catalog discovery cannot execute application requests"); },
     });
     const tools = (server as unknown as { _registeredTools: Record<string, { description?: string }> })._registeredTools;
     for (const [name, tool] of Object.entries(tools))
