@@ -126,7 +126,7 @@ export function VersionActions({
     try {
       const result = await request<{ id: string }>(
         `models/${modelId}/branch`,
-        json({ kind: "fork", variation: true, sourceRunId, prompt: variationContext, judgeIterations }),
+        json({ kind: "fork", variation: true, sourceRunId, prompt: "Create a variation", variationContext, judgeIterations }),
       );
       setVariationOpen(false);
       setVariationContext("");

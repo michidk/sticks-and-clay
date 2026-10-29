@@ -120,13 +120,17 @@ integration(
       );
       const variation = await api(new Request(`http://localhost/api/models/${modelId}/branch`, {
         method: "POST",
-        body: JSON.stringify({ kind: "fork", variation: true, sourceRunId: runId, prompt: "Make it taller", judgeIterations: 2 }),
+        body: JSON.stringify({ kind: "fork", variation: true, sourceRunId: runId, prompt: "Create a variation", variationContext: "Make it taller", judgeIterations: 2 }),
       }));
       expect(variation.status).toBe(201);
       const variationId = (await variation.json()).id as string;
       const [variationVersion] = await db.select().from(assetVersions).where(eq(assetVersions.id, variationId));
       const [variationAsset] = await db.select().from(assetEntries).where(eq(assetEntries.id, variationVersion.assetId));
+      const [variationBatch] = await db.select().from(batches).where(eq(batches.id, variationVersion.batchId));
+      const [variationJob] = await db.select().from(jobs).where(eq(jobs.targetId, variationId));
       expect(variationAsset.references).toContain("models/front.png");
+      expect(variationBatch.workshop?.references).toContain("models/front.png");
+      expect(JSON.parse(variationJob.checkpoint["branch-references"])).toContain("models/front.png");
       expect(variationVersion.prompt).toContain("A detailed stone marker");
       expect(variationVersion.changePrompt).toContain("Make it taller");
       const objectReference = { glb: "models/source.glb", nodeId: "0/0/1", name: "arch", path: ["Scene", "marker", "arch"] };

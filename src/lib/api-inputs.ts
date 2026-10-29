@@ -49,7 +49,8 @@ export const branchInput = z.object({
   useCurrentStyle: z.boolean().default(false),
   objectReference: objectReferenceSchema.optional(),
   sourceRunId: uuid,
-  prompt: z.string().trim().max(12000).default(""),
+  prompt: z.string().trim().min(3).max(12000),
+  variationContext: z.string().trim().max(12000).default(""),
   name: z.string().trim().min(1).max(100).optional(),
   judgeIterations: z.number().int().min(0).max(5),
 });

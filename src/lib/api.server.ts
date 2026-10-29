@@ -918,8 +918,6 @@ export async function api(request: Request) {
     ) {
       const id = uuid.parse(path[1]);
       const input = branchInput.parse(await request.json());
-      if (!input.variation && input.prompt.length < 3)
-        throw new Error("Describe the change in at least 3 characters");
       if (input.variation && (input.kind !== "fork" || input.objectReference))
         throw new Error("Variations create a new asset from the whole model");
       const [parent] = await db.select().from(assetVersions).where(eq(assetVersions.id, id));
@@ -977,8 +975,8 @@ export async function api(request: Request) {
       if (input.variation && !variationImage)
         throw new Error("This saved model has no render to use as a variation reference");
       const change = input.variation
-        ? input.prompt
-          ? `Create a variation of this model while preserving its core identity.\n${input.prompt}`
+        ? input.variationContext
+          ? `Create a variation of this model while preserving its core identity.\n${input.variationContext}`
           : "Create a fresh variation of this model while preserving its core identity."
         : input.prompt;
       const fullPrompt = `${parent.prompt}\n\nRequested change from saved version:\n${change}`;
