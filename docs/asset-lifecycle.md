@@ -8,6 +8,9 @@ be one asset. Each asset belongs to one project.
 A **version** is one generation attempt for an asset. Asking to iterate creates
 a new version of that asset. Forking creates another asset. Failed versions,
 AI requests, costs, source files, and rendered results stay in history.
+The model page can also create a variation from a saved model. It copies the
+model prompt, adds optional variation context, and uses the model's first
+saved render as a reference image on a new asset. The source asset is unchanged.
 Retrying a failed job resumes that version with its saved checkpoints and Eve
 session. It does not create a version.
 

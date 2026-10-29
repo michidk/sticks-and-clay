@@ -6,6 +6,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { request, json, fileUrl } from "@/lib/client";
 import type { Artifacts, Review } from "../-lib/model";
 import { SpriteExport } from "./sprite-export";
+import { AssetImage } from "@/components/asset-image";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function VersionActions({
   projectId,
@@ -13,12 +17,16 @@ export function VersionActions({
   sourceRunId,
   artifacts,
   review,
+  archived = false,
+  judgeIterations,
 }: {
   projectId: string;
   modelId: string;
   sourceRunId?: string;
   artifacts?: Artifacts;
   review?: Review;
+  archived?: boolean;
+  judgeIterations: number;
 }) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -26,6 +34,8 @@ export function VersionActions({
     [job, setJob] = useState<any>();
   const [selected, setSelected] = useState<number[]>([]),
     navigate = useNavigate();
+  const [variationOpen, setVariationOpen] = useState(false),
+    [variationContext, setVariationContext] = useState("");
   const findings = [
     ...(artifacts?.metrics?.readiness?.findings.map(
       (f) => `${f.object}: ${f.message}`,
@@ -109,6 +119,24 @@ export function VersionActions({
       setBusy(false);
     }
   }
+  async function createVariation() {
+    if (!sourceRunId) return;
+    setBusy(true);
+    setError("");
+    try {
+      const result = await request<{ id: string }>(
+        `models/${modelId}/branch`,
+        json({ kind: "fork", variation: true, sourceRunId, prompt: variationContext, judgeIterations }),
+      );
+      setVariationOpen(false);
+      setVariationContext("");
+      await navigate({ to: "/projects/$projectId/models/$modelId", params: { projectId, modelId: result.id }, search: { view: "3d", section: "review" } });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   const rendering =
     job && !["done", "failed", "cancelled"].includes(job.status);
   return (
@@ -139,7 +167,30 @@ export function VersionActions({
         >
           Match references
         </Button>
+        {!archived && <Button variant="outline" disabled={!sourceRunId || !artifacts?.renders?.length || busy} onClick={() => { setError(""); setVariationOpen(true); }}>
+          Create variation
+        </Button>}
       </div>
+      <Dialog open={variationOpen} onOpenChange={(open) => !busy && setVariationOpen(open)}>
+        <DialogContent showCloseButton={!busy}>
+          <DialogHeader>
+            <DialogTitle>Create a variation</DialogTitle>
+            <DialogDescription>
+              Creates a new asset using this model's prompt and the render below as a reference image. Starts paid generation with {judgeIterations} review rounds per stage and pauses for visual target approval.
+            </DialogDescription>
+          </DialogHeader>
+          {artifacts?.renders[0] && <AssetImage src={fileUrl(artifacts.renders[0])} alt="Model render used as the variation reference" className="max-h-48 w-full object-contain" />}
+          {error && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
+          <div className="space-y-2">
+            <Label htmlFor="variation-context">Variation context (optional)</Label>
+            <Textarea id="variation-context" value={variationContext} onChange={(event) => setVariationContext(event.target.value)} maxLength={12000} placeholder="For example: make the handle shorter and use dark bronze." rows={4} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" disabled={busy} onClick={() => setVariationOpen(false)}>Cancel</Button>
+            <Button disabled={busy || !sourceRunId} onClick={() => void createVariation()}>{busy ? "Creating variation…" : "Create variation"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {job && (
         <div role="status">
           <p>

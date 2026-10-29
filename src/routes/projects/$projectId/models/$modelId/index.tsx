@@ -624,6 +624,9 @@ function ModelPage() {
                     )}
                     {search.section === "tools" && (
                       <VersionActions
+                        key={checkedVersion?.id || modelId}
+                        archived={!!data.project.archivedAt}
+                        judgeIterations={data.batches.find((batch) => batch.id === model.batchId)?.judgeIterations ?? 2}
                         projectId={projectId}
                         modelId={modelId}
                         sourceRunId={

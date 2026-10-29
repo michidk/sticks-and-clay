@@ -118,6 +118,17 @@ integration(
       expect(queued[0].checkpoint["branch-references"]).toBe(
         '["references/original.png","references/asset.png"]',
       );
+      const variation = await api(new Request(`http://localhost/api/models/${modelId}/branch`, {
+        method: "POST",
+        body: JSON.stringify({ kind: "fork", variation: true, sourceRunId: runId, prompt: "Make it taller", judgeIterations: 2 }),
+      }));
+      expect(variation.status).toBe(201);
+      const variationId = (await variation.json()).id as string;
+      const [variationVersion] = await db.select().from(assetVersions).where(eq(assetVersions.id, variationId));
+      const [variationAsset] = await db.select().from(assetEntries).where(eq(assetEntries.id, variationVersion.assetId));
+      expect(variationAsset.references).toContain("models/front.png");
+      expect(variationVersion.prompt).toContain("A detailed stone marker");
+      expect(variationVersion.changePrompt).toContain("Make it taller");
       const objectReference = { glb: "models/source.glb", nodeId: "0/0/1", name: "arch", path: ["Scene", "marker", "arch"] };
       const branchRequest = (glb: string) => api(new Request(`http://localhost/api/models/${modelId}/branch`, {
         method: "POST", body: JSON.stringify({ kind: "iterate", sourceRunId: runId, prompt: "Widen this part", judgeIterations: 0, objectReference: { ...objectReference, glb } }),

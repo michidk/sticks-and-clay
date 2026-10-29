@@ -918,6 +918,10 @@ export async function api(request: Request) {
     ) {
       const id = uuid.parse(path[1]);
       const input = branchInput.parse(await request.json());
+      if (!input.variation && input.prompt.length < 3)
+        throw new Error("Describe the change in at least 3 characters");
+      if (input.variation && (input.kind !== "fork" || input.objectReference))
+        throw new Error("Variations create a new asset from the whole model");
       const [parent] = await db.select().from(assetVersions).where(eq(assetVersions.id, id));
       if (!parent) return reply({ error: "Model not found" }, 404);
       const [source] = await db
@@ -951,11 +955,15 @@ export async function api(request: Request) {
         throw new Error("Source project is unavailable");
       if (project.assetType !== "model" && source.role !== project.assetType)
         throw new Error("Graphic variants need a saved graphic");
+      if (input.variation && project.assetType !== "model")
+        throw new Error("Variations need a saved 3D model");
       if (project.assetType === "model" && source.role !== "builder")
         throw new Error("Choose a saved model version");
       const batchId = crypto.randomUUID();
       const modelId = crypto.randomUUID();
-      const name = input.kind === "fork" ? input.name : parent.name;
+      const name = input.kind === "fork"
+        ? input.name || (input.variation ? `${parent.name} variation` : undefined)
+        : parent.name;
       if (!name) throw new Error("Name the fork");
       if (input.objectReference) {
         const saved = z.object({ artifacts: z.object({ glb: z.string() }) }).safeParse(source.result);
@@ -964,16 +972,29 @@ export async function api(request: Request) {
           throw new Error("The selected object belongs to a different model version. Select it again.");
         }
       }
-      const fullPrompt = `${parent.prompt}\n\nRequested change from saved version:\n${input.prompt}`;
+      const sourceArtifacts = z.object({ artifacts: z.object({ renders: z.array(z.string().min(1)) }) }).safeParse(source.result);
+      const variationImage = input.variation && sourceArtifacts.success ? sourceArtifacts.data.artifacts.renders[0] : undefined;
+      if (input.variation && !variationImage)
+        throw new Error("This saved model has no render to use as a variation reference");
+      const change = input.variation
+        ? input.prompt
+          ? `Create a variation of this model while preserving its core identity.\n${input.prompt}`
+          : "Create a fresh variation of this model while preserving its core identity."
+        : input.prompt;
+      const fullPrompt = `${parent.prompt}\n\nRequested change from saved version:\n${change}`;
       const [asset] = await db.select().from(assetEntries).where(eq(assetEntries.id, parent.assetId));
-      const workshop = assetSnapshot(project, asset, input.useCurrentStyle ? undefined : parentBatch.workshop ?? undefined);
+      if (!asset) throw new Error("Source asset is unavailable");
+      const variationReferences = variationImage && !asset.references.includes(variationImage)
+        ? [...asset.references, variationImage]
+        : asset.references;
+      const workshop = assetSnapshot(project, variationImage ? { ...asset, references: variationReferences } : asset, input.useCurrentStyle ? undefined : parentBatch.workshop ?? undefined);
       assertNotArchived(project);
       await db.transaction(async (tx) => {
         await tx.insert(batches).values({
           id: batchId,
           visualTargetMode: "review",
           projectId: parent.projectId,
-          prompt: input.prompt,
+          prompt: change,
           count: 1,
           judgeIterations: input.judgeIterations,
           design: parentBatch.design,
@@ -986,7 +1007,7 @@ export async function api(request: Request) {
         if (input.kind === "fork") await tx.insert(assetEntries).values({
           id: assetId, projectId: parent.projectId, title: name, batchId, inIdea: false,
           input: { ...asset.input, prompt: fullPrompt, count: 1, judgeIterations: input.judgeIterations },
-          references: asset.references, referenceNotes: asset.referenceNotes,
+          references: variationReferences, referenceNotes: asset.referenceNotes,
         });
         await tx.insert(assetVersions).values({
           id: modelId,
@@ -997,7 +1018,7 @@ export async function api(request: Request) {
           prompt: fullPrompt,
           parentModelId: parent.id,
           sourceRunId: source.id,
-          changePrompt: input.prompt,
+          changePrompt: change,
           objectReference: input.objectReference,
           branchKind: input.kind,
         });
