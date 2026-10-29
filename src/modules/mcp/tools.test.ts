@@ -52,6 +52,7 @@ const actions: {
   { name: "draft_project_name", scope: write, method: "POST", path: "projects/name", args: { description: "Forest tools" } },
   { name: "draft_project_brief", scope: write, method: "POST", path: "projects/brief", args: { name: "Forest tools" } },
   { name: "create_project", scope: write, method: "POST", path: "projects", args: { name: "Forest tools" } },
+  { name: "create_assets", scope: write, method: "POST", path: `projects/${id}/assets`, args: { projectId: id, assets: [{ title: "One asset", prompt: "A single stone prop", judgeIterations: 0 }] } },
   { name: "draft_asset_brief", scope: write, method: "POST", path: `projects/${id}/model-brief`, args: { projectId: id, count: 1 } },
   { name: "save_design", scope: write, method: "PUT", path: `projects/${id}/design`, args: { projectId: id, design: "A".repeat(100), version: 0, approve: true } },
   { name: "update_workshop", scope: write, method: "PUT", path: `projects/${id}/workshop`, args: { projectId: id } },
@@ -155,6 +156,26 @@ test("scope-filtered catalogs deny direct calls to hidden tools", async () => {
       expect(calls).toBe(0);
     } finally { await connected.close(); }
   }
+});
+
+test("create_assets creates separate ideas for each collection item", async () => {
+  const requests: string[] = [];
+  const connected = await session({ api: async (request) => {
+    requests.push(new URL(request.url).pathname);
+    return Response.json({ id: crypto.randomUUID() }, { status: 201 });
+  } });
+  try {
+    const response = await connected.client.callTool({ name: "create_assets", arguments: {
+      projectId: id,
+      assets: [
+        { title: "Snow Boulder", prompt: "A rounded snow boulder", judgeIterations: 0 },
+        { title: "Pine Tree", prompt: "A low-poly pine tree", judgeIterations: 0 },
+      ],
+    } });
+    expect(response.isError).not.toBe(true);
+    expect((response.structuredContent as { data?: unknown })?.data).toMatchObject({ assets: [{ id: expect.any(String) }, { id: expect.any(String) }] });
+    expect(requests).toEqual([`/api/projects/${id}/assets`, `/api/projects/${id}/assets`]);
+  } finally { await connected.close(); }
 });
 
 test("shared validation rejects malformed mutation input before calling the application", async () => {

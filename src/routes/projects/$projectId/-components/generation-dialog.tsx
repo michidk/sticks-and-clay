@@ -274,7 +274,7 @@ export function GenerationDialog({
               >
                 {briefing
                   ? "Writing a brief from the approved design…"
-                  : "Leave empty to let AI propose the asset from the approved design. Drafting with AI is a paid request recorded in Activity."}
+                  : "Describe one deliverable: its purpose, silhouette, key features, scale, materials, interfaces, variation and exclusions. Leave empty to let AI propose it from the approved design. Drafting with AI is a paid request recorded in Activity."}
               </p>
             </div>
             <div className="space-y-2">

@@ -76,6 +76,31 @@ export function createStudioMcpServer(options: {
     });
   }
 
+  const createAssetsInput = projectId.extend({
+    assets: z.array(ideaInput.omit({ count: true })).min(1).max(20),
+  });
+  if (scopes.has(write)) {
+    server.registerTool("create_assets", {
+      description: "Create several separate asset ideas in one request. Each array item becomes its own Asset with its own title and brief; use this for a collection, never to bundle unrelated models into one idea. Named parts are only for an inseparable assembly or intentionally grouped image set.",
+      inputSchema: createAssetsInput.strict(),
+      outputSchema: toolOutput,
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    }, async (args) => {
+      try {
+        const input = createAssetsInput.parse(args);
+        const created: JsonValue[] = [];
+        for (const asset of input.assets) {
+          const response = await callApi({ path: `projects/${input.projectId}/assets`, method: "POST", body: { ...asset, count: 1 } }, options.api);
+          if (!response.ok) return result({ data: { created, error: response.data } }, true);
+          created.push(response.data);
+        }
+        return result({ data: { assets: created } });
+      } catch {
+        return result({ data: { error: "The operation could not be completed. Check diagnostics before retrying paid work." } }, true);
+      }
+    });
+  }
+
   register("list_projects", "List projects with progress, thumbnails and cost estimates. Follow nextOffset for the next page.", read, pageInput,
     () => ({ path: "projects" }), { map: (data, args) => paginate(data, args, "projects") });
   register("get_project", "Read a project and one page of a selected history section. Overview returns project state and record counts; use sections to read all saved history.", read,

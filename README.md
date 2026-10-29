@@ -25,7 +25,7 @@
 <a href="https://github.com/michidk/sticks-and-clay/actions/workflows/image.yml">
 <img alt="Image" src="https://github.com/michidk/sticks-and-clay/actions/workflows/image.yml/badge.svg"></a>
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-<img alt="MCP: 53 tools" src="https://img.shields.io/badge/MCP-53%20tools-264d3c.svg">
+<img alt="MCP: 54 tools" src="https://img.shields.io/badge/MCP-54%20tools-264d3c.svg">
 <img alt="Blender 4.5 LTS" src="https://img.shields.io/badge/Blender-4.5%20LTS-e87d0d.svg">
 </p>
 
