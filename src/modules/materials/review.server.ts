@@ -55,7 +55,7 @@ export async function reviewMaterial(
       script,
       feedback,
       evidence,
-    });
+    }) + `\n\nFROZEN PRODUCTION PLAN\n${job.checkpoint["production-plan"] || "No production plan recorded."}`;
   const referenceImages: string[] = JSON.parse(
     job.checkpoint.referenceImages || "[]",
   );
@@ -222,7 +222,7 @@ export async function reviewMaterial(
                 projectId,
                 stepId: key,
                 images: evidence.images,
-                input: await roleInput("material-judge", {
+                input: (await roleInput("material-judge", {
                   description: job.checkpoint.description,
                   design: job.checkpoint.design,
                   parameters: JSON.stringify(parameters),
@@ -231,7 +231,7 @@ export async function reviewMaterial(
                     job.checkpoint[`material:v1:build:${iteration}`],
                   feedback,
                   evidence: `${evidence.labels}\nFinal ${parameters.size}px maps.`,
-                }),
+                })) + `\n\nFROZEN PRODUCTION PLAN\n${job.checkpoint["production-plan"] || "No production plan recorded."}`,
               })
             ).result;
         const passed =

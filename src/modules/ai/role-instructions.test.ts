@@ -60,6 +60,12 @@ test("agent settings include authored prompts and shared references", async () =
   expect(builder?.promptFiles[0]?.content).toContain(
     "You are a Blender artist",
   );
+  expect(settings.find((agent) => agent.id === "production-planner")?.promptFiles.map((file) => file.path)).toEqual([
+    "prompts/models/production-planner.md",
+    "prompts/references/uv-and-materials.md",
+    "prompts/references/assetkit.md",
+    "prompts/models/production-planner-input.md",
+  ]);
   expect(
     settings.find((agent) => agent.id === "visual-target")?.promptFiles,
   ).toHaveLength(1);

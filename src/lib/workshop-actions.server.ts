@@ -158,7 +158,7 @@ export async function workshopAction(
         id: crypto.randomUUID(),
         kind: "model",
         targetId: id,
-        checkpoint: { "import-baseline": key },
+        checkpoint: { "import-baseline": key, "production-plan-needed": "yes" },
       });
     });
     return Response.json({ id }, { status: 201 });

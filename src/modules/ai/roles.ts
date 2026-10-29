@@ -3,6 +3,7 @@ import { pixelRowRepairSchema } from "../../lib/pixel-row-repair";
 import { pixelGridSchema } from "../../lib/pixel";
 import { cadBuildResult, cadSpecResult } from "../../lib/cad";
 import type { AssetType } from "../../lib/asset-types";
+import { productionPlanResult } from "../../lib/production-plan";
 import {
   materialPlanResult,
   materialBuildResult,
@@ -132,6 +133,14 @@ export const roles = {
     buildResult,
     "gpt-6-astra",
     "medium",
+  ),
+  "production-planner": role(
+    "tanstack",
+    "models/production-planner",
+    productionPlanResult,
+    "gpt-6-sol",
+    "high",
+    ["references/uv-and-materials", "references/assetkit"],
   ),
   judge: role("eve", "models/judge", judgeResult, "gpt-6-astra", "high", [
     "references/review-method",

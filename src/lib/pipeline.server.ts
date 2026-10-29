@@ -238,7 +238,7 @@ export async function executeJob(kind: string, targetId: string) {
           id, projectId: batch.projectId, batchId: batch.id,
           ...(slots[index] ? { assetId: slots[index].id } : {}), ...model,
         });
-        await tx.insert(jobs).values({ id: crypto.randomUUID(), kind: "model", targetId: id });
+        await tx.insert(jobs).values({ id: crypto.randomUUID(), kind: "model", targetId: id, checkpoint: { "production-plan-needed": "yes" } });
       }
       await tx
         .update(batches)

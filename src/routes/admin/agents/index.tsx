@@ -44,6 +44,7 @@ const roleDescriptions: Record<string, string> = {
   photographer: "Renders consistent review views from archived model exports.",
   judge: "Reviews geometry and surfaces against the approved brief and visual evidence.",
   "visual-target": "Generates the visual benchmark used to guide modeling and review.",
+  "production-planner": "Plans parts, materials, textures, UVs and review checks before production.",
   texture: "Produces image textures for builders through the image generation adapter.",
 };
 

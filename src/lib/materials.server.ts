@@ -20,6 +20,7 @@ import {
   materialSupport,
 } from "../modules/materials/review.server";
 import { readReceipt } from "../modules/asset-builds/index.server";
+import { ensureProductionPlan, productionPlanText } from "./production-planning.server";
 
 export async function materialAction(request: Request, path: string[]) {
   if (path[0] !== "projects" || path[2] !== "materials") return null;
@@ -88,6 +89,7 @@ export async function materialAction(request: Request, path: string[]) {
       kind: "material",
       targetId: projectId,
       checkpoint: {
+        "production-plan-needed": "yes",
         parameters: JSON.stringify(input.parameters),
         description: input.prompt,
         design: project.design,
@@ -129,6 +131,19 @@ export async function renderMaterial(projectId: string) {
   if (!job) throw new Error("Missing material job context");
   if (job.checkpoint.applied === "yes") return;
   let params = materialSchema.parse(JSON.parse(job.checkpoint.parameters));
+  const productionPlan = job.checkpoint["production-plan-needed"] === "yes" || job.checkpoint["production-plan"]
+    ? productionPlanText(await ensureProductionPlan({
+        assetType: "material",
+        projectId,
+        name: job.checkpoint.description || "PBR material",
+        design: job.checkpoint.design || "No separate design reference",
+        request: job.checkpoint.description || "Generate the saved material recipe",
+        context: job.checkpoint.guidance || "None",
+        evidence: job.checkpoint.referenceImages
+          ? JSON.parse(job.checkpoint.referenceImages)
+          : [],
+      }))
+    : "No production plan was recorded for this saved attempt.";
   if (
     job.checkpoint.description &&
     !job.checkpoint.plan &&
@@ -175,6 +190,7 @@ export async function renderMaterial(projectId: string) {
           design: job.checkpoint.design,
           guidance: job.checkpoint.guidance,
           notes: job.checkpoint.notes,
+          productionPlan,
           toolkitVersion: "2.0.0",
           runnerProtocol: 3,
           parentId: job.checkpoint.parentId,

@@ -12,6 +12,7 @@ import { reviewEvidence } from "../modules/pipelines/evidence";
 import { z } from "zod";
 import { viewableReferences } from "./svg";
 import { svgGuides, svgIntentOf, workshopContext } from "./workshop";
+import { ensureProductionPlan, productionPlanText } from "./production-planning.server";
 
 export type Review = z.infer<typeof judgeResult>;
 /** One produced version of an asset plus what the judge needs to see of it. */
@@ -54,12 +55,31 @@ export type AssetKind = {
 export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
   const job = jobContext.getStore();
   if (!job) throw new Error("Missing durable job context");
-  const { model, batch } = ctx;
+  const { model, batch, project } = ctx;
+  const shouldPlan = job.checkpoint["production-plan-needed"] === "yes" &&
+    !job.checkpoint["production-plan"];
   const definition = reviewPipeline(batch.judgeIterations);
   const version = `${definition.id}:${definition.version}`;
   if (job.checkpoint.pipeline && job.checkpoint.pipeline !== version)
     throw new Error("Unsupported saved pipeline version");
   if (!job.checkpoint.pipeline) await checkpoint("pipeline", version);
+  const productionPlan = shouldPlan || job.checkpoint["production-plan"]
+    ? productionPlanText(await ensureProductionPlan({
+        assetType: project.assetType,
+        projectId: model.projectId,
+        batchId: batch.id,
+        modelId: model.id,
+        name: model.name,
+        design: batch.design,
+        request: ctx.request,
+        context: workshopContext(batch.workshop, false, kind.format === "cad" ? "cad" : undefined),
+        evidence: ctx.references,
+      }))
+    : "No production plan was recorded for this saved attempt.";
+  const plannedContext: AssetContext = {
+    ...ctx,
+    request: `${ctx.request}\n\nFROZEN PRODUCTION PLAN\n${productionPlan}`,
+  };
   const builds = definition.nodes.filter((node) => node.task === "builder").length;
   const progress = (iteration: number, fraction = 0) =>
     Math.round(5 + ((iteration + fraction) / builds) * 95);
@@ -102,7 +122,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
             })
             .where(eq(assetVersions.id, model.id));
           previousCandidate = review ? candidate : undefined;
-          candidate = await kind.build(ctx, { node, previous: candidate, feedback: review });
+          candidate = await kind.build(plannedContext, { node, previous: candidate, feedback: review });
           await assertJobActive();
           await db
             .update(assetVersions)
@@ -118,7 +138,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
         judge: async (node) => {
           if (!candidate) throw new Error("Nothing to review");
           // An SVG source (an earlier version being revised) is markup the judge cannot view as an image.
-          const references = candidate.referenceEvidence ?? viewableReferences(ctx.references).slice(0, 3)
+          const references = candidate.referenceEvidence ?? viewableReferences(plannedContext.references).slice(0, 3)
             .map((key) => ({ key, label: "reference material" }));
           const size = kind.format === "svg" ? "Square vector canvas (1:1)"
             : batch.workshop?.resolution ? `${batch.workshop.resolution.width}x${batch.workshop.resolution.height}`
@@ -161,7 +181,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
             input: await roleInput(kind.judge, {
               design: batch.design,
               name: model.name,
-              request: ctx.request + workshopContext(batch.workshop, false),
+              request: plannedContext.request + workshopContext(batch.workshop, false),
               size,
               images: evidence.labels,
               analysis: JSON.stringify(analysis, null, 2),

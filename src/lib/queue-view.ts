@@ -21,6 +21,7 @@ export const queueKindLabels: Record<string, string> = {
 
 const roleLabels: Record<string, string> = {
   "visual-target": "Visual target",
+  "production-planner": "Production plan",
   builder: "Build",
   photographer: "Photography",
   judge: "Judge",

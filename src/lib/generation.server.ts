@@ -105,6 +105,7 @@ export async function regenerateAsset(modelId: string) {
     await tx.insert(jobs).values({
       id: crypto.randomUUID(), kind: "model", targetId: id,
       checkpoint: {
+        "production-plan-needed": "yes",
         "branch-references": JSON.stringify([
           ...(source.role === "builder" ? [] : [(source.result as { key: string }).key]),
           ...(workshop.references || []),

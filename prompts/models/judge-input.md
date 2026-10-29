@@ -7,6 +7,8 @@ METRICS
 Use the numbered image labels below to distinguish actual renders from reference material.
 Previous feedback: {{feedback}}
 PIPELINE STAGE: {{stage}}
+FROZEN PRODUCTION PLAN:
+{{productionPlan}}
 {{target}}
 
 DETERMINISTIC ANALYSIS (read-only, advisory)

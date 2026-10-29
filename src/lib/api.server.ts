@@ -1025,6 +1025,7 @@ export async function api(request: Request) {
           kind: "model",
           targetId: modelId,
           checkpoint: {
+            "production-plan-needed": "yes",
             "branch-references": JSON.stringify([
               ...(isFlatRole(source.role)
                 ? [(source.result as any).key]
@@ -1157,7 +1158,7 @@ export async function api(request: Request) {
             throw new Error("Wait for planning to finish before retrying this version");
           await tx.update(batches).set({ status: "building", error: null }).where(eq(batches.id, model.batchId));
           const resumed = await resumeJob(tx, ["model"], id);
-          if (!resumed) await tx.insert(jobs).values({ id: crypto.randomUUID(), kind: "model", targetId: id });
+          if (!resumed) await tx.insert(jobs).values({ id: crypto.randomUUID(), kind: "model", targetId: id, checkpoint: { "production-plan-needed": "yes" } });
         }
       });
       return reply({ ok: true });

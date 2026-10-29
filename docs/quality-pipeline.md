@@ -3,11 +3,12 @@
 New model attempts use `model-quality:4`:
 
 1. Generate a per-asset visual target through the Image API (`prompts/models/visual-target.md`). The approved batch design, specific model brief and uploaded references are inputs. Log the request, reference keys, image, usage and estimated cost separately from Eve sessions.
-2. Show the target as the card cover until a 3D render exists. Label it as a concept. The Visual target tab keeps it accessible; historical versions retain their own target key.
-3. Build and photograph separate blockout and shape-refinement passes using temporary matte colors. With judging enabled, a fresh judge compares the seven photographs with the target and user references. Major silhouette, construction and transition defects block surface work.
-4. Retry geometry within the configured stage limit. A pass advances to materials; exhaustion finishes with issues and explicitly states that surface work was withheld.
-5. Build the requested final materials, then polish and photograph the result. Textured assets require purposeful generated base-color images and appropriate normal maps. Color markings normally belong on continuous surfaces, rather than raised patch geometry. Run the surface review/revision loop with the same per-stage limit.
-6. Archive every export and review. Collection thumbnails use the latest render. New v4 jobs retain blockout, refinement, materials and polish with photography when judge rounds is zero; only judging is disabled.
+2. Run the durable production planner. It freezes the named parts, material slots, texture targets, UV strategy and export checks for this attempt. The plan is passed to every builder and judge and is reused on resume.
+3. Show the target as the card cover until a 3D render exists. Label it as a concept. The Visual target tab keeps it accessible; historical versions retain their own target key.
+4. Build and photograph separate blockout and shape-refinement passes using temporary matte colors. With judging enabled, a fresh judge compares the seven photographs with the target, user references and the production plan. Major silhouette, construction and transition defects block surface work.
+5. Retry geometry within the configured stage limit. A pass advances to materials; exhaustion finishes with issues and explicitly states that surface work was withheld.
+6. Build the requested final materials, then polish and photograph the result. Textured assets require purposeful generated base-color images and appropriate normal maps. Color markings normally belong on continuous surfaces, rather than raised patch geometry. Run the surface review/revision loop with the same per-stage limit.
+7. Archive every export and review. Collection thumbnails use the latest render. New v4 jobs retain blockout, refinement, materials and polish with photography when judge rounds is zero; only judging is disabled.
 
 A review passes only when the judge reports `passed: true` and lists no major or critical findings. The application enforces this for both geometry and surface reviews, even when the model returns a contradictory pass or high score. Raw AI responses remain in run history; version feedback records the effective verdict.
 

@@ -30,6 +30,7 @@ import { compareStyle } from "./asset-style";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { settleBatch } from "./batch-state.server";
 import { reviewEvidence } from "../modules/pipelines/evidence";
+import { ensureProductionPlan, productionPlanText } from "./production-planning.server";
 async function one<T>(rows: T[]) {
   if (!rows[0]) throw new Error("Record not found");
   return rows[0];
@@ -111,10 +112,29 @@ export async function executeAssetVersionJob(targetId: string) {
   let currentBuilderRunId = "";
   let buildSummary = "";
   const pipelineVersion = `${definition.id}:${definition.version}`;
+  const shouldPlan = !legacy &&
+    job.checkpoint["production-plan-needed"] === "yes" &&
+    !job.checkpoint["production-plan"];
   if (job.checkpoint.pipeline && job.checkpoint.pipeline !== pipelineVersion)
     throw new Error("Unsupported saved pipeline version");
   if (!job.checkpoint.pipeline) await checkpoint("pipeline", pipelineVersion);
   const { target, visualReferences } = await prepareVisualTarget({ model, batch, project, request, attempt, legacy });
+  const productionPlan = !shouldPlan && !job.checkpoint["production-plan"]
+    ? "No production plan was recorded for this legacy attempt. Preserve its existing behavior."
+    : productionPlanText(await ensureProductionPlan({
+        assetType: "model",
+        projectId: model.projectId,
+        batchId: batch.id,
+        modelId: model.id,
+        name: model.name,
+        design: batch.design,
+        request,
+        context: workshopContext(batch.workshop, false),
+        evidence: [
+          ...(target ? [target] : []),
+          ...visualReferences,
+        ],
+      }));
   let geometryBlocked = false;
   await runPipeline(
     definition,
@@ -189,6 +209,7 @@ export async function executeAssetVersionJob(targetId: string) {
               designVersion: batch.designVersion,
               request,
               workshop: batch.workshop,
+              productionPlan,
               stage,
               workPass,
             },
@@ -253,6 +274,7 @@ export async function executeAssetVersionJob(targetId: string) {
               previous: previous || "None",
               feedback: JSON.stringify(feedback || null, null, 2),
               stage: stage || "complete",
+              productionPlan,
               target: target
                 ? resolve(DATA, target)
                 : "No visual target; follow the approved design and request",
@@ -558,6 +580,7 @@ export async function executeAssetVersionJob(targetId: string) {
               request,
               metrics: JSON.stringify(metrics),
               feedback: JSON.stringify(feedback),
+              productionPlan,
             })) +
             (workPass
               ? "\n\n" +
