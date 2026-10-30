@@ -72,6 +72,7 @@ export function AssetCard({
 }) {
   const [resuming, setResuming] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [approving, setApproving] = useState(false);
   const m = model;
   const name = m.name.replaceAll("_", " ");
   const modelLink = {
@@ -80,6 +81,17 @@ export function AssetCard({
   };
   const working = !finished.includes(m.status);
   const outdated = !!batch && batch.designVersion < currentDesignVersion;
+  async function approveTarget() {
+    setApproving(true);
+    try {
+      await request(`models/${m.id}/visual-target`, json({ action: "approve", target: m.visualTarget }));
+      await onRefresh();
+    } catch (error) {
+      onError(error instanceof Error ? error.message : "Could not approve visual target");
+    } finally {
+      setApproving(false);
+    }
+  }
   async function abort() {
     setResuming(true);
     try {
@@ -247,8 +259,13 @@ export function AssetCard({
           <span>Est. {costSummary(cost)}</span>
         </div>
         <div className="card-actions">
+          {m.status === "awaiting_approval" && m.visualTarget && !archived && (
+            <Button disabled={approving || resuming} onClick={approveTarget}>
+              <Check size={14} /> {approving ? "Approving…" : "Approve & build"}
+            </Button>
+          )}
           {working && !archived && (
-            <Button variant="outline" disabled={resuming || activeJobs.some((job) => job.status === "cancelling")} onClick={abort}
+            <Button variant="outline" disabled={approving || resuming || activeJobs.some((job) => job.status === "cancelling")} onClick={abort}
               title="Stop generating. The asset returns to its previous state; the attempt stays in history.">
               <Square size={14} /> {resuming ? "Stopping…" : "Abort"}
             </Button>
