@@ -5,7 +5,17 @@ import {
   DEFAULT_BUILDER_TIMEOUT_MS,
   runtimeSettingsDefaults,
 } from "../../../lib/runtime-settings";
-import { agentTimeoutMs } from "./timeouts";
+import { agentTimeoutMs, textGenerationFailure } from "./timeouts";
+
+test("a deadline reports a timeout instead of the SDK missing-result error", () => {
+  const controller = new AbortController();
+  const original = new Error("structured output finalization produced no result");
+  expect(textGenerationFailure(original, controller.signal, "pixel", 180000)).toBe(original);
+  controller.abort();
+  const failure = textGenerationFailure(original, controller.signal, "pixel", 180000);
+  expect(String(failure)).toBe("Error: AI generation timed out after 180 seconds (pixel). Increase the text-generation timeout before resuming.");
+  expect(failure instanceof Error && failure.cause).toBe(original);
+});
 
 test("builder turns have a larger default timeout", () => {
   const settings = runtimeSettingsDefaults({});

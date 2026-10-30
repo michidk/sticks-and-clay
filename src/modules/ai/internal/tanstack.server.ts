@@ -15,6 +15,7 @@ import { checkpoint, jobContext } from "../../../lib/checkpoint.server";
 import { price } from "../../../lib/contracts";
 import { imagePart } from "../../../lib/storage.server";
 import { textRoleProfile } from "../config.server";
+import { textGenerationFailure } from "./timeouts";
 export async function draftBrief(args: RunInput) {
   const checkpointKey = args.stepId
     ? `step:${args.stepId}`
@@ -140,12 +141,13 @@ export async function draftBrief(args: RunInput) {
       .where(eq(runs.id, id));
     return { ...result, runId: id };
   } catch (error) {
+    const failure = textGenerationFailure(error, controller.signal, args.role, profile.settings.timeouts.tanstackMs);
     await db
       .update(runs)
-      .set({ status: "failed", error: String(error), finishedAt: new Date() })
+      .set({ status: "failed", error: String(failure), finishedAt: new Date() })
       .where(eq(runs.id, id));
     if (usage || output) await saveUsage();
-    throw error;
+    throw failure;
   } finally {
     clearTimeout(timer);
   }

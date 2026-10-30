@@ -35,6 +35,8 @@ The internal accounting module owns run creation and pricing snapshots. Adapters
 
 Resuming a running Eve turn follows the saved session through idle stream reconnects until a terminal event or the configured role deadline. Quiet Blender work must not exhaust the SDK's default idle reconnect limit. A deadline cancels the retained session and records a timeout; it does not submit another turn. Completed turns still require artifact validation before the pipeline advances.
 
+TanStack text requests use the configured `timeouts.tanstackMs` deadline. When that deadline aborts a request, the run reports the elapsed limit and role instead of the SDK's missing structured-result error. Increase the text-generation timeout in settings before resuming a job that needs more time.
+
 Optional `design-mockups` jobs snapshot the approved design's rendered prompts and reference keys when queued. Each completed image is checkpointed independently; resume reuses completed image runs and retains the original inputs. Mockups do not change project approval, collection assets or uploaded references. Their gallery is read from job checkpoints, with costs in the ordinary run history.
 
 ## Pipeline interface
