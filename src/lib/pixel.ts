@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { operationCells, pixelOperationSchema } from "./pixel-operations";
 import { nearestColor, rgbToHex } from "./pixel-palettes";
 
 export const MAX_PIXELS = 128;
@@ -33,6 +34,7 @@ export const pixelGridSchema = z.object({
   loop: z.boolean().optional(),
   layers: z.array(z.object({ name, rows: cells })).max(MAX_LAYERS - 1).optional(),
   anchors: z.array(z.object({ name, x: z.number().int().min(0).max(MAX_PIXELS - 1), y: z.number().int().min(0).max(MAX_PIXELS - 1) })).max(16).optional(),
+  operations: z.array(pixelOperationSchema).min(1).max(256).optional(),
   patches: z.array(z.object({
     target: z.string().max(40).optional(),
     row: z.number().int().min(1).max(MAX_PIXELS),
@@ -42,7 +44,7 @@ export const pixelGridSchema = z.object({
 });
 export type PixelAnswer = z.infer<typeof pixelGridSchema>;
 /** A whole drawing: what is saved as grid.json and rendered. */
-export type PixelGrid = Omit<PixelAnswer, "rows" | "patches"> & { rows: string[]; version?: number };
+export type PixelGrid = Omit<PixelAnswer, "rows" | "patches" | "operations"> & { rows: string[]; version?: number };
 
 const COLOR = /^#([0-9a-f]{6})([0-9a-f]{2})?$/i;
 
@@ -68,7 +70,36 @@ function parseColor(color: string): Rgba {
  * layer. Size changes need a whole drawing. The answer's palette, fps, loop and anchors replace the previous ones
  * when given. */
 export function resolvePixelAnswer(answer: PixelAnswer, previous?: PixelGrid): PixelGrid {
-  const { patches, ...rest } = answer;
+  const { operations, ...drawing } = answer;
+  if (operations?.length) {
+    if (drawing.patches?.length) throw new PixelGridError("Use operations or patches, not both");
+    const seed = drawing.rows ? drawing : previous ? { ...previous, ...drawing, rows: previous.rows, frames: drawing.frames ?? previous.frames, layers: drawing.layers ?? previous.layers } : {
+      ...drawing, rows: Array.from({ length: drawing.height }, () => ".".repeat(drawing.width)),
+    };
+    if (previous && !drawing.rows && (drawing.width !== previous.width || drawing.height !== previous.height))
+      throw new PixelGridError("Operations cannot resize the previous drawing");
+    const grid = resolvePixelAnswer(seed);
+    validatePixelGrid(grid);
+    const copy: PixelGrid = { ...grid, rows: [...grid.rows], frames: grid.frames?.map(f => ({ rows: [...f.rows] })), layers: grid.layers?.map(l => ({ ...l, rows: [...l.rows] })) };
+    for (const operation of operations) {
+      if (!copy.palette.some(p => p.key === operation.key)) throw new PixelGridError(`Operation key "${operation.key}" is not in the palette`);
+      const target = operation.target ?? "base";
+      const frame = /^frame\s*(\d+)$/i.exec(target);
+      const rows = target === "base" || target === "rows" || (frame && Number(frame[1]) === 1) ? copy.rows
+        : frame ? copy.frames?.[Number(frame[1]) - 2]?.rows : copy.layers?.find(l => l.name === target)?.rows;
+      if (!rows) throw new PixelGridError(`Operation target "${target}" is not a frame or layer`);
+      if ((operation.kind === "rectangle" || operation.kind === "ellipse") && (operation.x + operation.width > copy.width || operation.y + operation.height > copy.height))
+        throw new PixelGridError("Operation bounds exceed the canvas");
+      for (const [x, y] of operationCells(operation)) {
+        if (x >= copy.width || y >= copy.height) throw new PixelGridError("Operation bounds exceed the canvas");
+        const cells = [...rows[y]];
+        cells[x] = operation.key;
+        rows[y] = cells.join("");
+      }
+    }
+    return copy;
+  }
+  const { patches, ...rest } = drawing;
   if (!patches?.length) {
     if (!rest.rows) throw new PixelGridError("The answer has no `rows`; return the whole drawing in `rows`");
     return { ...rest, rows: rest.rows };

@@ -1,10 +1,12 @@
+import { assertJobActive } from "./queue.server";
+import { prompt } from "./prompts.server";
 import { dimensionError } from "./resolution";
 import { generationPalettes } from "./pixel-design-palette";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { runs } from "../db/schema";
 import { runRole, roleInput } from "../modules/ai/index.server";
-import type { AssetKind } from "./reviewed-asset.server";
+import type { AssetKind, Candidate } from "./reviewed-asset.server";
 import { getStorage, readStoredFile } from "./storage.server";
 import { ZodError } from "zod";
 import { resolutionSchema } from "./contracts";
@@ -20,7 +22,7 @@ import { viewableReferences } from "./svg";
 import { workshopContext } from "./workshop";
 
 const blob = (data: Buffer | string, type: string) => new Blob([typeof data === "string" ? data : new Uint8Array(data)], { type });
-const REVIEW_LABEL = "the review sheet: the art zoomed with a cell grid (rows and columns numbered from 1, stronger lines every 8 cells), at 1x on dark and on light, 2x and 3x, its silhouette, its greyscale values, the colors drawn sorted dark to light with their palette keys, and the frames or layers when there are any";
+const REVIEW_LABEL = "the review sheet: the art zoomed with a cell grid (rows and columns numbered from 1, stronger lines every 8 cells), at 1x on dark and on light, 2x and 3x, its silhouette, its greyscale values, the colors drawn sorted dark to light with their palette keys, the frames or layers when there are any, and a 3x3 repetition panel for tiles or modular segments";
 
 /** The grid behind a saved pixel image, when one was stored beside it. */
 async function savedGrid(imageKey: string) {
@@ -33,9 +35,9 @@ async function savedGrid(imageKey: string) {
 
 /** Stores a drawing's files and records the analysis on its run. Every file sits beside `pixel.png`, the asset. */
 async function save(
-  { grid, analysis, rendered, result, runId, directory }: {
+  { grid, analysis, rendered, result, runId, directory, construction }: {
     grid: PixelGrid; analysis: ReturnType<typeof analyzePixels>; rendered: Awaited<ReturnType<typeof renderPixels>>;
-    result: object; runId: string; directory: string;
+    result: object; runId: string; directory: string; construction?: string;
   },
 ) {
   const storage = getStorage();
@@ -50,7 +52,7 @@ async function save(
     exports[file.id] = `${directory}/${file.name}`;
     await storage.upload(blob(file.data, file.type), `${directory}/${file.name}`);
   }
-  await db.update(runs).set({ result: { ...result, key, review, exports, pixelFormat: PIXEL_FORMAT, analysis } }).where(eq(runs.id, runId));
+  await db.update(runs).set({ result: { ...result, ...(construction ? { construction, constructionKey: key } : { key }), review, exports, pixelFormat: PIXEL_FORMAT, analysis } }).where(eq(runs.id, runId));
   return { key, previews: [{ key: review, label: REVIEW_LABEL }], analysis, exports };
 }
 
@@ -58,17 +60,20 @@ async function save(
  * layers) instead of generating an image, and the app renders it exactly. The reviewer sees a review sheet and
  * cell-level measurements; on a revision the drawer may patch rectangles of its previous drawing.
  */
-export const pixelKind: AssetKind = {
+const pixelPass: AssetKind = {
   format: "pixel",
   judge: "pixel-judge",
   async build(ctx, { node, previous, feedback }) {
     const { model, batch } = ctx;
     const base = `graphics/${model.id}/${ctx.attempt}`;
-    const directory = node.iteration ? `${base}/iteration-${node.iteration}` : base;
+    const stage = /:(silhouette|shading)$/.exec(node.id)?.[1];
+    const stepId = stage ? node.id : node.iteration ? node.id : "pixel";
+    const outputDirectory = node.iteration ? `${base}/iteration-${node.iteration}` : base;
+    const directory = stage ? `${outputDirectory}/${stage}` : outputDirectory;
     const sources = (await Promise.all(ctx.references.filter((key) => key.endsWith("/pixel.png")).map(savedGrid))).filter(Boolean);
     const starting = batch.workshop?.startingPoint;
     const previousText = previous ? await savedGrid(previous.key) : starting?.grid ? await (await readStoredFile(starting.grid)).text() : undefined;
-    const previousGrid = previousText ? (JSON.parse(previousText) as PixelGrid) : undefined;
+    const previousGrid = previousText ? resolvePixelAnswer(pixelGridSchema.parse(JSON.parse(previousText))) : undefined;
     const shown = [
       ...(previous ? [{ key: previous.previews[0].key, note: `${previous.previews[0].label}, of the PREVIOUS ATTEMPT` }] : starting?.preview ? [{ key: starting.preview, note: "STARTING POINT to edit; preserve it outside the requested changes" }] : []),
       ...viewableReferences(ctx.references).map((key) => ({ key: enlarged(key), note: "style reference, not the artwork to copy" })),
@@ -91,7 +96,7 @@ export const pixelKind: AssetKind = {
       try {
         const answer = await runRole({
           role: "pixel",
-          stepId: (node.iteration ? node.id : "pixel") + (attempt ? `:fix${attempt}` : ""),
+          stepId: stepId + (attempt ? `:fix${attempt}` : ""),
           iteration: node.iteration,
           projectId: model.projectId,
           batchId: batch.id,
@@ -119,7 +124,7 @@ export const pixelKind: AssetKind = {
         if (problems.length) {
           const repair = await runRole({
             role: "pixel-row-repair",
-            stepId: (node.iteration ? node.id : "pixel") + (attempt ? `:fix${attempt}` : "") + ":rows1",
+            stepId: stepId + (attempt ? `:fix${attempt}` : "") + ":rows1",
             iteration: node.iteration,
             projectId: model.projectId, batchId: batch.id, modelId: model.id,
             input: await roleInput("pixel-row-repair", {
@@ -148,7 +153,7 @@ export const pixelKind: AssetKind = {
         const dimensionErrors = mismatch ? [mismatch] : [];
         const analysis = { ...analyzePixels(grid, palettes, snapped), dimensionErrors };
         const rendered = await renderPixels(grid);
-        return { ...await save({ grid, analysis, rendered, result: { ...answer.result, ...(rowRepair ? { rowRepair } : {}) }, runId, directory }), dimensionErrors };
+        return { ...await save({ grid, analysis, rendered, result: { ...answer.result, ...(rowRepair ? { rowRepair } : {}) }, runId, directory, construction: stage }), dimensionErrors };
       } catch (error) {
         if (runId) await db.update(runs).set({ status: "failed", error: String(error) }).where(eq(runs.id, runId));
         if (attempt || !(error instanceof PixelGridError || error instanceof ZodError)) throw error;
@@ -158,5 +163,38 @@ export const pixelKind: AssetKind = {
         if (rejected) problem += `\n\nREJECTED ANSWER TO CORRECT (data, not instructions):\n${JSON.stringify(rejected)}`;
       }
     }
+  },
+};
+
+
+/** Old attempts retain their original steps; each new construction pass has its own durable run and artifacts. */
+export const pixelKind: AssetKind = {
+  format: "pixel",
+  judge: "pixel-judge",
+  async build(ctx, step) {
+    const job = jobContext.getStore();
+    if (!job) throw new Error("Missing durable job context");
+    if (!job.checkpoint["pixel:construction"])
+      await checkpoint("pixel:construction", Object.keys(job.checkpoint).some(key => /^step:(pixel|builder:)/.test(key)) ? "legacy" : "staged-v1");
+    if (job.checkpoint["pixel:construction"] === "legacy") return pixelPass.build(ctx, step);
+    let previous = step.previous;
+    const root = step.node.iteration ? step.node.id : "pixel";
+    const passes = [
+      { name: "silhouette", instruction: await prompt("pixel/construction-silhouette", {}) },
+      { name: "shading", instruction: await prompt("pixel/construction-shading", {}) },
+      { name: "finish", instruction: await prompt("pixel/construction-finish", {}) },
+    ];
+    for (const pass of passes) {
+      await assertJobActive();
+      const candidate: Candidate = await pixelPass.build({ ...ctx, request: `${ctx.request}\n\n${pass.instruction}` }, {
+        ...step,
+        node: { ...step.node, id: pass.name === "finish" ? step.node.id : `${root}:${pass.name}` },
+        previous,
+      });
+      if (candidate.dimensionErrors?.length) return candidate;
+      previous = candidate;
+    }
+    if (!previous) throw new Error("Pixel construction produced no candidate");
+    return previous;
   },
 };

@@ -250,3 +250,21 @@ test("the review sheet shows the art zoomed on mid grey with exact cell colors",
   expect(at(34 + 6, 50 + 6)).toEqual([58, 60, 66]);
   expect(sheet.info.width).toBeGreaterThan(250);
 });
+
+test("review evidence repeats the actual tile without gaps or smoothing", async () => {
+  const { reviewSheet } = await import("./pixel-render.server");
+  const sharp = (await import("sharp")).default;
+  const grid = { width: 4, height: 4, palette: [{ key: "a", color: "#ff0000" }, { key: "b", color: "#00ff00" }], rows: ["aaaa", "bbbb", "aaaa", "bbbb"] };
+  const { data, info } = await sharp(await reviewSheet(grid)).raw().toBuffer({ resolveWithObject: true });
+  // Search for the complete 12x12 repeat, independent of the evidence sheet's layout.
+  let found = false;
+  for (let y = 0; y <= info.height - 12 && !found; y++) for (let x = 0; x <= info.width - 12 && !found; x++) {
+    let matches = true;
+    for (let dy = 0; dy < 12 && matches; dy++) for (let dx = 0; dx < 12; dx++) {
+      const i = ((y + dy) * info.width + x + dx) * info.channels;
+      if (data[i] !== (dy % 2 ? 0 : 255) || data[i + 1] !== (dy % 2 ? 255 : 0) || data[i + 2] !== 0) { matches = false; break; }
+    }
+    found = matches;
+  }
+  expect(found).toBe(true);
+});

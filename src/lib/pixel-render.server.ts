@@ -85,13 +85,16 @@ export async function reviewSheet(grid: PixelGrid) {
   const zoom = Math.max(1, Math.min(12, Math.floor(512 / Math.max(w, h))));
   const big = zoomed(image, zoom);
   const ruler = 22; // room for the row and column numbers
+  const repeated = canvas(w * 3, h * 3, DARK);
+  for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) draw(repeated, image, x * w, y * h);
   const tiles: [string, PixelImage][] = [
     ["1x on dark", tile(image, 1, DARK)], ["1x on light", tile(image, 1, LIGHT)],
     ["2x", tile(image, 2, DARK)], ["3x", tile(image, 3, DARK)],
     ["Silhouette", tile(silhouette(image), 2, LIGHT)], ["Values", tile(recolor(image, grey), 2, MID)],
+    ["Repeat 3x3", repeated], ["Native values", tile(recolor(image, grey), 1, MID)],
   ];
   const cell = Math.max(80, ...tiles.map(([, t]) => t.width));
-  const tileRows = [tiles.slice(0, 2), tiles.slice(2, 4), tiles.slice(4, 6)];
+  const tileRows = [tiles.slice(0, 2), tiles.slice(2, 4), tiles.slice(4, 6), tiles.slice(6, 8)];
   const columnHeight = tileRows.reduce((sum, row) => sum + Math.max(...row.map(([, t]) => t.height)) + TEXT + PAD, 0);
   const width = PAD + ruler + big.width + PAD * 2 + cell * 2 + PAD + PAD;
   const labels: Label[] = [];

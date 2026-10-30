@@ -12,6 +12,7 @@ test("every prompt file is used by a role or a prompt() call, and every named pr
   const used = new Set<string>([
     "eve/system", "eve/resume", "models/modeling-pass", "models/modeling-review",
     "references/sprite-target",
+    "pixel/construction-silhouette", "pixel/construction-shading", "pixel/construction-finish",
     ...constructionGuides("organic tree modular grip sprite", "complete"),
   ]);
   for (const definition of [...Object.values(roles), ...Object.values(imageRoles)]) {

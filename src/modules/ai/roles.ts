@@ -76,7 +76,7 @@ export const roles = {
   pixel: role("tanstack", "pixel/pixel", pixelGridSchema, "gpt-6-sol", "high"),
   "pixel-row-repair": role("tanstack", "pixel/pixel-row-repair", pixelRowRepairSchema, "gpt-6-sol", "high"),
   "pixel-judge": {
-    ...role("tanstack", "pixel/pixel-judge", judgeResult, "gpt-6-sol", "high"),
+    ...role("tanstack", "pixel/pixel-judge", judgeResult, "gpt-6-astra", "high"),
     inputTemplate: "graphics/graphic-judge-input",
   },
   "pixel-designer": role("tanstack", "design/pixel-designer", designResult),

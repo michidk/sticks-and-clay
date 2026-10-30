@@ -59,6 +59,8 @@ ones that failed.
 SVG projects choose an intent (icons, logos or illustrations). Icon review includes native 16px and 24px evidence on light and dark backgrounds; logos add the 16px size, and illustrations are judged at full size and 64px.
 A [CC0 reference pack and three-candidate exploration runner](docs/icon-workflow-research.md#cc0-references-and-silhouette-exploration) support comparing silhouettes before owner-selected refinement.
 
+Pixel art uses rendered silhouette, shading and cleanup passes, palette-locked drawing operations, and independent review with repeated-tile evidence. See [pixel construction and review](docs/asset-workshop.md#pixel-construction-and-review) for recovery and call costs.
+
 ## 🔁 How it works
 
 Generation is a pipeline with explicit human checkpoints. AI does the

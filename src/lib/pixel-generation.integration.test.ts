@@ -21,13 +21,14 @@ const verdict = (passed: boolean, summary: string) => ({
 });
 
 // `passes` > 1 replays the finished job to prove resume is idempotent; a retried drawing leaves a failed run, so retries run once.
-async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2, design = "Green circles", paletteContract: "1" | "2" | "3" | "4" | null = "3") {
+async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2, design = "Green circles", paletteContract: "1" | "2" | "3" | "4" | null = "3", staged = false) {
   const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
   await db.insert(projects).values({ id: projectId, name: "Review fixture", description: "test", assetType: "pixel", status: "ready" });
   await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design, designVersion: 1, status: "building" });
   await db.insert(assetVersions).values({ id: modelId, projectId, batchId, name: "Circle", prompt: "A green circle" });
   const checkpoint: Record<string, string> = {};
   if (paletteContract) checkpoint["pixel:palette-contract"] = paletteContract;
+  if (staged) checkpoint["pixel:construction"] = "staged-v1";
   for (const item of saved) {
     const id = crypto.randomUUID();
     checkpoint[`step:${item.step}`] = id;
@@ -45,7 +46,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
     return model;
   };
   const cleanup = async () => {
-    for (const dir of [base, `${base}/iteration-1`])
+    for (const dir of [base, `${base}/iteration-1`, `${base}/silhouette`, `${base}/shading`])
       for (const file of ["pixel.png", "preview.png", "review.png", "grid.json", "sheet.png", "sheet.json", "sheet.unity.json", "sheet.godot.json", "anim.gif"])
         if (await getStorage().exists(`${dir}/${file}`)) await getStorage().delete(`${dir}/${file}`);
     await db.delete(jobs).where(eq(jobs.id, jobId));
@@ -298,4 +299,49 @@ integration("explicit pixel dimension mismatch is shown even with zero review ro
     expect(model.verdict).toBe("limit_reached");
     expect(model.feedback).toMatchObject({ passed: false, summary: expect.stringContaining("requested 8×8 pixels, received 4×4") });
   } finally { await t.cleanup(); }
+});
+
+
+integration("staged construction renders every pass, patches its predecessor and replays without new calls", async () => {
+  const patch = (column: number) => ({ ...drawing(1), rows: undefined, patches: [{ row: 2, column, rows: ["o"] }] });
+  const t = await scenario(0, [
+    { step: "pixel:silhouette", role: "pixel", iteration: 0, result: drawing(1) },
+    { step: "pixel:shading", role: "pixel", iteration: 0, result: patch(2) },
+    { step: "pixel", role: "pixel", iteration: 0, result: patch(3) },
+  ], 2, "Green circles", "4", true);
+  try {
+    const model = await t.run();
+    expect(model.status).toBe("done");
+    for (const [suffix, row] of [["/silhouette", "o..."], ["/shading", "oo.."], ["", "ooo."]]) {
+      const grid = JSON.parse(await (await getStorage().download(`${t.base}${suffix}/grid.json`)).text());
+      expect(grid.rows[1]).toBe(row);
+      expect(await getStorage().exists(`${t.base}${suffix}/review.png`)).toBe(true);
+    }
+    const saved = await db.select().from(runs).where(eq(runs.modelId, t.modelId));
+    expect(saved).toHaveLength(3);
+    expect(saved.filter(run => (run.result as { key?: string }).key)).toHaveLength(1);
+    expect(saved.filter(run => (run.result as { construction?: string }).construction)).toHaveLength(2);
+  } finally { await t.cleanup(); }
+});
+
+integration("the next construction pass receives the preceding rendered image and source grid", async () => {
+  const t = await scenario(0, [{ step: "pixel:silhouette", role: "pixel", iteration: 0, result: drawing(1) }], 1, "Green circles", "4", true);
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY, originalBase = process.env.OPENAI_BASE_URL;
+  try {
+    process.env.OPENAI_API_KEY = "pixel-construction-fixture";
+    process.env.OPENAI_BASE_URL = "https://pixel-construction.invalid/v1";
+    globalThis.fetch = Object.assign(async () => { throw new Error("Stopped before provider request"); }, { preconnect: originalFetch.preconnect });
+    await expect(t.run()).rejects.toThrow();
+    const saved = await db.select().from(runs).where(eq(runs.modelId, t.modelId));
+    const shading = saved.find(run => run.stepId === "pixel:shading");
+    expect(shading?.input).toContain("CONSTRUCTION PASS: form and materials");
+    expect(shading?.input).toContain('"rows":["....","o...","....","...."]');
+    expect(shading?.images).toContain(`${t.base}/silhouette/review.png`);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey;
+    if (originalBase === undefined) delete process.env.OPENAI_BASE_URL; else process.env.OPENAI_BASE_URL = originalBase;
+    await t.cleanup();
+  }
 });
