@@ -3,7 +3,7 @@ import { z } from "zod";
 const coordinate = z.number().int().min(0).max(127);
 const point = z.object({ x: coordinate, y: coordinate });
 const ink = { key: z.string().length(1), target: z.string().max(40).optional() };
-export const pixelOperationSchema = z.discriminatedUnion("kind", [
+export const pixelOperationSchema = z.union([
   z.object({ kind: z.literal("rectangle"), ...ink, x: coordinate, y: coordinate, width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128) }),
   z.object({ kind: z.literal("ellipse"), ...ink, x: coordinate, y: coordinate, width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128) }),
   z.object({ kind: z.literal("line"), ...ink, from: point, to: point }),
