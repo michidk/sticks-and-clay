@@ -58,6 +58,11 @@ The model page's **Debug** tab (a collapsible section on graphic pages) shows ho
 
 ## Visual target approval
 
+Final image-textured exports require base-color bindings; normal maps are optional
+when the production plan calls for a color-only surface or palette texture.
+Resuming a workspace refreshes the export helper and runner while retaining its
+pinned geometry helpers, so saved attempts receive export-validation fixes.
+
 New 3D generation pauses after the visual target. Approve & build on the asset card or model review page queues the existing job; Revise visual target uses feedback and the previous image to generate another target for approval. Each image run remains in Activity. Waiting models release their worker slot and remain waiting across restarts. Approval is tied to the exact current image, so an outdated browser cannot approve a newer revision.
 
 Skip visual mock in the model idea dialog builds directly from the approved design and brief without an image-generation call. The choice is saved with the idea and batch. Graphics keep their one-shot generation flow. Existing batches retain automatic progression through their saved pipeline; the migration does not introduce a new approval requirement into ongoing work.

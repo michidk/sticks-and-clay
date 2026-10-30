@@ -32,6 +32,7 @@ jobs:
             bun test src/lib/sandbox.test.ts
             /opt/blender/blender --background --factory-startup --python-exit-code 1 --python-expr "import bpy; s=bpy.context.scene; s.render.engine=\"CYCLES\"; s.cycles.samples=1; s.render.resolution_x=64; s.render.resolution_y=64; s.render.resolution_percentage=100; s.render.filepath=\"/tmp/smoke.png\"; bpy.ops.render.render(write_still=True)"
             test -s /tmp/smoke.png
+            PYTHONPATH=blender .venv/bin/python -m unittest blender.test_build_workflow.WorkflowTests.test_color_only_texture_exports_after_resuming_old_support
           '
       - name: Publish immutable release
         env:

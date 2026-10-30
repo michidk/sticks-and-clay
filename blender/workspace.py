@@ -24,6 +24,8 @@ def data_path(data, key):
 def prepare(root, data, dest, info):
     dest.mkdir(parents=True, exist_ok=True)
     if (dest / 'params.json').exists():
+        shutil.copyfile(root / 'blender/helpers.py', dest / 'build-support/helpers.py')
+        shutil.copyfile(root / 'blender/helpers.py', dest / 'helpers.py')
         return
     source = data_path(data, info['sourceScript']) if info.get('sourceScript') else None
     if source and (not source.is_relative_to(data / 'versions') or source.name != 'asset.py'):
@@ -59,7 +61,7 @@ def prepare(root, data, dest, info):
             shutil.copyfile(root / 'blender' / name, temporary / name)
         temporary.rename(snapshot)
     # Upgrade the runner protocol while preserving pinned geometry helpers.
-    for name in ['rebuild.py', 'render.py', 'build_runtime.py', 'build_artifacts.py']:
+    for name in ['helpers.py', 'rebuild.py', 'render.py', 'build_runtime.py', 'build_artifacts.py']:
         shutil.copyfile(root / 'blender' / name, snapshot / name)
     atomic_write(dest / 'work-source.json', json.dumps({'runnerProtocol':4,'dependencies': sorted(set(dependencies))}))
     for name in ['helpers.py', 'rebuild.py', 'render.py', 'build_runtime.py', 'build_artifacts.py']:

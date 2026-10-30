@@ -33,6 +33,41 @@ finish_asset(material_mode="poly",sprites={"directions":2,"frames":[1,2],"size":
 
 @unittest.skipUnless(os.environ.get('BLENDER_BIN'), 'Set BLENDER_BIN for offline Blender smoke test')
 class WorkflowTests(unittest.IsolatedAsyncioTestCase):
+    async def test_color_only_texture_exports_after_resuming_old_support(self):
+        previous = server.DATA
+        with tempfile.TemporaryDirectory() as directory:
+            server.DATA = pathlib.Path(directory)
+            cap = '12345678-1234-1234-1234-123456789abc'
+            (server.DATA / 'capabilities').mkdir()
+            (server.DATA / 'capabilities' / f'{cap}.json').write_text(json.dumps({'directory': 'model', 'role': 'builder'}))
+            try:
+                await server.asset_workspace({'capability': cap, 'operation': 'read'})
+                support = server.DATA / 'model/build-support/helpers.py'
+                support.write_text("raise RuntimeError('obsolete normal-map requirement')")
+                code = '''import assetkit as kit
+group=kit.root("PaletteRock")
+mat=kit.color_material("Palette",(.3,.4,.2,1))
+body=kit.rounded_box("Body",(1,1,1),(0,0,.5),material=mat,owner=group)
+image=bpy.data.images.new("Palette",width=4,height=4)
+image.generated_color=(.3,.4,.2,1)
+image.pack()
+texture=mat.node_tree.nodes.new("ShaderNodeTexImage")
+texture.image=image
+shader=next(n for n in mat.node_tree.nodes if n.type=='BSDF_PRINCIPLED')
+mat.node_tree.links.new(texture.outputs['Color'],shader.inputs['Base Color'])
+finish_asset(material_mode="textured")
+'''
+                result = await server.execute_blender_code(cap, code)
+                self.assertTrue(result['ok'], result['log'])
+                payload = (server.DATA / 'model/asset.glb').read_bytes()
+                document = json.loads(payload[20:20 + int.from_bytes(payload[12:16], 'little')])
+                self.assertTrue(document['images'])
+                self.assertTrue(document['materials'][0]['pbrMetallicRoughness']['baseColorTexture'])
+                self.assertNotIn('normalTexture', document['materials'][0])
+                self.assertTrue((server.DATA / 'model/source.blend').is_file())
+            finally:
+                server.DATA = previous
+
     async def test_draft_final_failure_and_rebuild(self):
         previous=server.DATA
         with tempfile.TemporaryDirectory() as directory:

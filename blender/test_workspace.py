@@ -56,6 +56,15 @@ class WorkspaceTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn((server.DATA / 'model/textures/paint.png').as_posix(), result['content'])
         self.assertEqual(json.loads((server.DATA / 'model/work-source.json').read_text())['dependencies'], ['versions/fixture/inputs/0.blend'])
 
+    async def test_resume_refreshes_export_validation_but_preserves_geometry_helpers(self):
+        await self.call('read')
+        support = server.DATA / 'model/build-support'
+        (support / 'helpers.py').write_text('obsolete export validation')
+        (support / 'assetkit/pinned-marker.txt').write_text('preserve geometry helpers')
+        await self.call('read')
+        self.assertEqual((support / 'helpers.py').read_text(), (server.ROOT / 'blender/helpers.py').read_text())
+        self.assertEqual((support / 'assetkit/pinned-marker.txt').read_text(), 'preserve geometry helpers')
+
     async def test_photographer_cancelled_and_foreign_paths_are_rejected(self):
         self.marker.write_text(json.dumps({'directory': 'model', 'role': 'photographer'}))
         with self.assertRaisesRegex(ValueError, 'Builder'):
