@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const texturePlan = z.discriminatedUnion("mode", [
+const texturePlan = z.union([
   z.object({
     mode: z.literal("generate"),
     name: z.string().min(1).max(80),

@@ -1,5 +1,18 @@
 import { expect, test } from "bun:test";
+import { z } from "zod";
 import { productionPlanResult } from "./production-plan";
+
+test("planner structured output uses supported anyOf texture alternatives", () => {
+  const schema = z.toJSONSchema(productionPlanResult);
+  expect(JSON.stringify(schema)).not.toContain('"oneOf"');
+  expect(schema.properties?.textures).toMatchObject({
+    items: { anyOf: [
+      { properties: { mode: { const: "generate" } } },
+      { properties: { mode: { const: "reuse" } } },
+      { properties: { mode: { const: "none" } } },
+    ] },
+  });
+});
 
 test("production plans require explicit texture targets and export checks", () => {
   const result = productionPlanResult.safeParse({
