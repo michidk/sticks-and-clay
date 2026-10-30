@@ -244,7 +244,7 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
         progress: 100,
         ...(dimensionErrors.length || qualityErrors.length ? { feedback: review } : {}),
         phase:
-          dimensionErrors.length || qualityErrors.length ? "Complete · output quality error" : verdict === "approved"
+          qualityErrors.length ? "Complete · output quality error" : dimensionErrors.length ? "Complete · output dimension error" : verdict === "approved"
             ? "Approved"
             : verdict === "unreviewed"
               ? `${kind.format === "cad" ? "CAD" : "Graphic"} ready · no review requested`

@@ -1,7 +1,7 @@
 import { test, expect } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
-import { projects, jobs } from "../db/schema";
+import { projects, jobs, runs } from "../db/schema";
 import { api } from "./api.server";
 import { renderMaterial } from "./materials.server";
 import { jobContext } from "./checkpoint.server";
@@ -58,6 +58,13 @@ integration(
       const { id } = await response.json();
       const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
       expect(job.checkpoint.design).toBe("Muted stone");
+      job.checkpoint["production-plan"] = JSON.stringify({
+        version: 1, surfaceStrategy: "procedural-material",
+        summary: "Render the saved gravel recipe and verify its exported material maps.",
+        materials: [], textures: [],
+        steps: ["Render the saved gravel recipe without changing its parameters."],
+        checks: ["Verify the normal convention and height precision in exported files."],
+      });
       await db
         .update(projects)
         .set({ design: "Changed later" })
@@ -110,6 +117,7 @@ integration(
       expect(resumed.checkpoint.parameters).toBe(saved.checkpoint.parameters);
       expect(resumed.checkpoint.prepared).toBe("yes");
     } finally {
+      await db.delete(runs).where(eq(runs.projectId, projectId));
       await db.delete(jobs).where(eq(jobs.targetId, projectId));
       await db.delete(projects).where(eq(projects.id, projectId));
     }

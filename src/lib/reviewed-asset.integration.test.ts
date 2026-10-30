@@ -9,7 +9,7 @@ import { workshopSchema, type WorkshopSnapshot } from "./workshop";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 const svg = (fill: string, r: number) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="${r}" fill="${fill}"/></svg>`;
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="${r * 24 / 100}" fill="${fill}"/></svg>`;
 const verdict = (passed: boolean, summary: string) => ({
   passed,
   score: passed ? 90 : 50,
@@ -140,7 +140,7 @@ integration("revision review transports labeled current and previous evidence wi
 });
 
 integration("non-square SVG completes with a dimension error instead of an unreviewed success", async () => {
-  const t = await scenario(0, [{ step: "svg", role: "svg", iteration: 0, result: { svg: svg("#284e3c", 30).replace("0 0 100 100", "0 0 100 80") } }]);
+  const t = await scenario(0, [{ step: "svg", role: "svg", iteration: 0, result: { svg: svg("#284e3c", 30).replace("0 0 24 24", "0 0 24 20") } }]);
   try {
     const model = await t.run();
     expect(model.status).toBe("done");

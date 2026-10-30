@@ -36,6 +36,13 @@ for (const uncertainCoverage of [false, true])
         const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
         const checkpointState = {
           ...job.checkpoint,
+          "production-plan": JSON.stringify({
+            version: 1, surfaceStrategy: "procedural-material",
+            summary: "Render sage painted metal with sparse chips and review chip boundaries.",
+            materials: [], textures: [],
+            steps: ["Build the requested painted metal and repair rendering errors."],
+            checks: ["Review visible chip boundaries and report uncertain coverage."],
+          }),
           "material:v1:build:0": JSON.stringify({
             script: "def build(params):\n    raise RuntimeError('fixture')",
             notes: "Before repair",
