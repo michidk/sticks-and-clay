@@ -113,6 +113,11 @@ The saved source GLB remains byte-for-byte unchanged. Outputs, receipt and sourc
 
 ## Pixel art drawings
 
+Before rendering, malformed row widths and unknown palette keys receive a targeted
+repair of up to 128 rows across the drawing's frames or layers. Valid rows remain
+unchanged. Incorrect row counts and larger repairs use the full-drawing retry;
+the renderer never silently crops or pads generated artwork.
+
 Pixel projects show a palette above the design reference images and mockup gallery.
 Use **Add palette** or **Edit palette**, enter six-digit hex colors, then apply and
 save the design. The `## Pixel palette` section stores 1–64 distinct opaque colors;

@@ -55,9 +55,25 @@ test("uses explicit targets for animation and layers while preserving metadata",
   }
 });
 
-test("whole-grid errors and large redraws are left to the existing full-answer retry", () => {
+test("repairs 33 malformed rows on a 96 by 48 canvas without redrawing valid rows", () => {
+  const valid = ".".repeat(96);
+  const grid: PixelGrid = {
+    ...drawing(), width: 96, height: 48,
+    rows: Array.from({ length: 48 }, (_, i) => i < 33 ? "o".repeat(95) : valid),
+  };
+  expect(pixelRowProblems(grid)).toHaveLength(33);
+  const repaired = correctPixelRows(grid, { corrections: Array.from({ length: 33 }, (_, i) => ({
+    target: 0, row: i + 1, cells: "o".repeat(96),
+  })) });
+  expect(() => validatePixelGrid(repaired)).not.toThrow();
+  expect(repaired.rows.slice(33)).toEqual(Array(15).fill(valid));
+  expect(grid.rows[0]).toHaveLength(95);
+});
+
+test("whole-grid errors and oversized multi-plane repairs use the full-answer retry", () => {
   const grid = drawing(); grid.rows.pop();
   expect(pixelRowProblems(grid)).toEqual([]);
-  const large = { ...drawing(), height: 64, rows: Array.from({ length: 64 }, () => "bad") };
+  const rows = Array.from({ length: 128 }, () => "bad");
+  const large = { ...drawing(), height: 128, rows, frames: [{ rows }] };
   expect(pixelRowProblems(large)).toEqual([]);
 });

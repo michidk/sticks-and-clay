@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { MAX_PIXELS, PixelGridError, type PixelGrid } from "./pixel";
 
-const MAX_ROW_REPAIRS = 32;
+const MAX_ROW_REPAIRS = MAX_PIXELS;
 export const pixelRowRepairSchema = z.object({
   corrections: z.array(z.object({
     target: z.number().int().min(0).max(9),
