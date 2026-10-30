@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { z } from "zod";
 import { Board } from "@/components/board";
 import { CardsSkeleton } from "@/components/loading";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -9,10 +10,14 @@ import { Button } from "@/components/ui/button";
 import { request } from "@/lib/client";
 import type { BoardProject } from "@/lib/board-data";
 
-export const Route = createFileRoute("/board")({ component: GlobalBoard });
+export const Route = createFileRoute("/board")({
+  validateSearch: z.object({ projectId: z.string().uuid().optional().catch(undefined) }),
+  component: GlobalBoard,
+});
 function GlobalBoard() {
   const [entries, setEntries] = useState<BoardProject[] | null>(null);
-  const [projectId, setProjectId] = useState("all");
+  const { projectId } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const [error, setError] = useState("");
   const refresh = useCallback(async () => {
     const data = await request<{ projects: BoardProject[] }>("board");
@@ -31,12 +36,12 @@ function GlobalBoard() {
     const timer = window.setInterval(() => { if (document.visibilityState === "visible") void load(); }, 5000);
     return () => { active = false; window.clearInterval(timer); };
   }, []);
-  const filtered = entries?.filter((entry) => projectId === "all" || entry.project.id === projectId) ?? [];
+  const filtered = entries?.filter((entry) => !projectId || entry.project.id === projectId) ?? [];
   return <main>
     <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
       <div><h1>Asset board</h1><p className="muted">Ideas, versions and reviews across your projects.</p></div>
       <div className="grid gap-2 min-w-52"><Label htmlFor="board-project">Project</Label>
-        <Select value={projectId} onValueChange={setProjectId}><SelectTrigger id="board-project"><SelectValue /></SelectTrigger><SelectContent>
+        <Select value={projectId ?? "all"} onValueChange={(value) => void navigate({ search: { projectId: value === "all" ? undefined : value } })}><SelectTrigger id="board-project"><SelectValue /></SelectTrigger><SelectContent>
           <SelectItem value="all">All projects</SelectItem>
           {entries?.map(({ project }) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}
         </SelectContent></Select>

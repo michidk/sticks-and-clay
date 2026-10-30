@@ -29,12 +29,12 @@ import { AssetImage } from "@/components/asset-image";
 import { LightboxProvider } from "@/components/image-lightbox";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { StatusBadge } from "@/components/status";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { z } from "zod";
-import { Activity as ActivityIcon, Plus } from "lucide-react";
+import { Activity as ActivityIcon, Columns3, Plus } from "lucide-react";
 import { request, json, costSummary, fileUrl, previewUrl } from "../../../lib/client";
 import { assetTypeLabels, type AssetType } from "@/lib/asset-types";
 import { PendingModel } from "./-components/pending-model";
@@ -273,6 +273,11 @@ function ProjectPage() {
           </div>
         </div>
         <div className="page-actions">
+          <Button variant="outline" asChild>
+            <Link to="/board" search={{ projectId }}>
+              <Columns3 size={16} /> Project board
+            </Link>
+          </Button>
           <ProjectActionsMenu
             className="project-header-menu"
             project={p}

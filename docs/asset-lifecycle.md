@@ -65,7 +65,9 @@ states were not kept.
 
 The project workspace lists these stages as a left-to-right strip, and the
 global board shows them as columns with each asset's project and a project
-filter. Both offer the same actions.
+filter. Both offer the same actions. The **Project board** button in the project
+header opens the board filtered to that project. The filter is saved in the URL,
+so refreshing or sharing the link retains the selected project.
 
 ## References and parts
 
