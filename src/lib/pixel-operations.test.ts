@@ -32,3 +32,11 @@ test("invalid operations fail instead of cropping, resizing or inventing colors"
   expect(() => resolve([{ kind: "line", key: "z", from: { x: 0, y: 0 }, to: { x: 0, y: 0 } }])).toThrow("palette");
   expect(() => resolve([{ kind: "line", key: "x", target: "missing", from: { x: 0, y: 0 }, to: { x: 0, y: 0 } }])).toThrow("target");
 });
+
+
+test("provider null targets and omitted saved targets both draw on the base", () => {
+  const shape = { kind: "rectangle", key: "x", x: 1, y: 1, width: 2, height: 2 };
+  const expected = ["....", ".xx.", ".xx.", "...."];
+  expect(resolve([shape]).rows).toEqual(expected);
+  expect(resolve([{ ...shape, target: null }]).rows).toEqual(expected);
+});

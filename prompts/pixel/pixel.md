@@ -60,7 +60,7 @@ For larger drawings and repeated geometry, use `operations` instead of manually 
 - rectangle/ellipse: `{kind, key, x, y, width, height}` draws a filled shape.
 - line: `{kind:"line", key, from:{x,y}, to:{x,y}}` draws a one-cell line including endpoints.
 - polygon: `{kind:"polygon", key, points:[{x,y},...]}` fills and closes the polygon.
-- Optional `target` is `base`, `frame N`, or a named existing layer. Operations never implicitly create frames or layers. Supply their rows when adding them.
+- `target` is `null` or `base` for the base drawing, `frame N`, or a named existing layer. Operations never implicitly create frames or layers. Supply their rows when adding them.
 Use polygons for silhouette masses and lit planes, ellipses for rounded parts, and rows or patches for deliberate small details. All geometry must fit the canvas. No arbitrary code executes. Do not combine operations with patches. Operations on a previous drawing preserve regions they do not touch and cannot resize it. Return the full palette each time.
 
 A fixed palette does not guarantee good shading. Reassign its available values to separate adjacent materials and planes. If the approved colors cannot support required readability, state that constraint in the plan rather than inventing colors or claiming the image is finished.

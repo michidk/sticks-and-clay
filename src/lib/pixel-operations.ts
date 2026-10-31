@@ -1,13 +1,19 @@
 import { z } from "zod";
 
 const coordinate = z.number().int().min(0).max(127);
-const point = z.object({ x: coordinate, y: coordinate });
-const ink = { key: z.string().length(1), target: z.string().max(40).optional() };
+const point = z.strictObject({ x: coordinate, y: coordinate });
+const ink = { key: z.string().length(1), target: z.string().max(40).nullish() };
+// The provider adapter does not normalize objects inside union alternatives.
+// Require nullable targets on the wire while accepting omitted targets in saved input.
+function operation<T extends z.ZodRawShape>(shape: T) {
+  return z.strictObject(shape).meta({ required: Object.keys(shape) });
+}
+
 export const pixelOperationSchema = z.union([
-  z.object({ kind: z.literal("rectangle"), ...ink, x: coordinate, y: coordinate, width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128) }),
-  z.object({ kind: z.literal("ellipse"), ...ink, x: coordinate, y: coordinate, width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128) }),
-  z.object({ kind: z.literal("line"), ...ink, from: point, to: point }),
-  z.object({ kind: z.literal("polygon"), ...ink, points: z.array(point).min(3).max(32) }),
+  operation({ kind: z.literal("rectangle"), ...ink, x: coordinate, y: coordinate, width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128) }),
+  operation({ kind: z.literal("ellipse"), ...ink, x: coordinate, y: coordinate, width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128) }),
+  operation({ kind: z.literal("line"), ...ink, from: point, to: point }),
+  operation({ kind: z.literal("polygon"), ...ink, points: z.array(point).min(3).max(32) }),
 ]);
 
 /** Integer cells touched by a bounded drawing operation; no smoothing or palette interpolation. */
