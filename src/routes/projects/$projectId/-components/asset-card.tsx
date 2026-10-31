@@ -337,8 +337,7 @@ export function AssetCard({
           )}
           {deleteTarget && !archived && (
             <DeleteAsset id={deleteTarget.id} name={name} versions={deleteTarget.versions}
-              disabled={working && m.status !== "awaiting_approval"}
-              waitingVersionId={m.status === "awaiting_approval" ? m.id : undefined} onDeleted={onRefresh} />
+              onDeleted={onRefresh} />
           )}
         </div>
       </div>

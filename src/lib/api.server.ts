@@ -1048,8 +1048,8 @@ export async function api(request: Request) {
       return reply(await reopenVersionAsIdea(uuid.parse(path[1])), 201);
     }
     if (path[0] === "models" && path[1] && path.length === 2 && request.method === "DELETE") {
-      await deleteAsset(uuid.parse(path[1]));
-      return reply({ ok: true });
+      const { pending } = await deleteAsset(uuid.parse(path[1]));
+      return reply({ ok: !pending, pending }, pending ? 202 : 200);
     }
     if (path[0] === "models" && path[1] && path[2] === "regenerate" && request.method === "POST")
       return reply({ id: await regenerateAsset(uuid.parse(path[1])) }, 201);

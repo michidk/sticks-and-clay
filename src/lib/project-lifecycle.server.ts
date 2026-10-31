@@ -1,7 +1,8 @@
 import { designPalette } from "./pixel-design-palette";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, or } from "drizzle-orm";
 import { db } from "../db/client";
 import { batches, events, jobs, assetVersions, projects, revisions, runs } from "../db/schema";
+import { cancelJob } from "./queue.server";
 import { assertDesignIdle } from "./design-updates.server";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -119,11 +120,19 @@ export async function deleteAssetIn(tx: Transaction, modelId: string) {
   }
   const ids = [...doomed];
   const running = all.some((item) => doomed.has(item.id) && !["done", "failed", "cancelled"].includes(item.status));
-  const [active] = await tx.select({ id: jobs.id }).from(jobs).where(and(
-    inArray(jobs.targetId, ids), inArray(jobs.status, ["queued", "running", "cancelling"]),
+  const pendingBatches = all.filter((item) => doomed.has(item.id) && !["done", "failed", "cancelled"].includes(item.status)).map((item) => item.batchId);
+  const active = await tx.select({ id: jobs.id, status: jobs.status }).from(jobs).where(and(
+    or(inArray(jobs.targetId, ids), pendingBatches.length ? and(eq(jobs.kind, "plan"), inArray(jobs.targetId, pendingBatches)) : undefined),
+    inArray(jobs.status, ["queued", "waiting", "running", "cancelling"]),
   ));
-  if (running || active) throw new Error("This asset is still being generated. Cancel it or wait for it to finish first.");
+  if (active.length) return active;
+  if (running) throw new Error("This asset is still being generated. Cancel it or wait for it to finish first.");
   await tx.delete(assetVersions).where(inArray(assetVersions.id, ids));
+  return [];
 }
 
-export const deleteAsset = (modelId: string) => db.transaction((tx) => deleteAssetIn(tx, modelId));
+export async function deleteAsset(modelId: string) {
+  const active = await db.transaction((tx) => deleteAssetIn(tx, modelId));
+  for (const job of active) if (job.status !== "cancelling") await cancelJob(job.id);
+  return { pending: active.length > 0 };
+}

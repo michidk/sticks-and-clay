@@ -3,6 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { batches, jobs, assetVersions, projects, runs } from "../db/schema";
 import { api } from "./api.server";
+import { finishCancellation } from "./queue.server";
 
 // Use an isolated migrated database with no worker.
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
@@ -50,9 +51,9 @@ integration("a waiting visual target can be cancelled and deleted without losing
     await db.insert(jobs).values({ id: jobId, kind: "model", targetId: modelId, status: "waiting", checkpoint: { "visual-target": "models/slab.png" } });
     await db.insert(runs).values({ id: crypto.randomUUID(), projectId, modelId, role: "visual-target", model: "test", promptVersion: "1", systemPrompt: "", input: "", status: "done", estimatedCost: 0.02, rates: { input: 0, cached: 0, output: 0, source: "test" } });
 
-    const abort = await api(new Request(`http://localhost/api/asset-versions/${modelId}/abort`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }));
-    expect(abort.status).toBe(200);
-    expect(await abort.json()).toEqual({ status: "cancelled" });
+    const pending = await api(new Request(`http://localhost/api/models/${modelId}`, { method: "DELETE" }));
+    expect(pending.status).toBe(202);
+    expect(await pending.json()).toEqual({ ok: false, pending: true });
     expect((await api(new Request(`http://localhost/api/models/${modelId}`, { method: "DELETE" }))).status).toBe(200);
     expect(await db.select().from(assetVersions).where(eq(assetVersions.id, modelId))).toHaveLength(0);
     expect((await db.select().from(jobs).where(eq(jobs.id, jobId)))[0].status).toBe("cancelled");
@@ -60,6 +61,29 @@ integration("a waiting visual target can be cancelled and deleted without losing
     expect((await db.select().from(runs).where(eq(runs.projectId, projectId)))[0].estimatedCost).toBe(0.02);
   } finally {
     await db.delete(runs).where(eq(runs.projectId, projectId));
+    await db.delete(jobs).where(eq(jobs.id, jobId));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
+    await db.delete(batches).where(eq(batches.id, batchId));
+    await db.delete(projects).where(eq(projects.id, projectId));
+  }
+});
+
+integration("deleting running work waits for worker cancellation and keeps the asset until it stops", async () => {
+  const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
+  const remove = () => api(new Request(`http://localhost/api/models/${modelId}`, { method: "DELETE" }));
+  try {
+    await db.insert(projects).values({ id: projectId, name: "Delete running asset", description: "test", status: "ready" });
+    await db.insert(batches).values({ id: batchId, projectId, prompt: "snow slab", count: 1, judgeIterations: 0, design: "snow", designVersion: 1, status: "building" });
+    await db.insert(assetVersions).values({ id: modelId, projectId, batchId, name: "slab", prompt: "snow slab", status: "building" });
+    await db.insert(jobs).values({ id: jobId, kind: "model", targetId: modelId, status: "running" });
+    expect((await remove()).status).toBe(202);
+    expect((await db.select().from(jobs).where(eq(jobs.id, jobId)))[0].status).toBe("cancelling");
+    expect((await remove()).status).toBe(202);
+    expect(await db.select().from(assetVersions).where(eq(assetVersions.id, modelId))).toHaveLength(1);
+    await finishCancellation({ id: jobId, kind: "model", targetId: modelId });
+    expect((await remove()).status).toBe(200);
+    expect(await db.select().from(assetVersions).where(eq(assetVersions.id, modelId))).toHaveLength(0);
+  } finally {
     await db.delete(jobs).where(eq(jobs.id, jobId));
     await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
     await db.delete(batches).where(eq(batches.id, batchId));

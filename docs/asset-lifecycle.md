@@ -54,10 +54,10 @@ it was Ready); an iteration leaves the earlier version as the card, in Review
 or Done. The cancelled attempt stays in version history and accounting, and
 already incurred provider costs remain.
 
-Assets waiting for visual-target approval can be deleted directly. Confirming
-deletion cancels the waiting version before removing the asset and its iterations.
-AI request records and incurred costs remain. Actively generating assets must
-still be aborted before deletion.
+Assets can be deleted while generation is queued, running, or awaiting visual-target
+approval. Confirming deletion requests cancellation and waits for the worker to stop
+before removing the asset and its iterations. Keep the dialog open until deletion
+finishes. AI request records and incurred costs remain.
 
 Each asset page shows a **History** of every state its versions entered and every
 change to the asset: creation, edits to its title, brief and settings (with the
