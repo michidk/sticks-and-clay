@@ -40,3 +40,23 @@ test("provider null targets and omitted saved targets both draw on the base", ()
   expect(resolve([shape]).rows).toEqual(expected);
   expect(resolve([{ ...shape, target: null }]).rows).toEqual(expected);
 });
+
+test("partial revisions retain palette definitions for inherited cells", () => {
+  const previous = {
+    width: 32, height: 32,
+    palette: [...base.palette, { key: "h", color: "#a08060" }],
+    rows: Array.from({ length: 32 }, (_, y) => y === 13 ? ".".repeat(28) + "h..." : ".".repeat(32)),
+    frames: [{ rows: Array(32).fill("h".repeat(32)) }],
+  };
+  for (const edit of [
+    { operations: [{ kind: "rectangle", key: "x", x: 0, y: 0, width: 1, height: 1 }] },
+    { patches: [{ row: 1, column: 1, rows: ["x"] }] },
+  ]) {
+    const revised = resolvePixelAnswer(pixelGridSchema.parse({ width: 32, height: 32, palette: base.palette, ...edit }), previous);
+    expect(() => validatePixelGrid(revised)).not.toThrow();
+    expect(revised.rows[13][28]).toBe("h");
+    expect(revised.rows[0]).toBe("x" + ".".repeat(31));
+    expect(revised.palette.find(color => color.key === "h")?.color).toBe("#a08060");
+    expect(revised.frames).toEqual(previous.frames);
+  }
+});

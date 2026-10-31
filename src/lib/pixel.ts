@@ -70,6 +70,12 @@ function parseColor(color: string): Rgba {
  * layer. Size changes need a whole drawing. The answer's palette, fps, loop and anchors replace the previous ones
  * when given. */
 export function resolvePixelAnswer(answer: PixelAnswer, previous?: PixelGrid): PixelGrid {
+  if (previous && !answer.rows && (answer.operations?.length || answer.patches?.length)) {
+    answer = {
+      ...answer,
+      palette: [...answer.palette, ...previous.palette.filter(({ key }) => !answer.palette.some(color => color.key === key))],
+    };
+  }
   const { operations, ...drawing } = answer;
   if (operations?.length) {
     if (drawing.patches?.length) throw new PixelGridError("Use operations or patches, not both");

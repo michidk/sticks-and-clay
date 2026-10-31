@@ -226,3 +226,7 @@ passes have separate run IDs and artifact directories (`silhouette/`, `shading/`
 and remain in accounting and run history without becoming selectable final
 versions. Recovery reuses completed calls and reconstructs their images before
 continuing. Existing accepted assets and approved designs are not regenerated.
+
+Partial pixel revisions using patches or operations inherit missing palette keys from
+the previous grid. Explicit key definitions override previous colors. Whole-grid
+redraws must supply every palette key they use.

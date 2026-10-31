@@ -345,3 +345,22 @@ integration("the next construction pass receives the preceding rendered image an
     await t.cleanup();
   }
 });
+
+integration("a resumed operation revision preserves inherited palette keys and publishes valid pixels", async () => {
+  const first = { ...drawing(1), palette: [...drawing(1).palette, { key: "h", color: "#a08060" }], rows: ["....", "oh..", "....", "...."] };
+  const t = await scenario(2, [
+    { step: "pixel", role: "pixel", iteration: 0, result: first },
+    { step: "judge:0", role: "pixel-judge", iteration: 0, result: verdict(false, "Revise the outline") },
+    { step: "builder:1", role: "pixel", iteration: 1, result: { width: 4, height: 4, palette: drawing(1).palette, operations: [{ kind: "rectangle", key: "o", x: 0, y: 0, width: 1, height: 1 }] } },
+    { step: "judge:1", role: "pixel-judge", iteration: 1, result: verdict(true, "Readable") },
+  ]);
+  try {
+    expect((await t.run()).status).toBe("done");
+    const saved = JSON.parse(await (await getStorage().download(`${t.base}/iteration-1/grid.json`)).text());
+    expect(saved.rows).toEqual(["o...", "oh..", "....", "...."]);
+    expect(saved.palette).toContainEqual({ key: "h", color: "#a08060" });
+    expect(await getStorage().exists(`${t.base}/iteration-1/pixel.png`)).toBe(true);
+  } finally {
+    await t.cleanup();
+  }
+});
