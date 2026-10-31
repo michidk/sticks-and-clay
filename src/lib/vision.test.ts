@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import viewRender from "../../eve/agent/tools/view_render";
+import { viewRender } from "../../eve/agent/tools/view_render";
 
 test("quick sprites and retained final evidence follow separate build identities", async () => {
   const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");

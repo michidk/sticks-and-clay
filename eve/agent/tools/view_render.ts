@@ -1,4 +1,4 @@
-import { defineTool, toolOutput, toolOutputPart } from "eve/tools";
+import { defineDynamic, defineTool, toolOutput, toolOutputPart } from "eve/tools";
 import { z } from "zod";
 import { readFile, realpath, mkdir, writeFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
@@ -7,7 +7,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { committedDirectory } from "../../../src/modules/asset-builds/publication.server";
 const dataDirectory = () => resolve(process.env.STUDIO_DATA_DIR || "../data");
-export default defineTool({
+export const viewRender = defineTool({
   description:
     "Visually inspect an exported Blender render. Sends actual image content to the vision model. Use this instead of reading image bytes or base64 as text.",
   inputSchema: z.object({
@@ -167,5 +167,16 @@ export default defineTool({
       ),
       toolOutputPart.file(pixels, { mediaType: "image/png" }),
     ]);
+  },
+});
+
+export default defineDynamic({
+  events: {
+    "turn.started": async (_event, ctx) => {
+      const config = z.object({ role: z.string() }).parse(JSON.parse(
+        await readFile(resolve(dataDirectory(), "session-config", ctx.session.id + ".json"), "utf8"),
+      ));
+      return config.role === "builder" || config.role === "photographer" ? viewRender : null;
+    },
   },
 });
