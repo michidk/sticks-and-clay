@@ -50,10 +50,8 @@ def finish_asset(material_mode="textured", sprites=None, lod_ratios=None, **_leg
         payload=open(os.path.join(OUTPUT_DIR,'asset.glb'),'rb').read()
         document=json.loads(payload[20:20+struct.unpack_from('<I',payload,12)[0]])
     if material_mode=='textured' and not preview:
-        for mat in document.get('materials',[]):
-            if not mat.get('pbrMetallicRoughness',{}).get('baseColorTexture'):
-                raise ValueError('Textured mode requires an exported base color map for material '+mat.get('name','unnamed'))
-        if not document.get('materials'):raise ValueError('Textured mesh needs materials')
+        if not any(mat.get('pbrMetallicRoughness',{}).get('baseColorTexture') for mat in document.get('materials',[])):
+            raise ValueError('Textured mode requires at least one exported base color map')
     elif material_mode=='poly':
         if document.get('images'):raise ValueError('Poly mode must not contain image textures')
     elif material_mode!='textured':raise ValueError('material_mode must be textured or poly')

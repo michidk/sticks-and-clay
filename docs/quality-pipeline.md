@@ -58,7 +58,8 @@ The model page's **Debug** tab (a collapsible section on graphic pages) shows ho
 
 ## Visual target approval
 
-Final image-textured exports require base-color bindings; normal maps are optional
+Final image-textured exports require at least one base-color texture binding and
+may mix textured surfaces with plain material colors. Normal maps are optional
 when the production plan calls for a color-only surface or palette texture.
 Resuming a workspace refreshes the export helper and runner while retaining its
 pinned geometry helpers, so saved attempts receive export-validation fixes.

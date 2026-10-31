@@ -48,6 +48,8 @@ class WorkflowTests(unittest.IsolatedAsyncioTestCase):
 group=kit.root("PaletteRock")
 mat=kit.color_material("Palette",(.3,.4,.2,1))
 body=kit.rounded_box("Body",(1,1,1),(0,0,.5),material=mat,owner=group)
+plain=kit.color_material("PlainPole",(.05,.05,.05,1))
+kit.rounded_box("Pole",(.1,.1,2),(1,0,1),material=plain,owner=group)
 image=bpy.data.images.new("Palette",width=4,height=4)
 image.generated_color=(.3,.4,.2,1)
 image.pack()
@@ -62,8 +64,10 @@ finish_asset(material_mode="textured")
                 payload = (server.DATA / 'model/asset.glb').read_bytes()
                 document = json.loads(payload[20:20 + int.from_bytes(payload[12:16], 'little')])
                 self.assertTrue(document['images'])
-                self.assertTrue(document['materials'][0]['pbrMetallicRoughness']['baseColorTexture'])
-                self.assertNotIn('normalTexture', document['materials'][0])
+                materials = {material['name']: material for material in document['materials']}
+                self.assertTrue(materials['Palette']['pbrMetallicRoughness']['baseColorTexture'])
+                self.assertNotIn('baseColorTexture', materials['PlainPole']['pbrMetallicRoughness'])
+                self.assertTrue(all('normalTexture' not in material for material in materials.values()))
                 self.assertTrue((server.DATA / 'model/source.blend').is_file())
             finally:
                 server.DATA = previous
