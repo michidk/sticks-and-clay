@@ -1,3 +1,4 @@
+import { RenameButton } from "@/components/rename";
 import { BuildTrace } from "./build-trace";
 import { AssetReferences } from "@/components/asset-references";
 import { useState } from "react";
@@ -62,7 +63,8 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
         <div className="model-detail-empty"><h1>Graphic not found</h1><p>It is not part of this project, or it was deleted.</p></div>
       </main>
     );
-  const name = model.name.replaceAll("_", " ");
+  const asset = data.assets?.find((asset) => asset.id === model.assetId);
+  const name = asset?.title || model.name.replaceAll("_", " ");
   const runs = data.runs.filter((run) => run.modelId === modelId);
   const builds = runs
     .filter((run: any) => {
@@ -111,8 +113,11 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
       {back}
       <section className="page-header">
         <div>
-          <h1>{name}</h1>
+          <div className="flex items-center gap-2"><h1>{name}</h1>
+            {asset && <RenameButton kind="asset" name={name} endpoint={`projects/${projectId}/assets/${asset.id}`} onSaved={reload} />}
+          </div>
           <div className="page-meta">
+            {asset?.title && model.name !== name && <span className="muted">{model.name}</span>}
             <StatusBadge status={model.status} verdict={model.verdict === "limit_reached" ? model.verdict : undefined} />
             {batch && <StatusBadge tone={outdated ? "warning" : "queued"}>Design v{batch.designVersion}{outdated ? " · outdated" : ""}</StatusBadge>}
             {currentKey && <span>{format(currentKey)}</span>}

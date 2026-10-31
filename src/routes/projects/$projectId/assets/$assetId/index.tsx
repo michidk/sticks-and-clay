@@ -1,3 +1,4 @@
+import { RenameButton } from "@/components/rename";
 import { useCallback, useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AssetLifecycle } from "@/components/board";
@@ -50,7 +51,7 @@ function AssetPage() {
     {!data && !error && <WorkspaceSkeleton />}
     {data && !asset && <p className="muted mt-6">Asset not found in this project.</p>}
     {data && asset && <>
-      <header className="my-6"><p className="muted">{data.project.name} · Asset</p><h1>{ideaTitle(asset)}</h1><p className="whitespace-pre-wrap mt-3">{ideaBrief(asset)}</p>{!data.project.archivedAt && <Button className="mt-4" variant="outline" onClick={() => setEditing(true)}>Edit asset</Button>}</header>
+      <header className="my-6"><p className="muted">{data.project.name} · Asset</p><div className="flex items-center gap-2"><h1>{ideaTitle(asset)}</h1><RenameButton kind="asset" name={ideaTitle(asset)} endpoint={`projects/${projectId}/assets/${asset.id}`} onSaved={refresh} /></div><p className="whitespace-pre-wrap mt-3">{ideaBrief(asset)}</p>{!data.project.archivedAt && <Button className="mt-4" variant="outline" onClick={() => setEditing(true)}>Edit asset</Button>}</header>
       {asset.input.parts?.length ? <section className="mb-6"><h2>Parts</h2><ul>{asset.input.parts.map((part) => <li key={part.name}><strong>{part.name}</strong> · {part.brief}</li>)}</ul></section> : null}
       {editing && <GenerationDialog assetType={data.project.assetType} idea={asset} projectId={projectId} designVersion={data.project.designVersion} ready={data.project.status === "ready" && !data.project.archivedAt} isGraphics={data.project.assetType !== "model"} open onOpenChange={setEditing} onRefresh={refresh} onSaved={async () => { await refresh(); }} />}
       <AssetLifecycle entry={{ ...data, models: data.assetVersions }} assetId={assetId} onRefresh={refresh} />

@@ -1,3 +1,5 @@
+import { renameInput } from "./contracts";
+import { renameProject, renameAsset } from "./rename.server";
 import { designPalette } from "./pixel-design-palette";
 import { DEMO_MODE } from "./build-mode";
 import { abortGeneration, plannerReservations } from "./queue.server";
@@ -505,6 +507,12 @@ export async function api(request: Request) {
         .from(projects)
         .where(eq(projects.id, id));
       if (!project) return reply({ error: "Project not found" }, 404);
+      if (path.length === 2 && request.method === "PATCH") {
+        return reply(await renameProject(id, renameInput.parse(await request.json()).name));
+      }
+      if (path[2] === "assets" && path[3] && path.length === 4 && request.method === "PATCH") {
+        return reply(await renameAsset(id, uuid.parse(path[3]), renameInput.parse(await request.json()).name));
+      }
       if (path[2] === "assets" && path[3] && path[4] === "history" && request.method === "GET") {
         return reply(await listAssetHistory(id, uuid.parse(path[3])));
       }

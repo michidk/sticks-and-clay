@@ -208,7 +208,7 @@ function ProjectPage() {
   const matches = (text: string) =>
     text.toLowerCase().includes(query.toLowerCase().trim());
   const visibleModels = collectionModels.filter(
-    (m: any) => assetStage(m) === stage && matches(m.name + " " + m.prompt),
+    (m: any) => assetStage(m) === stage && matches((data.assets?.find((asset: { id: string; title: string | null }) => asset.id === m.assetId)?.title || m.name) + " " + m.prompt),
   );
   const visiblePending = stage === "progress" ? pending.filter((item) => matches(item.batch.prompt)) : [];
   async function resumeBatch(id: string) {

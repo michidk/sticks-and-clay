@@ -1,3 +1,4 @@
+import { RenameButton } from "@/components/rename";
 import { describeError } from "@/lib/error-message";
 import type { ModelInspection } from "@/components/ui/model-viewer";
 import type { ObjectReference } from "@/lib/object-reference";
@@ -172,7 +173,8 @@ function ModelPage() {
         </div>
       </main>
     );
-  const name = model.name.replaceAll("_", " ");
+  const asset = data.assets?.find((asset) => asset.id === model.assetId);
+  const name = asset?.title || model.name.replaceAll("_", " ");
   const artifacts = selected.artifacts;
   const selectedObject = objectReference?.glb === artifacts?.glb ? objectReference : null;
   const checkedVersion =
@@ -310,7 +312,9 @@ function ModelPage() {
                 )}
               </nav>
             </div>
-            <h1>{name}</h1>
+            <div className="flex items-center gap-2"><h1>{name}</h1>
+              {asset && <RenameButton kind="asset" name={name} endpoint={`projects/${projectId}/assets/${asset.id}`} onSaved={async () => setData(await request<Workspace>(`projects/${projectId}?summary=true`))} />}
+            </div>
             <div className="model-detail-meta">
               <StatusBadge status={model.status} verdict={model.verdict} />
               {data.activeJobs?.filter((job) => job.modelId === model.id && job.kind !== "model").map((job) => (

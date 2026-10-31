@@ -1,5 +1,6 @@
+import { RenameDialog } from "@/components/rename";
 import { useState } from "react";
-import { Archive, ArchiveRestore, LoaderCircle, MoreHorizontal, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, LoaderCircle, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +29,7 @@ export function ProjectActionsMenu({
   onDeleted: () => unknown;
   className?: string;
 }) {
+  const [renaming, setRenaming] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -55,6 +57,7 @@ export function ProjectActionsMenu({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem disabled={busy} onSelect={() => setRenaming(true)}><Pencil size={15} /> Rename project…</DropdownMenuItem>
           <DropdownMenuItem disabled={busy}
             onSelect={() => void run(
               () => request(`projects/${project.id}/archive`, json({ archived: !archived })), onChanged)}>
@@ -67,6 +70,7 @@ export function ProjectActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
       {error && !confirming && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
+      {renaming && <RenameDialog kind="project" name={project.name} endpoint={`projects/${project.id}`} onSaved={onChanged} onClose={() => setRenaming(false)} />}
       <Dialog open={confirming} onOpenChange={(open) => !busy && setConfirming(open)}>
         <DialogContent showCloseButton={!busy}>
           <DialogHeader>

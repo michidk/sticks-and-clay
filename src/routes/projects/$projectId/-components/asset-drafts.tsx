@@ -1,3 +1,4 @@
+import { RenameButton } from "@/components/rename";
 import { GenerationDialog } from "./generation-dialog";
 import { useState } from "react";
 import { Check, LoaderCircle, Pencil, Play, Trash2 } from "lucide-react";
@@ -92,6 +93,7 @@ export function AssetDrafts({ projectId, designVersion, ideas, isGraphics, ready
               <td className="muted">{ideaSettings(idea, isGraphics, assetType)}</td>
               <td>
                 <div className="flex justify-end gap-1">
+                  <RenameButton kind="asset" name={ideaTitle(idea)} endpoint={`projects/${projectId}/assets/${idea.id}`} onSaved={onRefresh} />
                   <Button size="sm" disabled={!ready || starting} onClick={() => act(idea, "generate")}>
                     {starting ? <LoaderCircle size={15} className="spin" /> : <Play size={15} />}
                     {starting ? "Starting…" : "Start"}

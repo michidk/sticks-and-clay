@@ -1,3 +1,4 @@
+import { RenameButton } from "@/components/rename";
 import { assetStage } from "@/lib/board";
 import { AssetReferences } from "@/components/asset-references";
 import { describeError } from "@/lib/error-message";
@@ -45,7 +46,7 @@ export function AssetCard({
   activeJobs = [],
 }: {
   projectId: string;
-  asset?: { id: string; references: string[]; referenceNotes: Record<string, string> };
+  asset?: { id: string; title?: string | null; references: string[]; referenceNotes: Record<string, string> };
   model: any;
   isGraphics: boolean;
   cost: number;
@@ -74,7 +75,7 @@ export function AssetCard({
   const [accepting, setAccepting] = useState(false);
   const [approving, setApproving] = useState(false);
   const m = model;
-  const name = m.name.replaceAll("_", " ");
+  const name = asset?.title || m.name.replaceAll("_", " ");
   const modelLink = {
     to: "/projects/$projectId/models/$modelId" as const,
     params: { projectId, modelId: m.id },
@@ -187,9 +188,12 @@ export function AssetCard({
             Design v{batch.designVersion}{outdated ? " · outdated" : ""}
           </StatusBadge>
         )}
-        <h3>
-          <Link {...modelLink} search={{ view: "3d", section: "review" }}>{name}</Link>
-        </h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3>
+            <Link {...modelLink} search={{ view: "3d", section: "review" }}>{name}</Link>
+          </h3>
+          {asset && <RenameButton kind="asset" name={name} endpoint={`projects/${projectId}/assets/${asset.id}`} onSaved={onRefresh} />}
+        </div>
         {lineage && <span className="model-branch-label">{lineage}</span>}
         <p>{m.prompt}</p>
         {working && (

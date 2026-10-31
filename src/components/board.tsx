@@ -1,3 +1,4 @@
+import { RenameButton } from "@/components/rename";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Boxes, Check, Play, Trash2, Undo2, Images, Square } from "lucide-react";
@@ -39,7 +40,9 @@ function IdeaCard({ idea, entry, showProject, onRefresh }: Context & { idea: Boa
   return <li className="board-card">
     <ProjectLabel entry={entry} showProject={showProject} />
     <Link to="/projects/$projectId/assets/$assetId" params={{ projectId: project.id, assetId: idea.id }} className="board-card-title idea-brief" title={ideaBrief(idea)}>{ideaTitle(idea)}</Link>
-    <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Edit asset</Button>
+    <div className="flex items-center gap-2"><Button size="sm" variant="ghost" onClick={() => setEditing(true)}>Edit asset</Button>
+      <RenameButton kind="asset" name={ideaTitle(idea)} endpoint={`projects/${project.id}/assets/${idea.id}`} onSaved={onRefresh} />
+    </div>
     <p className="muted">{ideaSettings(idea, project.assetType !== "model", project.assetType)}</p>
     {actions.error && <Alert variant="destructive"><AlertDescription>{actions.error}</AlertDescription></Alert>}
     <div className="board-card-actions">
@@ -79,7 +82,10 @@ function VersionCard({ version, root, count, entry, showProject, onRefresh }: Co
     <Link {...link} search={{ view: isGraphics ? "target" : version.artifacts ? "3d" : "target", section: "review" }} className="board-cover" aria-label={`Open ${name}`}>
       {cover ? <AssetImage src={fileUrl(cover)} alt={name} width={320} /> : <Boxes size={28} strokeWidth={1} aria-hidden="true" />}
     </Link>
-    {version.assetId ? <Link className="board-card-title" to="/projects/$projectId/assets/$assetId" params={{ projectId: project.id, assetId: version.assetId }}>{name}</Link> : <Link className="board-card-title" {...link} search={{ view: isGraphics ? "target" : version.artifacts ? "3d" : "target", section: "review" }}>{name}</Link>}
+    <div className="flex items-center justify-between gap-2">
+      {version.assetId ? <Link className="board-card-title" to="/projects/$projectId/assets/$assetId" params={{ projectId: project.id, assetId: version.assetId }}>{name}</Link> : <Link className="board-card-title" {...link} search={{ view: isGraphics ? "target" : version.artifacts ? "3d" : "target", section: "review" }}>{name}</Link>}
+      {asset && <RenameButton kind="asset" name={name} endpoint={`projects/${project.id}/assets/${asset.id}`} onSaved={onRefresh} />}
+    </div>
     <div className="board-card-meta"><StatusBadge status={version.status} verdict={version.verdict} /><span className="muted">Version {count}</span></div>
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     {!project.archivedAt && <div className="board-card-actions">

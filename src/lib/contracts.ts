@@ -128,3 +128,5 @@ export function price(input: number, output: number, cached: number, rates: {
 export function progress(iteration: number, limit: number, stage: "build" | "judge" | "done") {
   return stage === "done" ? 100 : Math.round(((iteration * 2 + (stage === "judge" ? 1 : 0)) / (1 + limit * 2)) * 100);
 }
+
+export const renameInput = z.object({ name: z.string().trim().min(1).max(100) }).strict();

@@ -121,3 +121,15 @@ while active jobs cancel. An immediate AI request must finish before deletion
 can proceed. Files referenced by other projects are retained. File cleanup runs
 before the database records are removed, so a failed cleanup can be retried.
 Eve's internal workflow storage follows Eve's retention policy.
+
+## Renaming projects and assets
+
+Choose Rename project in the project actions menu, or use the pencil beside an
+asset name on its card, board, or detail page. Names must contain 1–100 characters
+after trimming whitespace. Renaming also works in archived projects.
+
+Renaming changes only the project name or stable asset title. It makes no AI
+request and preserves briefs, approved design snapshots, version names, source
+files, and generation history. Asset title changes appear in the asset's history.
+The board, collection cards, asset pages, and model pages display the current
+asset title; original version filenames remain available on the model page.

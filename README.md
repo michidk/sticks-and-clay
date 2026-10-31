@@ -155,6 +155,7 @@ configuration, scopes, and deployment behind an auth proxy.
 
 ## ✨ Features
 
+- **Project and asset names.** Rename projects and assets without generating again.
 - **Project archive and deletion.** Archive projects into a separate section at the bottom
   of the project list, or permanently delete a project and its generated resources.
 
