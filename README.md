@@ -155,6 +155,9 @@ configuration, scopes, and deployment behind an auth proxy.
 
 ## ✨ Features
 
+- **Project archive and deletion.** Archive projects into a separate section at the bottom
+  of the project list, or permanently delete a project and its generated resources.
+
 - 🧊 **Editable 3D, not black-box meshes.** Builders write Blender Python; you
   download the GLB, the `.blend`, and a source bundle that rebuilds without an
   agent or database.

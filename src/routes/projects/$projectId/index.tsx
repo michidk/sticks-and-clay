@@ -223,7 +223,6 @@ function ProjectPage() {
       setBusy(false);
     }
   }
-  const hasCollection = data.assetVersions.length || data.batches.length;
   // Mockups and materials need an approved version.
   const designView: DesignView = ready ? search.view ?? "reference" : "reference";
   const designViewList: [DesignView, string][] = [
@@ -281,7 +280,6 @@ function ProjectPage() {
           <ProjectActionsMenu
             className="project-header-menu"
             project={p}
-            canDelete={!hasCollection && !designUpdating}
             onChanged={load}
             onDeleted={() => navigate({ to: "/projects" })}
           />

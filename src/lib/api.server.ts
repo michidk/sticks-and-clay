@@ -660,8 +660,8 @@ export async function api(request: Request) {
         return reply(payload);
       }
       if (request.method === "DELETE" && path.length === 2) {
-        await deleteProject(id);
-        return reply({ ok: true });
+        const { pending } = await deleteProject(id);
+        return reply({ ok: !pending, pending }, pending ? 202 : 200);
       }
       if (path[2] === "archive" && request.method === "POST") {
         const { archived } = z.object({ archived: z.boolean() }).parse(await request.json());

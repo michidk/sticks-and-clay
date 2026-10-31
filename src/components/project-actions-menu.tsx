@@ -19,12 +19,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { json, request } from "@/lib/client";
 
-/** Archive or unarchive any project; delete only while nothing has been generated. */
+/** Project visibility and permanent deletion, with explicit confirmation. */
 export function ProjectActionsMenu({
-  project, canDelete, onChanged, onDeleted, className,
+  project, onChanged, onDeleted, className,
 }: {
   project: { id: string; name: string; archivedAt?: string | null };
-  canDelete: boolean;
   onChanged: () => unknown;
   onDeleted: () => unknown;
   className?: string;
@@ -62,29 +61,37 @@ export function ProjectActionsMenu({
             {archived ? <ArchiveRestore size={15} /> : <Archive size={15} />}
             {archived ? "Unarchive project" : "Archive project"}
           </DropdownMenuItem>
-          {canDelete && (
-            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => { setError(""); setConfirming(true); }}>
-              <Trash2 size={15} /> Delete project…
-            </DropdownMenuItem>
-          )}
+          <DropdownMenuItem disabled={busy} className="text-destructive focus:text-destructive" onSelect={() => { setError(""); setConfirming(true); }}>
+            <Trash2 size={15} /> Delete project…
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      {error && !confirming && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
       <Dialog open={confirming} onOpenChange={(open) => !busy && setConfirming(open)}>
         <DialogContent showCloseButton={!busy}>
           <DialogHeader>
             <DialogTitle>Delete {project.name}?</DialogTitle>
             <DialogDescription>
-              This removes the project, its brief, design history and the AI requests recorded
-              while setting it up. It cannot be undone. Projects with generated work can only be archived.
+              This permanently deletes the project, all assets and versions, generated files,
+              references, design history and recorded AI requests. Any generation in progress
+              will be stopped first. Files shared with other projects are kept. This cannot be undone.
+              Archive the project instead to keep its resources.
             </DialogDescription>
           </DialogHeader>
           {error && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
           <DialogFooter>
             <DialogClose asChild><Button variant="outline" disabled={busy}>Cancel</Button></DialogClose>
             <Button variant="destructive" disabled={busy}
-              onClick={() => void run(() => request(`projects/${project.id}`, { method: "DELETE" }), onDeleted)}>
+              onClick={() => void run(async () => {
+                let pending = true;
+                while (pending) {
+                  const result = await request<{ pending: boolean }>(`projects/${project.id}`, { method: "DELETE" });
+                  pending = result.pending;
+                  if (pending) await new Promise((resolve) => setTimeout(resolve, 1000));
+                }
+              }, onDeleted)}>
               {busy ? <LoaderCircle size={16} className="spin" /> : <Trash2 size={16} />}
-              Delete project
+              {busy ? "Deleting project…" : "Delete project"}
             </Button>
           </DialogFooter>
         </DialogContent>

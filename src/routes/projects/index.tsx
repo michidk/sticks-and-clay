@@ -29,7 +29,7 @@ import { AssetImage } from "@/components/asset-image";
 import { WorkerNotice } from "@/components/worker-notice";
 import { ProjectActionsMenu } from "@/components/project-actions-menu";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Plus, Layers, LoaderCircle, Image as ImageIcon } from "lucide-react";
@@ -178,9 +178,9 @@ function ProjectsPage() {
         (p.name + " " + p.description)
           .toLowerCase()
           .includes(query.trim().toLowerCase()) &&
-        (statusFilter === "archived"
+        (statusFilter === "all" || (statusFilter === "archived"
           ? Boolean(p.archivedAt)
-          : !p.archivedAt) &&
+          : !p.archivedAt)) &&
         (statusFilter === "all" || statusFilter === "archived" ||
           (statusFilter === "active"
             ? p.collection?.active + p.collection?.queued > 0 ||
@@ -190,10 +190,24 @@ function ProjectsPage() {
               ["failed", "review"].includes(p.status))),
     )
     .sort((a, b) =>
-      sort === "name"
+      Number(Boolean(a.archivedAt)) - Number(Boolean(b.archivedAt)) || (sort === "name"
         ? a.name.localeCompare(b.name)
-        : +new Date(b.createdAt) - +new Date(a.createdAt),
+        : +new Date(b.createdAt) - +new Date(a.createdAt)),
     );
+  const newProjectCard = (
+    <Button
+      variant="ghost"
+      size="bare"
+      className="new-card"
+      onClick={newProject}
+    >
+      <span className="circle">
+        <Plus size={24} />
+      </span>
+      <strong>New project</strong>
+      <span>Name it, then add a brief or reference images.</span>
+    </Button>
+  );
   return (
     <main className="projects-page">
       <section className="page-header">
@@ -270,8 +284,11 @@ function ProjectsPage() {
         <CardsSkeleton />
       ) : (
         <div className="project-grid">
-          {visibleProjects.map((p) => {
-            const state = p.designUpdating
+
+          {visibleProjects.map((p, index) => {
+            const state = p.archivedAt
+              ? { label: "Archived", tone: "muted" }
+              : p.designUpdating
               ? { label: "Updating design", tone: "running" }
               : projectState(
                   p.status,
@@ -285,120 +302,130 @@ function ProjectsPage() {
                 );
             const cover = p.thumbnail || p.references[0];
             return (
-              <Card key={p.id} className="project-card">
-                <Link
-                  className="project-card-link"
-                  to="/projects/$projectId"
-                  params={{ projectId: p.id }}
-                  onClick={
-                    p.status === "draft"
-                      ? (e) => {
-                          dialogOpener.current = e.currentTarget;
-                          e.preventDefault();
-                          setName(p.name);
-                          setDescription(p.description);
-                          setAssetType(p.assetType || "model");
-                          setDraftId(p.id);
-                          uploader.reset(p.references);
-                          setCreating(true);
-                        }
-                      : undefined
-                  }
-                >
-                  <div
-                    className="project-cover"
-                    style={{ aspectRatio: "16 / 9", height: "auto" }}
+              <Fragment key={p.id}>
+                {p.archivedAt && !visibleProjects[index - 1]?.archivedAt && (
+                  <>
+                    {newProjectCard}
+                    <div className="col-span-full border-t border-border pt-6 mt-4">
+                      <h2>Archived projects</h2>
+                      <p className="muted">Kept for reference. Unarchive a project to continue working on it.</p>
+                    </div>
+                  </>
+                )}
+                <Card className="project-card">
+                  <Link
+                    className="project-card-link"
+                    to="/projects/$projectId"
+                    params={{ projectId: p.id }}
+                    onClick={
+                      p.status === "draft"
+                        ? (e) => {
+                            dialogOpener.current = e.currentTarget;
+                            e.preventDefault();
+                            setName(p.name);
+                            setDescription(p.description);
+                            setAssetType(p.assetType || "model");
+                            setDraftId(p.id);
+                            uploader.reset(p.references);
+                            setCreating(true);
+                          }
+                        : undefined
+                    }
                   >
-                    {cover ? (
-                      <AssetImage
-                        src={fileUrl(cover)}
-                        alt={`${p.name} ${p.thumbnail ? "collection render" : "reference image"}`}
-                        style={
-                          p.thumbnail || p.assetType !== "model"
-                            ? { objectFit: p.thumbnail ? "cover" : "contain", padding: p.thumbnail ? 0 : 14 }
-                            : undefined
-                        }
-                      />
-                    ) : (
-                      <div className="abstract">
-                        <Layers size={48} strokeWidth={0.9} />
-                      </div>
-                    )}
-                    <StatusBadge tone={state.tone as any}>
-                      {state.label}
-                    </StatusBadge>
-                    <Badge
-                      variant="secondary"
-                      className="badge asset-type-badge"
+                    <div
+                      className="project-cover"
+                      style={{ aspectRatio: "16 / 9", height: "auto" }}
                     >
-                      {p.assetType !== "model" ? (
-                        <ImageIcon size={12} />
+                      {cover ? (
+                        <AssetImage
+                          src={fileUrl(cover)}
+                          alt={`${p.name} ${p.thumbnail ? "collection render" : "reference image"}`}
+                          style={
+                            p.thumbnail || p.assetType !== "model"
+                              ? { objectFit: p.thumbnail ? "cover" : "contain", padding: p.thumbnail ? 0 : 14 }
+                              : undefined
+                          }
+                        />
                       ) : (
-                        <Layers size={12} />
+                        <div className="abstract">
+                          <Layers size={48} strokeWidth={0.9} />
+                        </div>
                       )}
-                      {assetTypeLabels[p.assetType as AssetType]}
-                    </Badge>
-                  </div>
-                  <div className="project-body">
-                    <h3>{p.name}</h3>
-                    <div className="project-card-brief">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        allowedElements={["p", "strong", "em", "del"]}
-                        unwrapDisallowed
+                      <StatusBadge tone={state.tone as any}>
+                        {state.label}
+                      </StatusBadge>
+                      <Badge
+                        variant="secondary"
+                        className="badge asset-type-badge"
                       >
-                        {p.description || "*No brief yet.*"}
-                      </ReactMarkdown>
-                    </div>
-                    {["queued", "designing"].includes(p.status) && (
-                      <Progress
-                        value={p.progress}
-                        label={p.phase}
-                        status={p.status}
-                      />
-                    )}
-                    <div className="project-card-status">
-                      <span>
-                        {p.collection?.total || 0}{" "}
-                        {p.assetType !== "model"
-                          ? p.collection?.total === 1
-                            ? "graphic"
-                            : "graphics"
-                          : p.collection?.total === 1
-                            ? "model"
-                            : "models"}{" "}
-                        · {p.collection?.completed || 0} completed
-                      </span>
-                      {!!p.collection?.attention && (
-                        <span>{p.collection.attention} need{p.collection.attention === 1 ? "s" : ""} attention</span>
-                      )}
-                      {p.status === "ready" && <span>Design approved</span>}
-                    </div>
-                    <div className="card-meta">
-                      <span>
-                        {new Date(p.createdAt).toLocaleDateString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                        {cover && ` · ${p.thumbnail ? "Collection render" : "Reference image"}`}
-                      </span>
-                      <span>
-                        Est. {costSummary(p.usage.cost)}
-                        {p.usage.unpriced > 0 && (
-                          <span> · {p.usage.unpriced} not yet priced</span>
+                        {p.assetType !== "model" ? (
+                          <ImageIcon size={12} />
+                        ) : (
+                          <Layers size={12} />
                         )}
-                      </span>
+                        {assetTypeLabels[p.assetType as AssetType]}
+                      </Badge>
                     </div>
-                  </div>
-                </Link>
-                <ProjectActionsMenu
-                  className="project-card-menu"
-                  project={p}
-                  canDelete={!p.collection?.total && !p.designUpdating}
-                  onChanged={load}
-                  onDeleted={load}
-                />
-              </Card>
+                    <div className="project-body">
+                      <h3>{p.name}</h3>
+                      <div className="project-card-brief">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          allowedElements={["p", "strong", "em", "del"]}
+                          unwrapDisallowed
+                        >
+                          {p.description || "*No brief yet.*"}
+                        </ReactMarkdown>
+                      </div>
+                      {["queued", "designing"].includes(p.status) && (
+                        <Progress
+                          value={p.progress}
+                          label={p.phase}
+                          status={p.status}
+                        />
+                      )}
+                      <div className="project-card-status">
+                        <span>
+                          {p.collection?.total || 0}{" "}
+                          {p.assetType !== "model"
+                            ? p.collection?.total === 1
+                              ? "graphic"
+                              : "graphics"
+                            : p.collection?.total === 1
+                              ? "model"
+                              : "models"}{" "}
+                          · {p.collection?.completed || 0} completed
+                        </span>
+                        {!!p.collection?.attention && (
+                          <span>{p.collection.attention} need{p.collection.attention === 1 ? "s" : ""} attention</span>
+                        )}
+                        {p.status === "ready" && <span>Design approved</span>}
+                      </div>
+                      <div className="card-meta">
+                        <span>
+                          {new Date(p.createdAt).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                          {cover && ` · ${p.thumbnail ? "Collection render" : "Reference image"}`}
+                        </span>
+                        <span>
+                          Est. {costSummary(p.usage.cost)}
+                          {p.usage.unpriced > 0 && (
+                            <span> · {p.usage.unpriced} not yet priced</span>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                  <ProjectActionsMenu
+                    className="project-card-menu"
+                    project={p}
+                    onChanged={load}
+                    onDeleted={load}
+                  />
+                </Card>
+              </Fragment>
             );
           })}
           {!visibleProjects.length && !!projects.length && (
@@ -416,18 +443,7 @@ function ProjectsPage() {
               </Button>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="bare"
-            className="new-card"
-            onClick={newProject}
-          >
-            <span className="circle">
-              <Plus size={24} />
-            </span>
-            <strong>New project</strong>
-            <span>Name it, then add a brief or reference images.</span>
-          </Button>
+          {!visibleProjects.some((p) => p.archivedAt) && newProjectCard}
         </div>
       )}
       <Dialog

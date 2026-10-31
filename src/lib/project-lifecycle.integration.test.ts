@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { batches, jobs, assetVersions, projects, revisions, runs } from "../db/schema";
 import { api } from "./api.server";
+import { localStorage } from "./storage/index.server";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 const call = (path: string, body?: unknown, method = body === undefined ? "GET" : "POST") =>
@@ -87,16 +88,34 @@ integration("approve, AI draft revert and archive keep revisions, approval and g
   }
 });
 
-integration("only projects without generated work can be deleted", async () => {
+integration("projects with generated work stop queued jobs and delete their resources, preserving shared references", async () => {
   const empty = await createProject("Delete fixture", "Nothing generated yet.");
   const busy = await createProject("Keep fixture", "Has a batch.");
   try {
     await call(`projects/${busy}/design/approve`, { version: 1 });
     expect((await call(`projects/${busy}/generate`, { count: 1, judgeIterations: 0 })).status).toBe(201);
-    const refused = await call(`projects/${busy}`, undefined, "DELETE");
-    expect(refused.status).toBe(400);
-    expect((await refused.json()).error).toContain("Archive");
-    expect(await db.select().from(projects).where(eq(projects.id, busy))).toHaveLength(1);
+    const [version] = await db.select().from(assetVersions).where(eq(assetVersions.projectId, busy));
+    const file = `graphics/${version.id}/fixture/output.png`;
+    const shared = `references/${crypto.randomUUID()}.png`;
+    const unique = `references/${crypto.randomUUID()}.png`;
+    const exportKey = `exports/${busy}/fixture.zip`;
+    for (const key of [file, shared, unique, exportKey]) await localStorage.upload(new Blob(["fixture"]), key);
+    await db.update(projects).set({ references: [shared, unique] }).where(eq(projects.id, busy));
+    await db.update(projects).set({ references: [shared] }).where(eq(projects.id, empty));
+    const queued = await db.select().from(jobs).where(eq(jobs.targetId, version.id));
+    const pending = await call(`projects/${busy}`, undefined, "DELETE");
+    expect(pending.status).toBe(202);
+    expect(await pending.json()).toMatchObject({ pending: true });
+    expect(await localStorage.exists(file)).toBe(true);
+    expect((await call(`projects/${busy}`, undefined, "DELETE")).status).toBe(200);
+    expect(await db.select().from(projects).where(eq(projects.id, busy))).toHaveLength(0);
+    expect(await db.select().from(assetVersions).where(eq(assetVersions.projectId, busy))).toHaveLength(0);
+    expect(await db.select().from(batches).where(eq(batches.projectId, busy))).toHaveLength(0);
+    for (const job of queued) expect(await db.select().from(jobs).where(eq(jobs.id, job.id))).toHaveLength(0);
+    expect(await localStorage.exists(file)).toBe(false);
+    expect(await localStorage.exists(unique)).toBe(false);
+    expect(await localStorage.exists(exportKey)).toBe(false);
+    expect(await localStorage.exists(shared)).toBe(true);
 
     expect((await call(`projects/${empty}`, undefined, "DELETE")).status).toBe(200);
     expect(await db.select().from(projects).where(eq(projects.id, empty))).toHaveLength(0);
@@ -109,6 +128,28 @@ integration("only projects without generated work can be deleted", async () => {
     await db.delete(batches).where(eq(batches.projectId, busy));
     await remove(busy);
     await remove(empty);
+  }
+});
+
+
+integration("project deletion waits for running work to acknowledge cancellation", async () => {
+  const id = await createProject("Cancelling project", "Keep files until the worker stops.");
+  const jobId = crypto.randomUUID();
+  const key = `mockups/${id}/${jobId}/image.png`;
+  try {
+    await db.insert(jobs).values({ id: jobId, kind: "design-mockups", targetId: id, status: "cancelling" });
+    await localStorage.upload(new Blob(["fixture"]), key);
+    const waiting = await call(`projects/${id}`, undefined, "DELETE");
+    expect(waiting.status).toBe(202);
+    expect(await waiting.json()).toMatchObject({ pending: true });
+    expect(await localStorage.exists(key)).toBe(true);
+    expect(await db.select().from(projects).where(eq(projects.id, id))).toHaveLength(1);
+    await db.update(jobs).set({ status: "cancelled" }).where(eq(jobs.id, jobId));
+    expect((await call(`projects/${id}`, undefined, "DELETE")).status).toBe(200);
+    expect(await localStorage.exists(key)).toBe(false);
+    expect(await db.select().from(jobs).where(eq(jobs.id, jobId))).toHaveLength(0);
+  } finally {
+    await remove(id);
   }
 });
 

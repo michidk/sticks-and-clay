@@ -1,8 +1,9 @@
 import { designPalette } from "./pixel-design-palette";
-import { and, count, eq, inArray, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
 import { db } from "../db/client";
-import { batches, events, jobs, assetVersions, projects, revisions, runs } from "../db/schema";
+import { batches, events, jobs, assetEntries, assetVersions, materialVersions, mockups, projects, revisions, runs } from "../db/schema";
 import { cancelJob } from "./queue.server";
+import { deleteProjectResources } from "./project-resources.server";
 import { assertDesignIdle } from "./design-updates.server";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -76,26 +77,60 @@ export async function setArchived(projectId: string, archived: boolean) {
   if (!updated) throw new Error("Project not found");
 }
 
-/** Only setup-stage projects can be removed; anything with generated work is archived instead. */
+/** Stop owned jobs before removing the project, its history and its files. */
 export async function deleteProject(projectId: string) {
-  await db.transaction(async (tx) => {
+  const active = await db.transaction(async (tx) => {
     const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).for("update");
     if (!project) throw new Error("Project not found");
-    const [{ assets }] = await tx.select({ assets: count() }).from(assetVersions).where(eq(assetVersions.projectId, projectId));
-    const [{ requests }] = await tx.select({ requests: count() }).from(batches).where(eq(batches.projectId, projectId));
-    if (assets || requests)
-      throw new Error("This project has generated work. Archive it instead of deleting it.");
-    const [active] = await tx.select({ id: jobs.id }).from(jobs).where(and(
-      eq(jobs.targetId, projectId), inArray(jobs.status, ["queued", "running", "cancelling"]),
-    ));
-    if (active) throw new Error("Stop the running work before deleting this project.");
-    const owned = tx.select({ id: runs.id }).from(runs).where(eq(runs.projectId, projectId));
-    await tx.delete(events).where(inArray(events.runId, owned));
+    const versions = await tx.select().from(assetVersions).where(eq(assetVersions.projectId, projectId));
+    const requests = await tx.select().from(batches).where(eq(batches.projectId, projectId));
+    const assets = await tx.select().from(assetEntries).where(eq(assetEntries.projectId, projectId));
+    const history = await tx.select().from(runs).where(eq(runs.projectId, projectId));
+    const historicalTargets = history.flatMap((r) => [r.modelId, r.batchId]).filter((id): id is string => Boolean(id));
+    const targets = [projectId, ...versions.map((v) => v.id), ...requests.map((b) => b.id), ...assets.map((a) => a.id), ...historicalTargets];
+    const ownedJobs = await tx.select().from(jobs).where(inArray(jobs.targetId, targets));
+    const running = ownedJobs.filter((job) => ["queued", "waiting", "running", "cancelling"].includes(job.status));
+    if (running.length) return running;
+    if (history.some((run) => run.status === "running"))
+      throw new Error("An AI request is still running. Wait for it to finish before deleting this project.");
+    const concepts = await tx.select().from(mockups).where(eq(mockups.projectId, projectId));
+    const materials = await tx.select().from(materialVersions).where(eq(materialVersions.projectId, projectId));
+    const activity = await tx.select().from(events).where(inArray(events.runId, history.map((r) => r.id)));
+    const otherProjects = (await tx.select().from(projects)).filter((p) => p.id !== projectId);
+    const retained: unknown[] = [(await tx.select().from(jobs)).filter((job) => !targets.includes(job.targetId))];
+    for (const table of [assetVersions, batches, assetEntries, mockups, materialVersions, runs]) {
+      retained.push((await tx.select().from(table)).filter((row) => row.projectId !== projectId));
+    }
+    await deleteProjectResources({
+      prefixes: [
+        ...["project-photographs", "mockups", "exports", "starting-points"].map((root) => `${root}/${projectId}/`),
+        ...[...new Set([...versions.map((v) => v.id), ...history.flatMap((r) => r.modelId ? [r.modelId] : [])])].flatMap((id) => ["models", "graphics", "cad"].map((root) => `${root}/${id}/`)),
+        ...requests.map((b) => `collections/${b.id}/`),
+        ...history.flatMap((r) => [`versions/${r.id}/`, `photographs/${r.id}/`]),
+        ...ownedJobs.flatMap((j) => [`materials/${j.id}/`, `presentations/${j.id}/`]),
+        ...[
+          ...ownedJobs.flatMap((j) => Object.entries(j.checkpoint).filter(([key]) => key.startsWith("capability:")).map(([, value]) => value)),
+          ...history.flatMap((r) => [...r.input.matchAll(/Blender capability: ([0-9a-f-]{36})/g)].map((match) => match[1])),
+        ].filter((id) => /^[0-9a-f-]{36}$/.test(id)).map((id) => `capabilities/${id}.json`),
+      ],
+      owned: [project, versions, requests, assets, history, activity, concepts, materials, ownedJobs],
+      retained: [otherProjects, retained],
+    });
+    await tx.delete(events).where(inArray(events.runId, history.map((r) => r.id)));
     await tx.delete(runs).where(eq(runs.projectId, projectId));
     await tx.delete(revisions).where(eq(revisions.projectId, projectId));
-    await tx.delete(jobs).where(eq(jobs.targetId, projectId));
+    await tx.delete(jobs).where(inArray(jobs.targetId, targets));
+    await tx.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
+    await tx.delete(assetEntries).where(eq(assetEntries.projectId, projectId));
+    await tx.delete(batches).where(eq(batches.projectId, projectId));
     await tx.delete(projects).where(eq(projects.id, projectId));
+    return [];
   });
+  for (const job of active) {
+    const [current] = await db.select().from(jobs).where(eq(jobs.id, job.id));
+    if (current && ["queued", "waiting", "running"].includes(current.status)) await cancelJob(current.id);
+  }
+  return { pending: active.length > 0 };
 }
 
 export function assertNotArchived(project: { archivedAt: Date | null }) {

@@ -105,3 +105,19 @@ jobs, checkpoints, files, and accounting. The migration groups iteration
 ancestry under one asset, gives forks separate assets, and preserves every
 result from older multi-result batches. Queued planner slots receive asset
 identities before work begins.
+
+## Project archive and deletion
+
+The project actions menu offers Archive and Delete on both project cards and the
+project page. Archived projects keep their resources and appear in a separate
+section at the bottom of the default project list. They remain readable, with
+generation paused until the owner unarchives them. The Archived filter shows
+only archived projects.
+
+Deleting requires confirmation and permanently removes the project, its assets
+and versions, design revisions, recorded AI requests and events, queued jobs,
+and owned media in local and configured object storage. The dialog stays open
+while active jobs cancel. An immediate AI request must finish before deletion
+can proceed. Files referenced by other projects are retained. File cleanup runs
+before the database records are removed, so a failed cleanup can be retried.
+Eve's internal workflow storage follows Eve's retention policy.
