@@ -11,16 +11,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { request } from "@/lib/client";
+import { json, request } from "@/lib/client";
 
 /** Delete a generated asset, with its iterations, behind a confirmation. Its AI request records and costs stay. */
 export function DeleteAsset({
-  id, name, versions = 1, disabled, onDeleted,
+  id, name, versions = 1, disabled, waitingVersionId, onDeleted,
 }: {
   id: string;
   name: string;
   versions?: number;
   disabled?: boolean;
+  waitingVersionId?: string;
   onDeleted: () => unknown;
 }) {
   const [open, setOpen] = useState(false);
@@ -30,6 +31,7 @@ export function DeleteAsset({
     setBusy(true);
     setError("");
     try {
+      if (waitingVersionId) await request(`asset-versions/${waitingVersionId}/abort`, json({}));
       await request(`models/${id}`, { method: "DELETE" });
       setOpen(false);
       await onDeleted();
@@ -50,6 +52,7 @@ export function DeleteAsset({
           <DialogHeader>
             <DialogTitle>Delete {name}?</DialogTitle>
             <DialogDescription>
+              {waitingVersionId && "This also cancels the version waiting for visual target approval. "}
               {versions > 1 ? `This removes the asset and its ${versions} versions from the collection. ` : "This removes the asset from the collection. "}
               Its AI requests stay in Activity, so recorded costs do not change. It cannot be undone.
             </DialogDescription>

@@ -332,7 +332,8 @@ function ModelPage() {
                 <DeleteAsset
                   id={model.id}
                   name={name}
-                  disabled={!["done", "failed", "cancelled"].includes(model.status)}
+                  disabled={!["done", "failed", "cancelled", "awaiting_approval"].includes(model.status)}
+                  waitingVersionId={model.status === "awaiting_approval" ? model.id : undefined}
                   onDeleted={() => navigate({ to: "/projects/$projectId", params: { projectId } })}
                 />
               )}

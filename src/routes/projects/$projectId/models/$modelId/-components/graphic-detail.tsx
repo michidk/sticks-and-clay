@@ -134,7 +134,8 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
               onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "idea" } })} />
           )}
           {!archived && (
-            <DeleteAsset id={modelId} name={name} disabled={working}
+            <DeleteAsset id={modelId} name={name} disabled={working && model.status !== "awaiting_approval"}
+              waitingVersionId={model.status === "awaiting_approval" ? modelId : undefined}
               onDeleted={() => navigate({ to: "/projects/$projectId", params: { projectId } })} />
           )}
         </div>
