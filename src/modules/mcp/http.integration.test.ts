@@ -69,6 +69,9 @@ integration("authenticated HTTP challenges, host/origin checks, download boundar
     expect(download.headers.get("Content-Type")).toBe("model/gltf-binary");
     expect(download.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await download.text()).toBe("fixture");
+    const chunk = await connected.client.callTool({ name: "read_artifact", arguments: { key: "graphics/fixture/image.png", offset: 0 } });
+    expect(chunk.isError).not.toBe(true);
+    expect(chunk.structuredContent).toMatchObject({ data: { sizeBytes: 7, chunk: { offset: 0, base64: "Zml4dHVyZQ==", nextOffset: null } } });
     expect((await connected.send("/api/mcp/files/references/.private")).status).toBe(400);
     expect((await connected.send("/api/mcp/files/runtime-settings.json")).status).toBe(400);
     expect((await connected.send("/api/mcp/files/references/a.png", { headers: { Authorization: "" } })).status).toBe(401);
@@ -81,6 +84,7 @@ integration("authenticated HTTP challenges, host/origin checks, download boundar
     await connected.store.revokeClient(connected.clientId);
     expect((await connected.send("/api/mcp")).status).toBe(401);
     expect((await connected.send("/api/mcp/files/references/a.png")).status).toBe(401);
+    await expect(connected.client.callTool({ name: "read_artifact", arguments: { key: "graphics/fixture/image.png", offset: 0 } })).rejects.toThrow();
   } finally { await connected.close(); }
 });
 

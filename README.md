@@ -137,7 +137,7 @@ codex mcp add sticks-and-clay --url https://your-workshop.example/api/mcp
   rotating refresh tokens with replay detection, and immediate revocation.
 - **Artifacts as data.** `view_image` returns render pixels to vision models;
   `read_artifact` serves models, ZIPs, and source bundles over authenticated
-  downloads.
+  downloads or bounded, checksum-verifiable MCP chunks without extracting tokens.
 - **One switch in the UI.** Admin → MCP sets the access level for every
   client, lists connected clients with revoke buttons, and logs each tool call.
 

@@ -96,7 +96,11 @@ Reference images accept `{url}` for a public HTTP(S) image, or `{filename,mimeTy
 
 `import_asset` accepts `{filename,base64}` containing a GLB or Blender file up to 200 MiB. Inputs use canonical base64; directories and server filesystem paths are rejected. The HTTP body limit is 280 MiB for write grants and 4 MiB for other grants. Some clients have smaller upload limits.
 
-`read_artifact` returns the format, size, MCP resource URI and an authenticated binary download URL. Download with the connection's bearer token. Resource reads inline at most 16 MiB; `view_image` returns up to 8 MiB of pixels. Large models and ZIP/source bundles use the download endpoint. Only application artifact directories are accessible; runtime settings, dotfiles and traversal paths are rejected.
+`read_artifact` returns the format, size, MCP resource URI and an authenticated binary download URL. Download URLs require the connection's bearer token. Resource reads inline at most 16 MiB; `view_image` returns up to 8 MiB of pixels. A client's response limit may truncate base64 even for smaller files. Do not extract OAuth credentials to work around this.
+
+To save an artifact through MCP, call `read_artifact` with its `key` and `offset: 0`. It returns the usual metadata plus `chunk: { offset, base64, nextOffset, sha256 }`. Decode each chunk's base64 separately, append the decoded bytes in offset order, then request `nextOffset` until it is `null`. Each chunk contains at most 12 KiB of file bytes. Offsets are nonnegative safe integers in bytes; an offset equal to the file size returns an empty final chunk, and an offset beyond it fails. Omit `offset` for the original metadata-only response.
+
+Verify that the assembled byte count equals `sizeBytes` and its SHA-256 equals `chunk.sha256`, which hashes the complete file and is repeated with every chunk. If the size or checksum changes between chunks, discard the partial result and restart. This works for images, models, text and ZIP/source bundles, including files above the inline resource limit. Calls use the connection's existing read grant and revocation checks. Direct binary downloads remain preferable for large files when the client can handle authentication itself. Only application artifact directories are accessible; runtime settings, dotfiles and traversal paths are rejected.
 
 ## Authentication and operations
 
