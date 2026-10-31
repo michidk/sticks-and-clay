@@ -17,6 +17,7 @@ async function withSession(
   }) => Promise<void>,
   finish: boolean,
   role: "photographer" | "judge" = "photographer",
+  stallCancellation = false,
 ) {
   const projectId = crypto.randomUUID();
   const jobId = crypto.randomUUID();
@@ -45,6 +46,8 @@ async function withSession(
     fetch(request) {
       const url = new URL(request.url);
       requests.push({ method: request.method, url });
+      if (url.pathname.endsWith("/cancel") && stallCancellation)
+        return new Promise<Response>(() => {});
       if (url.pathname.endsWith("/cancel"))
         return Response.json({ ok: true, status: "accepted", sessionId });
       if (request.method !== "GET" || !url.pathname.endsWith("/stream"))
@@ -178,8 +181,36 @@ integration("a resumed Eve turn still times out and cancels its retained session
       const [saved] = await db.select().from(runs).where(eq(runs.id, runId));
       expect(saved.status).toBe("failed");
       expect(saved.error).toContain("TimeoutError");
+      expect(saved.error).toContain("Eve judge timed out after 60 seconds");
       expect(saved.sessionId).toBe(sessionId);
     }, false, "judge");
+  } finally {
+    timeoutSpy.mockRestore();
+    if (previousTimeout === undefined) delete process.env.AGENT_TIMEOUT_MS;
+    else process.env.AGENT_TIMEOUT_MS = previousTimeout;
+  }
+}, 5_000);
+
+integration("an unresponsive cancellation endpoint cannot retain a timed-out worker", async () => {
+  const previousTimeout = process.env.AGENT_TIMEOUT_MS;
+  process.env.AGENT_TIMEOUT_MS = "60000";
+  const timeout = AbortSignal.timeout;
+  const timeoutSpy = spyOn(AbortSignal, "timeout").mockImplementation((ms) =>
+    timeout(ms === 60_000 ? 250 : ms === 10_000 ? 50 : ms),
+  );
+  try {
+    await withSession(async ({ execute, runId, requests }) => {
+      const execution = execute();
+      // Observe the persisted failure while the HTTP cancellation is still pending.
+      while (!requests.some(({ url }) => url.pathname.endsWith("/cancel")))
+        await Bun.sleep(5);
+      const [saved] = await db.select().from(runs).where(eq(runs.id, runId));
+      expect(saved.status).toBe("failed");
+      expect(saved.finishedAt).not.toBeNull();
+      await expect(execution).rejects.toThrow("Eve judge timed out after 60 seconds");
+      expect(timeoutSpy).toHaveBeenCalledWith(10_000);
+      expect(requests.filter(({ method }) => method === "POST")).toHaveLength(1);
+    }, false, "judge", true);
   } finally {
     timeoutSpy.mockRestore();
     if (previousTimeout === undefined) delete process.env.AGENT_TIMEOUT_MS;

@@ -5,7 +5,16 @@ import {
   DEFAULT_BUILDER_TIMEOUT_MS,
   runtimeSettingsDefaults,
 } from "../../../lib/runtime-settings";
-import { agentTimeoutMs, textGenerationFailure } from "./timeouts";
+import { agentGenerationFailure, agentTimeoutMs, textGenerationFailure } from "./timeouts";
+
+test("Eve timeout errors identify the role and distinguish restoration from execution", () => {
+  const controller = new AbortController();
+  const original = new Error("transport disconnected");
+  expect(agentGenerationFailure(original, controller.signal, "judge", 60000)).toBe(original);
+  controller.abort();
+  expect(String(agentGenerationFailure(original, controller.signal, "judge", 60000))).toContain("Eve judge timed out after 60 seconds while waiting for the turn to finish");
+  expect(String(agentGenerationFailure(original, controller.signal, "judge", 60000, true))).toContain("while reading the saved session");
+});
 
 test("a deadline reports a timeout instead of the SDK missing-result error", () => {
   const controller = new AbortController();

@@ -20,8 +20,7 @@ import { recoveryAction } from "../../../lib/recovery";
 import { checkpoint, jobContext } from "../../../lib/checkpoint.server";
 import { resolve } from "node:path";
 import { DATA } from "../../../lib/storage.server";
-import { agentTimeoutMs } from "./timeouts";
-import { loadRuntimeSettings } from "../../../lib/runtime-settings.server";
+import { agentGenerationFailure, agentTimeoutMs } from "./timeouts";
 import { textRoleProfile } from "../config.server";
 const client = () =>
   new Client({
@@ -75,14 +74,17 @@ export async function agent<T>(
       input: args.retryFinalization ? args.input : saved.input,
       images: saved.images,
     };
+  const timeoutMs = agentTimeoutMs(args.role, profile.settings);
+  const signal = AbortSignal.timeout(timeoutMs);
   const savedSnapshot = saved?.sessionId
     ? await client().sessions.attach(saved.sessionId).snapshot({
-        signal: AbortSignal.timeout(agentTimeoutMs(args.role, profile.settings)),
+        signal,
       }).catch(async (error: unknown) => {
+        const failure = agentGenerationFailure(error, signal, args.role, timeoutMs, true);
         await db.update(runs).set({
-          status: "failed", error: String(error), finishedAt: new Date(),
+          status: "failed", error: String(failure), finishedAt: new Date(),
         }).where(eq(runs.id, saved.id));
-        throw error;
+        throw failure;
       })
     : undefined;
   const restart = args.restart || (savedSnapshot && recoveryAction(savedSnapshot.events) === "restart");
@@ -127,7 +129,6 @@ export async function agent<T>(
     accountedOutput = 0,
     accountedCached = 0,
     accountedCacheWrite = 0;
-  let signal: AbortSignal | undefined;
   const saveUsage = () => {
     // Accumulate per-step estimates: the long-context tier is per request, not per session total.
     if (inputTokens !== accountedInput || outputTokens !== accountedOutput) {
@@ -168,9 +169,6 @@ export async function agent<T>(
       .where(eq(runs.id, id));
   };
   try {
-    signal = AbortSignal.timeout(
-      agentTimeoutMs(args.role, await loadRuntimeSettings()),
-    );
     // Persist an idle session before submitting work, so recovery has an identity.
     const session = saved?.sessionId && !restart
       ? client().sessions.attach(saved.sessionId)
@@ -438,27 +436,28 @@ export async function agent<T>(
       .where(eq(runs.id, id));
     return { result: parsed, runId: id };
   } catch (error) {
-    if (signal?.aborted && sessionId) {
-      try {
-        await client().sessions.attach(sessionId).cancel();
-      } catch (cancelError) {
-        console.error("Failed to cancel timed-out Eve session", cancelError);
-      }
-    }
+    const failure = agentGenerationFailure(error, signal, args.role, timeoutMs);
     await db
       .update(runs)
       .set({
         status: "failed",
-        error: String(error),
+        error: String(failure),
         output: output || (restart ? null : saved?.output),
         finishedAt: new Date(),
       })
       .where(eq(runs.id, id));
+    if (signal.aborted && sessionId) {
+      try {
+        await client().sessions.attach(sessionId).cancel({ signal: AbortSignal.timeout(10_000) });
+      } catch (cancelError) {
+        console.error("Failed to cancel timed-out Eve session", { sessionId, runId: id, error: cancelError });
+      }
+    }
     // Eve can occasionally lose the structured result during finalization even
     // though the turn has otherwise completed. Replay that turn once so a
     // transient gateway/runtime omission does not strand the job for manual
     // recovery. The guard keeps persistent failures visible and bounded.
-    const errorText = String(error);
+    const errorText = String(failure);
     if (
       errorText.includes("structured output finalization produced no result") &&
       (args.retryFinalization ?? 0) < 2
@@ -481,7 +480,7 @@ export async function agent<T>(
         retryInfrastructure: (args.retryInfrastructure ?? 0) + 1,
         restart: true,
       });
-    throw error;
+    throw failure;
   } finally {
     if (!reportedSteps && !estimatedSteps) {
       if (modelStarted) {
