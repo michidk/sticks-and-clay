@@ -447,11 +447,21 @@ export async function agent<T>(
       })
       .where(eq(runs.id, id));
     if (signal.aborted && sessionId) {
+      let cancelled = false;
       try {
         await client().sessions.attach(sessionId).cancel({ signal: AbortSignal.timeout(10_000) });
+        cancelled = true;
       } catch (cancelError) {
         console.error("Failed to cancel timed-out Eve session", { sessionId, runId: id, error: cancelError });
       }
+      const obsoleteJudgeCall = args.role === "judge" && savedSnapshot &&
+        recoveryAction(savedSnapshot.events) === "attach" && savedSnapshot.events.some(
+        (event) => event.type === "action.result" && event.data.status === "failed" &&
+          event.data.result.kind === "tool-result" &&
+          event.data.result.toolName === "blender__get_scene_info",
+      );
+      if (cancelled && obsoleteJudgeCall && (args.retryInfrastructure ?? 0) < 1)
+        return agent({ ...args, retryInfrastructure: 1, restart: true });
     }
     // Eve can occasionally lose the structured result during finalization even
     // though the turn has otherwise completed. Replay that turn once so a

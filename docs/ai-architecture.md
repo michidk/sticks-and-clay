@@ -31,6 +31,8 @@ Legacy designer jobs with Eve checkpoints retain Eve execution. All text roles e
 
 The Blender MCP connection is resolved from the saved session role. Builders can inspect scene information and execute builds; photographers can inspect scene information and photograph assets. Judges and planners receive no Blender connection. Judges evaluate the supplied photographs, metrics and analysis without launching Blender operations.
 
+A resumed legacy judge that stalls after a failed Blender scene-inspection call gets one fresh review session after its deadline, only if Eve acknowledges cancellation of the old session. The old run, costs and completed build/photography checkpoints remain saved. Cancellation failure and ordinary live turns do not trigger this replacement.
+
 Design updates from models retain the current revision while the job runs. The project and source model show the active work. Design saves and additional updates lock the project row and reject active design jobs. Completion creates a revision awaiting approval; an editor with unsaved changes must load that revision before saving or approving.
 
 The internal accounting module owns run creation and pricing snapshots. Adapters own usage collection because TanStack response usage and Eve event replay have different semantics. Both persist to the historical `agent_runs` table, now with explicit `engine` and `step_id`. Provider cost fields remain ignored. Unknown failed usage stays unknown; Eve event replay does not add the same costs twice.
