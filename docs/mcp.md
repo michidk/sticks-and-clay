@@ -60,7 +60,7 @@ For remote connections, route the MCP and OAuth paths to the app without a separ
 
 Set `MCP_OWNER_AUTH=hodor` and provide a separate `MCP_SECRET` of at least 32 characters. Omit `MCP_OWNER_PASSWORD`. Hodor must proxy **every** request to the app and overwrite `X-Hodor-Auth`; expose only Hodor through the Service and ingress. Block direct access to the app port with a NetworkPolicy. The app accepts Hodor's `password` and `bypass` admission methods for owner consent.
 
-Keep `/oauth/authorize` behind the login gate. Allow machine clients through Hodor's `BYPASS_PATHS` for `/api/mcp`, `/api/mcp/files`, `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource/api/mcp`, `/oauth/register`, `/oauth/token`, and `/oauth/revoke`. These routes enforce OAuth themselves. Set `PRESERVE_HOST=true`. Consent retains request binding, one-use CSRF tokens, and origin validation after login.
+Keep `/oauth/authorize` behind the login gate. Allow machine clients through Hodor's `BYPASS_PATHS` for `/api/mcp`, `/api/mcp/files/*`, `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource/api/mcp`, `/oauth/register`, `/oauth/token`, and `/oauth/revoke`. Hodor matches paths exactly; the `/*` suffix is required for nested artifact paths. These routes enforce OAuth or file-scoped signed download tickets themselves. Set `PRESERVE_HOST=true`. Consent retains request binding, one-use CSRF tokens, and origin validation after login.
 
 ## Permissions
 
