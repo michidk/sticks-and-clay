@@ -87,7 +87,30 @@ export async function agent<T>(
         throw failure;
       })
     : undefined;
-  const restart = args.restart || (savedSnapshot && recoveryAction(savedSnapshot.events) === "restart");
+  const obsoleteJudgeSession = args.role === "judge" && savedSnapshot &&
+    recoveryAction(savedSnapshot.events) === "attach" && savedSnapshot.events.some(
+      (event) => event.type === "action.result" && event.data.status === "failed" &&
+        event.data.result.kind === "tool-result" &&
+        event.data.result.toolName === "blender__get_scene_info",
+    );
+  let restart = args.restart || (savedSnapshot && recoveryAction(savedSnapshot.events) === "restart");
+  const expiredLegacyJudge = saved && (
+    (saved.status === "failed" && saved.error?.startsWith("TimeoutError:")) ||
+    (saved.status === "running" && saved.createdAt.getTime() + timeoutMs <= Date.now())
+  );
+  if (!restart && obsoleteJudgeSession && expiredLegacyJudge && saved?.sessionId) {
+    if (saved.status === "running")
+      await db.update(runs).set({
+        status: "failed", finishedAt: new Date(),
+        error: `TimeoutError: Eve judge timed out after ${timeoutMs / 1000} seconds; recovering expired legacy session.`,
+      }).where(eq(runs.id, saved.id));
+    try {
+      await client().sessions.attach(saved.sessionId).cancel({ signal: AbortSignal.timeout(10_000) });
+    } catch (error) {
+      throw new Error(`Cannot recover timed-out judge because Eve cancellation failed: ${String(error)}`, { cause: error });
+    }
+    restart = true;
+  }
   // A dead workflow or lost sandbox cannot continue. Retain its run and usage.
   const id = (!restart && saved?.id) || crypto.randomUUID(),
     systemPrompt = await roleInstructions(
@@ -454,13 +477,7 @@ export async function agent<T>(
       } catch (cancelError) {
         console.error("Failed to cancel timed-out Eve session", { sessionId, runId: id, error: cancelError });
       }
-      const obsoleteJudgeCall = args.role === "judge" && savedSnapshot &&
-        recoveryAction(savedSnapshot.events) === "attach" && savedSnapshot.events.some(
-        (event) => event.type === "action.result" && event.data.status === "failed" &&
-          event.data.result.kind === "tool-result" &&
-          event.data.result.toolName === "blender__get_scene_info",
-      );
-      if (cancelled && obsoleteJudgeCall && (args.retryInfrastructure ?? 0) < 1)
+      if (cancelled && !restart && obsoleteJudgeSession && (args.retryInfrastructure ?? 0) < 1)
         return agent({ ...args, retryInfrastructure: 1, restart: true });
     }
     // Eve can occasionally lose the structured result during finalization even

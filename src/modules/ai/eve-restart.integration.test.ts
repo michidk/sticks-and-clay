@@ -7,11 +7,11 @@ import { runRole } from "./index.server";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
 
-for (const failure of ["session.failed", "turn.failed", "snapshot-rejected", "expired-legacy-judge", "legacy-cancel-rejected"]) {
+for (const failure of ["session.failed", "turn.failed", "snapshot-rejected", "expired-legacy-judge", "failed-legacy-judge", "stale-running-legacy-judge", "legacy-cancel-rejected"]) {
   integration(`${failure} recovery preserves history and replaces only unusable sessions`, async () => {
     const projectId = crypto.randomUUID(), jobId = crypto.randomUUID(), oldRunId = crypto.randomUUID();
     const requests: string[] = [];
-    const role = ["expired-legacy-judge", "legacy-cancel-rejected"].includes(failure) ? "judge" : "photographer";
+    const role = ["expired-legacy-judge", "failed-legacy-judge", "stale-running-legacy-judge", "legacy-cancel-rejected"].includes(failure) ? "judge" : "photographer";
     const result = role === "judge"
       ? { passed: true, score: 90, summary: "Reviewed supplied evidence", improvements: [] }
       : { summary: "Photographed", limitations: [] };
@@ -73,7 +73,7 @@ for (const failure of ["session.failed", "turn.failed", "snapshot-rejected", "ex
     try {
       await db.insert(projects).values({ id: projectId, name: "Restart fixture", description: "test" });
       await db.insert(jobs).values({ id: jobId, kind: "model", targetId: projectId, status: "running", checkpoint: context.checkpoint });
-      await db.insert(runs).values({ id: oldRunId, projectId, role, engine: "eve", status: "failed", sessionId: "old-session", model: "fixture", effort: "medium", promptVersion: "fixture", systemPrompt: "fixture", input: "saved input", inputTokens: 123, outputTokens: 45, estimatedCost: role === "judge" ? 0.000696 : 0.001, usageSource: "reported", rates: { input: 2, cached: 0.2, output: 10, source: "fixture" } });
+      await db.insert(runs).values({ id: oldRunId, projectId, role, engine: "eve", status: ["expired-legacy-judge", "stale-running-legacy-judge"].includes(failure) ? "running" : "failed", createdAt: failure === "stale-running-legacy-judge" ? new Date(Date.now() - 120_000) : new Date(), error: role === "judge" ? "TimeoutError: Eve judge timed out" : null, sessionId: "old-session", model: "fixture", effort: "medium", promptVersion: "fixture", systemPrompt: "fixture", input: "saved input", inputTokens: 123, outputTokens: 45, estimatedCost: role === "judge" ? 0.000696 : 0.001, usageSource: "reported", rates: { input: 2, cached: 0.2, output: 10, source: "fixture" } });
       const execute = () => jobContext.run(context, () => runRole({ role, projectId, input: "replacement must use saved input" }));
       if (failure === "snapshot-rejected") {
         await expect(execute()).rejects.toThrow("Eve unavailable");
@@ -85,7 +85,7 @@ for (const failure of ["session.failed", "turn.failed", "snapshot-rejected", "ex
         return;
       }
       if (failure === "legacy-cancel-rejected") {
-        await expect(execute()).rejects.toThrow("Eve judge timed out");
+        await expect(execute()).rejects.toThrow("Cancellation unavailable");
         expect(context.checkpoint[key]).toBe(oldRunId);
         expect(requests).not.toContain("POST /eve/v1/session");
         return;

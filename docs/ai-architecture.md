@@ -31,7 +31,7 @@ Legacy designer jobs with Eve checkpoints retain Eve execution. All text roles e
 
 The Blender MCP connection is resolved from the saved session role. Builders can inspect scene information and execute builds; photographers can inspect scene information and photograph assets. Judges and planners receive no Blender connection. Judges evaluate the supplied photographs, metrics and analysis without launching Blender operations.
 
-A resumed legacy judge that stalls after a failed Blender scene-inspection call gets one fresh review session after its deadline, only if Eve acknowledges cancellation of the old session. The old run, costs and completed build/photography checkpoints remain saved. Cancellation failure and ordinary live turns do not trigger this replacement.
+A resumed legacy judge that stalls after a failed Blender scene-inspection call gets one fresh review session after its deadline, only if Eve acknowledges cancellation of the old session. If the saved run already failed with a timeout, or remains running beyond its original deadline with this obsolete call, resume requests cancellation immediately instead of waiting through the same deadline again. The old run, costs and completed build/photography checkpoints remain saved. Cancellation failure and ordinary live turns do not trigger this replacement.
 
 Design updates from models retain the current revision while the job runs. The project and source model show the active work. Design saves and additional updates lock the project row and reject active design jobs. Completion creates a revision awaiting approval; an editor with unsaved changes must load that revision before saving or approving.
 
