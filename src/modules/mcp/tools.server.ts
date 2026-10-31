@@ -30,6 +30,7 @@ export function createStudioMcpServer(options: {
   publicUrl: URL;
   store?: Pick<OAuthStore, "listClients" | "revokeClient">;
   readFile?: typeof readStoredFile;
+  createDownload?: Parameters<typeof registerArtifacts>[1]["createDownload"];
   /** Owner-disabled tools stay registered but are hidden from discovery and calls. */
   disabledTools?: ReadonlySet<string>;
 }) {

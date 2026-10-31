@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { SignJWT } from "jose";
+import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "../../db/client";
 import { projects, revisions, oauthClients, mcpAuditEvents } from "../../db/schema";
@@ -14,7 +15,7 @@ const config = resolveMcpConfig({ MCP_PUBLIC_URL: "https://studio.example/api/mc
 const read = "sticks-and-clay:read";
 const write = "sticks-and-clay:write";
 
-async function session(scopes = [read]) {
+async function session(scopes = [read], readFile = async (_key: string) => new Blob(["fixture"])) {
   const store = new DrizzleOAuthStore();
   const clientId = crypto.randomUUID();
   const tokenId = crypto.randomUUID();
@@ -23,7 +24,7 @@ async function session(scopes = [read]) {
   const token = await new SignJWT({ cid: clientId, scope: scopes.join(" ") }).setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setIssuer(config.issuer.toString()).setAudience(config.serverUrl.toString()).setJti(tokenId).setIssuedAt().setExpirationTime("15m")
     .sign(getOAuthSigningKey(config.signingSecret));
-  const handler = createMcpHttpHandler(config, store, { readFile: async () => new Blob(["fixture"]) });
+  const handler = createMcpHttpHandler(config, store, { readFile });
   const send = async (path: string, init: RequestInit = {}) => {
     const headers = new Headers({
       Host: config.serverUrl.host, Authorization: `Bearer ${token}`,
@@ -69,9 +70,6 @@ integration("authenticated HTTP challenges, host/origin checks, download boundar
     expect(download.headers.get("Content-Type")).toBe("model/gltf-binary");
     expect(download.headers.get("Cache-Control")).toBe("private, no-store");
     expect(await download.text()).toBe("fixture");
-    const chunk = await connected.client.callTool({ name: "read_artifact", arguments: { key: "graphics/fixture/image.png", offset: 0 } });
-    expect(chunk.isError).not.toBe(true);
-    expect(chunk.structuredContent).toMatchObject({ data: { sizeBytes: 7, chunk: { offset: 0, base64: "Zml4dHVyZQ==", nextOffset: null } } });
     expect((await connected.send("/api/mcp/files/references/.private")).status).toBe(400);
     expect((await connected.send("/api/mcp/files/runtime-settings.json")).status).toBe(400);
     expect((await connected.send("/api/mcp/files/references/a.png", { headers: { Authorization: "" } })).status).toBe(401);
@@ -84,7 +82,51 @@ integration("authenticated HTTP challenges, host/origin checks, download boundar
     await connected.store.revokeClient(connected.clientId);
     expect((await connected.send("/api/mcp")).status).toBe(401);
     expect((await connected.send("/api/mcp/files/references/a.png")).status).toBe(401);
-    await expect(connected.client.callTool({ name: "read_artifact", arguments: { key: "graphics/fixture/image.png", offset: 0 } })).rejects.toThrow();
+  } finally { await connected.close(); }
+});
+
+integration("MCP returns a short-lived file URL that downloads exact bytes without OAuth credentials", async () => {
+  const bytes = Buffer.alloc(17 * 1024 * 1024 + 17);
+  for (let i = 0; i < bytes.length; i++) bytes[i] = i % 251;
+  const key = "graphics/fixture/preview #1.png";
+  let reads = 0;
+  const connected = await session([read], async (requested) => {
+    reads++;
+    expect(requested).toBe(key);
+    return new Blob([bytes]);
+  });
+  const output = z.object({ data: z.object({ downloadUrl: z.url(), downloadExpiresAt: z.iso.datetime(), sizeBytes: z.number() }) });
+  try {
+    const artifact = await connected.client.callTool({ name: "read_artifact", arguments: { key } });
+    expect(artifact.isError).not.toBe(true);
+    expect(JSON.stringify(artifact).length).toBeLessThan(5000);
+    const { data } = output.parse(artifact.structuredContent);
+    expect(data.sizeBytes).toBe(bytes.length);
+    const remaining = Date.parse(data.downloadExpiresAt) - Date.now();
+    expect(remaining).toBeGreaterThan(0);
+    expect(remaining).toBeLessThanOrEqual(5 * 60 * 1000);
+    const link = new URL(data.downloadUrl);
+    const download = await connected.send(link.pathname + link.search, { headers: { Authorization: "" } });
+    expect(download.status).toBe(200);
+    expect(download.headers.get("Content-Length")).toBe(String(bytes.length));
+    expect(download.headers.get("Content-Type")).toBe("image/png");
+    expect(download.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(download.headers.get("Referrer-Policy")).toBe("no-referrer");
+    expect(Buffer.from(await download.arrayBuffer())).toEqual(bytes);
+    expect((await connected.send(link.pathname, { headers: { Authorization: "" } })).status).toBe(401);
+    const otherFile = new URL(link);
+    otherFile.pathname = otherFile.pathname.replace("preview", "other");
+    expect((await connected.send(otherFile.pathname + otherFile.search, { headers: { Authorization: "" } })).status).toBe(401);
+    const altered = new URL(link);
+    altered.searchParams.set("ticket", `${altered.searchParams.get("ticket")}invalid`);
+    expect((await connected.send(altered.pathname + altered.search, { headers: { Authorization: "" } })).status).toBe(401);
+    expect((await connected.send(`/api/mcp${link.search}`, { headers: { Authorization: "" } })).status).toBe(401);
+    expect((await connected.send("/api/mcp", { headers: { Authorization: `Bearer ${link.searchParams.get("ticket")}` } })).status).toBe(401);
+    expect((await connected.send(link.pathname + link.search, { method: "POST", headers: { Authorization: "" } })).status).toBe(405);
+    expect(reads).toBe(2);
+    await connected.store.revokeClient(connected.clientId);
+    expect((await connected.send(link.pathname + link.search, { headers: { Authorization: "" } })).status).toBe(401);
+    expect(reads).toBe(2);
   } finally { await connected.close(); }
 });
 

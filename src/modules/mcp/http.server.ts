@@ -15,6 +15,7 @@ import { createStudioMcpServer } from "./tools.server";
 import { defaultMcpPolicy, loadMcpPolicy, type McpPolicy } from "./settings.server";
 import { api } from "../../lib/api.server";
 import type { AppApi } from "./api.server";
+import { createArtifactDownload, downloadGrant, verifyArtifactDownload } from "./downloads.server";
 
 const MCP_PATH = "/api/mcp";
 const FILE_PREFIX = `${MCP_PATH}/files/`;
@@ -77,6 +78,9 @@ export function createMcpHttpHandler(config: McpConfig, store: OAuthStore, optio
   const protocol = createMcpHandler(({ authInfo }) => createStudioMcpServer({
     scopes: authInfo?.scopes ?? [], publicUrl: config.serverUrl, store, api: options.api ?? api, readFile: options.readFile,
     disabledTools: new Set((authInfo?.extra?.disabledTools as string[] | undefined) ?? []),
+    createDownload: (key) => createArtifactDownload(key, config, downloadGrant.parse({
+      accessTokenId: authInfo?.extra?.accessTokenId, clientId: authInfo?.clientId, expiresAt: authInfo?.expiresAt,
+    })),
   }), { maxRequestBodySize: MAX_MCP_BODY_BYTES });
   const authenticate = requireBearerAuth({
     verifier: createLocalTokenVerifier(config, store), requiredScopes: [MCP_READ_SCOPE],
@@ -102,6 +106,29 @@ export function createMcpHttpHandler(config: McpConfig, store: OAuthStore, optio
       "Access-Control-Allow-Headers": "Authorization, Content-Type, MCP-Protocol-Version, MCP-Method, MCP-Name",
       "Access-Control-Max-Age": "86400",
     } }), origin);
+    if (path.startsWith(FILE_PREFIX)) {
+      if (request.method !== "GET") return cors(new Response("Method not allowed", { status: 405, headers: { Allow: "GET, OPTIONS" } }), origin);
+      let key: string;
+      try { key = artifactKey.parse(decodeURIComponent(path.slice(FILE_PREFIX.length))); }
+      catch { return cors(new Response("Invalid artifact key", { status: 400 }), origin); }
+      const ticket = new URL(request.url).searchParams.get("ticket");
+      if (ticket !== null) {
+        if (!await verifyArtifactDownload(ticket, key, config, store)) return cors(new Response("Invalid or expired download link", {
+          status: 401, headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },
+        }), origin);
+      } else {
+        const auth = await authenticate(request);
+        if (auth instanceof Response) return cors(auth, origin);
+      }
+      try {
+        const blob = await (options.readFile ?? readStoredFile)(key);
+        return cors(new Response(blob, { headers: {
+          "Content-Type": fileMimeType(key), "Content-Length": String(blob.size),
+          "Content-Disposition": "attachment", "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store",
+          "Referrer-Policy": "no-referrer",
+        } }), origin);
+      } catch { return cors(new Response("Artifact unavailable", { status: 404 }), origin); }
+    }
     const auth = await authenticate(request);
     if (auth instanceof Response) {
       const headers = new Headers(auth.headers);
@@ -110,25 +137,12 @@ export function createMcpHttpHandler(config: McpConfig, store: OAuthStore, optio
       if (challenge) headers.set("WWW-Authenticate", challenge.replace(/scope="[^"]*"/, `scope="${MCP_SCOPE_VALUES.join(" ")}"`));
       return cors(new Response(auth.body, { status: auth.status, headers }), origin);
     }
-    if (path.startsWith(FILE_PREFIX)) {
-      if (request.method !== "GET") return cors(new Response("Method not allowed", { status: 405, headers: { Allow: "GET, OPTIONS" } }), origin);
-      let key: string;
-      try { key = artifactKey.parse(decodeURIComponent(path.slice(FILE_PREFIX.length))); }
-      catch { return cors(new Response("Invalid artifact key", { status: 400 }), origin); }
-      try {
-        const blob = await (options.readFile ?? readStoredFile)(key);
-        return cors(new Response(blob, { headers: {
-          "Content-Type": fileMimeType(key), "Content-Length": String(blob.size),
-          "Content-Disposition": "attachment", "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store",
-        } }), origin);
-      } catch { return cors(new Response("Artifact unavailable", { status: 404 }), origin); }
-    }
     const parsed = request.method === "POST"
       ? await readBody(request, auth.scopes.includes("sticks-and-clay:write") ? MAX_MCP_BODY_BYTES : 4 * 1024 * 1024)
       : { body: undefined };
     if (parsed instanceof Response) return cors(parsed, origin);
     const call = callEnvelope.safeParse(parsed.body);
-    const response = await protocol.fetch(request, { authInfo: { ...auth, extra: { disabledTools: policy.disabledTools } }, parsedBody: parsed.body });
+    const response = await protocol.fetch(request, { authInfo: { ...auth, extra: { ...auth.extra, disabledTools: policy.disabledTools } }, parsedBody: parsed.body });
     if (call.success) {
       try { await store.audit({ event: "tool_called", clientId: auth.clientId, toolName: call.data.params.name, outcome: await auditOutcome(response) }); }
       catch { console.error("[Sticks & Clay] MCP audit persistence failed"); }

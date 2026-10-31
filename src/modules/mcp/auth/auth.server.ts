@@ -74,6 +74,7 @@ export function createLocalTokenVerifier(
           scopes,
           expiresAt: payload.exp,
           resource: config.serverUrl,
+          extra: { accessTokenId: payload.jti },
         };
       } catch {
         throw new OAuthError(

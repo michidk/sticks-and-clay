@@ -1,6 +1,5 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { createHash } from "node:crypto";
 import { assertStoragePath, fileMimeType, storageUrl } from "../../lib/storage/path";
 import { readStoredFile } from "../../lib/storage.server";
 import { result } from "./api.server";
@@ -18,7 +17,6 @@ export const artifactKey = z.string().min(1).max(1024).refine((key) => {
 }, "Choose an artifact key returned by the application; internal state is not accessible");
 const MAX_INLINE_BYTES = 16 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const ARTIFACT_CHUNK_BYTES = 12 * 1024;
 
 export function artifactDownloadUrl(key: string, publicUrl: URL) {
   return new URL(storageUrl(artifactKey.parse(key)).replace("/api/files/", "/api/mcp/files/"), publicUrl).toString();
@@ -28,37 +26,21 @@ export function registerArtifacts(server: McpServer, options: {
   scopes: readonly string[];
   publicUrl: URL;
   readFile?: typeof readStoredFile;
+  createDownload?: (key: string) => Promise<{ downloadUrl: string; downloadExpiresAt: string }>;
 }) {
   if (!options.scopes.includes("sticks-and-clay:read")) return;
   const load = options.readFile ?? readStoredFile;
   const annotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
   server.registerTool("read_artifact", {
-    description: "Get artifact metadata and links. To save bytes without accessing the OAuth bearer token, pass offset=0, decode each chunk.base64 separately, append in offset order, then follow chunk.nextOffset until null. Each chunk is at most 12 KiB. Verify the assembled byte count and SHA-256 against sizeBytes and chunk.sha256. Use an application-returned key. Direct downloads require the connection's bearer token; large resource responses may be truncated by clients.",
-    inputSchema: z.object({ key: artifactKey, offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).optional().describe("Byte offset for a bounded base64 chunk. Omit for metadata only; start at 0 and follow chunk.nextOffset.") }).strict(),
-    outputSchema: z.object({ data: z.object({
-      key: z.string(), mimeType: z.string(), sizeBytes: z.number(), downloadUrl: z.string().url(), resourceUri: z.string(),
-      chunk: z.object({ offset: z.number(), base64: z.string(), nextOffset: z.number().nullable(), sha256: z.string() }).optional(),
-    }) }),
+    description: "Get a saved artifact's size, format, resource URI and short-lived downloadUrl. Download the URL directly to disk using an ordinary HTTP GET, without an Authorization header or access to OAuth credentials. The link is scoped to this file and expires within five minutes, or sooner if the connection's grant expires or is revoked. Treat the URL as a temporary credential; request a fresh one if it expires. Use view_image for visual inspection and downloadUrl for saving original bytes.",
+    inputSchema: z.object({ key: artifactKey }).strict(),
+    outputSchema: z.object({ data: z.object({ key: z.string(), mimeType: z.string(), sizeBytes: z.number(), downloadUrl: z.url(), downloadExpiresAt: z.iso.datetime().optional(), resourceUri: z.string() }) }),
     annotations,
-  }, async ({ key, offset }) => {
+  }, async ({ key }) => {
     try {
       const blob = await load(key);
-      const data = { key, mimeType: fileMimeType(key), sizeBytes: blob.size, downloadUrl: artifactDownloadUrl(key, options.publicUrl), resourceUri: `sticks-and-clay://files/${encodeURIComponent(key)}` };
-      if (offset !== undefined) {
-        if (offset > blob.size) return result({ data: { error: "Artifact offset exceeds file size" } }, true);
-        const end = Math.min(offset + ARTIFACT_CHUNK_BYTES, blob.size);
-        const base64 = Buffer.from(await blob.slice(offset, end).arrayBuffer()).toString("base64");
-        const sha256 = createHash("sha256");
-        const reader = blob.stream().getReader();
-        try {
-          for (;;) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            sha256.update(value);
-          }
-        } finally { reader.releaseLock(); }
-        return result({ data: { ...data, chunk: { offset, base64, nextOffset: end < blob.size ? end : null, sha256: sha256.digest("hex") } } });
-      }
+      const download = options.createDownload ? await options.createDownload(key) : { downloadUrl: artifactDownloadUrl(key, options.publicUrl) };
+      const data = { key, mimeType: fileMimeType(key), sizeBytes: blob.size, ...download, resourceUri: `sticks-and-clay://files/${encodeURIComponent(key)}` };
       return {
         ...result({ data }),
         content: [

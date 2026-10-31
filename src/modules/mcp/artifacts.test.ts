@@ -1,6 +1,4 @@
 import { expect, test } from "bun:test";
-import { createHash } from "node:crypto";
-import { z } from "zod";
 import { Client, StreamableHTTPClientTransport } from "@modelcontextprotocol/client";
 import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createStudioMcpServer } from "./tools.server";
@@ -105,55 +103,5 @@ test("resource reads enforce 16 MiB while large artifact links remain usable", a
       downloadUrl: "https://studio.example/api/mcp/files/versions/one/over.glb",
       resourceUri: "sticks-and-clay://files/versions%2Fone%2Fover.glb",
     } });
-  } finally { await connected.close(); }
-});
-
-test("artifacts can be reconstructed through bounded MCP tool responses without a bearer token", async () => {
-  const bytes = Buffer.alloc(1024 * 1024 + 17);
-  for (let i = 0; i < bytes.length; i++) bytes[i] = i % 251;
-  const connected = await session(async () => new Blob([bytes]));
-  const output = z.object({ data: z.object({
-    sizeBytes: z.number(),
-    chunk: z.object({ offset: z.number(), base64: z.string(), nextOffset: z.number().nullable(), sha256: z.string() }),
-  }) });
-  try {
-    const chunks: Buffer[] = [];
-    let offset: number | null = 0;
-    while (offset !== null) {
-      const response = await connected.client.callTool({ name: "read_artifact", arguments: { key: "graphics/fixture/image.png", offset } });
-      expect(response.isError).not.toBe(true);
-      expect(JSON.stringify(response).length).toBeLessThan(40000);
-      const { data } = output.parse(response.structuredContent);
-      expect(data.sizeBytes).toBe(bytes.length);
-      expect(data.chunk.offset).toBe(offset);
-      expect(data.chunk.sha256).toBe(createHash("sha256").update(bytes).digest("hex"));
-      const chunk = Buffer.from(data.chunk.base64, "base64");
-      expect(chunk.length).toBeGreaterThan(0);
-      expect(chunk.length).toBeLessThanOrEqual(12 * 1024);
-      chunks.push(chunk);
-      expect(data.chunk.nextOffset).toBe(offset + chunk.length < bytes.length ? offset + chunk.length : null);
-      offset = data.chunk.nextOffset;
-    }
-    expect(Buffer.concat(chunks)).toEqual(bytes);
-  } finally { await connected.close(); }
-});
-
-test("artifact chunk offsets validate bounds and support an empty file or end of file", async () => {
-  let reads = 0;
-  const connected = await session(async (key) => { reads++; return new Blob([key.includes("empty") ? "" : "abc"]); });
-  try {
-    for (const offset of [-1, 0.5, Number.MAX_SAFE_INTEGER + 1]) {
-      expect((await connected.client.callTool({ name: "read_artifact", arguments: { key: "graphics/fixture/image.png", offset } })).isError).toBe(true);
-    }
-    expect(reads).toBe(0);
-    expect((await connected.client.callTool({ name: "read_artifact", arguments: { key: "graphics/fixture/image.png", offset: 4 } })).isError).toBe(true);
-    for (const [key, offset] of [["graphics/fixture/image.png", 3], ["exports/empty.zip", 0]] as const) {
-      const response = await connected.client.callTool({ name: "read_artifact", arguments: { key, offset } });
-      expect(response.isError).not.toBe(true);
-      expect(response.structuredContent).toMatchObject({ data: { chunk: { offset, base64: "", nextOffset: null } } });
-    }
-    const denied = await connected.client.callTool({ name: "read_artifact", arguments: { key: "runtime-settings.json", offset: 0 } });
-    expect(denied.isError).toBe(true);
-    expect(reads).toBe(3);
   } finally { await connected.close(); }
 });
