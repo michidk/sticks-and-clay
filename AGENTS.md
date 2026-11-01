@@ -4,13 +4,13 @@ Sticks & Clay is a single-owner, self-hosted AI asset-generation pipeline with
 a human in the loop. It is a Bun/TypeScript application using React 19,
 TanStack Start/Router, Vite, Tailwind 4, shadcn/ui, Drizzle/PostgreSQL, the Eve
 agent runtime, and isolated Blender processes. Three.js displays exported
-GLBs. An OAuth-protected MCP server exposes the workshop to external agents.
+GLBs. A network-restricted MCP server exposes the workshop to external agents.
 
 ## Sources of truth
 
 - Product overview, setup, and entry points: `README.md`
 - Services, deployment, persistence, and verification: `docs/development.md`
-- MCP tools, scopes, OAuth, and deployment: `docs/mcp.md`
+- MCP tools, network restriction, and deployment: `docs/mcp.md`
 - Asset identity, versions, board stages, and terminology: `docs/asset-lifecycle.md`
 - Generation passes, reviews, and recovery: `docs/quality-pipeline.md`
 - AI roles, providers, accounting, and durable execution: `docs/ai-architecture.md`
@@ -56,8 +56,8 @@ the enclosing environment's Git instructions and never invent a remote.
 - `src/modules/ai/`: all AI work goes through `index.server.ts` (`runRole`,
   `roleInput`); roles live in `roles.ts`. Callers must not import adapter
   internals such as `internal/eve.server.ts` or `internal/tanstack.server.ts`.
-- `src/modules/mcp/`: MCP protocol, tool adapters, artifact access, and OAuth.
-  `src/server.ts` intercepts MCP/OAuth requests before TanStack Start.
+- `src/modules/mcp/`: MCP protocol, tool adapters, and artifact access.
+  `src/server.ts` intercepts MCP requests before TanStack Start.
 - `src/lib/checkpoint.server.ts` and recovery modules: durable execution and
   restart behavior; `scripts/worker.ts` claims queued PostgreSQL jobs.
 - `src/db/schema.ts` and `drizzle/`: schema and migrations.
@@ -190,6 +190,5 @@ before reporting it healthy.
 This is a trusted single-owner workshop. Generated Blender Python executes
 with the service user's permissions and is not sandboxed by the operating
 system. Keep Eve and Blender on loopback, keep the web UI behind an
-authenticating proxy, and expose only the OAuth-protected MCP paths to
-external agents. Do not turn it into a public multi-tenant service without a
+authenticating proxy, and expose MCP only over loopback, a firewall or a private VPN. Do not turn it into a public multi-tenant service without a
 separate security design.

@@ -2,7 +2,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../db/client";
 import { jobs, assetVersions, batches, projects, runs } from "../db/schema";
-import { loadMcpAdminState, loadMcpAuditPage, revokeMcpClient, saveMcpPolicy } from "../modules/mcp/settings.server";
+import { loadMcpAdminState, loadMcpAuditPage, saveMcpPolicy } from "../modules/mcp/settings.server";
 import { agentInput, type AgentInput } from "./api-inputs";
 import { cancelJob } from "./queue.server";
 import { agentSettings, immediateRoles } from "../modules/ai/index.server";
@@ -150,10 +150,6 @@ export async function adminAction(request: Request, path: string[]) {
       return reply(await loadMcpAuditPage(Number(new URL(request.url).searchParams.get("page")) || 0));
     if (request.method === "GET") return reply(await loadMcpAdminState(request));
     if (request.method === "PUT" && path[1] === "policy") return reply(await saveMcpPolicy(await request.json()));
-    if (request.method === "POST" && path[1] === "revoke") {
-      await revokeMcpClient(uuid.parse((await request.json()).clientId));
-      return reply({ ok: true });
-    }
   }
   if (path[0] === "diagnostics" && request.method === "GET")
     return reply(await diagnosticsSnapshot());

@@ -119,17 +119,14 @@ flowchart LR
 ## 🤖 Connect your agent over MCP
 
 The whole workshop is available to your own agents through a built-in,
-**OAuth-protected remote MCP server** at `/api/mcp`. Claude Code, Codex,
+**stateless Streamable HTTP MCP server** (protocol 2026-07-28) at `/api/mcp`, meant for localhost or a private network. Claude Code, Codex,
 ChatGPT, or any MCP client can create collections, approve designs with you,
 queue builds, view renders as pixels, and download GLBs, without a companion
-skill or a copied token.
+skill or a copied token. It has no login: keep it on loopback, behind a firewall or on a private VPN.
 
 ```sh
-claude mcp add-json --scope user sticks-and-clay \
-  '{"type":"http","url":"https://your-workshop.example/api/mcp","oauth":{"scopes":"sticks-and-clay:read sticks-and-clay:write sticks-and-clay:admin"}}'
-claude mcp login sticks-and-clay
-
-codex mcp add sticks-and-clay --url https://your-workshop.example/api/mcp
+claude mcp add --transport http --scope user sticks-and-clay http://127.0.0.1:3000/api/mcp
+codex mcp add sticks-and-clay --url http://127.0.0.1:3000/api/mcp
 ```
 
 - **51 tools** cover the workshop: projects, designs, assets, versions, generation,
@@ -138,15 +135,13 @@ codex mcp add sticks-and-clay --url https://your-workshop.example/api/mcp
 - **Agents keep the human in the loop too.** Server instructions, the
   `sticks-and-clay://workflow` resource, and the `create_collection` prompt
   tell agents to show you designs and visual targets before approving them.
-- **Three scopes**, granted by you per client on a browser consent page:
-  `read`, `write` (paid generation and Blender), and `admin`.
-- **Real OAuth.** Authorization code with mandatory PKCE, resource binding,
-  rotating refresh tokens with replay detection, and immediate revocation.
+- **Network-restricted, not authenticated.** Loopback binding by default, plus
+  Host and Origin validation against DNS rebinding.
 - **Artifacts as data.** `view_image` returns render pixels to vision models;
   `read_artifact` returns short-lived signed URLs for downloading original files
-  directly, without extracting OAuth tokens.
-- **One switch in the UI.** Admin → MCP sets the access level for every
-  client, lists connected clients with revoke buttons, and logs each tool call.
+  directly.
+- **One switch in the UI.** Admin → MCP sets the access level and
+  logs each tool call.
 
 <p align="center">
   <img src=".github/images/mcp-admin.png"
@@ -219,7 +214,7 @@ configuration, scopes, and deployment behind an auth proxy.
 | Agents | Eve agent runtime, TanStack AI, any OpenAI-compatible provider |
 | Modeling | Blender 4.5 LTS in isolated processes behind a loopback MCP service |
 | CAD | CadQuery 2.8 / OpenCascade with a separate supervised Python runtime |
-| Agent access | MCP TypeScript SDK v2 with OAuth and PKCE |
+| Agent access | MCP TypeScript SDK v2, stateless Streamable HTTP |
 | Deployment | Docker image on GHCR, Kubernetes manifests in a separate repo |
 
 ## 🚀 Quick start
@@ -295,7 +290,7 @@ running worker; Python and real Blender checks run separately. See
 
 | Guide | What is inside |
 | --- | --- |
-| [MCP setup](docs/mcp.md) | Connecting agents, scopes, OAuth, deployment |
+| [MCP setup](docs/mcp.md) | Connecting agents, network restriction, deployment |
 | [Asset workshop](docs/asset-workshop.md) | Materials, sprites, imports, mockups, source bundles |
 | [Quality pipeline](docs/quality-pipeline.md) | Modeling passes, reviews, recovery |
 | [AI architecture](docs/ai-architecture.md) | Roles, providers, accounting, durable execution |
@@ -313,7 +308,7 @@ src/routes/        File routes, project workspace, admin pages
 src/components/    Shared UI, shadcn primitives, 3D and material viewers
 src/lib/           API, pipeline coordination, checkpoints, recovery
 src/modules/ai/    Typed AI roles, providers, usage and pricing
-src/modules/mcp/   MCP tools, artifacts, and OAuth
+src/modules/mcp/   MCP tools and artifacts
 src/db/, drizzle/  Schema and migrations
 eve/agent/         Agent tools and capability-scoped workspaces
 blender/           Isolated Blender execution, export, analysis, materials

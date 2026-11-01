@@ -1,9 +1,8 @@
-import { and, count, desc, eq, gt, isNull } from "drizzle-orm";
+import { count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../../db/client";
-import { mcpAuditEvents, mcpSettings, oauthClients, oauthTokens } from "../../db/schema";
-import { getMcpConfig } from "./auth/config.server";
-import { DrizzleOAuthStore } from "./auth/oauth-store.server";
+import { mcpAuditEvents, mcpSettings } from "../../db/schema";
+import { getMcpConfig } from "./config.server";
 import { studioToolCatalog } from "./tools.server";
 
 export type McpPolicy = { enabled: boolean; disabledTools: string[] };
@@ -29,9 +28,8 @@ export async function saveMcpPolicy(input: unknown) {
   return policy;
 }
 
-export async function revokeMcpClient(clientId: string) {
-  await new DrizzleOAuthStore().revokeClient(clientId);
-  await new DrizzleOAuthStore().audit({ event: "client_revoked", outcome: "success", clientId });
+export async function recordMcpAudit(event: { event: string; outcome: string; toolName?: string }) {
+  await db.insert(mcpAuditEvents).values(event);
 }
 
 // Every tool call is audited, so the table is paged instead of tailing a fixed window.
@@ -50,27 +48,10 @@ export async function loadMcpAdminState(request: Request) {
   let configurationError: string | null = null;
   try { endpoint = getMcpConfig(request).serverUrl.href; }
   catch (error) { configurationError = (error as Error).message; }
-  const [policy, clients, tokens, audit] = await Promise.all([
-    loadMcpPolicy(),
-    db.select().from(oauthClients).orderBy(desc(oauthClients.createdAt)),
-    db.select({ clientId: oauthTokens.clientId, scopes: oauthTokens.scopes }).from(oauthTokens)
-      .where(and(isNull(oauthTokens.revokedAt), gt(oauthTokens.accessTokenExpiresAt, new Date()))),
-    loadMcpAuditPage(0),
-  ]);
-  const active = new Map<string, { count: number; scopes: Set<string> }>();
-  for (const token of tokens) {
-    const entry = active.get(token.clientId) ?? { count: 0, scopes: new Set<string>() };
-    entry.count += 1;
-    token.scopes.forEach((scope) => entry.scopes.add(scope));
-    active.set(token.clientId, entry);
-  }
+  const [policy, audit] = await Promise.all([loadMcpPolicy(), loadMcpAuditPage(0)]);
   return {
     configured: endpoint !== null, endpoint, configurationError, policy,
     tools: studioToolCatalog(),
-    clients: clients.map((client) => ({
-      id: client.id, name: client.name, revokedAt: client.revokedAt, createdAt: client.createdAt,
-      activeTokenCount: active.get(client.id)?.count ?? 0, scopes: [...(active.get(client.id)?.scopes ?? [])],
-    })),
     audit,
   };
 }

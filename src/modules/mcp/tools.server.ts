@@ -11,7 +11,6 @@ import { type McpScope } from "./catalog";
 import { callApi, paginate, pageInput, toolOutput, workflow, result, type ApiRequest, type AppApi, type ToolData, type JsonValue } from "./api.server";
 import { assetForm, assetUploadSchema, projectForm, projectSetupInput } from "./uploads";
 import { registerArtifacts } from "./artifacts.server";
-import type { OAuthStore } from "./auth/oauth-store.server";
 import type { readStoredFile } from "../../lib/storage.server";
 
 const uuid = z.string().uuid();
@@ -28,7 +27,6 @@ export function createStudioMcpServer(options: {
   scopes: readonly string[];
   api: AppApi;
   publicUrl: URL;
-  store?: Pick<OAuthStore, "listClients" | "revokeClient">;
   readFile?: typeof readStoredFile;
   createDownload?: Parameters<typeof registerArtifacts>[1]["createDownload"];
   /** Owner-disabled tools stay registered but are hidden from discovery and calls. */
@@ -260,15 +258,6 @@ export function createStudioMcpServer(options: {
       argsSchema: z.object({ goal: z.string().min(1).max(12000) }),
     }, ({ goal }) => ({ messages: [{ role: "user", content: { type: "text", text: `${workflow}\n\nThe user's goal:\n${goal}` } }] }));
   }
-  if (scopes.has(admin) && options.store) {
-    const store = options.store;
-    server.registerTool("list_mcp_clients", { description: "List registered OAuth clients and revocation state. Never returns secrets.", inputSchema: empty, outputSchema: toolOutput,
-      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } },
-      async () => result({ data: z.json().parse(JSON.parse(JSON.stringify(await store.listClients()))) }));
-    server.registerTool("revoke_mcp_client", { description: "Revoke a connected client's tokens immediately. Revoking your own client ends future access.", inputSchema: z.object({ clientId: z.string().min(1).max(200) }).strict(), outputSchema: toolOutput,
-      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false } },
-      async ({ clientId }) => { await store.revokeClient(clientId); return result({ data: { ok: true } }); });
-  }
   return server;
 }
 
@@ -277,11 +266,10 @@ export type StudioToolInfo = { name: string; title: string; description: string;
 // Tools are registered per scope, so the first scope level that exposes a tool is its required scope.
 export function studioToolCatalog(): StudioToolInfo[] {
   const catalog = new Map<string, StudioToolInfo>();
-  const store = { listClients: async () => [], revokeClient: async () => {} };
   for (const scope of [read, write, admin]) {
     const server = createStudioMcpServer({
       scopes: [read, write, admin].slice(0, [read, write, admin].indexOf(scope) + 1),
-      publicUrl: new URL("https://catalog.invalid"), store,
+      publicUrl: new URL("https://catalog.invalid"),
       api: async () => { throw new Error("Catalog discovery cannot execute application requests"); },
     });
     const tools = (server as unknown as { _registeredTools: Record<string, { description?: string }> })._registeredTools;

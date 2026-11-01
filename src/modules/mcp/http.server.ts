@@ -1,21 +1,15 @@
-import {
-  createMcpHandler, getOAuthProtectedResourceMetadataUrl,
-  hostHeaderValidationResponse, requireBearerAuth,
-} from "@modelcontextprotocol/server";
+import { createMcpHandler, hostHeaderValidationResponse, originValidationResponse } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { readStoredFile } from "../../lib/storage.server";
 import { fileMimeType } from "../../lib/storage/path";
 import { artifactKey } from "./artifacts.server";
-import { createLocalTokenVerifier } from "./auth/auth.server";
-import { getMcpConfig, MCP_READ_SCOPE, type McpConfig } from "./auth/config.server";
-import { createOAuthHttpHandler, handlesOAuthPath } from "./auth/oauth-http.server";
-import { DrizzleOAuthStore, type OAuthStore } from "./auth/oauth-store.server";
+import { getMcpConfig, type McpConfig } from "./config.server";
 import { MAX_MCP_BODY_BYTES, MCP_SCOPE_VALUES } from "./catalog";
 import { createStudioMcpServer } from "./tools.server";
-import { defaultMcpPolicy, loadMcpPolicy, type McpPolicy } from "./settings.server";
+import { defaultMcpPolicy, loadMcpPolicy, recordMcpAudit, type McpPolicy } from "./settings.server";
 import { api } from "../../lib/api.server";
 import type { AppApi } from "./api.server";
-import { createArtifactDownload, downloadGrant, verifyArtifactDownload } from "./downloads.server";
+import { createArtifactDownload, verifyArtifactDownload } from "./downloads.server";
 
 const MCP_PATH = "/api/mcp";
 const FILE_PREFIX = `${MCP_PATH}/files/`;
@@ -23,16 +17,7 @@ const callEnvelope = z.object({ method: z.literal("tools/call"), params: z.objec
 const failedResult = z.object({ error: z.unknown().optional(), result: z.object({ isError: z.boolean().optional() }).optional() });
 
 export function handlesMcpHttpPath(path: string) {
-  return path === MCP_PATH || path.startsWith(FILE_PREFIX) || handlesOAuthPath(path);
-}
-
-function cors(response: Response, origin: string | null) {
-  if (!origin) return response;
-  const headers = new Headers(response.headers);
-  headers.set("Access-Control-Allow-Origin", origin);
-  headers.append("Vary", "Origin");
-  headers.set("Access-Control-Expose-Headers", "WWW-Authenticate, MCP-Protocol-Version");
-  return new Response(response.body, { status: response.status, headers });
+  return path === MCP_PATH || path.startsWith(FILE_PREFIX);
 }
 
 async function readBody(request: Request, limit: number): Promise<{ body: unknown } | Response> {
@@ -68,86 +53,63 @@ async function auditOutcome(response: Response) {
   } catch { return "failure"; }
 }
 
-export function createMcpHttpHandler(config: McpConfig, store: OAuthStore, options: {
+
+export function createMcpHttpHandler(config: McpConfig, options: {
   api?: AppApi;
   readFile?: typeof readStoredFile;
   policy?: () => Promise<McpPolicy>;
+  audit?: typeof recordMcpAudit;
 } = {}) {
   const loadPolicy = options.policy ?? (async () => defaultMcpPolicy);
-  const oauth = createOAuthHttpHandler(config, store);
+  const audit = options.audit ?? recordMcpAudit;
+  // createMcpHandler is stateless: every request builds a fresh server, no session ids or SSE streams are kept.
   const protocol = createMcpHandler(({ authInfo }) => createStudioMcpServer({
-    scopes: authInfo?.scopes ?? [], publicUrl: config.serverUrl, store, api: options.api ?? api, readFile: options.readFile,
+    scopes: MCP_SCOPE_VALUES, publicUrl: config.serverUrl, api: options.api ?? api, readFile: options.readFile,
     disabledTools: new Set((authInfo?.extra?.disabledTools as string[] | undefined) ?? []),
-    createDownload: (key) => createArtifactDownload(key, config, downloadGrant.parse({
-      accessTokenId: authInfo?.extra?.accessTokenId, clientId: authInfo?.clientId, expiresAt: authInfo?.expiresAt,
-    })),
+    createDownload: async (key) => createArtifactDownload(key, config),
   }), { maxRequestBodySize: MAX_MCP_BODY_BYTES });
-  const authenticate = requireBearerAuth({
-    verifier: createLocalTokenVerifier(config, store), requiredScopes: [MCP_READ_SCOPE],
-    resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(config.serverUrl),
-  });
 
   return async (request: Request): Promise<Response | null> => {
     const path = new URL(request.url).pathname;
     if (!handlesMcpHttpPath(path)) return null;
-    const rejectedHost = hostHeaderValidationResponse(request, config.allowedHostnames);
-    if (rejectedHost) return rejectedHost;
+    const rejected = hostHeaderValidationResponse(request, config.allowedHostnames)
+      ?? originValidationResponse(request, config.allowedOrigins);
+    if (rejected) return rejected;
     const policy = await loadPolicy();
     if (!policy.enabled) return Response.json(
       { error: "mcp_disabled", error_description: "MCP access is paused by the owner" },
       { status: 503, headers: { "Cache-Control": "no-store" } },
     );
-    if (handlesOAuthPath(path)) return oauth(request);
-    const origin = request.headers.get("origin");
-    if (origin && ![config.issuer.origin, ...config.allowedOrigins].includes(origin))
-      return new Response("Forbidden origin", { status: 403 });
-    if (request.method === "OPTIONS") return cors(new Response(null, { status: 204, headers: {
-      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type, MCP-Protocol-Version, MCP-Method, MCP-Name",
-      "Access-Control-Max-Age": "86400",
-    } }), origin);
     if (path.startsWith(FILE_PREFIX)) {
-      if (request.method !== "GET") return cors(new Response("Method not allowed", { status: 405, headers: { Allow: "GET, OPTIONS" } }), origin);
+      if (request.method !== "GET") return new Response("Method not allowed", { status: 405, headers: { Allow: "GET" } });
       let key: string;
       try { key = artifactKey.parse(decodeURIComponent(path.slice(FILE_PREFIX.length))); }
-      catch { return cors(new Response("Invalid artifact key", { status: 400 }), origin); }
+      catch { return new Response("Invalid artifact key", { status: 400 }); }
       const ticket = new URL(request.url).searchParams.get("ticket");
-      if (ticket !== null) {
-        if (!await verifyArtifactDownload(ticket, key, config, store)) return cors(new Response("Invalid or expired download link", {
-          status: 401, headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },
-        }), origin);
-      } else {
-        const auth = await authenticate(request);
-        if (auth instanceof Response) return cors(auth, origin);
-      }
+      if (!ticket || !verifyArtifactDownload(ticket, key, config)) return new Response("Invalid or expired download link", {
+        status: 401, headers: { "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },
+      });
       try {
         const blob = await (options.readFile ?? readStoredFile)(key);
-        return cors(new Response(blob, { headers: {
+        return new Response(blob, { headers: {
           "Content-Type": fileMimeType(key), "Content-Length": String(blob.size),
           "Content-Disposition": "attachment", "X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store",
           "Referrer-Policy": "no-referrer",
-        } }), origin);
-      } catch { return cors(new Response("Artifact unavailable", { status: 404 }), origin); }
+        } });
+      } catch { return new Response("Artifact unavailable", { status: 404 }); }
     }
-    const auth = await authenticate(request);
-    if (auth instanceof Response) {
-      const headers = new Headers(auth.headers);
-      const challenge = headers.get("WWW-Authenticate");
-      // Clients use the challenge to request permissions; consent chooses the actual grant.
-      if (challenge) headers.set("WWW-Authenticate", challenge.replace(/scope="[^"]*"/, `scope="${MCP_SCOPE_VALUES.join(" ")}"`));
-      return cors(new Response(auth.body, { status: auth.status, headers }), origin);
-    }
-    const parsed = request.method === "POST"
-      ? await readBody(request, auth.scopes.includes("sticks-and-clay:write") ? MAX_MCP_BODY_BYTES : 4 * 1024 * 1024)
-      : { body: undefined };
-    if (parsed instanceof Response) return cors(parsed, origin);
+    const parsed = request.method === "POST" ? await readBody(request, MAX_MCP_BODY_BYTES) : { body: undefined };
+    if (parsed instanceof Response) return parsed;
     const call = callEnvelope.safeParse(parsed.body);
-    const response = await protocol.fetch(request, { authInfo: { ...auth, extra: { ...auth.extra, disabledTools: policy.disabledTools } }, parsedBody: parsed.body });
+    const response = await protocol.fetch(request, {
+      authInfo: { token: "", clientId: "local", scopes: [...MCP_SCOPE_VALUES], extra: { disabledTools: policy.disabledTools } },
+      parsedBody: parsed.body,
+    });
     if (call.success) {
-      try { await store.audit({ event: "tool_called", clientId: auth.clientId, toolName: call.data.params.name, outcome: await auditOutcome(response) }); }
+      try { await audit({ event: "tool_called", toolName: call.data.params.name, outcome: await auditOutcome(response) }); }
       catch { console.error("[Sticks & Clay] MCP audit persistence failed"); }
     }
-    return cors(response, origin);
+    return response;
   };
 }
 
@@ -157,11 +119,11 @@ export async function handleMcpHttpRequest(request: Request): Promise<Response |
   try {
     const config = getMcpConfig(request);
     let handler = liveHandlers.get(config.serverUrl.href);
-    if (!handler) liveHandlers.set(config.serverUrl.href, handler = createMcpHttpHandler(config, new DrizzleOAuthStore(), { policy: loadMcpPolicy }));
+    if (!handler) liveHandlers.set(config.serverUrl.href, handler = createMcpHttpHandler(config, { policy: loadMcpPolicy }));
     return await handler(request);
   } catch {
     console.error("[Sticks & Clay] MCP service unavailable");
-    return Response.json({ error: "server_error", error_description: "MCP service is unavailable; check owner configuration and database migrations" }, {
+    return Response.json({ error: "server_error", error_description: "MCP service is unavailable; check configuration and database migrations" }, {
       status: 503, headers: { "Cache-Control": "no-store" },
     });
   }

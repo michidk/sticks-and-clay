@@ -9,8 +9,8 @@ environment, and the demo cannot be switched back.
 - `/` serves a public landing page. The workshop's project list lives at
   `/projects` in every edition; standard builds redirect `/` there.
 - Every page shows a read-only banner. `src/server.ts` answers every request
-  other than GET and HEAD with 403 before any API, server function, MCP or
-  OAuth handler runs. That check is the security boundary: the demo's buttons
+  other than GET and HEAD with 403 before any API, server function, MCP
+  handler runs. That check is the security boundary: the demo's buttons
   stay visible and fail with the read-only message.
 - The database is an in-memory PGlite restored from a snapshot made at build
   time. `src/db/demo.ts` replaces `src/db/client.ts` in the demo bundle, so the

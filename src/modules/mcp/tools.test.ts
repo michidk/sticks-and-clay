@@ -96,7 +96,6 @@ const actions: {
 
 test("modern SDK clients discover every human action with the correct HTTP method", async () => {
   const requests: { method: string; path: string }[] = [];
-  const revoked: string[] = [];
   const connected = await session({
     api: async (request) => {
       const url = new URL(request.url);
@@ -110,17 +109,13 @@ test("modern SDK clients discover every human action with the correct HTTP metho
       }
       return Response.json({ id });
     },
-    store: {
-      listClients: async () => [{ id: "client-1", name: "Test client", redirectUris: ["http://localhost/callback"], revokedAt: null }],
-      revokeClient: async (clientId) => { revoked.push(clientId); },
-    },
   });
   try {
     expect(connected.client.getDiscoverResult()).toBeDefined();
     const catalog = await connected.client.listTools();
     expect(catalog.tools.map((tool) => tool.name).sort()).toEqual([
       ...actions.map((action) => action.name),
-      "read_artifact", "view_image", "list_mcp_clients", "revoke_mcp_client",
+      "read_artifact", "view_image",
     ].sort());
     expect(catalog.tools.some((tool) => /texture|execute|shell/.test(tool.name))).toBe(false);
     expect(catalog.tools.find((tool) => tool.name === "generate_asset")?.annotations)
@@ -132,10 +127,6 @@ test("modern SDK clients discover every human action with the correct HTTP metho
       expect(requests.at(-1)).toEqual({ method: action.method, path: action.path });
     }
     expect(requests).toHaveLength(actions.length);
-    const clients = await connected.client.callTool({ name: "list_mcp_clients", arguments: {} });
-    expect(clients.structuredContent).toEqual({ data: [{ id: "client-1", name: "Test client", redirectUris: ["http://localhost/callback"], revokedAt: null }] });
-    await connected.client.callTool({ name: "revoke_mcp_client", arguments: { clientId: "client-1" } });
-    expect(revoked).toEqual(["client-1"]);
     expect(requests).toHaveLength(actions.length);
   } finally { await connected.close(); }
 });
@@ -295,7 +286,6 @@ test("the settings catalog lists every tool with its required scope", () => {
   expect(scopeOf("list_projects")).toBe(read);
   expect(scopeOf("generate_asset")).toBe(write);
   expect(scopeOf("update_settings")).toBe(admin);
-  expect(scopeOf("revoke_mcp_client")).toBe(admin);
 });
 
 test("asset references preserve optimistic state and upload images through the shared API", async () => {

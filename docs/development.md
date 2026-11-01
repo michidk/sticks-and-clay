@@ -11,7 +11,7 @@ Use the [README](../README.md#run-locally) for installation. This application ru
 | `src/lib/api.server.ts` | Project, design, generation, and asset HTTP operations |
 | `src/lib/admin.server.ts` | Queue, role settings, runtime settings, and diagnostics |
 | `src/lib/workshop.server.ts`, `src/lib/materials.server.ts` | Imports, source bundles, material generation, and assignment |
-| `src/modules/mcp/` | MCP tools, resources, artifact access, and OAuth |
+| `src/modules/mcp/` | MCP tools, resources, and artifact access |
 | `src/modules/ai/` | Typed role execution, providers, usage, and pricing |
 | `src/modules/pipelines/` | Versioned workflow graphs and traversal |
 | `src/lib/pipeline.server.ts`, `src/lib/model-pipeline.server.ts` | Job coordination and model-specific artifacts |
@@ -70,7 +70,7 @@ The image workflow publishes commit-tagged images to `ghcr.io/michidk/sticks-and
 
 ## Persistence and migrations
 
-PostgreSQL holds projects, immutable revisions, attempts, jobs, checkpoints, OAuth records, and usage history. `data/` holds assets, workspace scripts, receipts, runtime settings, and logs. Eve retains sessions in `eve/.eve/`. Back up database and file/session storage together while services are stopped or through a coordinated snapshot.
+PostgreSQL holds projects, immutable revisions, attempts, jobs, checkpoints, MCP audit records, and usage history. `data/` holds assets, workspace scripts, receipts, runtime settings, and logs. Eve retains sessions in `eve/.eve/`. Back up database and file/session storage together while services are stopped or through a coordinated snapshot.
 
 `STUDIO_DATA_DIR` changes the local asset directory. Pass the same value to every process. S3 can store media, but Blender workspaces and recovery still require local storage. Do not remove `data/`, Eve sessions, or the PostgreSQL storage during cache cleanup.
 

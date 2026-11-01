@@ -37,6 +37,7 @@ RUN test ! -e .env && test ! -e eve/.eve && test ! -e eve/.output \
     && chown -R node:node data eve
 ENV NODE_ENV=production \
     PORT=3000 \
+    HOST=0.0.0.0 \
     BLENDER_BIN=/opt/blender/blender
 USER node
 EXPOSE 3000

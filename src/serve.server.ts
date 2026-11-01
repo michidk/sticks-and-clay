@@ -6,7 +6,7 @@ const port = Number.parseInt(process.env.NITRO_PORT ?? process.env.PORT ?? "3000
 const server = serve({
   fetch: useNitroApp().fetch,
   port: Number.isNaN(port) ? 3000 : port,
-  hostname: process.env.NITRO_HOST || process.env.HOST,
+  hostname: process.env.NITRO_HOST || process.env.HOST || "127.0.0.1", // loopback unless the deployment opts in; the container image sets HOST=0.0.0.0
   maxRequestBodySize: MAX_MCP_BODY_BYTES,
   // Allow slow requests below the ingress's 300s limit and Bun's 255s maximum.
   bun: { idleTimeout: 240 },

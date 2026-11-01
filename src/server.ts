@@ -5,7 +5,7 @@ import { handleMcpHttpRequest } from "./modules/mcp/index.server";
 const start = createStartHandler(defaultStreamHandler);
 export default {
   async fetch(request: Request) {
-    // The demo's only security boundary: every write, paid action and MCP/OAuth request is refused here.
+    // The demo's only security boundary: every write, paid action and MCP request is refused here.
     if (DEMO_MODE)
       return request.method === "GET" || request.method === "HEAD"
         ? await start(request)

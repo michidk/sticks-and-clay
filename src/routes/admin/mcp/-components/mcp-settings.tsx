@@ -3,32 +3,30 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { json, request } from "@/lib/client";
-import { Activity, Check, ChevronLeft, ChevronRight, Clipboard, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Activity, Check, ChevronLeft, ChevronRight, Clipboard } from "lucide-react";
+import { useEffect, useState } from "react";
 
 type Tool = { name: string; title: string; description: string; scope: string };
 type Audit = {
-  events: { id: number; event: string; outcome: string; clientId: string | null; toolName: string | null; createdAt: string }[];
+  events: { id: number; event: string; outcome: string; toolName: string | null; createdAt: string }[];
   total: number; page: number; pageSize: number;
 };
 type State = {
   configured: boolean; endpoint: string | null; configurationError: string | null;
   policy: { enabled: boolean; disabledTools: string[] };
   tools: Tool[];
-  clients: { id: string; name: string; revokedAt: string | null; createdAt: string; activeTokenCount: number; scopes: string[] }[];
   audit: Audit;
 };
 
 const scopePrefix = "sticks-and-clay:";
 // Each level allows its own tools plus everything below it.
 const levels = [
-  ["off", "Off", "Reject every MCP and OAuth request. Clients and history are kept."],
+  ["off", "Off", "Reject every MCP request. History is kept."],
   ["read", "Read only", "Assistants can look at projects, assets, renders and costs, but change nothing."],
   ["write", "Read and create", "Also create and generate assets. Spends AI budget and runs Blender."],
-  ["admin", "Full access", "Also change models, settings and clients."],
+  ["admin", "Full access", "Also change models and settings."],
 ] as const;
 type Level = (typeof levels)[number][0];
 const order = ["read", "write", "admin"];
@@ -43,7 +41,6 @@ const when = (value: string) => new Intl.DateTimeFormat("en", { dateStyle: "medi
 export function McpSettings() {
   const [state, setState] = useState<State | null>(null);
   const [audit, setAudit] = useState<Audit | null>(null);
-  const [showRevoked, setShowRevoked] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -57,7 +54,6 @@ export function McpSettings() {
   }
   useEffect(() => { void load(); }, []);
 
-  const clients = useMemo(() => state?.clients.filter((client) => showRevoked || !client.revokedAt) ?? [], [state, showRevoked]);
   if (!state) return error
     ? <Alert variant="destructive" className="error"><AlertDescription>{error}</AlertDescription></Alert>
     : <Card className="panel max-w-5xl" aria-label="Loading MCP"><Skeleton className="mb-3 h-6 w-48" /><Skeleton className="h-40 w-full" /></Card>;
@@ -72,10 +68,6 @@ export function McpSettings() {
     enabled: level !== "off",
     disabledTools: state.tools.filter((tool) => order.indexOf(toolLevel(tool)) > order.indexOf(level)).map((tool) => tool.name),
   }, "PUT")), level === "off" ? "MCP is off." : "Access updated. New requests use it immediately.");
-  const revoke = (id: string, name: string) => {
-    if (window.confirm(`Revoke access for “${name}”? Its tokens stop working immediately.`))
-      void act(() => request("mcp-access/revoke", json({ clientId: id })), `${name} was revoked.`);
-  };
   async function copy() {
     if (!state?.endpoint) return;
     await navigator.clipboard.writeText(state.endpoint);
@@ -86,7 +78,6 @@ export function McpSettings() {
     catch (cause) { setError((cause as Error).message); }
   }
 
-  const revokedCount = state.clients.filter((client) => client.revokedAt).length;
   const pages = audit ? Math.max(1, Math.ceil(audit.total / audit.pageSize)) : 1;
   const level = levelOf(state);
 
@@ -98,7 +89,7 @@ export function McpSettings() {
       <Card className="panel settings-section">
         <div className="settings-section-heading">
           <h2>Connection</h2>
-          <p>Add this URL as a custom connector in ChatGPT, or to Claude Code and Codex, and choose OAuth. You approve each client in the browser.</p>
+          <p>Add this URL to Claude Code, Codex or another MCP client (Streamable HTTP, protocol 2026-07-28). There is no sign-in: reach it only over localhost, a firewalled network or a private VPN.</p>
         </div>
         {state.endpoint ? (
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -126,33 +117,6 @@ export function McpSettings() {
           ))}
         </div>
       </Card>
-
-      <section aria-labelledby="mcp-clients">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 id="mcp-clients" className="text-lg font-semibold">Connected clients</h2>
-            <p className="text-sm text-muted-foreground">Revoking a client invalidates its access and refresh tokens immediately.</p>
-          </div>
-          {revokedCount > 0 && <label htmlFor="mcp-revoked" className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Switch id="mcp-revoked" checked={showRevoked} onCheckedChange={setShowRevoked} />Show {revokedCount} revoked
-          </label>}
-        </div>
-        <Card className="panel overflow-hidden shadow-none">
-          {clients.length === 0 ? <p className="p-5 text-sm text-muted-foreground">{state.clients.length ? "Every client is revoked." : "No MCP clients have connected yet."}</p> : (
-            <ul className="divide-y">
-              {clients.map((client) => (
-                <li key={client.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3">
-                  <span className="min-w-0 flex-1 truncate font-medium">{client.name}</span>
-                  {client.scopes.map((scope) => <Badge key={scope} variant="outline">{scope.replace("sticks-and-clay:", "")}</Badge>)}
-                  <Badge variant={client.revokedAt ? "secondary" : "default"}>{client.revokedAt ? "Revoked" : `${client.activeTokenCount} token${client.activeTokenCount === 1 ? "" : "s"}`}</Badge>
-                  <span className="whitespace-nowrap text-xs text-muted-foreground">{when(client.createdAt)}</span>
-                  {!client.revokedAt && <Button type="button" variant="ghost" size="sm" className="text-destructive" disabled={busy} onClick={() => revoke(client.id, client.name)}><Trash2 size={15} aria-hidden="true" />Revoke</Button>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </section>
 
       <section aria-labelledby="mcp-activity">
         <h2 id="mcp-activity" className="mb-3 flex items-center gap-2 text-lg font-semibold"><Activity className="text-primary" size={20} aria-hidden="true" />Recent activity</h2>

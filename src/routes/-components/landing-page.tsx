@@ -146,7 +146,7 @@ export function LandingPage() {
             <Bot size={26} strokeWidth={1.6} aria-hidden="true" />
             <h2 id="landing-mcp">Bring your own agent</h2>
             <p>
-              The whole workshop is available over a built-in, OAuth-protected MCP server. Claude Code, Codex,
+              The whole workshop is available over a built-in MCP server. Claude Code, Codex,
               ChatGPT or any MCP client can create collections, queue builds, view renders and download GLBs, and
               its instructions tell agents to show you designs before approving them.
             </p>

@@ -8,7 +8,7 @@ function McpPage() {
     <section className="page-heading">
       <div>
         <h1>MCP</h1>
-        <p className="lede">Choose what connected assistants such as ChatGPT, Claude and Codex can do, and manage the clients you have approved.</p>
+        <p className="lede">Choose what connected assistants such as ChatGPT, Claude and Codex can do.</p>
       </div>
     </section>
     <McpSettings />

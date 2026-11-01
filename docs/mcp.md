@@ -1,130 +1,54 @@
 # Connect an agent to Sticks & Clay
 
-Sticks & Clay exposes its workshop through an OAuth-protected HTTP MCP server at `/api/mcp`. Add its full HTTPS URL to your agent's remote MCP connections and choose OAuth authentication. No client secret or manually copied access token is needed.
+Sticks & Clay exposes its workshop through a Streamable HTTP MCP server at `/api/mcp`. It is **stateless** (every request stands alone; no session ids or server-sent streams) and serves MCP protocol **2026-07-28**, with the SDK's stateless fallback for 2025-era clients.
 
-Use your deployed workshop URL, for example:
+**There is no authentication.** Anyone who can reach `/api/mcp` can use every enabled tool, including paid generation and Blender execution. Restrict network access instead:
 
-```text
-https://your-workshop.example/api/mcp
-```
-
-The client discovers the authorization server, registers its callback, and opens a browser consent page. On the permanent deployment, log in through Hodor, select the permissions, and authorize. This is the same flow as CodeTend; no separate MCP password is needed. Standalone deployments can instead require a dedicated `MCP_OWNER_PASSWORD` on the consent form. Never paste credentials into a chat or repository file.
+- The server binds to `127.0.0.1` unless `HOST` is set. The container image sets `HOST=0.0.0.0`; then publish the port only on loopback (`-p 127.0.0.1:3000:3000`) or restrict it with a firewall, a NetworkPolicy or a private VPN such as Tailscale or WireGuard.
+- Do not route `/api/mcp` through a public ingress.
+- Every MCP request must pass **Host** and **Origin** validation (DNS-rebinding defence): anything else gets 403. Loopback and the `MCP_PUBLIC_URL` hostname are always allowed; add more with `MCP_ALLOWED_HOSTS` and `MCP_ALLOWED_ORIGINS` (comma-separated hostnames, no scheme or port). Requests without an `Origin` header (non-browser clients) pass.
 
 ## Codex and Claude Code
 
-Register the server in each client's user configuration so it is available across workspaces:
-
 ```sh
-codex mcp add sticks-and-clay --url https://your-workshop.example/api/mcp
-claude mcp add-json --scope user sticks-and-clay '{"type":"http","url":"https://your-workshop.example/api/mcp","oauth":{"scopes":"sticks-and-clay:read sticks-and-clay:write sticks-and-clay:admin"}}'
-claude mcp login sticks-and-clay
+codex mcp add sticks-and-clay --url http://127.0.0.1:3000/api/mcp
+claude mcp add --transport http --scope user sticks-and-clay http://127.0.0.1:3000/api/mcp
 ```
 
-Codex starts OAuth login when adding the server. To reconnect later, run `codex mcp login sticks-and-clay`. Both clients support `mcp login sticks-and-clay --no-browser` for a headless connection. Complete consent and return the callback URL to the waiting client when prompted. Treat callback URLs as credentials until consumed.
+No login step is needed. Start a new agent session, check with `codex mcp get sticks-and-clay`, `claude mcp get sticks-and-clay` or `/mcp`, and ask the agent to use `list_projects` and `get_queue` as a smoke test. Remote clients on your private network use that network's hostname, which must be listed in `MCP_PUBLIC_URL` or `MCP_ALLOWED_HOSTS`.
 
-The requested scopes make all workshop tools available for owner approval; consent can grant fewer permissions. For a read-only Claude connection, set `oauth.scopes` to `sticks-and-clay:read`. Both clients store and refresh OAuth credentials themselves. Keep access tokens out of configuration and repository files.
+No companion skill is required. Server instructions, tool descriptions, the `sticks-and-clay://workflow` resource, and the `create_collection` prompt provide the workflow through MCP itself.
 
-Start a new agent session after registration. Check the connection with `codex mcp get sticks-and-clay`, `claude mcp get sticks-and-clay`, or `/mcp` inside either client. Ask the agent to use `list_projects` and `get_queue` as a read-only smoke test.
-
-No companion skill is required. Server instructions, tool descriptions, the `sticks-and-clay://workflow` resource, and the `create_collection` prompt provide the workflow through MCP itself. A client that cannot read resources can still use the tool descriptions and server instructions.
-
-## ChatGPT and the settings panel
-
-Behind Hodor, no `MCP_*` variables are needed: with `HODOR_SECRET` set (32+ characters) the endpoint is `https://<workshop host>/api/mcp`, derived from the proxy's `Host`/`X-Forwarded-*` headers, which Hodor must overwrite. Hodor owner consent and signing with `HODOR_SECRET` are the defaults. Add `https://chatgpt.com` as a custom connector with that URL and OAuth; it is allowed as a browser origin by default (override with `MCP_ALLOWED_ORIGINS`). Setting `MCP_PUBLIC_URL` pins the URL instead.
-
-**Admin → MCP** shows the endpoint with a copy button and one access level (Off, Read only, Read and create, Full access; tools above the level vanish from discovery and cannot be called), connected clients with their scopes and token counts, revoke buttons, and paged tool activity. It needs migration `0019` (`bun run db:migrate`).
+**Admin → MCP** shows the endpoint, one access level (Off, Read only, Read and create, Full access; tools above the level vanish from discovery and cannot be called) and paged tool activity.
 
 ## Owner setup
 
-Run the additive database migrations and configure these variables in the app's private environment before starting it:
-
 ```dotenv
-MCP_PUBLIC_URL=https://your-workshop.example/api/mcp
-MCP_OWNER_PASSWORD=<random-secret-at-least-32-characters>
-MCP_SECRET=<separate-random-secret-at-least-32-characters>
-# Optional browser MCP clients; comma-separated exact origins:
-# MCP_ALLOWED_ORIGINS=https://your-client.example
+MCP_PUBLIC_URL=http://your-workshop.internal:3000/api/mcp
+# MCP_ALLOWED_HOSTS=
+# MCP_ALLOWED_ORIGINS=
+# MCP_SECRET=<random-secret-at-least-32-characters>
 ```
 
-`MCP_PUBLIC_URL` must identify `/api/mcp` exactly. HTTPS is required except for loopback HTTP development. The configured URL controls the issuer, audience, Host validation, discovery links, and artifact downloads. Forwarded headers cannot change it. Fixed loopback Host values are also accepted for the managed preview proxy; arbitrary hosts are rejected. `MCP_SECRET` defaults to the owner password if omitted; a separate secret allows rotating the password without invalidating access tokens. Restart the app after configuration changes. Missing or invalid configuration makes MCP paths return 503 while the ordinary app continues running.
+`MCP_PUBLIC_URL` must identify `/api/mcp` exactly, over HTTP or HTTPS. Without it the URL follows the request's Host, but only loopback hosts are accepted. `MCP_SECRET` signs artifact download links; unset, a random per-process key is used (links then do not survive a restart or span replicas). Restart after configuration changes. Run `bun run db:migrate`, `bun run build`, then `bun .output/server/index.mjs`. Allow request bodies up to 280 MiB if model imports are needed.
 
-```sh
-bun run db:migrate
-bun run build
-bun .output/server/index.mjs
-```
+## Tools and artifacts
 
-For remote connections, route the MCP and OAuth paths to the app without a separate browser login gate. The VibePod deployment routes only these paths directly to its preview gateway; other workshop paths retain Hodor. Use application OAuth authentication on MCP paths. Preserve `Authorization`, `Host`, `Origin`, `MCP-Protocol-Version`, `MCP-Method`, and `MCP-Name` headers. Allow request bodies up to 280 MiB if model imports are needed.
+All tools are available to every connection; the Admin → MCP level and per-tool switches are the only gate. `read_artifact` returns the format, size, MCP resource URI, `downloadUrl` and `downloadExpiresAt`. Save the file with an ordinary HTTP GET to `downloadUrl`.
 
-## Hodor deployment
+Download links are HMAC-signed, bound to one artifact, and expire after five minutes. Rotating `MCP_SECRET` or pausing MCP invalidates outstanding links. Treat the URL as a temporary credential. Responses use `private, no-store`, attachment disposition and `Referrer-Policy: no-referrer`. Only application artifact directories are accessible; runtime settings, dotfiles and traversal paths are rejected.
 
-Set `MCP_OWNER_AUTH=hodor` and provide a separate `MCP_SECRET` of at least 32 characters. Omit `MCP_OWNER_PASSWORD`. Hodor must proxy **every** request to the app and overwrite `X-Hodor-Auth`; expose only Hodor through the Service and ingress. Block direct access to the app port with a NetworkPolicy. The app accepts Hodor's `password` and `bypass` admission methods for owner consent.
-
-Keep `/oauth/authorize` behind the login gate. Allow machine clients through Hodor's `BYPASS_PATHS` for `/api/mcp`, `/api/mcp/files/*`, `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource/api/mcp`, `/oauth/register`, `/oauth/token`, and `/oauth/revoke`. Hodor matches paths exactly; the `/*` suffix is required for nested artifact paths. These routes enforce OAuth or file-scoped signed download tickets themselves. Set `PRESERVE_HOST=true`. Consent retains request binding, one-use CSRF tokens, and origin validation after login.
-
-## Permissions
-
-| Scope | Access |
-| --- | --- |
-| `sticks-and-clay:read` | Projects, saved designs and history, queues, events, artifacts and image pixels. Required for every connection. |
-| `sticks-and-clay:write` | Project and design edits, paid drafting/generation, branching, materials, exports, cancellation and recovery. |
-| `sticks-and-clay:admin` | Agent/model configuration, runtime settings, diagnostics and connected-client revocation. |
-
-Write and admin permissions start unchecked on the consent page. The owner chooses each grant; admin does not imply write. Clients see only tools allowed by their grant, and direct calls to other tools fail. Read access includes project prompts, run history, files and cost estimates, so grant it only to clients that should see the workshop's content.
-
-There are 54 tools covering existing workshop actions and artifact access. `create_collection` provides a workflow prompt; `sticks-and-clay://workflow` explains generation and recovery. No shell, arbitrary Python execution endpoint, internal texture-builder endpoint, filesystem-path import, or history-deletion tool is exposed.
-
-`create_project` accepts `assetType: "cad"` for the CadQuery pipeline. CAD jobs use the ordinary approved design, idea, generation, review, branch and acceptance actions. `list_starting_points` (read) lists up to 100 compatible completed versions from the project. `set_asset_starting_point` (write) attaches source bytes or a same-project `sourceRunId` to an idea; it accepts `expectedSha256` for optimistic replacement and `units` for STL/OBJ imports. Omit both file and sourceRunId to remove it. Uploaded CadQuery Python is source data until a generation job builds it. Starting points and CAD deliverables use the same authenticated artifact access; internal runner logs and state are excluded. See [CAD and starting points](asset-workshop.md#cad-generation).
-
-## Working with assets
-
-1. Use `create_project` to queue design generation. Brief/name drafting tools use paid AI and return a recoverable draft ID.
-2. Poll `get_project`, show the design to the user, and use `save_design` with its current version and `approve=true` only after the user approves it. Existing design revisions stay immutable.
-3. Use `create_asset` to save an optional brief, optional named parts and settings in Ideas, or `create_assets` to create several separate ideas in one request. Pass a title, or omit it for a small paid AI title request when a brief is given. `mark_asset_ready` changes the Ready marker without starting generation. `update_asset` edits an Asset's brief and settings for future Versions in any stage, and `discard_asset` only removes assets without saved versions. `start_asset` queues a Version from the approved design. `generate_asset` directly queues one Asset. Each new request produces one Asset, whose parts share one Version.
-
-Keep one idea per standalone deliverable. For a collection, use `draft_asset_brief` to get distinct proposals, then call `create_assets` or `create_asset` once per proposal with a self-contained brief. Use named parts only for an inseparable 3D/CAD assembly or an intentionally grouped image set. A strong brief states purpose, silhouette/proportions, key features, dimensions or scale, materials/palette, interfaces or pivots, allowed variation and exclusions. Keep pipeline, rendering and QA instructions out of the design spec; those are supplied by the workshop.
-4. A Version freezes its design, references, notes and settings. `update_asset_references` accepts retained keys, new images, notes and an `expected` object containing the current references and notes to prevent conflicting edits. `attach_asset_mockup` attaches a mockup from the same project. Changes affect future Versions. Image parts produce separate named files; 3D parts stay together in one scene and exported file.
-5. Poll the project or queue after generation. New 3D, CAD, SVG and pixel-art Versions generate a per-asset visual target and pause for approval unless `visualTargetMode` is `skip`. Raster graphics generate the final image directly. Show the user the target, then use `approve_visual_target` only after they approve that exact image, or `revise_visual_target` with their feedback. Review rounds apply to every asset type. Zero rounds for 3D retains all four modeling passes.
-6. `get_board` reads the global board with project labels and an optional `projectId` filter. `get_project` section `board` reads its five columns. An Asset keeps its identity through Ideas, Ready, In progress, Review and Done. Show a finished Version to the user, then use `accept_asset_version` only if they accept it. `accepted=false` returns it to Review. `branch_asset_version` with `kind=iterate` creates a new Version of the same Asset; `kind=fork` creates a new Asset. Set `variation=true` on a fork to copy the saved model prompt, add optional `variationContext`, and use its first saved render as a reference image. `reopen_asset_as_idea` copies an Asset's brief, settings and references into a new idea, even while it generates, leaving the original Asset and every Version unchanged.
-7. Read `get_project` sections `assets`, `assetVersions`, `builds`, `runs`, `revisions`, `batches`, `photographs` and `designUpdates`. Version operations take `versionId`; branching also requires a saved `sourceRunId`. `get_run_events` pages through transcripts. Use `view_image` to inspect pixels.
-8. Render views/sprites with `render_asset` or apply a material with `assign_material`. Poll `get_export_job` with its returned ID. `export_assets` zips saved files of finished Versions, optionally filtered by `versionIds` or `acceptedOnly`, and returns an artifact key for `read_artifact`.
-9. Resume eligible failed work with its recovery tool. `retry_asset_version` preserves its original checkpoint and Eve session. Do not repeat a successful creation request to check progress. Existing costs remain after cancellation.
-
-Tools return structured JSON under `data`, plus readable text. Application failures set `isError` and preserve recovery information such as draft IDs. "Completed with issues" remains distinct from judge approval and technical failure.
-
-Reference images accept `{url}` for a public HTTP(S) image, or `{filename,mimeType,base64}` for PNG, JPEG or WebP bytes. URL downloads use the app's SSRF protection. Each image is limited to 8 MiB; retained and newly uploaded references together are limited to six. Omitting `references` retains draft references; `references: []` removes them.
-
-`import_asset` accepts `{filename,base64}` containing a GLB or Blender file up to 200 MiB. Inputs use canonical base64; directories and server filesystem paths are rejected. The HTTP body limit is 280 MiB for write grants and 4 MiB for other grants. Some clients have smaller upload limits.
-
-`read_artifact` returns the format, size, MCP resource URI, `downloadUrl` and `downloadExpiresAt`. Save the file with an ordinary HTTP GET to `downloadUrl`, without an Authorization header. The URL contains a signed ticket for that artifact only; no OAuth token needs to leave the MCP connector. Download the URL to a file instead of embedding the bytes in tool output. Resource reads inline at most 16 MiB and `view_image` returns up to 8 MiB of pixels, but client output limits can truncate base64 even for smaller files.
-
-Download links expire after five minutes or at the issuing access token's expiration, whichever comes first. Every download checks that the originating read grant and client are still active. Revoking the grant or client, rotating the signing secret, or pausing MCP invalidates outstanding links. A ticket cannot authorize another file or an MCP/API call. Treat the complete URL as a temporary credential: keep it out of logs, commits and shared documents, and request a fresh link if it expires. Responses use `private, no-store`, attachment disposition and `Referrer-Policy: no-referrer`.
-
-The original bearer-authenticated `/api/mcp/files/...` URLs still work for clients that handle OAuth themselves. Only application artifact directories are accessible; runtime settings, dotfiles and traversal paths are rejected.
-
-## Authentication and operations
-
-The server uses authorization-code OAuth with mandatory PKCE S256 and an exact resource binding. Discovery documents are at `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource/api/mcp`. OAuth endpoints are `/oauth/register`, `/oauth/authorize`, `/oauth/token` and `/oauth/revoke`. Registered redirects require HTTPS or loopback HTTP.
-
-Access tokens last 15 minutes. Refresh tokens rotate on use and last 30 days. Replaying a consumed authorization code or refresh token revokes its grant family. PostgreSQL stores code, refresh-token and consent-token hashes, not their raw values. Owner consent uses a signed, short-lived, single-use transaction, an HttpOnly cookie, and Origin checks. Every authenticated request checks persisted revocation state. Signed downloads also check their originating grant and client.
-
-An admin connection can use `list_mcp_clients` and `revoke_mcp_client`. Revocation ends future access immediately; an already running generation job continues until separately cancelled. Rotating `MCP_SECRET` invalidates existing JWT access tokens, so revoke existing clients too when removing compromised grants. OAuth and tool-call audit records contain client IDs, tool names and outcomes without request payloads or credentials. Audit persistence errors are logged without failing an otherwise completed action.
-
-Back up the OAuth tables with the rest of PostgreSQL and retain asset storage. The application remains a single-owner workshop: its ordinary API relies on the existing private deployment boundary, and generated Blender code runs with the worker's permissions. Expose only the authenticated MCP paths when adding external agents.
+Tool-call audit records contain tool names and outcomes without request payloads. Audit persistence errors are logged without failing an otherwise completed action. Generated Blender code runs with the worker's permissions, which is why network restriction matters.
 
 ## Implementation and verification
 
-`src/server.ts` intercepts MCP/OAuth requests before TanStack Start. The production entry in `src/serve.server.ts` raises Bun's transport body limit to 280 MiB and retains graceful shutdown hooks. `src/modules/mcp/` owns the protocol, tool adapters, artifact access and OAuth modules. Tools reuse the existing API and shared input contracts. The official stable TypeScript SDK v2 serves the 2026-07-28 protocol and stateless 2025-era Streamable HTTP clients.
-
-The implementation uses the [official TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) and [MCP authorization specification](https://modelcontextprotocol.io/specification/latest/basic/authorization). Owner authentication uses a dedicated secret; ingress identity headers do not grant access.
+`src/server.ts` intercepts MCP requests before TanStack Start. The production entry in `src/serve.server.ts` raises Bun's body limit to 280 MiB. `src/modules/mcp/` owns the protocol, tool adapters and artifact access. Tools reuse the existing API and shared input contracts. The official TypeScript SDK (`@modelcontextprotocol/server` 2.4+) serves the transport.
 
 ```sh
 bun run verify
 # Use an isolated migrated PostgreSQL database with no running worker:
 TEST_DATABASE=1 DATABASE_URL=postgres://... bun test src/modules/mcp src/lib/api.integration.test.ts
 ```
-
-Tests exercise the official SDK client, current and legacy transport, permission filtering, upload validation, artifact boundaries, OAuth consent/PKCE/resource binding, refresh replay, durable atomic consumption, immediate revocation, and real API approval/version conflicts. They do not call paid AI providers.
 
 `update_workshop` accepts optional `svgIntent` (`icon`, `logo` or `illustration`) for SVG projects; omit it to keep the saved intent, and batches without one are icons. It also accepts optional `resolution: { width, height }` for graphic and pixel-art projects. Asset creation, updates and generation accept the same override. Omit it on creation or use `null` to inherit the project setting; omitted resolution and imageSize fields on updates preserve the saved values; use `null` in `update_workshop` to clear the project default. Sizes are frozen into new batches and included in prompts. Pixel dimensions are 4–128; graphic requests are 4–8192 and remain subject to image-provider output limits. SVG generation assumes square vectors.
 
