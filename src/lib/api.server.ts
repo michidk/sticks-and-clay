@@ -109,6 +109,14 @@ const uuid = z.string().uuid();
 const uuidOrJob = z.string().regex(/^[0-9a-f-]{36}(:[0-3])?$/);
 const assetType = assetTypeSchema;
 const reply = (v: unknown, status = 200) => Response.json(v, { status });
+const warmedAt = new Map<string, number>();
+
+function groupByProject<T extends { projectId: string | null }>(rows: T[]) {
+  const groups = new Map<string | null, T[]>();
+  for (const row of rows) (groups.get(row.projectId) ?? groups.set(row.projectId, []).get(row.projectId)!).push(row);
+  return groups;
+}
+
 export async function api(request: Request) {
   try {
     const path = new URL(request.url).pathname
@@ -189,14 +197,27 @@ export async function api(request: Request) {
       const usage = await db
         .select({
           projectId: runs.projectId,
-          input: runs.inputTokens,
-          output: runs.outputTokens,
-          cost: runs.estimatedCost,
+          tokens: sql<number>`coalesce(sum(${runs.inputTokens} + ${runs.outputTokens}), 0)::float8`,
+          cost: sql<number>`coalesce(sum(${runs.estimatedCost}), 0)::float8`,
+          unpriced: sql<number>`count(*) filter (where ${runs.estimatedCost} is null)::int`,
         })
-        .from(runs);
+        .from(runs)
+        .groupBy(runs.projectId);
       const photos = await projectPhotographs();
       const generated = await db
-        .select()
+        .select({
+          id: assetVersions.id,
+          assetId: assetVersions.assetId,
+          projectId: assetVersions.projectId,
+          batchId: assetVersions.batchId,
+          parentModelId: assetVersions.parentModelId,
+          branchKind: assetVersions.branchKind,
+          status: assetVersions.status,
+          verdict: assetVersions.verdict,
+          createdAt: assetVersions.createdAt,
+          // Only the preview image is shown here; the rest of the artifacts can be large.
+          image: sql<string | null>`${assetVersions.artifacts}->>'image'`,
+        })
         .from(assetVersions)
         .orderBy(desc(assetVersions.createdAt));
       const collections = await db
@@ -212,33 +233,24 @@ export async function api(request: Request) {
         inArray(jobs.status, ["queued", "running", "cancelling"]),
       ));
       const worker = await readWorkerHeartbeat();
+      const usageByProject = new Map(usage.map((u) => [u.projectId, u]));
+      const generatedByProject = groupByProject(generated);
+      const collectionsByProject = groupByProject(collections);
+      const designing = new Set(designWork.map((job) => job.projectId));
       return reply({
         workerHealthy: worker?.healthy ?? false,
         projects: list.map((p) => ({
           ...p,
-          designUpdating: designWork.some((job) => job.projectId === p.id),
+          designUpdating: designing.has(p.id),
           collection: collectionSummary(
-            generated.filter((m) => m.projectId === p.id),
-            collections.filter((b) => b.projectId === p.id),
+            generatedByProject.get(p.id) ?? [],
+            collectionsByProject.get(p.id) ?? [],
           ),
           thumbnail:
             p.assetType !== "model"
-              ? generated.find(
-                  (asset) =>
-                    asset.projectId === p.id &&
-                    typeof asset.artifacts?.image === "string",
-                )?.artifacts?.image
+              ? generatedByProject.get(p.id)?.find((asset) => asset.image)?.image
               : photos.find((photo) => photo.projectId === p.id)?.thumbnail,
-          usage: usage
-            .filter((r) => r.projectId === p.id)
-            .reduce(
-              (a, r) => ({
-                tokens: a.tokens + r.input + r.output,
-                cost: a.cost + (r.cost || 0),
-                unpriced: a.unpriced + (r.cost === null ? 1 : 0),
-              }),
-              { tokens: 0, cost: 0, unpriced: 0 },
-            ),
+          usage: usageByProject.get(p.id) ?? { tokens: 0, cost: 0, unpriced: 0 },
         })),
       });
     }
@@ -546,7 +558,7 @@ export async function api(request: Request) {
       if (request.method === "GET") {
         const query = new URL(request.url).searchParams;
         const summary = query.get("summary") === "true";
-        const [assets, history, versions, requests, designUpdates, activeJobs] =
+        const [assets, history, versions, requests, designUpdates, activeJobs, photographs, mockups, mockupItems, ideas, assetEntryRows, worker] =
           await Promise.all([
             db
               .select()
@@ -591,32 +603,36 @@ export async function api(request: Request) {
                 inArray(jobs.targetId, db.select({ id: batches.id }).from(batches).where(eq(batches.projectId, id))),
               ),
             )).orderBy(jobs.createdAt),
+            projectPhotographs(id),
+            designMockups(id),
+            listMockups(id),
+            listAssetDrafts(id),
+            db.select().from(assetEntries).where(eq(assetEntries.projectId, id)).orderBy(assetEntries.createdAt, assetEntries.id),
+            readWorkerHeartbeat(),
           ]);
+        // Per-model indexes keep the version history linear in the number of runs.
+        const buildersByModel = new Map<string | null, typeof history>();
+        const judgesByModel = new Map<string | null, typeof history>();
+        for (const run of history) {
+          const index = run.role === "builder" ? buildersByModel : run.role === "judge" ? judgesByModel : null;
+          if (index) (index.get(run.modelId) ?? index.set(run.modelId, []).get(run.modelId)!).push(run);
+        }
+        // History is newest first; the next build after a run is the earliest later one.
+        for (const builds of buildersByModel.values()) builds.reverse();
         const payload = {
           project,
-          photographs: await projectPhotographs(id),
-          mockups: await designMockups(id),
-          mockupItems: await listMockups(id),
-          ideas: await listAssetDrafts(id),
-          assets: await db.select().from(assetEntries).where(eq(assetEntries.projectId, id)).orderBy(assetEntries.createdAt, assetEntries.id),
+          photographs,
+          mockups,
+          mockupItems,
+          ideas,
+          assets: assetEntryRows,
           assetVersions: assets,
           versions: history
             .filter((r) => r.role === "builder" && r.modelId)
             .map((r) => {
-              const next = history
-                .filter(
-                  (n) =>
-                    n.role === "builder" &&
-                    n.modelId === r.modelId &&
-                    n.createdAt > r.createdAt,
-                )
-                .sort(
-                  (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
-                )[0];
-              const judges = history.filter(
+              const next = (buildersByModel.get(r.modelId) ?? []).find((n) => n.createdAt > r.createdAt);
+              const judges = (judgesByModel.get(r.modelId) ?? []).filter(
                 (j) =>
-                  j.role === "judge" &&
-                  j.modelId === r.modelId &&
                   j.iteration === r.iteration &&
                   j.createdAt >= r.createdAt &&
                   (!next || j.createdAt < next.createdAt),
@@ -645,7 +661,7 @@ export async function api(request: Request) {
             : history,
           revisions: versions,
           batches: requests,
-          workerHealthy: (await readWorkerHeartbeat())?.healthy ?? false,
+          workerHealthy: worker?.healthy ?? false,
           activeJobs: [
             ...activeJobs.map((job) => queueJobView(job, assets, requests, [project])),
             ...history.filter((run) => run.status === "running" && immediateRoles.some((role) => role === run.role))
@@ -666,7 +682,11 @@ export async function api(request: Request) {
         };
         // Per-version history is only the model page's; the overview asks to leave it out.
         if (summary && query.get("versions") === "false") payload.versions = [];
-        warmThumbnails(imageKeys(payload));
+        // The page polls this; scanning for thumbnails once a minute per project is enough.
+        if (Date.now() - (warmedAt.get(id) ?? 0) > 60_000) {
+          warmedAt.set(id, Date.now());
+          warmThumbnails(imageKeys(payload));
+        }
         return reply(payload);
       }
       if (request.method === "DELETE" && path.length === 2) {
