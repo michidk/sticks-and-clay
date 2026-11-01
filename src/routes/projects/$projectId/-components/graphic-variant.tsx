@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +18,7 @@ import { request, json } from "@/lib/client";
 /** Fork into another asset, or create a new version of this asset. */
 export function GraphicVariant({
   model,
+  projectId,
   sourceRunId,
   onSaved,
   kind = "fork",
@@ -24,12 +26,14 @@ export function GraphicVariant({
   iterateLabel = "Iterate",
 }: {
   model: any;
+  projectId: string;
   sourceRunId?: string;
   onSaved: () => Promise<unknown>;
   kind?: "fork" | "iterate";
   designReady?: boolean;
   iterateLabel?: "Iterate" | "Regenerate";
 }) {
+  const navigate = useNavigate();
   const iterate = kind === "iterate";
   const [open, setOpen] = useState(false),
     [name, setName] = useState(model.name + " variant"),
@@ -41,18 +45,14 @@ export function GraphicVariant({
     setBusy(true);
     setError("");
     try {
-      if (iterate && !prompt.trim()) {
-        await request(`asset-versions/${model.id}/regenerate`, json({}));
-      } else {
-        await request(
-          `asset-versions/${model.id}/branch`,
-          json({ kind, sourceRunId, ...(iterate ? {} : { name }), prompt, judgeIterations: 2 }),
-        );
-      }
+      await request(
+        `asset-versions/${model.id}/branch`,
+        json({ kind: "fork", sourceRunId, name, prompt, judgeIterations: 2 }),
+      );
       setOpen(false);
       void onSaved().catch(() => {
         setError(
-          `${iterate ? "Version" : "Asset"} queued, but refreshing the list failed. Reload to see it.`,
+          "Asset queued, but refreshing the list failed. Reload to see it.",
         );
       });
     } catch (e) {
@@ -68,7 +68,9 @@ export function GraphicVariant({
         size={iterate ? "sm" : undefined}
         disabled={!sourceRunId || (iterate && !designReady)}
         title={iterate && !designReady ? "Approve the design before generating a new version" : undefined}
-        onClick={() => setOpen(true)}
+        onClick={() => iterate
+          ? void navigate({ to: "/projects/$projectId/models/$modelId", params: { projectId, modelId: model.id }, search: { view: "3d", section: "review", version: sourceRunId }, hash: "continuation-prompt" })
+          : setOpen(true)}
       >
         {iterate ? iterateLabel : "Fork asset"}
       </Button>
@@ -76,11 +78,9 @@ export function GraphicVariant({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{iterate ? iterateLabel : "Fork asset"}</DialogTitle>
+            <DialogTitle>Fork asset</DialogTitle>
             <DialogDescription>
-              {iterate
-                ? "Creates a new version of this asset that returns to Review. The current version is kept. Leave the comment blank to use the current approved design and latest saved result. Paid generation request."
-                : "Creates a separate asset from this saved build. The original asset and its history are kept. Paid generation request."}
+              Creates a separate asset from this saved build. The original asset and its history are kept. Paid generation request.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={submit} className="space-y-4">
@@ -89,24 +89,22 @@ export function GraphicVariant({
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            {!iterate && <>
-              <Label htmlFor={`variant-name-${model.id}`}>Name</Label>
-              <Input
+            <Label htmlFor={`variant-name-${model.id}`}>Name</Label>
+            <Input
                 id={`variant-name-${model.id}`}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 maxLength={100}
-              />
-            </>}
+            />
             <Label htmlFor={`variant-prompt-${model.id}-${kind}`}>
-              {iterate ? "Comment (optional)" : "Requested change"}
+              Requested change
             </Label>
             <Textarea
               id={`variant-prompt-${model.id}-${kind}`}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              required={!iterate}
+              required
               minLength={prompt.trim() ? 3 : undefined}
               maxLength={12000}
             />
@@ -117,7 +115,7 @@ export function GraphicVariant({
                 </Button>
               </DialogClose>
               <Button disabled={busy}>
-                {busy ? "Queuing…" : iterate ? "Generate version" : "Create asset"}
+                {busy ? "Queuing…" : "Create asset"}
               </Button>
             </DialogFooter>
           </form>

@@ -90,7 +90,7 @@ function VersionCard({ version, root, count, entry, showProject, onRefresh }: Co
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
     {!project.archivedAt && <div className="board-card-actions">
       {stage === "review" && <>
-        <GraphicVariant kind="iterate" model={version} sourceRunId={latestSourceRun(entry.runs, version.id)} designReady={project.status === "ready"} onSaved={onRefresh} />
+        <GraphicVariant projectId={project.id} kind="iterate" model={version} sourceRunId={latestSourceRun(entry.runs, version.id)} designReady={project.status === "ready"} onSaved={onRefresh} />
         <Button size="sm" disabled={pending.has(`models/${version.id}/accept`)} onClick={() => send(`models/${version.id}/accept`, { accepted: true })}><Check size={14} /> Accept</Button>
 
       </>}

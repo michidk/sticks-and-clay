@@ -79,7 +79,12 @@ so refreshing or sharing the link retains the selected project.
 Project references describe shared visual direction. Asset references describe
 one asset. Uploads use the same image picker in either case. A mockup can be
 attached to the project design or a specific asset, with a note explaining
-what to use from it.
+what to use from it. Iterate opens the asset detail workspace with its
+conversation beside the preview. For graphics, SVG, pixel art and CAD, the
+composer accepts new mockups or reference uploads and saves them to the asset
+before queuing the next version. Existing asset references remain available in
+Saved asset references. In the 3D workspace, save uploads under Asset references
+before sending a change request.
 
 Starting a version freezes its approved design, settings, parts, reference
 images, and reference notes. Later edits affect future versions. They never

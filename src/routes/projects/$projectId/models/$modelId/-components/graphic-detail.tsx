@@ -1,7 +1,6 @@
 import { VisualTargetReview } from "./visual-target-review";
 import { RenameButton } from "@/components/rename";
 import { BuildTrace } from "./build-trace";
-import { AssetReferences } from "@/components/asset-references";
 import { useState } from "react";
 import { z } from "zod";
 import { useNavigate } from "@tanstack/react-router";
@@ -22,6 +21,7 @@ import { GraphicVariant } from "../../../-components/graphic-variant";
 import { PixelExports } from "./pixel-exports";
 import { PixelEditor } from "./pixel-editor";
 import { CadExports } from "./cad-exports";
+import { GraphicConversation } from "./graphic-conversation";
 import { ReviewNotes } from "./review";
 import type { Review, Workspace } from "../-lib/model";
 
@@ -31,22 +31,23 @@ const namedParts = z.array(z.object({ name: z.string(), key: z.string() }));
 
 /** One generated graphic or SVG: the image large, its versions, the review, and the actions on it. */
 export function GraphicDetail({
-  data, projectId, modelId, reload,
+  data, projectId, modelId, selectedRunId, reload,
 }: {
   data: Workspace;
   projectId: string;
   modelId: string;
+  selectedRunId?: string;
   reload: () => Promise<unknown>;
 }) {
   return (
     <LightboxProvider>
-      <GraphicDetailContent data={data} projectId={projectId} modelId={modelId} reload={reload} />
+      <GraphicDetailContent data={data} projectId={projectId} modelId={modelId} selectedRunId={selectedRunId} reload={reload} />
     </LightboxProvider>
   );
 }
 
-function GraphicDetailContent({ data, projectId, modelId, reload }: {
-  data: Workspace; projectId: string; modelId: string; reload: () => Promise<unknown>;
+function GraphicDetailContent({ data, projectId, modelId, selectedRunId, reload }: {
+  data: Workspace; projectId: string; modelId: string; selectedRunId?: string; reload: () => Promise<unknown>;
 }) {
   const navigate = useNavigate();
   const openLightbox = useLightbox();
@@ -80,7 +81,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
   const reviewOf = (build: any): Review | undefined =>
     (runs.find((run: any) => run.role.endsWith("-judge") && run.status === "done" && run.iteration === build.iteration
       && new Date(run.createdAt) >= new Date(build.createdAt)) as any)?.result;
-  const current = builds.find((build) => build.id === picked) ?? builds.at(-1);
+  const current = builds.find((build) => build.id === (picked ?? selectedRunId)) ?? builds.at(-1);
   const liveCanvas = !picked && model.artifacts?.stage === "construction";
   const currentKey = liveCanvas ? model.artifacts?.image : (current?.result as { key?: string } | undefined)?.key ?? model.artifacts?.image;
   const savedPreviews = svgPreviews.safeParse(current?.result);
@@ -145,8 +146,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
           )}
           {current && !archived && !working && <>
             {pixelated && <PixelEditor key={current.id} modelId={modelId} projectId={projectId} sourceRunId={current.id} />}
-            <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} kind="iterate" iterateLabel={outdated ? "Regenerate" : "Iterate"} designReady={data.project.status === "ready"} />
-            <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} />
+            <GraphicVariant projectId={projectId} model={model} sourceRunId={current.id} onSaved={reload} />
           </>}
           {!archived && (
             <ReopenAsIdea id={modelId} name={name}
@@ -171,7 +171,12 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
       {model.status === "awaiting_approval" && model.visualTarget && !archived && (
         <VisualTargetReview key={model.visualTarget} modelId={modelId} target={model.visualTarget} onRefresh={reload} />
       )}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)]">
+        <GraphicConversation key={modelId} projectId={projectId} modelId={modelId}
+          sourceRunId={current?.id} asset={asset} runs={runs} prompt={model.prompt}
+          working={working} archived={archived} designReady={data.project.status === "ready"}
+          onRefresh={reload} />
+        <div className="order-1 min-w-0 space-y-6 lg:order-2">
         <Card className="panel">
           {currentKey ? (
             <button type="button" aria-label="Open full size" className="block w-full"
@@ -239,7 +244,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
             </ul>
           )}
         </Card>
-        <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           {target && model.status !== "awaiting_approval" && <Card className="panel">
             <h2>Visual target</h2>
             <p className="muted">Design reference used to construct this asset.</p>
@@ -262,14 +267,12 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
           </Card>
         </div>
       </div>
+      </div>
       <details className="panel p-4">
         <summary className="cursor-pointer">Debug: how the agents made this</summary>
         <div className="mt-4"><BuildTrace modelId={modelId} working={working} /></div>
       </details>
-      {!archived && data.assets?.filter((asset) => asset.id === model.assetId).map((asset) => <details key={asset.id} className="panel p-4">
-        <summary className="cursor-pointer">Asset references</summary>
-        <AssetReferences projectId={projectId} assetId={asset.id} references={asset.references} referenceNotes={asset.referenceNotes} onRefresh={reload} />
-      </details>)}
+
     </main>
   );
 }

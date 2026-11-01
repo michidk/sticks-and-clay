@@ -103,7 +103,8 @@ flowchart LR
    A vision judge compares rendered output with the target and design and
    requests fixes until the asset passes or review rounds are spent. Major or
    critical findings block a pass.
-6. **Review.** Accept finished assets, iterate on them with an optional comment,
+6. **Review.** Accept finished assets, open Iterate to view the asset beside its
+   conversation and add a change request or new mockups,
    or fork a variant. From a saved model, create a variation that copies its
    prompt and render as a reference image, with optional context. The stage
    strip and the global board track everything

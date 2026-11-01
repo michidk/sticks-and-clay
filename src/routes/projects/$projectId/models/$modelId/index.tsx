@@ -159,6 +159,7 @@ function ModelPage() {
         data={data}
         projectId={projectId}
         modelId={modelId}
+        selectedRunId={search.version}
         reload={async () => setData(await request<Workspace>(`projects/${projectId}?summary=true`))}
       />
     );
