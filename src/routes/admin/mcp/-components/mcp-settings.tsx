@@ -8,7 +8,7 @@ import { json, request } from "@/lib/client";
 import { Activity, Check, ChevronLeft, ChevronRight, Clipboard } from "lucide-react";
 import { useEffect, useState } from "react";
 
-type Tool = { name: string; title: string; description: string; scope: string };
+type Tool = { name: string; title: string; description: string; level: string };
 type Audit = {
   events: { id: number; event: string; outcome: string; toolName: string | null; createdAt: string }[];
   total: number; page: number; pageSize: number;
@@ -20,7 +20,6 @@ type State = {
   audit: Audit;
 };
 
-const scopePrefix = "sticks-and-clay:";
 // Each level allows its own tools plus everything below it.
 const levels = [
   ["off", "Off", "Reject every MCP request. History is kept."],
@@ -30,7 +29,7 @@ const levels = [
 ] as const;
 type Level = (typeof levels)[number][0];
 const order = ["read", "write", "admin"];
-const toolLevel = (tool: Tool) => tool.scope.replace(scopePrefix, "");
+const toolLevel = (tool: Tool) => tool.level;
 function levelOf(state: State): Level {
   if (!state.policy.enabled) return "off";
   const on = state.tools.filter((tool) => !state.policy.disabledTools.includes(tool.name)).map(toolLevel);

@@ -7,7 +7,8 @@ import {
 import { runtimeSettingsPatchSchema, runtimeSettingsSchema } from "../../lib/contracts";
 import { workshopSchema } from "../../lib/workshop";
 import { boardColumns } from "../../lib/board";
-import { type McpScope } from "./catalog";
+import { type McpLevel } from "./catalog";
+import { applyToolPolicy, type McpToolAudit } from "./tool-policy.server";
 import { callApi, paginate, pageInput, toolOutput, workflow, result, type ApiRequest, type AppApi, type ToolData, type JsonValue } from "./api.server";
 import { assetForm, assetUploadSchema, projectForm, projectSetupInput } from "./uploads";
 import { registerArtifacts } from "./artifacts.server";
@@ -18,44 +19,35 @@ const projectId = z.object({ projectId: uuid });
 const versionId = z.object({ versionId: uuid });
 const jobId = z.object({ jobId: uuid });
 const empty = z.object({});
-const read: McpScope = "sticks-and-clay:read";
-const write: McpScope = "sticks-and-clay:write";
-const admin: McpScope = "sticks-and-clay:admin";
+const read: McpLevel = "read";
+const write: McpLevel = "write";
+const admin: McpLevel = "admin";
 const projectSections = ["overview", "assets", "assetVersions", "ideas", "builds", "runs", "revisions", "batches", "photographs", "designUpdates", "board"] as const;
 
 export function createStudioMcpServer(options: {
-  scopes: readonly string[];
   api: AppApi;
   publicUrl: URL;
   readFile?: typeof readStoredFile;
   createDownload?: Parameters<typeof registerArtifacts>[1]["createDownload"];
   /** Owner-disabled tools stay registered but are hidden from discovery and calls. */
   disabledTools?: ReadonlySet<string>;
+  audit?: McpToolAudit;
 }) {
-  const scopes = new Set(options.scopes);
   const server = new McpServer({ name: "sticks-and-clay", version: "1.0.0" }, { instructions: workflow });
-  const disabled = options.disabledTools;
-  if (disabled?.size) {
-    const registerTool = server.registerTool.bind(server) as (name: string, ...rest: unknown[]) => { disable(): void };
-    server.registerTool = ((name: string, ...rest: unknown[]) => {
-      const tool = registerTool(name, ...rest);
-      if (disabled.has(name)) tool.disable();
-      return tool;
-    }) as typeof server.registerTool;
-  }
+  applyToolPolicy(server, options);
 
   function register<S extends z.ZodObject>(
-    name: string, description: string, scope: McpScope, input: S,
+    name: string, description: string, level: McpLevel, input: S,
     request: (args: z.output<S>) => ApiRequest | Promise<ApiRequest>,
     hints: {
       paid?: boolean; destructive?: boolean; readOnly?: boolean;
       map?: (data: JsonValue, args: z.output<S>) => ToolData;
     } = {},
   ) {
-    if (!scopes.has(scope)) return;
-    const readOnly = hints.readOnly ?? scope === read;
+    const readOnly = hints.readOnly ?? level === read;
     server.registerTool(name, {
       description,
+      _meta: { level },
       inputSchema: input.strict(),
       outputSchema: toolOutput,
       annotations: {
@@ -78,8 +70,9 @@ export function createStudioMcpServer(options: {
   const createAssetsInput = projectId.extend({
     assets: z.array(ideaInput.omit({ count: true })).min(1).max(20),
   });
-  if (scopes.has(write)) {
+  {
     server.registerTool("create_assets", {
+      _meta: { level: write },
       description: "Create several separate asset ideas in one request. Each array item becomes its own Asset with its own title and brief; use this for a collection, never to bundle unrelated models into one idea. Named parts are only for an inseparable assembly or intentionally grouped image set.",
       inputSchema: createAssetsInput.strict(),
       outputSchema: toolOutput,
@@ -250,34 +243,25 @@ export function createStudioMcpServer(options: {
     () => ({ path: "diagnostics" }), { readOnly: true });
 
   registerArtifacts(server, options);
-  if (scopes.has(read)) {
-    server.registerResource("workflow", "sticks-and-clay://workflow", { mimeType: "text/plain", description: "Project, generation, review and recovery workflow." },
+  server.registerResource("workflow", "sticks-and-clay://workflow", { mimeType: "text/plain", description: "Project, generation, review and recovery workflow." },
       () => ({ contents: [{ uri: "sticks-and-clay://workflow", text: workflow, mimeType: "text/plain" }] }));
     server.registerPrompt("create_collection", {
       description: "Guide an agent through references, design approval, generation and review.",
       argsSchema: z.object({ goal: z.string().min(1).max(12000) }),
     }, ({ goal }) => ({ messages: [{ role: "user", content: { type: "text", text: `${workflow}\n\nThe user's goal:\n${goal}` } }] }));
-  }
   return server;
 }
 
-export type StudioToolInfo = { name: string; title: string; description: string; scope: McpScope };
+export type StudioToolInfo = { name: string; title: string; description: string; level: McpLevel };
 
-// Tools are registered per scope, so the first scope level that exposes a tool is its required scope.
 export function studioToolCatalog(): StudioToolInfo[] {
-  const catalog = new Map<string, StudioToolInfo>();
-  for (const scope of [read, write, admin]) {
-    const server = createStudioMcpServer({
-      scopes: [read, write, admin].slice(0, [read, write, admin].indexOf(scope) + 1),
-      publicUrl: new URL("https://catalog.invalid"),
-      api: async () => { throw new Error("Catalog discovery cannot execute application requests"); },
-    });
-    const tools = (server as unknown as { _registeredTools: Record<string, { description?: string }> })._registeredTools;
-    for (const [name, tool] of Object.entries(tools))
-      if (!catalog.has(name)) catalog.set(name, {
-        name, scope, description: tool.description ?? "",
-        title: name.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase()),
-      });
-  }
-  return [...catalog.values()];
+  const server = createStudioMcpServer({
+    publicUrl: new URL("https://catalog.invalid"),
+    api: async () => { throw new Error("Catalog discovery cannot execute application requests"); },
+  });
+  const tools = (server as unknown as { _registeredTools: Record<string, { description?: string; _meta?: { level?: McpLevel } }> })._registeredTools;
+  return Object.entries(tools).flatMap(([name, tool]) => tool._meta?.level ? [{
+    name, level: tool._meta.level, description: tool.description ?? "",
+    title: name.replaceAll("_", " ").replace(/^./, (c) => c.toUpperCase()),
+  }] : []);
 }

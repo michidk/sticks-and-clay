@@ -7,14 +7,13 @@ import { createStudioMcpServer, studioToolCatalog } from "./tools.server";
 const id = "12345678-1234-4234-8234-123456789012";
 const sourceRunId = "12345678-1234-4234-8234-123456789013";
 const publicUrl = new URL("https://studio.example");
-const read = "sticks-and-clay:read";
-const write = "sticks-and-clay:write";
-const admin = "sticks-and-clay:admin";
+const read = "read";
+const write = "write";
+const admin = "admin";
 type Options = Parameters<typeof createStudioMcpServer>[0];
 
 async function session(options: Partial<Options> = {}) {
   const handler = createMcpHandler(() => createStudioMcpServer({
-    scopes: [read, write, admin],
     publicUrl,
     api: async () => Response.json({ id }),
     ...options,
@@ -131,22 +130,14 @@ test("modern SDK clients discover every human action with the correct HTTP metho
   } finally { await connected.close(); }
 });
 
-test("scope-filtered catalogs deny direct calls to hidden tools", async () => {
-  for (const scope of [read, write, admin]) {
-    let calls = 0;
-    const connected = await session({ scopes: [scope], api: async () => { calls++; return Response.json({ id }); } });
-    try {
-      const catalog = await connected.client.listTools();
-      expect(catalog.tools.map((tool) => tool.name).sort()).toEqual([
-        ...actions.filter((action) => action.scope === scope).map((action) => action.name),
-        ...(scope === read ? ["read_artifact", "view_image"] : []),
-      ].sort());
-      for (const action of actions.filter((action) => action.scope !== scope)) {
-        await expect(connected.client.callTool({ name: action.name, arguments: action.args })).rejects.toThrow();
-      }
-      expect(calls).toBe(0);
-    } finally { await connected.close(); }
-  }
+test("every tool is audited by its own outcome", async () => {
+  const events: { toolName: string; outcome: string }[] = [];
+  const connected = await session({ api: async () => Response.json({ projects: [] }), audit: async ({ toolName, outcome }) => { events.push({ toolName, outcome }); } });
+  try {
+    await connected.client.callTool({ name: "list_projects", arguments: {} });
+    await connected.client.callTool({ name: "get_project", arguments: { projectId: "not-a-uuid" } }).catch(() => {});
+    expect(events[0]).toEqual({ toolName: "list_projects", outcome: "success" });
+  } finally { await connected.close(); }
 });
 
 test("create_assets creates separate ideas for each collection item", async () => {
@@ -253,7 +244,7 @@ test("MCP reference bytes become multipart files and explicit reference removal 
 });
 
 test("legacy HTTP initialization and discovery remain available alongside modern clients", async () => {
-  const handler = createMcpHandler(() => createStudioMcpServer({ scopes: [read], publicUrl, api: async () => { throw new Error("Discovery must not call the application API"); } }), { keepAliveMs: 0 });
+  const handler = createMcpHandler(() => createStudioMcpServer({ publicUrl, api: async () => { throw new Error("Discovery must not call the application API"); } }), { keepAliveMs: 0 });
   const send = (body: object) => handler.fetch(new Request(new URL("/mcp", publicUrl), {
     method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream", "MCP-Protocol-Version": "2025-11-25" }, body: JSON.stringify(body),
   }));
@@ -265,7 +256,6 @@ test("legacy HTTP initialization and discovery remain available alongside modern
     expect(listed.status).toBe(200);
     const body = await listed.text();
     expect(body).toContain('"name":"list_projects"');
-    expect(body).not.toContain('"name":"generate_asset"');
   } finally { await handler.close(); }
 });
 
@@ -280,12 +270,12 @@ test("owner-disabled tools disappear from discovery and cannot be called", async
   } finally { await connected.close(); }
 });
 
-test("the settings catalog lists every tool with its required scope", () => {
+test("the settings catalog lists every tool with its level", () => {
   const catalog = studioToolCatalog();
-  const scopeOf = (name: string) => catalog.find((tool) => tool.name === name)?.scope;
-  expect(scopeOf("list_projects")).toBe(read);
-  expect(scopeOf("generate_asset")).toBe(write);
-  expect(scopeOf("update_settings")).toBe(admin);
+  const levelOf = (name: string) => catalog.find((tool) => tool.name === name)?.level;
+  expect(levelOf("list_projects")).toBe(read);
+  expect(levelOf("generate_asset")).toBe(write);
+  expect(levelOf("update_settings")).toBe(admin);
 });
 
 test("asset references preserve optimistic state and upload images through the shared API", async () => {

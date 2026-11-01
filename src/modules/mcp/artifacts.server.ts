@@ -23,16 +23,15 @@ export function artifactDownloadUrl(key: string, publicUrl: URL) {
 }
 
 export function registerArtifacts(server: McpServer, options: {
-  scopes: readonly string[];
   publicUrl: URL;
   readFile?: typeof readStoredFile;
   createDownload?: (key: string) => Promise<{ downloadUrl: string; downloadExpiresAt: string }>;
 }) {
-  if (!options.scopes.includes("sticks-and-clay:read")) return;
   const load = options.readFile ?? readStoredFile;
   const annotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
   server.registerTool("read_artifact", {
-    description: "Get a saved artifact's size, format, resource URI and short-lived downloadUrl. Download the URL directly to disk using an ordinary HTTP GET, without an Authorization header or access to OAuth credentials. The link is scoped to this file and expires within five minutes, or sooner if the connection's grant expires or is revoked. Treat the URL as a temporary credential; request a fresh one if it expires. Use view_image for visual inspection and downloadUrl for saving original bytes.",
+    _meta: { level: "read" },
+    description: "Get a saved artifact's size, format, resource URI and short-lived downloadUrl. Download the URL directly to disk using an ordinary HTTP GET, without credentials. The link is scoped to this file and expires within five minutes. Treat the URL as a temporary credential; request a fresh one if it expires. Use view_image for visual inspection and downloadUrl for saving original bytes.",
     inputSchema: z.object({ key: artifactKey }).strict(),
     outputSchema: z.object({ data: z.object({ key: z.string(), mimeType: z.string(), sizeBytes: z.number(), downloadUrl: z.url(), downloadExpiresAt: z.iso.datetime().optional(), resourceUri: z.string() }) }),
     annotations,
@@ -51,6 +50,7 @@ export function registerArtifacts(server: McpServer, options: {
     } catch { return result({ data: { error: "Artifact unavailable" } }, true); }
   });
   server.registerTool("view_image", {
+    _meta: { level: "read" },
     description: "Inspect pixels of a saved reference, render, graphic or material map up to 8 MiB. Binary models and source bundles use read_artifact.",
     inputSchema: z.object({ key: artifactKey }).strict(),
     annotations,
@@ -64,11 +64,11 @@ export function registerArtifacts(server: McpServer, options: {
     } catch { return result({ data: { error: "Image unavailable" } }, true); }
   });
   server.registerResource("artifact", new ResourceTemplate("sticks-and-clay://files/{key}", { list: undefined }),
-    { description: "Read a saved artifact up to 16 MiB. Larger assets use read_artifact's authenticated download URL." },
+    { description: "Read a saved artifact up to 16 MiB. Larger assets use read_artifact's download URL." },
     async (uri, variables) => {
       const key = artifactKey.parse(typeof variables.key === "string" ? decodeURIComponent(variables.key) : undefined);
       const blob = await load(key);
-      if (blob.size > MAX_INLINE_BYTES) throw new Error("Artifact exceeds 16 MiB; use the authenticated download URL from read_artifact");
+      if (blob.size > MAX_INLINE_BYTES) throw new Error("Artifact exceeds 16 MiB; use the download URL from read_artifact");
       const mimeType = fileMimeType(key);
       return { contents: [{ uri: uri.toString(), mimeType, ...(mimeType === "application/json" || mimeType.startsWith("text/")
         ? { text: await blob.text() } : { blob: Buffer.from(await blob.arrayBuffer()).toString("base64") }) }] };

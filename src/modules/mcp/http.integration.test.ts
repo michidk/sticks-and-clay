@@ -49,7 +49,7 @@ integration("stateless 2026-07-28 HTTP, host/origin checks, download boundaries 
     expect(tools.tools.some((tool) => tool.name === "revoke_mcp_client")).toBe(false);
     expect((await connected.send("/api/mcp/files/assignments/fixture/model.glb")).status).toBe(401);
     expect((await connected.send("/api/mcp/files/references/.private")).status).toBe(400);
-    const oversized = await connected.send("/api/mcp", { method: "POST", body: " ".repeat(300 * 1024 * 1024) });
+    const oversized = await connected.send("/api/mcp", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json, text/event-stream" }, body: " ".repeat(300 * 1024 * 1024) });
     expect(oversized.status).toBe(413);
   } finally { await connected.close(); }
 });
