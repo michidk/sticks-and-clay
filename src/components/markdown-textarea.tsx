@@ -1,4 +1,5 @@
 import * as React from "react";
+import { markdownColorComponents } from "@/components/markdown-color";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -42,7 +43,10 @@ export function MarkdownTextarea({
       </div>
       {preview && (
         <div className="markdown">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={markdownColorComponents}
+          >
             {text.trim() || "Nothing to preview."}
           </ReactMarkdown>
         </div>

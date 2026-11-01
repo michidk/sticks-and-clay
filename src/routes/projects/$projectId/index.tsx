@@ -31,6 +31,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { StatusBadge } from "@/components/status";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { markdownColorComponents } from "@/components/markdown-color";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { z } from "zod";
@@ -331,7 +332,7 @@ function ProjectPage() {
           <details className="overview-brief">
             <summary>Original brief</summary>
             <div className="overview-description markdown">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{p.description}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownColorComponents}>{p.description}</ReactMarkdown>
             </div>
           </details>
         )}

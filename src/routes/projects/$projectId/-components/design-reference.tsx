@@ -3,6 +3,7 @@ import type { finishedAssetReferences } from "../-lib/finished-asset-references"
 import { DesignPalette } from "./design-palette";
 import { DesignConversation, type DesignRevision, type DesignUpdate } from "./design-conversation";
 import { useEffect, useState } from "react";
+import { markdownColorComponents } from "@/components/markdown-color";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Check, MessageSquare } from "lucide-react";
@@ -194,6 +195,7 @@ export function DesignReference({
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
+                  ...markdownColorComponents,
                   h2: ({ children }) => (
                     <h2 id={`design-section-${headingIndex++}`}>{children}</h2>
                   ),
