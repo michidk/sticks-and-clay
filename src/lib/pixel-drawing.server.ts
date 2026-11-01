@@ -29,4 +29,3 @@ export async function savePixelDrawing(
   if (recordRun) await db.update(runs).set({ result: { ...result, ...(construction ? { construction, constructionKey: key } : { key }), review, exports, pixelFormat: PIXEL_FORMAT, analysis } }).where(eq(runs.id, runId));
   return { runId, key, previews: [{ key: review, label: REVIEW_LABEL }], analysis, exports };
 }
-
