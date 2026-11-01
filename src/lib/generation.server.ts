@@ -35,6 +35,7 @@ export async function insertGeneration(tx: Transaction, project: typeof projects
   await tx.insert(batches).values({
     id, projectId: project.id, ...input,
     imageSize: project.assetType === "svg" ? "1024x1024" : input.imageSize,
+    visualTargetVersion: 1,
     visualTargetMode: input.visualTargetMode ?? "review",
     design: project.design, designVersion: project.designVersion, workshop,
   });
@@ -92,7 +93,8 @@ export async function regenerateAsset(modelId: string) {
       judgeIterations: previous?.judgeIterations ?? 2,
       imageSize: previous?.imageSize ?? "1024x1024",
       spriteTarget: previous?.spriteTarget,
-      visualTargetMode: "review",
+      visualTargetVersion: 1,
+      visualTargetMode: asset.input.visualTargetMode ?? "review",
       design: project.design, designVersion: project.designVersion,
       workshop,
       status: "building",

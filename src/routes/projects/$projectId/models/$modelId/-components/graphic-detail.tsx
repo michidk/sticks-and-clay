@@ -1,3 +1,4 @@
+import { VisualTargetReview } from "./visual-target-review";
 import { RenameButton } from "@/components/rename";
 import { BuildTrace } from "./build-trace";
 import { AssetReferences } from "@/components/asset-references";
@@ -78,6 +79,8 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
       && new Date(run.createdAt) >= new Date(build.createdAt)) as any)?.result;
   const current = builds.find((build) => build.id === picked) ?? builds.at(-1);
   const currentKey = (current?.result as { key?: string } | undefined)?.key ?? model.artifacts?.image;
+  const savedTarget = z.object({ visualTarget: z.string() }).safeParse(current?.result);
+  const target = savedTarget.success ? savedTarget.data.visualTarget : model.artifacts?.visualTarget ?? (!currentKey ? model.visualTarget : undefined);
   const selectedParts = z.object({ parts: namedParts }).safeParse(current?.result);
   const latestParts = namedParts.safeParse(currentKey === model.artifacts?.image ? model.artifacts?.parts : undefined);
   const parts = selectedParts.success ? selectedParts.data.parts
@@ -154,6 +157,9 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
           {busy && <LoaderCircle className="spin" size={16} />} Resume
         </Button>
       )}
+      {model.status === "awaiting_approval" && model.visualTarget && !archived && (
+        <VisualTargetReview key={model.visualTarget} modelId={modelId} target={model.visualTarget} onRefresh={reload} />
+      )}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card className="panel">
           {currentKey ? (
@@ -204,6 +210,14 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
           )}
         </Card>
         <div className="space-y-4">
+          {target && model.status !== "awaiting_approval" && <Card className="panel">
+            <h2>Visual target</h2>
+            <p className="muted">Design reference used to construct this asset.</p>
+            <button type="button" className="block w-full" aria-label="Open visual target"
+              onClick={() => openLightbox([{ src: fileUrl(target), title: "Visual target" }])}>
+              <AssetImage src={fileUrl(target)} alt="Visual target" className="aspect-square w-full rounded-md" style={{ objectFit: "contain" }} />
+            </button>
+          </Card>}
           <Card className="panel">
             <h2>Review</h2>
             {review?.summary ? (

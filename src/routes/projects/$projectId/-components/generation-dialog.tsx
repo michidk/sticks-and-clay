@@ -1,3 +1,4 @@
+import { hasVisualTarget } from "@/lib/visual-target";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -373,12 +374,12 @@ export function GenerationDialog({
                     ? "Four modeling passes with photographs, no judge review or score."
                     : `Up to ${judgeIterations} review round${judgeIterations === 1 ? "" : "s"} each for geometry and materials. Geometry must pass first; a pass ends review early. More rounds add time and cost.`}
               </p>
-              {!isGraphics && <div className="space-y-2">
+              {hasVisualTarget(type) && <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <input id="skip-visual-mock" type="checkbox" className="workshop-checkbox" checked={skipVisualMock} onChange={(event) => setSkipVisualMock(event.target.checked)} />
                   <Label htmlFor="skip-visual-mock">Skip visual mock</Label>
                 </div>
-                <p className="muted">{skipVisualMock ? "Build directly from the approved design and brief, without generating a concept image." : "Generate a visual target first. Review, revise, and approve it before the 3D build starts."}</p>
+                <p className="muted">{skipVisualMock ? "Build directly from the approved design and brief, without generating a concept image." : "Generate a visual target first. Review, revise, and approve it before asset construction starts."}</p>
               </div>}
               {!isGraphics && (
                 <div className="idea-sprite">

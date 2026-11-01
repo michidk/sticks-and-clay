@@ -142,7 +142,7 @@ PBR material controls live in a dedicated tab within approved 3D collections, us
 
 Selecting a mesh in the 3D view or scene inspector adds a removable object reference above the change composer. Show its name and parent path. Tie it to the displayed saved GLB version and clear it when that version changes. Submitted changes retain a reference link to the exact source version in the build story.
 
-New 3D ideas include a Skip visual mock checkbox. By default, the build story shows the current target with Approve & build and a feedback field for Revise visual target. Waiting targets use the amber Awaiting approval status and appear under Needs attention. Keep the approval card inside the scrollable conversation, with the complete image visible and no cropped preview.
+New 3D, CAD, SVG and pixel-art ideas include a Skip visual mock checkbox, off by default. Raster graphics have no preliminary visual target. By default, the build story shows the current target with Approve & build and a feedback field for Revise visual target. Waiting targets use the amber Awaiting approval status and appear under Needs attention. Keep the 3D approval card inside the scrollable conversation. CAD, SVG and pixel-art detail pages use the same approval card above the result and retain the target beside the finished output. Show the complete image without cropping.
 
 ## Asset vocabulary and boards
 

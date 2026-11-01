@@ -190,6 +190,13 @@
       "when": 1792418463962,
       "tag": "0026_ancient_shadowcat",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793522972111,
+      "tag": "0027_wealthy_lord_tyger",
+      "breakpoints": true
     }
   ]
 }

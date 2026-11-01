@@ -149,7 +149,7 @@ export function createStudioMcpServer(options: {
     designInput.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/design`, method: "PUT", body: input }));
   register("update_workshop", "Save optional pixel-art or graphic resolution, the SVG intent (icon, logo or illustration), collection variation and 3D self-review effort using the current workshop version. Future batches snapshot them together with the notes on the project's reference images.", write,
     workshopSchema.extend(projectId.shape), (input) => ({ path: `projects/${input.projectId}/workshop`, method: "PUT", body: input }));
-  register("generate_asset", "Queue exactly one standalone deliverable from the approved design. Do not put multiple unrelated models in one prompt; create separate Assets for them. Returns an execution batch ID; poll the project instead of repeating it. Paid AI. judgeIterations controls review rounds. Visual targets require user approval unless visualTargetMode is skip.", write,
+  register("generate_asset", "Queue exactly one standalone deliverable from the approved design. Do not put multiple unrelated models in one prompt; create separate Assets for them. Returns an execution batch ID; poll the project instead of repeating it. Paid AI. judgeIterations controls review rounds. 3D, CAD, SVG and pixel art first generate a visual target that requires user approval unless visualTargetMode is skip. Raster graphics have no preliminary target.", write,
     generationInput.omit({ count: true }).extend({ ...projectId.shape, prompt: z.string().trim().min(1).max(12000) }),
     (input) => ({ path: `projects/${input.projectId}/generate`, method: "POST", body: { ...input, count: 1 } }), { paid: true });
   const assetId = projectId.extend({ assetId: uuid });
@@ -208,7 +208,7 @@ export function createStudioMcpServer(options: {
     exportInput.omit({ modelIds: true }).extend({ ...projectId.shape, versionIds: exportInput.shape.modelIds }), ({ projectId, versionIds, ...input }) => ({ path: `projects/${projectId}/export`, method: "POST", body: { ...input, modelIds: versionIds } }));
   register("update_design_from_asset", "Queue a draft design from a saved 3D render index. Paid AI. Choose replaceReference when the project already has six references. Approval is still required before generation.", write,
     designUpdateInput.extend(versionId.shape), (input) => ({ path: `asset-versions/${input.versionId}/design-update`, method: "POST", body: input }), { paid: true });
-  register("approve_visual_target", "Approve the exact current visual target after the user reviews it, then queue the paid 3D build.", write,
+  register("approve_visual_target", "Approve the exact current visual target after the user reviews it, then queue paid asset construction.", write,
     visualTargetDecisionInput.options[0].omit({ action: true }).extend(versionId.shape),
     ({ versionId, target }) => ({ path: `asset-versions/${versionId}/visual-target`, method: "POST", body: { action: "approve", target } }), { paid: true });
   register("revise_visual_target", "Request a paid revision of the current visual target. The new image awaits user approval before building.", write,

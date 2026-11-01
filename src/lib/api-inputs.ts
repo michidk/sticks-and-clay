@@ -44,6 +44,7 @@ export const ideaUpdateInput = ideaInput.extend({ imageSize: imageSizeSchema.opt
 export type IdeaUpdateInput = z.infer<typeof ideaUpdateInput>;
 
 export const branchInput = z.object({
+  visualTargetMode: generationInput.shape.visualTargetMode,
   kind: z.enum(["iterate", "fork"]),
   variation: z.boolean().default(false),
   useCurrentStyle: z.boolean().default(false),

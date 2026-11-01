@@ -1,3 +1,4 @@
+import { generationReferences } from "./visual-target";
 import { and, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -78,8 +79,10 @@ export const cadKind: AssetKind = {
     let previousScript = previous?.exports?.script ? await (await readStoredFile(previous.exports.script)).text() : "None";
     if (previous?.exports?.inputStep) await writeFile(resolve(root, "input.step"), Buffer.from(await (await readStoredFile(previous.exports.inputStep)).arrayBuffer()));
     if (previousScript === "None" && starting?.format === "py") previousScript = source;
+    const referenceImages = generationReferences(ctx);
+    const imageGuidance = referenceImages.map(({ label }, index) => `Image ${index + 1}: ${label}`).join("\n");
     const spec = (await runRole({ role: "cad-spec", stepId: "cad:spec", projectId: model.projectId, batchId: batch.id, modelId: model.id,
-      input: await roleInput("cad-spec", { design: batch.design, request: ctx.request + workshopContext(batch.workshop, false) }) })).result;
+      input: await roleInput("cad-spec", { design: batch.design, request: ctx.request + workshopContext(batch.workshop, false) + `\n\n${imageGuidance}` }), images: referenceImages.map(({ key }) => key) })).result;
     await writeFile(resolve(root, "spec.json"), JSON.stringify(spec, null, 2));
     let problem = "None";
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -89,10 +92,15 @@ export const cadKind: AssetKind = {
         continue;
       }
       const stepId = (node.iteration ? node.id : "cad") + (attempt ? `:fix${attempt}` : "");
+      const images = [
+        ...(previous?.previews.map(({ key, label }) => ({ key, label: `previous CAD output: ${label}` })) ?? []),
+        ...(starting?.views ?? (starting?.preview ? [starting.preview] : [])).map((key) => ({ key, label: "starting geometry to preserve outside the requested changes" })),
+        ...referenceImages,
+      ];
       const { result, runId } = await runRole({ role: "cad", stepId, iteration: node.iteration, projectId: model.projectId, batchId: batch.id, modelId: model.id,
-        input: await roleInput("cad", { design: batch.design, request: ctx.request + workshopContext(batch.workshop, false), spec: JSON.stringify(cadSpecResult.parse(spec)),
+        input: await roleInput("cad", { design: batch.design, request: ctx.request + workshopContext(batch.workshop, false) + "\n\n" + images.map(({ label }, index) => `Image ${index + 1}: ${label}`).join("\n"), spec: JSON.stringify(cadSpecResult.parse(spec)),
           source, previous: previousScript, feedback: feedback ? JSON.stringify(feedback) : "None", problem }),
-        images: [...(previous?.previews.map((p) => p.key) ?? []), ...(starting?.views ?? (starting?.preview ? [starting.preview] : [])), ...ctx.references],
+        images: images.map(({ key }) => key),
       });
       await writeFile(resolve(root, "asset.py"), result.script.replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n"));
       try {
@@ -136,7 +144,7 @@ export const cadKind: AssetKind = {
         if (name === "asset.py" || name === "input.step") { const key = `${directory}/${name}`; await upload(key, bytes); exports[name === "asset.py" ? "script" : "inputStep"] = key; }
       }
       exports.source = `${directory}/source.zip`; await upload(exports.source, sourceZip(bundle));
-      const candidate: Candidate = { key: `${directory}/output/iso.png`, exports,
+      const candidate: Candidate = { runId, key: `${directory}/output/iso.png`, exports,
         previews: VIEWS.map((view) => ({ key: `${directory}/output/${view}.png`, label: `actual exported CAD ${view} photograph; fixed orthographic scale` })),
         analysis: { ...metrics, spec }, requiredChecksPassed: metrics.checks.every((c: { required: boolean; state: string }) => !c.required || c.state === "passed") };
       await db.update(runs).set({ result: { ...result, ...candidate } }).where(eq(runs.id, runId));

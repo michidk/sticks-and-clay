@@ -45,6 +45,8 @@ Optional `design-mockups` jobs snapshot the approved design's rendered prompts a
 
 ## Pipeline interface
 
+All new 3D, CAD, SVG and pixel-art attempts share the logged `visual-target` image role before construction, with owner approval by default and explicit `visualTargetMode: "skip"` support. Production planning, builders and judges receive the approved target alongside the frozen design and supporting references. Raster graphics use the image role for the final output directly. See [visual target approval](quality-pipeline.md#visual-target-approval) for recovery and compatibility.
+
 `runPipeline(definition, handlers, beforeStep)` traverses named nodes. Each node has a task, iteration, next node, and optional `stopOnPass`. Handlers receive the stable node identity; `beforeStep` enforces cancellation before and after each execution. Missing links, duplicate IDs, missing handlers, and cycles fail before work starts. Repeat nodes must be expanded with unique IDs, making limits explicit.
 
 `modelReviewPipeline(rounds)` retains the legacy builder → judge → builder workflow, with at most N build/review pairs, early approval, and a single unreviewed build for zero rounds. The job checkpoints its definition version. Future versions must retain a dispatch path for saved versions or explicitly reject them.

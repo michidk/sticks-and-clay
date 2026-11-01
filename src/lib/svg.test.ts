@@ -117,3 +117,11 @@ test("SVGs in one folder keep distinct reference renders", async () => {
     for (const key of sources.flatMap((source) => [source, `${source}.reference.png`])) if (await storage.exists(key)) await storage.delete(key);
   }
 });
+
+test("SVG construction labels the per-asset target separately from the previous output and supporting references", async () => {
+  const { attachedImages } = await import("./svg-generation.server");
+  const shown = await attachedImages([{ key: "previous.png", label: "previous output" }], ["source.png"], ["style.png"], "target.png");
+  expect(shown.keys).toEqual(["previous.png", "target.png", "source.png", "style.png"]);
+  expect(shown.notes).toContain("Image 2: approved visual target for this exact asset");
+  expect(shown.notes).toContain("Image 4: reference material");
+});

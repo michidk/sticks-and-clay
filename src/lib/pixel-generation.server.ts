@@ -1,3 +1,4 @@
+import { generationReferences } from "./visual-target";
 import { assertJobActive } from "./queue.server";
 import { prompt } from "./prompts.server";
 import { dimensionError } from "./resolution";
@@ -53,7 +54,7 @@ async function save(
     await storage.upload(blob(file.data, file.type), `${directory}/${file.name}`);
   }
   await db.update(runs).set({ result: { ...result, ...(construction ? { construction, constructionKey: key } : { key }), review, exports, pixelFormat: PIXEL_FORMAT, analysis } }).where(eq(runs.id, runId));
-  return { key, previews: [{ key: review, label: REVIEW_LABEL }], analysis, exports };
+  return { runId, key, previews: [{ key: review, label: REVIEW_LABEL }], analysis, exports };
 }
 
 /** Pixel art: the model draws on a grid (a palette and one string per row, optionally animation frames or paperdoll
@@ -76,7 +77,7 @@ const pixelPass: AssetKind = {
     const previousGrid = previousText ? resolvePixelAnswer(pixelGridSchema.parse(JSON.parse(previousText))) : undefined;
     const shown = [
       ...(previous ? [{ key: previous.previews[0].key, note: `${previous.previews[0].label}, of the PREVIOUS ATTEMPT` }] : starting?.preview ? [{ key: starting.preview, note: "STARTING POINT to edit; preserve it outside the requested changes" }] : []),
-      ...viewableReferences(ctx.references).map((key) => ({ key: enlarged(key), note: "style reference, not the artwork to copy" })),
+      ...generationReferences({ target: ctx.target, references: viewableReferences(ctx.references) }).map(({ key, label }) => ({ key: key === ctx.target ? key : enlarged(key), note: label })),
     ];
     const job = jobContext.getStore();
     if (!job) throw new Error("Missing durable job context");

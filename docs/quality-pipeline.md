@@ -2,7 +2,7 @@
 
 New model attempts use `model-quality:4`:
 
-1. Generate a per-asset visual target through the Image API (`prompts/models/visual-target.md`). The approved batch design, specific model brief and uploaded references are inputs. Log the request, reference keys, image, usage and estimated cost separately from Eve sessions.
+1. Generate a per-asset visual target through the Image API (`prompts/generation/visual-target.md`). The approved batch design, specific model brief and uploaded references are inputs. Log the request, reference keys, image, usage and estimated cost separately from Eve sessions.
 2. Run the durable production planner. It freezes the named parts, material slots, texture targets, UV strategy and export checks for this attempt. The plan is passed to every builder and judge and is reused on resume.
 3. Show the target as the card cover until a 3D render exists. Label it as a concept. The Visual target tab keeps it accessible; historical versions retain their own target key.
 4. Build and photograph separate blockout and shape-refinement passes using temporary matte colors. With judging enabled, a fresh judge compares the seven photographs with the target, user references and the production plan. Major silhouette, construction and transition defects block surface work.
@@ -64,9 +64,15 @@ when the production plan calls for a color-only surface or palette texture.
 Resuming a workspace refreshes the export helper and runner while retaining its
 pinned geometry helpers, so saved attempts receive export-validation fixes.
 
-New 3D generation pauses after the visual target. Approve & build on the asset card or model review page queues the existing job; Revise visual target uses feedback and the previous image to generate another target for approval. Each image run remains in Activity. Waiting models release their worker slot and remain waiting across restarts. Approval is tied to the exact current image, so an outdated browser cannot approve a newer revision.
+New 3D, CAD, SVG and pixel-art generation share a visual-target stage before production planning and construction. Each target uses the frozen design, the individual asset brief, reference notes and output constraints. Type-specific guidance keeps SVGs flat and legible, pixel art crisp and palette-aware, and CAD mechanically plausible. Raster graphics generate their final image directly.
 
-Skip visual mock in the model idea dialog builds directly from the approved design and brief without an image-generation call. The choice is saved with the idea and batch. Graphics keep their one-shot generation flow. Existing batches retain automatic progression through their saved pipeline; the migration does not introduce a new approval requirement into ongoing work.
+Generation pauses after the visual target. Approve & build on the asset card or model review page queues the existing job; Revise visual target uses feedback and the previous image to generate another target for approval. Each image run remains in Activity. Waiting models release their worker slot and remain waiting across restarts. Approval is tied to the exact current image, so an outdated browser cannot approve a newer revision.
+
+Skip visual mock in the idea dialog builds directly from the approved design and brief without a target image-generation call. It is available for 3D, CAD, SVG and pixel art and is off by default. The choice is saved with the idea and batch and inherited by regenerated versions. Branch requests may override it with `visualTargetMode`. Raster graphics have no preliminary target, regardless of that setting.
+
+The target and supporting references stay distinct. Production planning, every construction pass and the independent judge receive the same approved target. Judges also receive the actual current output and previous output where applicable; targets are labeled as references, never as generated-result evidence. The unlabeled SVG reader still sees only the candidate. Completed outputs retain their target separately from the final image, including historical construction rounds. Revising a target does not turn its superseded image into a supporting style reference.
+
+Batches snapshot `visualTargetVersion: 1` for the shared stage. The migration leaves existing batches at zero, so saved CAD, SVG, pixel and raster jobs keep their direct workflow, including queued work and recovery. Saved 3D jobs retain their existing target/approval policy and pipeline graph. Zero judge rounds still generates and requires approval of the target unless explicitly skipped; it disables only independent judging.
 
 ## SVG recognition review
 

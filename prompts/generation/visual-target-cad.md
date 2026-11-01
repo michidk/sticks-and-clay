@@ -1,0 +1,1 @@
+Show one buildable CAD part in a clear three-quarter view on a neutral background. Preserve the specified dimensions, holes, interfaces, clearances and mechanical purpose. Do not invent decorative geometry. This image guides appearance; the written dimensions and measured geometric requirements remain authoritative.

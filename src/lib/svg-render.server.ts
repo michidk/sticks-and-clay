@@ -1,3 +1,4 @@
+import { getStorage, readStoredFile } from "./storage.server";
 import sharp from "sharp";
 import { DOMParser, XMLSerializer } from "@xmldom/xmldom";
 
@@ -51,4 +52,15 @@ export async function renderSvg(svg: string) {
     darkTiny: await dark(SIZES.tiny),
     ink: await inkBounds(svg),
   };
+}
+
+/** Raster evidence for a saved SVG, shared by concept generation and construction. */
+export async function renderSvgReference(svgKey: string) {
+  const key = `${svgKey}.reference.png`;
+  const storage = getStorage();
+  if (!(await storage.exists(key))) {
+    const image = (await renderSvg(await (await readStoredFile(svgKey)).text())).full;
+    await storage.upload(new Blob([new Uint8Array(image)], { type: "image/png" }), key);
+  }
+  return key;
 }

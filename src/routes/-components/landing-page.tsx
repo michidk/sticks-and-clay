@@ -7,7 +7,7 @@ const repository = "https://github.com/michidk/sticks-and-clay";
 const steps = [
   ["Design", "Your brief becomes design v1 as written. Approve it, request a change, or let AI improve it. Every revision is kept."],
   ["Mockups", "Generate concept images, revise them in chat, and keep the ones you like as references for every batch."],
-  ["Visual target", "Before a 3D build, review a concept sheet of the asset and approve, revise or skip it."],
+  ["Visual target", "Before constructing a 3D, CAD, SVG or pixel asset, review its visual target and approve, revise or skip it."],
   ["Build and judge", "Agents write Blender Python in isolated processes. A vision judge inspects the renders and sends fixes back."],
   ["Review", "Accept a finished asset, iterate with a written request, or fork a variant. Nothing ships without you."],
   ["Export", "Download GLBs, the .blend, and a source bundle that rebuilds without an agent or a database."],

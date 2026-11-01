@@ -22,10 +22,11 @@ import {
   qualityPipeline,
   photographyPipeline,
   refinementPipeline,
+  reviewPipeline,
 } from "../modules/pipelines";
 import { prompt } from "./prompts.server";
 import { DATA } from "./storage.server";
-import { mockupReferences, workshopContext } from "./workshop";
+import { workshopContext } from "./workshop";
 import { compareStyle } from "./asset-style";
 import { checkpoint, jobContext } from "./checkpoint.server";
 import { settleBatch } from "./batch-state.server";
@@ -52,13 +53,29 @@ export async function executeAssetVersionJob(targetId: string) {
     ? referencedChange(model.prompt, model.sourceRunId, model.objectReference)
     : model.prompt;
   const attempt = job.checkpoint.workspace || job.id;
+  const legacy =
+    job.checkpoint.pipeline === "model-review:1" ||
+    (!job.checkpoint.pipeline && Boolean(job.checkpoint["agent:builder:0"]));
+  const definition = project.assetType !== "model"
+    ? reviewPipeline(batch.judgeIterations)
+    : legacy
+    ? modelReviewPipeline(batch.judgeIterations)
+    : job.checkpoint.pipeline === "model-quality:2"
+      ? qualityPipeline(batch.judgeIterations)
+      : job.checkpoint.pipeline === "model-quality:3"
+        ? photographyPipeline(batch.judgeIterations)
+        : refinementPipeline(batch.judgeIterations);
+  const pipelineVersion = `${definition.id}:${definition.version}`;
+  if (job.checkpoint.pipeline && job.checkpoint.pipeline !== pipelineVersion)
+    throw new Error("Unsupported saved pipeline version");
+  if (!job.checkpoint.pipeline) await checkpoint("pipeline", pipelineVersion);
+  const { target, visualReferences } = await prepareVisualTarget({ model, batch, project, request, attempt, legacy });
   if (project.assetType !== "model") {
     await runReviewedAsset(assetKinds[project.assetType], {
-      model, batch, project, request, attempt,
+      model, batch, project, request, attempt, target,
       references: [
-        ...(job.checkpoint["branch-references"] ? JSON.parse(job.checkpoint["branch-references"]) : (batch.workshop?.references ?? project.references)),
+        ...visualReferences,
         ...(batch.workshop?.examples?.flatMap((e) => e.renders.slice(0, 1)) || []),
-        ...(batch.workshop?.references ? [] : mockupReferences(batch.workshop)),
       ],
     });
     return;
@@ -88,16 +105,6 @@ export async function executeAssetVersionJob(targetId: string) {
     previousScript = sourceArtifacts?.script || model.artifacts?.script,
     passed = false,
     artifacts: Record<string, unknown> = {};
-  const legacy =
-    job.checkpoint.pipeline === "model-review:1" ||
-    (!job.checkpoint.pipeline && Boolean(job.checkpoint["agent:builder:0"]));
-  const definition = legacy
-    ? modelReviewPipeline(batch.judgeIterations)
-    : job.checkpoint.pipeline === "model-quality:2"
-      ? qualityPipeline(batch.judgeIterations)
-      : job.checkpoint.pipeline === "model-quality:3"
-        ? photographyPipeline(batch.judgeIterations)
-        : refinementPipeline(batch.judgeIterations);
   const rounds = definition.nodes.filter(
     (node) => node.task === "builder",
   ).length;
@@ -111,14 +118,9 @@ export async function executeAssetVersionJob(targetId: string) {
   const photography = definition.version >= 3;
   let currentBuilderRunId = "";
   let buildSummary = "";
-  const pipelineVersion = `${definition.id}:${definition.version}`;
   const shouldPlan = !legacy &&
     job.checkpoint["production-plan-needed"] === "yes" &&
     !job.checkpoint["production-plan"];
-  if (job.checkpoint.pipeline && job.checkpoint.pipeline !== pipelineVersion)
-    throw new Error("Unsupported saved pipeline version");
-  if (!job.checkpoint.pipeline) await checkpoint("pipeline", pipelineVersion);
-  const { target, visualReferences } = await prepareVisualTarget({ model, batch, project, request, attempt, legacy });
   const productionPlan = !shouldPlan && !job.checkpoint["production-plan"]
     ? "No production plan was recorded for this legacy attempt. Preserve its existing behavior."
     : productionPlanText(await ensureProductionPlan({
@@ -129,7 +131,7 @@ export async function executeAssetVersionJob(targetId: string) {
         name: model.name,
         design: batch.design,
         request,
-        context: workshopContext(batch.workshop, false),
+        context: workshopContext(batch.workshop, false) + (target ? "\nThe first evidence image is the approved visual target for this exact asset." : ""),
         evidence: [
           ...(target ? [target] : []),
           ...visualReferences,

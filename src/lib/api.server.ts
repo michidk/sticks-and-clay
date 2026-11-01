@@ -1000,7 +1000,8 @@ export async function api(request: Request) {
       await db.transaction(async (tx) => {
         await tx.insert(batches).values({
           id: batchId,
-          visualTargetMode: "review",
+          visualTargetVersion: 1,
+          visualTargetMode: input.visualTargetMode ?? asset.input.visualTargetMode ?? "review",
           projectId: parent.projectId,
           prompt: change,
           count: 1,
@@ -1015,7 +1016,7 @@ export async function api(request: Request) {
         const assetId = input.kind === "iterate" ? parent.assetId : crypto.randomUUID();
         if (input.kind === "fork") await tx.insert(assetEntries).values({
           id: assetId, projectId: parent.projectId, title: name, batchId, inIdea: false,
-          input: { ...asset.input, prompt: fullPrompt, count: 1, judgeIterations: input.judgeIterations },
+          input: { ...asset.input, prompt: fullPrompt, count: 1, judgeIterations: input.judgeIterations, visualTargetMode: input.visualTargetMode ?? asset.input.visualTargetMode ?? "review" },
           references: variationReferences, referenceNotes: asset.referenceNotes,
         });
         await tx.insert(assetVersions).values({

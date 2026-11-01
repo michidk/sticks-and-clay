@@ -1,3 +1,4 @@
+import { visualTargetGuides } from "../../lib/visual-target";
 import { expect, test } from "bun:test";
 import { readdirSync } from "node:fs";
 import { constructionGuides } from "../../lib/workshop";
@@ -10,6 +11,7 @@ const notInput = (file: string) =>
 
 test("every prompt file is used by a role or a prompt() call, and every named prompt exists", () => {
   const used = new Set<string>([
+    ...Object.values(visualTargetGuides),
     "eve/system", "eve/resume", "models/modeling-pass", "models/modeling-review",
     "references/sprite-target",
     "pixel/construction-silhouette", "pixel/construction-shading", "pixel/construction-finish",

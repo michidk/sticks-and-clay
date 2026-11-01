@@ -1,0 +1,1 @@
+ALTER TABLE "batches" ADD COLUMN "visual_target_version" integer DEFAULT 0 NOT NULL;

@@ -74,8 +74,10 @@ flowchart LR
   A --> M[Mockups]
   M -->|👤 pick references| A
   A --> I[Ideas]
-  I -->|👤 approve visual target| G[Blender build]
-  G --> P[Photography]
+  I --> T[Per-asset visual target]
+  T -->|👤 approve| G[Asset construction]
+  I -->|skip target or raster graphic| G
+  G --> P[Photograph or render output]
   P --> J{AI judge}
   J -->|changes requested| G
   J -->|passes or rounds used| R[Review]
@@ -90,12 +92,17 @@ flowchart LR
    mark the ones you like as references for every later batch.
 3. **Ideas.** Add 1–20 deliverables per idea. Start now or save them for later;
    each batch snapshots the approved design so later edits never change it.
-4. **Visual target.** Before a 3D build, review a concept sheet of the asset and
-   approve or revise it, or skip it.
-5. **Build and judge.** Agents run blockout, shape refinement, materials, and
-   polish passes in isolated Blender processes. A vision judge inspects the
-   rendered views and sends fixes back until the asset passes or the review
-   rounds are spent. Major or critical findings block a pass.
+4. **Visual target.** 3D, CAD, SVG and pixel-art assets first get an image of
+   the intended asset. Review and approve it, or request a revision, before
+   construction starts. The builder and judge both receive this target alongside
+   the approved design and references. Skip visual mock is an explicit opt-out;
+   raster graphics generate the final image directly.
+5. **Build and judge.** Agents construct the requested format. 3D assets use
+   blockout, refinement, materials and polish in isolated Blender processes;
+   SVGs use editable markup, pixel art uses exact grids, and CAD uses CadQuery.
+   A vision judge compares rendered output with the target and design and
+   requests fixes until the asset passes or review rounds are spent. Major or
+   critical findings block a pass.
 6. **Review.** Accept finished assets, iterate on them with an optional comment,
    or fork a variant. From a saved model, create a variation that copies its
    prompt and render as a reference image, with optional context. The stage

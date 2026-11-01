@@ -1923,7 +1923,7 @@ a.board-card-title:hover { text-decoration: underline; }
 .studio-object-reference > button { min-width: 44px; min-height: 44px; }
 .chat-object-reference { display: flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 11px; overflow-wrap: anywhere; }
 
-.visual-target-review .asset-image { height: auto; aspect-ratio: 1; }
+.visual-target-review .asset-image { height: auto; max-width: 360px; margin-inline: auto; aspect-ratio: 1; }
 .visual-target-review .asset-image > img { object-fit: contain; }
 
 .workspace-tabs [data-slot="tabs-trigger"].tab-end { margin-left: auto; }

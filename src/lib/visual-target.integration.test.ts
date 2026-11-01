@@ -2,6 +2,8 @@ import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { DATA } from "./storage.server";
 import { expect, test, spyOn } from "bun:test";
+import { assetTypes } from "./asset-types";
+import { executeAssetVersionJob } from "./model-pipeline.server";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { batches, events, jobs, assetVersions, projects, runs } from "../db/schema";
@@ -125,5 +127,73 @@ integration("image revisions use the previous image, retain history and resume w
     mocked.mockRestore();
     if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = previousKey;
+  }
+}));
+
+for (const assetType of assetTypes) {
+  integration(`${assetType} uses the shared target policy before any construction`, () => fixture("review", async ({ p, b, m, j }) => {
+    await db.update(projects).set({ assetType }).where(eq(projects.id, p));
+    await db.update(batches).set({ visualTargetVersion: 1 }).where(eq(batches.id, b));
+    if (assetType === "graphic") {
+      expect(await prepare(j)).toEqual({ target: null, visualReferences: [] });
+    } else {
+      await expect(jobContext.run({ id: j, checkpoint: { "visual-target": "models/original.png" } }, () => executeAssetVersionJob(m))).rejects.toBeInstanceOf(JobWaiting);
+      expect((await db.select().from(assetVersions).where(eq(assetVersions.id, m)))[0].status).toBe("awaiting_approval");
+      expect(await db.select().from(runs).where(eq(runs.projectId, p))).toHaveLength(0);
+      expect((await decide(m, { action: "approve", target: "models/original.png" })).status).toBe(200);
+      await db.update(jobs).set({ status: "running" }).where(eq(jobs.id, j));
+      expect((await prepare(j)).target).toBe("models/original.png");
+      expect((await prepare(j)).target).toBe("models/original.png");
+    }
+  }));
+  if (assetType !== "graphic") integration(`${assetType} supports explicitly skipping the target`, () => fixture("skip", async ({ p, b, j }) => {
+    await db.update(projects).set({ assetType }).where(eq(projects.id, p));
+    await db.update(batches).set({ visualTargetVersion: 1 }).where(eq(batches.id, b));
+    await db.update(jobs).set({ checkpoint: {} }).where(eq(jobs.id, j));
+    expect(await prepare(j)).toEqual({ target: null, visualReferences: [] });
+  }));
+  if (assetType !== "model") integration(`saved ${assetType} batches retain their original direct workflow`, () => fixture("review", async ({ p, j }) => {
+    await db.update(projects).set({ assetType }).where(eq(projects.id, p));
+    await db.update(jobs).set({ checkpoint: {} }).where(eq(jobs.id, j));
+    expect(await prepare(j)).toEqual({ target: null, visualReferences: [] });
+  }));
+}
+
+integration("all new asset types snapshot the shared target version and review default", () => fixture("auto", async ({ p }) => {
+  for (const assetType of assetTypes) {
+    await db.update(projects).set({ assetType }).where(eq(projects.id, p));
+    const id = await queueGeneration(p, { prompt: "fixture", count: 1, judgeIterations: 0, imageSize: "1024x1024" });
+    expect((await db.select().from(batches).where(eq(batches.id, id)))[0]).toMatchObject({ visualTargetVersion: 1, visualTargetMode: "review" });
+  }
+}));
+
+integration("SVG source references are rasterized for target generation and retained as editable construction references", () => fixture("review", async ({ p, b, m, j }) => {
+  const { getStorage } = await import("./storage.server");
+  const source = `models/${m}/source.svg`;
+  const storage = getStorage();
+  const originalKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "svg-target-fixture";
+  let image: FormDataEntryValue | undefined;
+  const mocked = spyOn(globalThis, "fetch").mockImplementation(Object.assign(async (_url: string | URL | Request, init?: RequestInit) => {
+    if (init?.body instanceof FormData) image = init.body.getAll("image[]")[0];
+    return Response.json({ data: [{ b64_json: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhFcAAAAASUVORK5CYII=" }] });
+  }, { preconnect: globalThis.fetch.preconnect }));
+  try {
+    await storage.upload(new Blob(['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/></svg>'], { type: "image/svg+xml" }), source);
+    await db.update(projects).set({ assetType: "svg" }).where(eq(projects.id, p));
+    await db.update(batches).set({ visualTargetVersion: 1 }).where(eq(batches.id, b));
+    await db.update(jobs).set({ checkpoint: { "branch-references": JSON.stringify([source]) } }).where(eq(jobs.id, j));
+    await expect(prepare(j)).rejects.toBeInstanceOf(JobWaiting);
+    expect(image).toBeInstanceOf(File);
+    if (!(image instanceof File)) throw new Error("Missing rasterized source image");
+    expect(image.type).toBe("image/png");
+    expect(Buffer.from(await image.arrayBuffer()).subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+    const [model] = await db.select().from(assetVersions).where(eq(assetVersions.id, m));
+    expect((await decide(m, { action: "approve", target: model.visualTarget })).status).toBe(200);
+    await db.update(jobs).set({ status: "running" }).where(eq(jobs.id, j));
+    expect((await prepare(j)).visualReferences).toEqual([source]);
+  } finally {
+    mocked.mockRestore();
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey;
   }
 }));

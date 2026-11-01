@@ -203,8 +203,8 @@ export const imageRoles = {
     engine: "imagegen",
     model: "gpt-image-2",
     quality: "medium",
-    prompt: "models/visual-target",
-    inputTemplate: "models/visual-target",
+    prompt: "generation/visual-target",
+    inputTemplate: "generation/visual-target",
   },
   texture: {
     engine: "imagegen",

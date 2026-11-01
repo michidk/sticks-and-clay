@@ -1,3 +1,4 @@
+import { generationReferences } from "./visual-target";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { runs } from "../db/schema";
@@ -5,21 +6,22 @@ import { runRole, roleInput } from "../modules/ai/index.server";
 import type { AssetKind } from "./reviewed-asset.server";
 import { getStorage, readStoredFile } from "./storage.server";
 import { analyzeSvg, validateSvg, viewableReferences } from "./svg";
-import { renderSvg } from "./svg-render.server";
+import { renderSvg, renderSvgReference } from "./svg-render.server";
 import { svgGuides, svgIntentOf, workshopContext } from "./workshop";
 
 const png = (data: Buffer) => new Blob([new Uint8Array(data)], { type: "image/png" });
 
 /** The images shown to the SVG model, with a line telling it what each one is. Renders come first,
  * so the model sees what the earlier markup actually looks like instead of reading code alone. */
-export async function attachedImages(previousPreviews: { key: string; label: string }[], sourceRenders: string[], references: string[]) {
+export async function attachedImages(previousPreviews: { key: string; label: string }[], sourceRenders: string[], references: string[], target?: string | null) {
   // Restored versions can carry their SVG source as the fallback preview.
   const previous = await Promise.all(previousPreviews.map(async ({ key, label }) => ({
-    key: key.endsWith(".svg") ? await renderOf(key) : key,
+    key: key.endsWith(".svg") ? await renderSvgReference(key) : key,
     note: `render of the PREVIOUS ATTEMPT SVG: ${label}`,
   })));
   const entries = [
     ...previous,
+    ...generationReferences({ target, references: [] }).map(({ key, label }) => ({ key, note: label })),
     ...sourceRenders.map((key) => ({ key, note: "render of the SAVED SOURCE SVG, on white" })),
     ...viewableReferences(references).map((key) => ({ key, note: "reference material; use the brief and reference notes to distinguish anatomy from style" })),
   ];
@@ -27,15 +29,6 @@ export async function attachedImages(previousPreviews: { key: string; label: str
     keys: entries.map((entry) => entry.key),
     notes: entries.map((entry, index) => `Image ${index + 1}: ${entry.note}`).join("\n") || "None",
   };
-}
-
-/** A PNG render saved beside an SVG, made now for sources that have none. */
-async function renderOf(svgKey: string) {
-  const key = `${svgKey}.reference.png`;
-  const storage = getStorage();
-  if (!(await storage.exists(key)))
-    await storage.upload(png((await renderSvg(await (await readStoredFile(svgKey)).text())).full), key);
-  return key;
 }
 
 /** SVG: the model writes markup; the "workshop" is a sanitizer plus a rasterizer, so the
@@ -54,11 +47,11 @@ export const svgKind: AssetKind = {
     const startingSources = starting?.format === "svg" ? [starting.key.replace(/source\.svg$/, "editable.svg")] : [];
     const sourceKeys = [...startingSources, ...ctx.references.filter((key) => key.endsWith(".svg"))];
     const referenceEvidence = await Promise.all(ctx.references.map(async (key) => ({
-      key: key.endsWith(".svg") ? await renderOf(key) : key,
+      key: key.endsWith(".svg") ? await renderSvgReference(key) : key,
       label: "reference material; anatomy or style as specified in the brief and reference notes",
     })));
     const source = await Promise.all(sourceKeys.map(async (key) => (await readStoredFile(key)).text()));
-    const images = await attachedImages(previous?.previews ?? [], [...(starting?.preview ? [starting.preview] : []), ...await Promise.all(startingSources.map(renderOf))], referenceEvidence.map(({ key }) => key));
+    const images = await attachedImages(previous?.previews ?? [], [...(starting?.preview ? [starting.preview] : []), ...await Promise.all(startingSources.map(renderSvgReference))], referenceEvidence.map(({ key }) => key), ctx.target);
     const { result, runId } = await runRole({
       role: "svg",
       stepId: node.iteration ? node.id : "svg",
@@ -120,6 +113,6 @@ export const svgKind: AssetKind = {
     ] : [];
     const enrichedAnalysis = { ...analysis, quality: { ...analysis.quality, issues: iconQualityIssues } };
     await db.update(runs).set({ result: { ...result, key, analysis: enrichedAnalysis, dimensionErrors, previews: previews.map(({ key, label }) => ({ key, label })) } }).where(eq(runs.id, runId));
-    return { key, dimensionErrors, qualityErrors: intent === "icon" ? iconQualityIssues : [], referenceEvidence, previews: previews.map(({ key, label }) => ({ key, label })), analysis: enrichedAnalysis };
+    return { runId, key, dimensionErrors, qualityErrors: intent === "icon" ? iconQualityIssues : [], referenceEvidence, previews: previews.map(({ key, label }) => ({ key, label })), analysis: enrichedAnalysis };
   },
 };

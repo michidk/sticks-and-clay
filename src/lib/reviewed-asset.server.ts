@@ -1,3 +1,5 @@
+import { renderSvgReference } from "./svg-render.server";
+import { generationReferences } from "./visual-target";
 import { UnsupportedResolution } from "./resolution";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db/client";
@@ -17,6 +19,7 @@ import { ensureProductionPlan, productionPlanText } from "./production-planning.
 export type Review = z.infer<typeof judgeResult>;
 /** One produced version of an asset plus what the judge needs to see of it. */
 export type Candidate = {
+  runId?: string;
   dimensionErrors?: string[];
   qualityErrors?: string[];
   requiredChecksPassed?: boolean;
@@ -37,6 +40,7 @@ export type AssetContext = {
   request: string;
   attempt: string;
   references: string[];
+  target?: string | null;
 };
 export type AssetKind = {
   /** Stored with the asset; "pixel" is a PNG that views must show without smoothing. */
@@ -72,13 +76,13 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
         name: model.name,
         design: batch.design,
         request: ctx.request,
-        context: workshopContext(batch.workshop, false, kind.format === "cad" ? "cad" : undefined),
-        evidence: ctx.references,
+        context: workshopContext(batch.workshop, false, kind.format === "cad" ? "cad" : undefined) + (ctx.target ? "\nThe first evidence image is the approved visual target for this exact asset; plan construction to match it within the written design and technical requirements." : ""),
+        evidence: await Promise.all(generationReferences(ctx).map(({ key }) => key.endsWith(".svg") ? renderSvgReference(key) : key)),
       }))
     : "No production plan was recorded for this saved attempt.";
   const plannedContext: AssetContext = {
     ...ctx,
-    request: `${ctx.request}\n\nFROZEN PRODUCTION PLAN\n${productionPlan}`,
+    request: `${ctx.request}\n\nFROZEN PRODUCTION PLAN\n${productionPlan}${ctx.target ? "\n\nVISUAL TARGET\nMatch the approved visual target for this exact asset, including its silhouette, proportions, composition and palette. Preserve the approved text and technical requirements when image details conflict. The target is a design reference, never evidence of the current output." : ""}`,
   };
   const builds = definition.nodes.filter((node) => node.task === "builder").length;
   const progress = (iteration: number, fraction = 0) =>
@@ -124,11 +128,16 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
           previousCandidate = review ? candidate : undefined;
           candidate = await kind.build(plannedContext, { node, previous: candidate, feedback: review });
           await assertJobActive();
+          if (ctx.target && candidate.runId) {
+            const [run] = await db.select().from(runs).where(eq(runs.id, candidate.runId));
+            const result = z.record(z.string(), z.unknown()).parse(run.result);
+            await db.update(runs).set({ result: { ...result, visualTarget: ctx.target } }).where(eq(runs.id, run.id));
+          }
           await db
             .update(assetVersions)
             .set({
-              artifacts: { image: candidate.key, stage: "final", format: kind.format, ...(candidate.parts ? { parts: candidate.parts } : {}), ...(candidate.exports ? { exports: candidate.exports } : {}) },
-              visualTarget: candidate.key,
+              artifacts: { ...(ctx.target ? { visualTarget: ctx.target } : {}), image: candidate.key, stage: "final", format: kind.format, ...(candidate.parts ? { parts: candidate.parts } : {}), ...(candidate.exports ? { exports: candidate.exports } : {}) },
+              ...(ctx.target ? {} : { visualTarget: candidate.key }),
               phase: reviewed ? "Reviewing rendered preview" : kind.format === "cad" ? "CAD ready" : "Graphic ready",
               progress: progress(node.iteration, 0.6),
               status: reviewed ? "judging" : "building",
@@ -138,8 +147,11 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
         judge: async (node) => {
           if (!candidate) throw new Error("Nothing to review");
           // An SVG source (an earlier version being revised) is markup the judge cannot view as an image.
-          const references = candidate.referenceEvidence ?? viewableReferences(plannedContext.references).slice(0, 3)
-            .map((key) => ({ key, label: "reference material" }));
+          const references = [
+            ...generationReferences({ target: ctx.target, references: [] }),
+            ...(candidate.referenceEvidence ?? viewableReferences(plannedContext.references).slice(0, 3)
+              .map((key) => ({ key, label: "reference material" }))),
+          ];
           const size = kind.format === "svg" ? "Square vector canvas (1:1)"
             : batch.workshop?.resolution ? `${batch.workshop.resolution.width}x${batch.workshop.resolution.height}`
             : kind.format === "pixel" ? "Native grid from the design, up to 128×128 pixels" : batch.imageSize;
@@ -251,8 +263,8 @@ export async function runReviewedAsset(kind: AssetKind, ctx: AssetContext) {
               : "Complete · review limit reached",
         verdict,
         ...(candidate ? {
-          visualTarget: candidate.key,
-          artifacts: { image: candidate.key, stage: "final", format: kind.format, ...(candidate.parts ? { parts: candidate.parts } : {}), ...(candidate.exports ? { exports: candidate.exports } : {}) },
+          ...(ctx.target ? {} : { visualTarget: candidate.key }),
+          artifacts: { ...(ctx.target ? { visualTarget: ctx.target } : {}), image: candidate.key, stage: "final", format: kind.format, ...(candidate.parts ? { parts: candidate.parts } : {}), ...(candidate.exports ? { exports: candidate.exports } : {}) },
         } : {}),
       })
       .where(eq(assetVersions.id, model.id));

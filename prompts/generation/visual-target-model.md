@@ -1,0 +1,1 @@
+Single full asset in a clear three-quarter view with generous margin, neutral background and soft studio illumination. Develop buildable geometry, coherent construction, continuous organic forms and designed hard-surface transitions. Surface markings follow the form. No blockout of intersecting primitives, raised discs for color patches, gratuitous detail or extra props.

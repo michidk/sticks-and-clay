@@ -91,6 +91,8 @@ export const assetEntries = pgTable("assets", {
   createdAt: created(),
 }, (table) => [index("assets_project_id_idx").on(table.projectId)]);
 export const batches = pgTable("batches", {
+  /** Zero preserves batches queued before targets were shared across asset types. */
+  visualTargetVersion: integer("visual_target_version").default(0).notNull(),
   visualTargetMode: text("visual_target_mode").$type<"auto" | "review" | "skip">().default("auto").notNull(),
   id: text().primaryKey(),
   projectId: text()

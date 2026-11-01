@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/client";
 import { projects, batches, assetVersions, runs, jobs } from "../db/schema";
 import { jobContext } from "./checkpoint.server";
+import { JobWaiting } from "./queue.server";
+import { decideVisualTarget } from "./visual-target.server";
 import { executeAssetVersionJob } from "./model-pipeline.server";
 import { getStorage } from "./storage.server";
 import { workshopSchema, type WorkshopSnapshot } from "./workshop";
@@ -166,6 +168,112 @@ integration.each([
     for (const file of kept) expect(await getStorage().exists(`${t.base}/${file}`)).toBe(true);
     for (const file of skipped) expect(await getStorage().exists(`${t.base}/${file}`)).toBe(false);
   } finally {
+    await t.cleanup();
+  }
+});
+
+integration("SVG target approval precedes construction and retains the exact target through reviewed output and recovery", async () => {
+  const t = await scenario(1, [
+    { step: "svg", role: "svg", iteration: 0, result: { svg: svg("#284e3c", 36) } },
+    { step: "judge:0", role: "svg-judge", iteration: 0, result: verdict(true, "Matches the target") },
+  ]);
+  try {
+    await db.update(batches).set({ visualTargetVersion: 1, visualTargetMode: "review" }).where(eq(batches.id, t.batchId));
+    const [job] = await db.select().from(jobs).where(eq(jobs.targetId, t.modelId));
+    await db.update(jobs).set({ checkpoint: { ...job.checkpoint, "visual-target": "models/target.png" } }).where(eq(jobs.id, job.id));
+    const execute = async () => {
+      const [current] = await db.select().from(jobs).where(eq(jobs.id, job.id));
+      return jobContext.run({ id: job.id, checkpoint: current.checkpoint }, () => executeAssetVersionJob(t.modelId));
+    };
+    await expect(execute()).rejects.toBeInstanceOf(JobWaiting);
+    expect(await getStorage().exists(`${t.base}/graphic.svg`)).toBe(false);
+    await decideVisualTarget(t.modelId, { action: "approve", target: "models/target.png" });
+    await db.update(jobs).set({ status: "running" }).where(eq(jobs.id, job.id));
+    await execute();
+    await execute();
+    const [model] = await db.select().from(assetVersions).where(eq(assetVersions.id, t.modelId));
+    expect(model).toMatchObject({ status: "done", visualTarget: "models/target.png", artifacts: { visualTarget: "models/target.png", image: `${t.base}/graphic.svg` } });
+    const [build] = (await db.select().from(runs).where(eq(runs.modelId, t.modelId))).filter((run) => run.role === "svg");
+    expect(build.result).toMatchObject({ visualTarget: "models/target.png" });
+  } finally { await t.cleanup(); }
+});
+
+for (const assetType of ["svg", "pixel", "cad"] as const) {
+  integration(`${assetType} construction receives the approved target as image data, not a style-only hint`, async () => {
+    const t = await scenario(0, []);
+    const target = `models/${t.modelId}/target.png`;
+    const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhFcAAAAASUVORK5CYII=";
+    const originalFetch = globalThis.fetch;
+    const originalKey = process.env.OPENAI_API_KEY;
+    const originalBase = process.env.OPENAI_BASE_URL;
+    let requestBody = "";
+    try {
+      const [batch] = await db.select().from(batches).where(eq(batches.id, t.batchId));
+      await db.update(projects).set({ assetType }).where(eq(projects.id, batch.projectId));
+      await db.update(batches).set({ visualTargetVersion: 1, visualTargetMode: "review" }).where(eq(batches.id, t.batchId));
+      const [job] = await db.select().from(jobs).where(eq(jobs.targetId, t.modelId));
+      const checkpoint = { ...job.checkpoint, "visual-target": target, "visual-target-approved": target };
+      await db.update(jobs).set({ checkpoint }).where(eq(jobs.id, job.id));
+      await getStorage().upload(new Blob([Buffer.from(png, "base64")], { type: "image/png" }), target);
+      process.env.OPENAI_API_KEY = "target-transport-fixture";
+      process.env.OPENAI_BASE_URL = "https://target-transport.invalid/v1";
+      globalThis.fetch = Object.assign(async (_url: string | URL | Request, init?: RequestInit) => {
+        requestBody = String(init?.body);
+        throw new Error("Stopped before provider request");
+      }, { preconnect: originalFetch.preconnect });
+      await expect(jobContext.run({ id: job.id, checkpoint }, () => executeAssetVersionJob(t.modelId))).rejects.toThrow();
+      const calls = await db.select().from(runs).where(eq(runs.modelId, t.modelId));
+      const role = assetType === "cad" ? "cad-spec" : assetType;
+      const call = calls.find((run) => run.role === role);
+      expect(call?.input).toContain("approved visual target for this exact asset");
+      expect(call?.images).toContain(target);
+      expect(requestBody).toContain(png);
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey;
+      if (originalBase === undefined) delete process.env.OPENAI_BASE_URL; else process.env.OPENAI_BASE_URL = originalBase;
+      if (await getStorage().exists(target)) await getStorage().delete(target);
+      await t.cleanup();
+    }
+  });
+}
+
+integration("SVG judging receives the target alongside rendered candidate evidence", async () => {
+  const t = await scenario(1, [
+    { step: "svg", role: "svg", iteration: 0, result: { svg: svg("#284e3c", 36) } },
+    { step: "judge:0:reading", role: "svg-reader", iteration: 0, result: { subject: "circle", alternatives: [], visibleFeatures: "round", smallSizeReading: "circle" } },
+  ]);
+  const target = `models/${t.modelId}/target.png`;
+  const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jhFcAAAAASUVORK5CYII=";
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY;
+  const originalBase = process.env.OPENAI_BASE_URL;
+  let requestBody = "";
+  try {
+    await db.update(batches).set({ visualTargetVersion: 1, visualTargetMode: "review" }).where(eq(batches.id, t.batchId));
+    const [job] = await db.select().from(jobs).where(eq(jobs.targetId, t.modelId));
+    const checkpoint = { ...job.checkpoint, "visual-target": target, "visual-target-approved": target };
+    await db.update(jobs).set({ checkpoint }).where(eq(jobs.id, job.id));
+    await getStorage().upload(new Blob([Buffer.from(png, "base64")], { type: "image/png" }), target);
+    process.env.OPENAI_API_KEY = "target-judge-fixture";
+    process.env.OPENAI_BASE_URL = "https://target-judge.invalid/v1";
+    globalThis.fetch = Object.assign(async (_url: string | URL | Request, init?: RequestInit) => {
+      requestBody = String(init?.body);
+      throw new Error("Stopped before provider request");
+    }, { preconnect: originalFetch.preconnect });
+    await expect(jobContext.run({ id: job.id, checkpoint }, () => executeAssetVersionJob(t.modelId))).rejects.toThrow();
+    const calls = await db.select().from(runs).where(eq(runs.modelId, t.modelId));
+    const judge = calls.find((run) => run.role === "svg-judge");
+    expect(judge?.input).toContain("Image 1: full-size render (768 px) on white (current output)");
+    expect(judge?.input).toContain("Image 8: approved visual target for this exact asset");
+    expect(judge?.images).toContain(target);
+    expect(judge?.images?.[0]).toBe(`${t.base}/preview.png`);
+    expect(requestBody).toContain(png);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey;
+    if (originalBase === undefined) delete process.env.OPENAI_BASE_URL; else process.env.OPENAI_BASE_URL = originalBase;
+    if (await getStorage().exists(target)) await getStorage().delete(target);
     await t.cleanup();
   }
 });
