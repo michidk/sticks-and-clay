@@ -5,9 +5,9 @@ import { mkdir, writeFile, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import eveAgent from "../../../eve/agent/agent";
 
-test("Eve chooses the persisted model and effort, not a new registry default", async () => {
+test("Eve migrates retired Astra sessions to Sol and retains effort", async () => {
   expect(eveAgent.limits?.sessionTimeoutMs).toBe(false);
-  expect(roles.builder.model).toBe("gpt-6-astra");
+  expect(roles.builder.model).toBe("gpt-6-sol");
   expect(roles.builder.effort).toBe("high");
   expect(roles.judge.effort).toBe("high");
   const dir = resolve("/tmp", "studio-model-test-" + crypto.randomUUID());
@@ -22,7 +22,7 @@ test("Eve chooses the persisted model and effort, not a new registry default", a
     expect((eveAgent.model as any).events["turn.started"]).toBeUndefined();
     const resolver = (eveAgent.model as any).events["step.started"];
     const selected = await resolver({}, { session: { id: "test" } });
-    expect(selected.model.modelId).toBe("gpt-6-astra");
+    expect(selected.model.modelId).toBe("gpt-6-sol");
     expect(selected.modelOptions.providerOptions.openai.reasoningEffort).toBe(
       "medium",
     );
@@ -40,8 +40,8 @@ test("Eve chooses the persisted model and effort, not a new registry default", a
       JSON.stringify({ model: "openai/gpt-6-astra", effort: "medium" }),
     );
     const recovered = await resolver({}, { session: { id: "test" } });
-    expect(recovered.model.modelId).toBe("gpt-6-astra");
-    expect(recovered.modelContextWindowTokens).toBe(1050000);
+    expect(recovered.model.modelId).toBe("gpt-6-sol");
+    expect(recovered.modelContextWindowTokens).toBe(200000);
   } finally {
     if (previous === undefined) delete process.env.STUDIO_DATA_DIR;
     else process.env.STUDIO_DATA_DIR = previous;
@@ -74,4 +74,8 @@ test("Astra long context tier applies per model call", () => {
     price(200000, 1000, 0, rates)! + price(200000, 1000, 0, rates)!,
   ).toBeCloseTo(4.1);
   expect(price(1000, 0, 0, rates, 1000)!).toBeCloseTo(0.0125);
+});
+
+ test("no role defaults to an Astra model", () => {
+  for (const role of Object.values(roles)) expect(role.model).not.toMatch(/astra/i);
 });

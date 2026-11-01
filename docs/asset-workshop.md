@@ -218,7 +218,7 @@ panel. Tile and modular-segment reviews use repetition to inspect seams and
 unwanted patterns; standalone sprites have no tiling requirement. A fixed palette
 cannot excuse unreadable materials: the judge requests better use of the approved
 colors or reports a design constraint for the owner to revise. The default pixel
-judge is `gpt-6-astra`; text presets and role overrides still apply.
+judge is `gpt-6-sol`; text presets and role overrides still apply.
 
 The `pixel:construction` checkpoint freezes `staged-v1` for new attempts. Saved
 attempts with existing pixel build steps retain `legacy` behavior. Intermediate

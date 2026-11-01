@@ -26,7 +26,7 @@ The renderer puts its ground plane at Z=0, matching normalized asset contact. Po
 
 ## Configuration
 
-- Roles/models: `src/modules/ai/roles.ts` (builder and judge default to Astra with high effort; runtime overrides apply to new runs).
+- Roles/models: `src/modules/ai/roles.ts` (builder and judge default to Sol with high effort; runtime overrides apply to new runs).
 - Prompt directory: `prompts/`.
 - Graph: `src/modules/pipelines/index.ts`.
 - Asset handlers: `src/lib/model-pipeline.server.ts`, coordinated by `src/lib/pipeline.server.ts`.
@@ -39,7 +39,7 @@ The local service supervisor sets Eve's inline ownership lease to 60 seconds (SD
 
 ## Independent photography
 
-New attempts insert a resumable Eve photographer after every build, including zero-review builds. Builder renders remain diagnostic only. The photographer uses constrained `photograph_asset` camera/exposure controls to import the immutable GLB into a fresh Blender scene, render front, rear, detail, left, right, top, and bottom at 1024², and inspect each through `view_render`. It cannot edit the asset with its capability. The role defaults to Astra with medium effort and appears in Admin → Agents; inputs, outputs, sessions, tokens and estimated costs use normal run history.
+New attempts insert a resumable Eve photographer after every build, including zero-review builds. Builder renders remain diagnostic only. The photographer uses constrained `photograph_asset` camera/exposure controls to import the immutable GLB into a fresh Blender scene, render front, rear, detail, left, right, top, and bottom at 1024², and inspect each through `view_render`. It cannot edit the asset with its capability. The role defaults to Sol with medium effort and appears in Admin → Agents; inputs, outputs, sessions, tokens and estimated costs use normal run history.
 
 Only validated photographs are published as latest thumbnails/gallery images and sent to the judge. Each set is archived under `photographs/<runId>` with source GLB and image hashes, linked from the builder iteration and photographer result. Failed photography blocks judging and completion; resume retains its session and completed builds. Older v1/v2 jobs retain their saved graph. Historical versions retain their own photographs; generated visual targets remain the fallback until the first photo set is published.
 

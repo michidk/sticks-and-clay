@@ -1,3 +1,4 @@
+import { textModel } from "./text-model";
 import { loadRuntimeSettings } from "../../lib/runtime-settings.server";
 import { imageRoles, roles, type Role } from "./roles";
 
@@ -17,6 +18,7 @@ export async function textRoleProfile(role: Role) {
   return {
     ...preset,
     ...settings.agents[role],
+    model: textModel(settings.agents[role]?.model ?? preset.model),
     settings,
   };
 }

@@ -1,3 +1,4 @@
+import { textModel } from "../../src/modules/ai/text-model";
 import { defineAgent, defineDynamic } from "eve";
 import { createOpenAI } from "@ai-sdk/openai";
 import { wrapLanguageModel } from "ai";
@@ -40,12 +41,11 @@ export default defineAgent({
           };
         }
         // Usage events can qualify the model name; the provider expects its raw ID.
-        config.model = config.model.replace(/^openai\//, "");
+        config.model = textModel(config.model);
         return {
           model: selectedModel(config.model),
           // Bound application context without requiring gateway catalog metadata.
-          modelContextWindowTokens:
-            config.model === "gpt-6-astra" ? 1050000 : 200000,
+          modelContextWindowTokens: 200000,
           modelOptions: {
             providerOptions: { openai: { reasoningEffort: config.effort } },
           },

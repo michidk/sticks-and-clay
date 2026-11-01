@@ -40,9 +40,9 @@ function role<S extends z.ZodType>(
 
 /** Authored instructions stay in /prompts; execution policy and contracts live here. */
 export const roles = {
-  cad: role("tanstack", "cad/builder", cadBuildResult, "gpt-6-astra", "high", ["references/cad-construction"]),
+  cad: role("tanstack", "cad/builder", cadBuildResult, "gpt-6-sol", "high", ["references/cad-construction"]),
   "cad-spec": role("tanstack", "cad/spec", cadSpecResult, "gpt-6-sol", "high"),
-  "cad-judge": { ...role("tanstack", "cad/judge", judgeResult, "gpt-6-astra", "high"), inputTemplate: "graphics/graphic-judge-input" },
+  "cad-judge": { ...role("tanstack", "cad/judge", judgeResult, "gpt-6-sol", "high"), inputTemplate: "graphics/graphic-judge-input" },
   "cad-designer": role("tanstack", "cad/designer", designResult),
   "cad-design-update": { ...role("tanstack", "cad/designer", designResult), inputTemplate: "design/design-update-input" },
   "cad-planner": { ...role("tanstack", "cad/planner", planResult), inputTemplate: "planning/planner-input" },
@@ -61,11 +61,11 @@ export const roles = {
     visibleFeatures: z.string(), smallSizeReading: z.string(),
   }), "gpt-6-sol", "high"),
   "svg-judge": {
-    ...role("tanstack", "svg/svg-judge", judgeResult, "gpt-6-astra", "high", ["svg/judge-icon", "svg/judge-logo", "svg/judge-illustration"]),
+    ...role("tanstack", "svg/svg-judge", judgeResult, "gpt-6-sol", "high", ["svg/judge-icon", "svg/judge-logo", "svg/judge-illustration"]),
     inputTemplate: "graphics/graphic-judge-input",
   },
   "svg-collection-judge": {
-    ...role("tanstack", "svg/collection-judge", judgeResult, "gpt-6-astra", "high"),
+    ...role("tanstack", "svg/collection-judge", judgeResult, "gpt-6-sol", "high"),
     inputTemplate: "graphics/graphic-judge-input",
   },
   "graphic-judge": role("tanstack", "graphics/graphic-judge", judgeResult, "gpt-6-sol", "high"),
@@ -76,7 +76,7 @@ export const roles = {
   pixel: role("tanstack", "pixel/pixel", pixelGridSchema, "gpt-6-sol", "high"),
   "pixel-row-repair": role("tanstack", "pixel/pixel-row-repair", pixelRowRepairSchema, "gpt-6-sol", "high"),
   "pixel-judge": {
-    ...role("tanstack", "pixel/pixel-judge", judgeResult, "gpt-6-astra", "high"),
+    ...role("tanstack", "pixel/pixel-judge", judgeResult, "gpt-6-sol", "high"),
     inputTemplate: "graphics/graphic-judge-input",
   },
   "pixel-designer": role("tanstack", "design/pixel-designer", designResult),
@@ -119,7 +119,7 @@ export const roles = {
   "graphic-designer": role("tanstack", "design/graphic-designer", designResult),
   planner: role("eve", "planning/planner", planResult),
   "graphic-planner": role("eve", "planning/graphic-planner", planResult),
-  builder: role("eve", "models/builder", buildResult, "gpt-6-astra", "high", [
+  builder: role("eve", "models/builder", buildResult, "gpt-6-sol", "high", [
     "references/modeling-method",
     "references/hard-surface",
     "references/organic-and-trees",
@@ -131,7 +131,7 @@ export const roles = {
     "eve",
     "models/photographer",
     buildResult,
-    "gpt-6-astra",
+    "gpt-6-sol",
     "medium",
   ),
   "production-planner": role(
@@ -142,7 +142,7 @@ export const roles = {
     "high",
     ["references/uv-and-materials", "references/assetkit"],
   ),
-  judge: role("eve", "models/judge", judgeResult, "gpt-6-astra", "high", [
+  judge: role("eve", "models/judge", judgeResult, "gpt-6-sol", "high", [
     "references/review-method",
   ]),
 } as const;
