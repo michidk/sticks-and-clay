@@ -66,7 +66,7 @@ Roastbook.
 
 Mount persistent volumes at `/home/vibepod/workspaces/sticks-and-clay/data` plus the `.workflow-data` and `sandbox-cache` subdirectories of `/home/vibepod/workspaces/sticks-and-clay/eve/.eve`. Keep `.eve/builds` and `eve/.output` on the container filesystem so Eve can rename its compiled output atomically. Use UID/GID 1000. Keeping the original workspace path preserves saved Blender scripts and Eve checkpoint paths. PostgreSQL runs separately with its own persistent volume. Pass provider credentials directly through environment variables. The Eve sandbox uses `just-bash`; native Blender execution stays in the capability-scoped service and requires no Docker daemon.
 
-The image workflow publishes commit-tagged images to `ghcr.io/michidk/sticks-and-clay`. Deploy the resulting digest through the infrastructure repository. The permanent cluster manifests, authentication boundary, migration, and recovery procedures are owned by `michidk/k8s` under `apps/sticks-and-clay/` and `docs/sticks-and-clay.md`.
+The image workflow publishes commit-tagged images to `ghcr.io/michidk/sticks-and-clay`. Deploy the resulting digest through the infrastructure repository. The permanent cluster manifests, authentication boundary, migration, and recovery procedures are owned by [`michidk-cluster/k8s`](https://github.com/michidk-cluster/k8s) under `apps/sticks-and-clay/` and `docs/sticks-and-clay.md`.
 
 ## Persistence and migrations
 
