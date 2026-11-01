@@ -1,4 +1,5 @@
 // Builds the read-only demo for Vercel (.vercel/output) from demo/fixtures.json and demo/files.
+import { z } from "zod";
 import { cp, mkdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
@@ -7,10 +8,15 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 
 const client = await PGlite.create("memory://");
 await migrate(drizzle(client), { migrationsFolder: resolve("drizzle") });
-const tables: Record<string, unknown[]> = JSON.parse(await readFile(resolve("demo/fixtures.json"), "utf8"));
+const tables = z.record(z.string(), z.array(z.record(z.string(), z.unknown()))).parse(JSON.parse(await readFile(resolve("demo/fixtures.json"), "utf8")));
 await client.exec("set session_replication_role = replica"); // rows arrive in table order, not foreign-key order
-for (const [table, rows] of Object.entries(tables))
-  await client.query(`insert into "${table}" select * from jsonb_populate_recordset(null::"${table}", $1::jsonb)`, [JSON.stringify(rows)]);
+for (const [table, rows] of Object.entries(tables)) {
+  if (!rows.length) continue;
+  const relation = `"${table.replaceAll('"', '""')}"`;
+  const columns = [...new Set(rows.flatMap(Object.keys))].map((name) => `"${name.replaceAll('"', '""')}"`).join(", ");
+  // Omitted snapshot columns use the current schema's defaults instead of explicit nulls.
+  await client.query(`insert into ${relation} (${columns}) select ${columns} from jsonb_populate_recordset(null::${relation}, $1::jsonb)`, [JSON.stringify(rows)]);
+}
 const snapshot = new Uint8Array(await (await client.dumpDataDir("gzip")).arrayBuffer());
 await client.close();
 
