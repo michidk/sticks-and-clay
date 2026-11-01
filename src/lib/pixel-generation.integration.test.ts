@@ -21,14 +21,14 @@ const verdict = (passed: boolean, summary: string) => ({
 });
 
 // `passes` > 1 replays the finished job to prove resume is idempotent; a retried drawing leaves a failed run, so retries run once.
-async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2, design = "Green circles", paletteContract: "1" | "2" | "3" | "4" | null = "3", staged = false) {
+async function scenario(judgeIterations: number, saved: { step: string; role: string; iteration: number; result: object }[], passes = 2, design = "Green circles", paletteContract: "1" | "2" | "3" | "4" | null = "3", staged: boolean | "canvas-v2" = false) {
   const projectId = crypto.randomUUID(), batchId = crypto.randomUUID(), modelId = crypto.randomUUID(), jobId = crypto.randomUUID();
   await db.insert(projects).values({ id: projectId, name: "Review fixture", description: "test", assetType: "pixel", status: "ready" });
   await db.insert(batches).values({ id: batchId, projectId, prompt: "circle", count: 1, judgeIterations, design, designVersion: 1, status: "building" });
   await db.insert(assetVersions).values({ id: modelId, projectId, batchId, name: "Circle", prompt: "A green circle" });
   const checkpoint: Record<string, string> = {};
   if (paletteContract) checkpoint["pixel:palette-contract"] = paletteContract;
-  if (staged) checkpoint["pixel:construction"] = "staged-v1";
+  if (staged) checkpoint["pixel:construction"] = staged === "canvas-v2" ? staged : "staged-v1";
   for (const item of saved) {
     const id = crypto.randomUUID();
     checkpoint[`step:${item.step}`] = id;
@@ -49,6 +49,7 @@ async function scenario(judgeIterations: number, saved: { step: string; role: st
     for (const dir of [base, `${base}/iteration-1`, `${base}/silhouette`, `${base}/shading`])
       for (const file of ["pixel.png", "preview.png", "review.png", "grid.json", "sheet.png", "sheet.json", "sheet.unity.json", "sheet.godot.json", "anim.gif"])
         if (await getStorage().exists(`${dir}/${file}`)) await getStorage().delete(`${dir}/${file}`);
+    for (const key of await getStorage().list(base)) await getStorage().delete(key);
     await db.delete(jobs).where(eq(jobs.id, jobId));
     await db.delete(runs).where(eq(runs.projectId, projectId));
     await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
@@ -361,6 +362,101 @@ integration("a resumed operation revision preserves inherited palette keys and p
     expect(saved.palette).toContainEqual({ key: "h", color: "#a08060" });
     expect(await getStorage().exists(`${t.base}/iteration-1/pixel.png`)).toBe(true);
   } finally {
+    await t.cleanup();
+  }
+});
+
+
+integration("persistent canvas renders small batches, retains edits and resumes without extra runs", async () => {
+  const palette = drawing(1).palette;
+  const patch = (column: number) => ({ width: 4, height: 4, palette, patches: [{ row: 2, column, rows: ["o"] }], canvas: { status: "complete", observation: "Observed the current canvas and extended its silhouette" } });
+  const t = await scenario(0, [
+    { step: "pixel:silhouette:draw1", role: "pixel", iteration: 0, result: { ...drawing(1), canvas: { status: "complete", observation: "Block the subject" } } },
+    { step: "pixel:silhouette:draw2", role: "pixel", iteration: 0, result: patch(2) },
+    { step: "pixel:shading:draw1", role: "pixel", iteration: 0, result: patch(3) },
+    { step: "pixel:shading:draw2", role: "pixel", iteration: 0, result: patch(4) },
+    { step: "pixel:finish:draw1", role: "pixel", iteration: 0, result: patch(1) },
+    { step: "pixel:finish:draw2", role: "pixel", iteration: 0, result: patch(2) },
+  ], 2, "Green circles", "4", "canvas-v2");
+  try {
+    const model = await t.run();
+    expect(model.status).toBe("done");
+    expect(model.artifacts?.image).toBe(`${t.base}/finish/batch-2/pixel.png`);
+    const grid = JSON.parse(await (await getStorage().download(`${t.base}/finish/batch-2/grid.json`)).text());
+    expect(grid.rows[1]).toBe("oooo");
+    const saved = await db.select().from(runs).where(eq(runs.modelId, t.modelId));
+    expect(saved).toHaveLength(6);
+    expect(saved.filter(run => (run.result as { key?: string }).key)).toHaveLength(1);
+    for (const pass of ["silhouette", "shading", "finish"])
+      for (const batch of [1, 2]) expect(await getStorage().exists(`${t.base}/${pass}/batch-${batch}/review.png`)).toBe(true);
+  } finally { await t.cleanup(); }
+});
+
+integration("canvas inspection receives real image evidence and publishes its last valid batch on interruption", async () => {
+  const t = await scenario(0, [{ step: "pixel:silhouette:draw1", role: "pixel", iteration: 0, result: drawing(1) }], 1, "Green circles", "4", "canvas-v2");
+  const originalFetch = globalThis.fetch;
+  const originalKey = process.env.OPENAI_API_KEY, originalBase = process.env.OPENAI_BASE_URL;
+  try {
+    process.env.OPENAI_API_KEY = "canvas-fixture";
+    process.env.OPENAI_BASE_URL = "https://canvas.invalid/v1";
+    globalThis.fetch = Object.assign(async () => { throw new Error("Interrupted provider fixture"); }, { preconnect: originalFetch.preconnect });
+    await expect(t.run()).rejects.toThrow();
+    const saved = await db.select().from(runs).where(eq(runs.modelId, t.modelId));
+    const next = saved.find(run => run.stepId === "pixel:silhouette:draw2");
+    expect(next?.input).toContain("PERSISTENT CANVAS, batch 2/3");
+    expect(next?.input).toContain('"o..."');
+    expect(next?.images).toContain(`${t.base}/silhouette/batch-1/review.png`);
+    const [model] = await db.select().from(assetVersions).where(eq(assetVersions.id, t.modelId));
+    expect(model.artifacts).toMatchObject({ stage: "construction", image: `${t.base}/silhouette/batch-1/pixel.png` });
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = originalKey;
+    if (originalBase === undefined) delete process.env.OPENAI_BASE_URL; else process.env.OPENAI_BASE_URL = originalBase;
+    await t.cleanup();
+  }
+});
+
+integration("manual pixel API saves an unaccepted version and AI iteration uses its exact source", async () => {
+  const { api } = await import("./api.server");
+  const t = await scenario(0, [{ step: "pixel", role: "pixel", iteration: 0, result: drawing(1) }]);
+  const manualDirectories: string[] = [];
+  let branchId: string | undefined;
+  try {
+    await t.run();
+    const [source] = await db.select().from(runs).where(eq(runs.modelId, t.modelId));
+    const call = (path: string, body?: unknown) => api(new Request(`http://localhost/api/asset-versions/${path}`, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
+    const read = await call(`${t.modelId}/pixels?sourceRunId=${source.id}`);
+    expect(read.status).toBe(200);
+    expect((await read.json()).rows[1]).toBe("o...");
+    const invalid = await call(`${t.modelId}/pixels`, { sourceRunId: source.id, edits: [{ x: 4, y: 0, key: "o", target: "base" }] });
+    expect(invalid.status).toBe(400);
+    const response = await call(`${t.modelId}/pixels`, { sourceRunId: source.id, edits: [{ x: 1, y: 1, key: "o", target: "base" }] });
+    expect(response.status).toBe(201);
+    const manual: { id: string; runId: string } = await response.json();
+    manualDirectories.push(`graphics/${manual.id}`);
+    const [version] = await db.select().from(assetVersions).where(eq(assetVersions.id, manual.id));
+    const [run] = await db.select().from(runs).where(eq(runs.id, manual.runId));
+    expect(version.acceptedAt).toBeNull();
+    expect(version.verdict).toBe("manual");
+    expect(version.parentModelId).toBe(t.modelId);
+    expect(run.estimatedCost).toBe(0);
+    expect(run.model).toBe("manual");
+    const stored = await call(`${manual.id}/pixels?sourceRunId=${manual.runId}`);
+    expect((await stored.json()).rows[1]).toBe("oo..");
+    const old = await call(`${t.modelId}/pixels?sourceRunId=${source.id}`);
+    expect((await old.json()).rows[1]).toBe("o...");
+    const wrongOwner = await call(`${manual.id}/pixels?sourceRunId=${source.id}`);
+    expect(wrongOwner.status).toBe(400);
+    const branch = await call(`${manual.id}/branch`, { kind: "iterate", sourceRunId: manual.runId, prompt: "Refine the outline", judgeIterations: 0 });
+    expect(branch.status).toBe(201);
+    branchId = (await branch.json()).id;
+    const [next] = await db.select().from(assetVersions).where(eq(assetVersions.id, branchId!));
+    expect(next.sourceRunId).toBe(manual.runId);
+    expect(next.parentModelId).toBe(manual.id);
+  } finally {
+    if (branchId) await db.delete(jobs).where(eq(jobs.targetId, branchId));
+    for (const directory of manualDirectories)
+      for (const key of await getStorage().list(directory)) await getStorage().delete(key);
     await t.cleanup();
   }
 });

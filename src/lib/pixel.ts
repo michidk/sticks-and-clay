@@ -24,6 +24,7 @@ const name = z.string().trim().min(1).max(40);
  * return `patches` that replace rectangles of the previous drawing; `resolvePixelAnswer` turns either into a whole
  * drawing. */
 export const pixelGridSchema = z.object({
+  canvas: z.object({ status: z.enum(["continue", "complete"]), observation: z.string().max(1500) }).optional(),
   plan: z.string().max(4000).optional(),
   width: z.number().int().min(4).max(MAX_PIXELS),
   height: z.number().int().min(4).max(MAX_PIXELS),

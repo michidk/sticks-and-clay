@@ -200,18 +200,24 @@ viewBox is a dimension review finding.
 
 ## Pixel construction and review
 
-New pixel attempts render three construction passes before each independent review:
-material blocking and silhouette, directional shading, then visual cleanup. Each
-pass receives the preceding rendered review sheet and exact grid. Zero judge rounds
-still runs these three artist passes but does not run an independent judge. This
-uses two more artist calls per build than the older single-response workflow;
-format retries and review revisions can add calls.
+New pixel attempts retain one canvas through silhouette, shading and cleanup.
+Each pass runs two or three small drawing batches. Every batch saves and renders
+the canvas, and the next request receives its exact grid and actual review image.
+The artist describes what it sees before making another local correction. Live
+construction images appear in the Version while it is generating.
 
-Artists can draw bounded filled rectangles, ellipses, polygons and one-cell lines
-using palette keys, then refine with rows or rectangular patches. Operations use
-zero-based coordinates; review rulers and patches remain one-based. They compile
-to the same saved grid and PNG, with no arbitrary script execution. Shapes outside
-the canvas, unknown palette keys and missing frame/layer targets fail validation.
+A batch allows up to 24 drawing operations or 512 rectangular patch cells.
+Operations include filled rectangles, ellipses, polygons, one-cell lines and
+individual pixels. Operations use zero-based coordinates; review rulers and
+patches remain one-based. The first batch selects the complete palette, dimensions,
+frames or layers, timing and anchors. Later batches cannot replace the whole grid,
+resize it or redefine its palette. Invalid edits receive a bounded retry.
+
+Zero judge rounds still runs all three construction passes, using six to nine
+artist calls per build. Format retries, row repairs and review revisions can add
+calls. This is a call limit, not a dollar budget or a guarantee of artistic quality.
+Cancelling a pixel job aborts its in-flight provider request when cancellation is
+detected, with a one-second polling interval.
 
 Review sheets include native views, grayscale, silhouette and a 3×3 repetition
 panel. Tile and modular-segment reviews use repetition to inspect seams and
@@ -220,13 +226,19 @@ cannot excuse unreadable materials: the judge requests better use of the approve
 colors or reports a design constraint for the owner to revise. The default pixel
 judge is `gpt-6-sol`; text presets and role overrides still apply.
 
-The `pixel:construction` checkpoint freezes `staged-v1` for new attempts. Saved
-attempts with existing pixel build steps retain `legacy` behavior. Intermediate
-passes have separate run IDs and artifact directories (`silhouette/`, `shading/`)
-and remain in accounting and run history without becoming selectable final
-versions. Recovery reuses completed calls and reconstructs their images before
-continuing. Existing accepted assets and approved designs are not regenerated.
+The `pixel:construction` checkpoint freezes `canvas-v2` for new attempts. Saved
+`staged-v1` and legacy attempts retain their original workflows. Each canvas batch
+has a separate run ID and artifact directory. Intermediate calls remain in history
+and accounting; only the finished result becomes selectable. Recovery reuses
+completed calls and reconstructs their images before continuing. Existing accepted
+assets and approved designs are not regenerated.
 
-Partial pixel revisions using patches or operations inherit missing palette keys from
-the previous grid. Explicit key definitions override previous colors. Whole-grid
-redraws must supply every palette key they use.
+Use **Edit pixels** on a completed drawing to paint with its saved palette, erase,
+select frames or layers, and undo or reset changes. Keyboard controls support
+arrows, Space and Delete. Saving creates a new, unaccepted Version with no AI
+charge and leaves the original unchanged. Use **Iterate** on that Version to ask
+the AI to continue from the edited grid. Existing human approval checkpoints apply.
+
+Legacy partial revisions inherit missing palette keys from the previous grid;
+explicit definitions can override their previous colors. Canvas-v2 locks those
+colors after initialization.

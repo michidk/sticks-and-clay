@@ -16,6 +16,7 @@ import { price } from "../../../lib/contracts";
 import { imagePart } from "../../../lib/storage.server";
 import { textRoleProfile } from "../config.server";
 import { textGenerationFailure } from "./timeouts";
+import { assertJobActive, JobCancelled } from "../../../lib/queue.server";
 export async function draftBrief(args: RunInput) {
   const checkpointKey = args.stepId
     ? `step:${args.stepId}`
@@ -59,6 +60,21 @@ export async function draftBrief(args: RunInput) {
     () => controller.abort(),
     profile.settings.timeouts.tanstackMs,
   );
+  let cancelled: JobCancelled | undefined;
+  let checkingCancellation = false;
+  const cancellationTimer = jobContext.getStore() && ["pixel", "pixel-row-repair"].includes(args.role)
+    ? setInterval(async () => {
+        if (checkingCancellation || controller.signal.aborted) return;
+        checkingCancellation = true;
+        try { await assertJobActive(); }
+        catch (error) {
+          if (error instanceof JobCancelled) {
+            cancelled = error;
+            controller.abort(error);
+          }
+        } finally { checkingCancellation = false; }
+      }, 1000)
+    : undefined;
   const saveUsage = async () => {
     const input =
       usage?.promptTokens ??
@@ -133,6 +149,7 @@ export async function draftBrief(args: RunInput) {
         },
       ],
     });
+    if (["pixel", "pixel-row-repair"].includes(args.role)) await assertJobActive();
     output = JSON.stringify(result, null, 2);
     await saveUsage();
     await db
@@ -141,7 +158,7 @@ export async function draftBrief(args: RunInput) {
       .where(eq(runs.id, id));
     return { ...result, runId: id };
   } catch (error) {
-    const failure = textGenerationFailure(error, controller.signal, args.role, profile.settings.timeouts.tanstackMs);
+    const failure = cancelled ?? (error instanceof JobCancelled ? error : textGenerationFailure(error, controller.signal, args.role, profile.settings.timeouts.tanstackMs));
     await db
       .update(runs)
       .set({ status: "failed", error: String(failure), finishedAt: new Date() })
@@ -150,5 +167,6 @@ export async function draftBrief(args: RunInput) {
     throw failure;
   } finally {
     clearTimeout(timer);
+    if (cancellationTimer) clearInterval(cancellationTimer);
   }
 }

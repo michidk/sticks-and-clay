@@ -20,6 +20,7 @@ import { DeleteAsset } from "../../../-components/delete-asset";
 import { ReopenAsIdea } from "../../../-components/reopen-as-idea";
 import { GraphicVariant } from "../../../-components/graphic-variant";
 import { PixelExports } from "./pixel-exports";
+import { PixelEditor } from "./pixel-editor";
 import { CadExports } from "./cad-exports";
 import { ReviewNotes } from "./review";
 import type { Review, Workspace } from "../-lib/model";
@@ -78,7 +79,8 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
     (runs.find((run: any) => run.role.endsWith("-judge") && run.status === "done" && run.iteration === build.iteration
       && new Date(run.createdAt) >= new Date(build.createdAt)) as any)?.result;
   const current = builds.find((build) => build.id === picked) ?? builds.at(-1);
-  const currentKey = (current?.result as { key?: string } | undefined)?.key ?? model.artifacts?.image;
+  const liveCanvas = !picked && model.artifacts?.stage === "construction";
+  const currentKey = liveCanvas ? model.artifacts?.image : (current?.result as { key?: string } | undefined)?.key ?? model.artifacts?.image;
   const savedTarget = z.object({ visualTarget: z.string() }).safeParse(current?.result);
   const target = savedTarget.success ? savedTarget.data.visualTarget : model.artifacts?.visualTarget ?? (!currentKey ? model.visualTarget : undefined);
   const selectedParts = z.object({ parts: namedParts }).safeParse(current?.result);
@@ -134,6 +136,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
             </Button>
           )}
           {current && !archived && !working && <>
+            {pixelated && <PixelEditor key={current.id} modelId={modelId} projectId={projectId} sourceRunId={current.id} />}
             <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} kind="iterate" iterateLabel={outdated ? "Regenerate" : "Iterate"} designReady={data.project.status === "ready"} />
             <GraphicVariant model={model} sourceRunId={current.id} onSaved={reload} />
           </>}
@@ -164,7 +167,7 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
         <Card className="panel">
           {currentKey ? (
             <button type="button" aria-label="Open full size" className="block w-full"
-              onClick={() => openLightbox(gallery, Math.max(0, builds.findIndex((build) => build.id === current?.id)))}>
+              onClick={() => openLightbox(liveCanvas && currentKey ? [{ pixelated, src: fileUrl(currentKey), title: `${name} · construction in progress` }] : gallery, liveCanvas ? 0 : Math.max(0, builds.findIndex((build) => build.id === current?.id)))}>
               <AssetImage src={fileUrl(currentKey)} width={1280} pixelated={pixelated} alt={name}
                 className="mx-auto aspect-square w-full max-w-[640px] rounded-lg bg-white" style={{ objectFit: "contain" }} />
             </button>

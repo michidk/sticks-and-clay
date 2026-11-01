@@ -10,6 +10,7 @@ function operation<T extends z.ZodRawShape>(shape: T) {
 }
 
 export const pixelOperationSchema = z.union([
+  operation({ kind: z.literal("pixels"), ...ink, points: z.array(point).min(1).max(128) }),
   operation({ kind: z.literal("rectangle"), ...ink, x: coordinate, y: coordinate, width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128) }),
   operation({ kind: z.literal("ellipse"), ...ink, x: coordinate, y: coordinate, width: z.number().int().min(1).max(128), height: z.number().int().min(1).max(128) }),
   operation({ kind: z.literal("line"), ...ink, from: point, to: point }),
@@ -33,6 +34,7 @@ export function operationCells(operation: z.infer<typeof pixelOperationSchema>):
     }
   };
   switch (operation.kind) {
+    case "pixels": operation.points.forEach(({ x, y }) => cells.push([x, y])); break;
     case "line": line(operation.from, operation.to); break;
     case "rectangle":
     case "ellipse":

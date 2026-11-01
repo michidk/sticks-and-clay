@@ -1,4 +1,6 @@
 import { renameInput } from "./contracts";
+import { pixelEditInput } from "./contracts";
+import { getEditablePixels, savePixelEdits } from "./pixel-edit.server";
 import { renameProject, renameAsset } from "./rename.server";
 import { designPalette } from "./pixel-design-palette";
 import { DEMO_MODE } from "./build-mode";
@@ -1215,6 +1217,13 @@ export async function api(request: Request) {
         .from(events).where(and(inArray(events.runId, history.map((run) => run.id)), inArray(events.type, traceEventTypes)))
         .orderBy(events.createdAt) : [];
       return reply({ runs: history.map((run) => ({ ...run, steps: buildTrace(log.filter((event) => event.runId === run.id)) })) });
+    }
+    if (path[0] === "models" && path[1] && path[2] === "pixels") {
+      const id = uuid.parse(path[1]);
+      if (request.method === "GET")
+        return reply(await getEditablePixels(id, uuid.parse(new URL(request.url).searchParams.get("sourceRunId"))));
+      if (request.method === "POST")
+        return reply(await savePixelEdits(id, pixelEditInput.parse(await request.json())), 201);
     }
     if (path[0] === "runs" && path[1] && path[2] === "details" && request.method === "GET") {
       const [run] = await db.select().from(runs).where(eq(runs.id, uuid.parse(path[1])));

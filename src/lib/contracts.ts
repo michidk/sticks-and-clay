@@ -1,4 +1,5 @@
 import { z } from "zod";
+export { pixelEditInput } from "./pixel-edit";
 
 export const resolutionSchema = z.object({
   width: z.number().int().min(4).max(8192),
