@@ -25,6 +25,8 @@ import { CadExports } from "./cad-exports";
 import { ReviewNotes } from "./review";
 import type { Review, Workspace } from "../-lib/model";
 
+const svgPreviews = z.object({ previews: z.array(z.object({ key: z.string(), label: z.string() })) });
+
 const namedParts = z.array(z.object({ name: z.string(), key: z.string() }));
 
 /** One generated graphic or SVG: the image large, its versions, the review, and the actions on it. */
@@ -81,6 +83,12 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
   const current = builds.find((build) => build.id === picked) ?? builds.at(-1);
   const liveCanvas = !picked && model.artifacts?.stage === "construction";
   const currentKey = liveCanvas ? model.artifacts?.image : (current?.result as { key?: string } | undefined)?.key ?? model.artifacts?.image;
+  const savedPreviews = svgPreviews.safeParse(current?.result);
+  const nativePreviews = currentKey?.endsWith(".svg") && savedPreviews.success
+    ? savedPreviews.data.previews.flatMap((preview) => {
+      const match = /\/preview-(dark-)?(16|24|64)\.png$/.exec(preview.key);
+      return match ? [{ ...preview, size: Number(match[2]), dark: Boolean(match[1]) }] : [];
+    }) : [];
   const savedTarget = z.object({ visualTarget: z.string() }).safeParse(current?.result);
   const target = savedTarget.success ? savedTarget.data.visualTarget : model.artifacts?.visualTarget ?? (!currentKey ? model.visualTarget : undefined);
   const selectedParts = z.object({ parts: namedParts }).safeParse(current?.result);
@@ -173,6 +181,25 @@ function GraphicDetailContent({ data, projectId, modelId, reload }: {
             </button>
           ) : (
             <p className="muted">{working ? "Generating. The image appears here when it is ready." : "No image was saved for this graphic."}</p>
+          )}
+          {nativePreviews.length > 0 && (
+            <section className="mt-6" aria-label="SVG previews at actual size">
+              <h2>Actual size</h2>
+              <div className="mt-3 flex flex-wrap gap-4">
+                {nativePreviews.map((preview) => (
+                  <figure key={preview.key} className="space-y-2">
+                    <div className="flex h-24 w-24 items-center justify-center rounded-md border"
+                      style={{ backgroundColor: preview.dark ? "#18181b" : "#ffffff" }}>
+                      <AssetImage src={fileUrl(preview.key)} width="full" alt={preview.label}
+                        style={{ width: preview.size, height: preview.size, imageRendering: "auto" }} />
+                    </div>
+                    <figcaption className="text-xs text-muted-foreground">
+                      {preview.size}px · {preview.dark ? "Dark" : "Light"}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </section>
           )}
           {parts.length > 0 && (
             <section className="mt-6" aria-label="Named asset parts">
