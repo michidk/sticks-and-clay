@@ -16,6 +16,8 @@ The configured round count is a maximum per stage. Two rounds allow up to four j
 
 The text design wins if the generated image contradicts it. Triangle counts are informational only. Historical approved snapshots remain in history; the pipeline no longer configures or enforces polygon limits.
 
+New iterations and forks freeze an owner revision contract before target generation. The latest requested change overrides conflicting inherited brief and collection requirements for that Version; unaffected requirements remain in force. Earlier changes apply in order, with later changes taking precedence. Targets, production planning, construction and review receive the same contract. Plans must include the requested changes in their steps and checks, and judges must verify each change against current photographs independently of the plan. Missing requested geometry is a major defect, even if a plan omitted it. Resuming an existing attempt retains its saved contract and role inputs; this does not rewrite historical Versions or automatically regenerate them.
+
 ## Recovery and accounting
 
 Eve Responses calls explicitly use `store: false`: the SDK serializes local assistant content and function calls instead of server-side item references. Reasoning history is omitted for gateway compatibility; function `call_id` identity remains intact. A regression test exercises the actual provider serialization.

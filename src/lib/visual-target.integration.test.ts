@@ -15,6 +15,34 @@ import { settleBatch } from "./batch-state.server";
 import { queueGeneration } from "./generation.server";
 
 const integration = process.env.TEST_DATABASE === "1" ? test : test.skip;
+
+integration("new iterations freeze owner precedence before target approval and reuse it on resume", () => fixture("review", async ({ m, j }) => {
+  await db.update(assetVersions).set({
+    prompt: "One snow shell, no protrusions.\n\nRequested change from saved version:\nsticks sticking out",
+    sourceRunId: crypto.randomUUID(), changePrompt: "sticks sticking out",
+  }).where(eq(assetVersions.id, m));
+  const execute = async () => {
+    const [saved] = await db.select().from(jobs).where(eq(jobs.id, j));
+    return jobContext.run({ id: j, checkpoint: saved.checkpoint }, () => executeAssetVersionJob(m));
+  };
+  await expect(execute()).rejects.toBeInstanceOf(JobWaiting);
+  const [first] = await db.select().from(jobs).where(eq(jobs.id, j));
+  expect(first.checkpoint["version-request"]).toContain("LATEST OWNER CHANGE\nsticks sticking out");
+  expect(first.checkpoint["version-request"]).toContain("overrides conflicting requirements");
+  await db.update(jobs).set({ status: "running" }).where(eq(jobs.id, j));
+  await expect(execute()).rejects.toBeInstanceOf(JobWaiting);
+  const [resumed] = await db.select().from(jobs).where(eq(jobs.id, j));
+  expect(resumed.checkpoint["version-request"]).toBe(first.checkpoint["version-request"]);
+}));
+
+integration("saved pipelines retain their pre-contract request behavior", () => fixture("review", async ({ m, j }) => {
+  const checkpoint = { pipeline: "model-quality:4", "visual-target": "models/original.png" };
+  await db.update(jobs).set({ checkpoint }).where(eq(jobs.id, j));
+  await expect(jobContext.run({ id: j, checkpoint }, () => executeAssetVersionJob(m))).rejects.toBeInstanceOf(JobWaiting);
+  const [saved] = await db.select().from(jobs).where(eq(jobs.id, j));
+  expect(saved.checkpoint["version-request"]).toBeUndefined();
+}));
+
 async function fixture(mode: "review" | "skip" | "auto", body: (ids: { p: string; b: string; m: string; j: string }) => Promise<void>) {
   const p = crypto.randomUUID(), b = crypto.randomUUID(), m = crypto.randomUUID(), j = crypto.randomUUID();
   await db.insert(projects).values({ id: p, name: "Target review fixture", description: "test", status: "ready", design: "Approved design", designVersion: 1 });

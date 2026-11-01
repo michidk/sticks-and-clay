@@ -4,6 +4,7 @@ import { materializeStartingPoint } from "./starting-point.server";
 import { runReviewedAsset } from "./reviewed-asset.server";
 import { prepareVisualTarget } from "./visual-target.server";
 import { referencedChange } from "./object-reference";
+import { versionRequest } from "./version-request";
 import { analyzeModel } from "../modules/model-analysis/index.server";
 import { and, eq } from "drizzle-orm";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -49,9 +50,14 @@ export async function executeAssetVersionJob(targetId: string) {
   const project = await one(
     await db.select().from(projects).where(eq(projects.id, model.projectId)),
   );
-  const request = model.objectReference && model.sourceRunId
+  const originalRequest = model.objectReference && model.sourceRunId
     ? referencedChange(model.prompt, model.sourceRunId, model.objectReference)
     : model.prompt;
+  if (!job.checkpoint.pipeline && !job.checkpoint["agent:builder:0"] && !job.checkpoint["version-request"])
+    await checkpoint("version-request", model.objectReference && model.sourceRunId
+      ? referencedChange(versionRequest(model), model.sourceRunId, model.objectReference)
+      : versionRequest(model));
+  const request = job.checkpoint["version-request"] || originalRequest;
   const attempt = job.checkpoint.workspace || job.id;
   const legacy =
     job.checkpoint.pipeline === "model-review:1" ||
