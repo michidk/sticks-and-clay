@@ -48,6 +48,8 @@ charge at every step that matters.
 Assets keep one identity from Ideas through Ready, In progress, Review, and
 Done. Each generation creates a version; accepting the result is your decision.
 Use the global board to review all projects, with project labels and filtering.
+Done assets hide after five days without a recorded update. Change the age limit
+in Runtime settings, or set it to 0 to show all Done assets.
 Assets can contain named parts and carry their own reference images. New
 versions freeze their design and references. See [the asset vocabulary and
 lifecycle](docs/asset-lifecycle.md).

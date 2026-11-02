@@ -138,3 +138,12 @@ request and preserves briefs, approved design snapshots, version names, source
 files, and generation history. Asset title changes appear in the asset's history.
 The board, collection cards, asset pages, and model pages display the current
 asset title; original version filenames remain available on the model page.
+
+### Done visibility on the board
+
+The global board, including its project filter, hides Done assets after five
+days without a recorded update. Runtime settings → Board → Hide Done assets
+after (days) changes this limit; 0 disables hiding. Age uses the latest asset
+history event, version creation, or acceptance timestamp, so editing or accepting
+an asset refreshes its visibility. The board counts only visible Done assets.
+This filter leaves project collections, exports, asset pages, and history intact.

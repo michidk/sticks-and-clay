@@ -74,6 +74,7 @@ export async function updateRuntimeSettings(
         ...current,
         textPreset: patch.textPreset ?? current.textPreset,
         imageProvider: patch.imageProvider ?? current.imageProvider,
+        boardDoneHideAfterDays: patch.boardDoneHideAfterDays ?? current.boardDoneHideAfterDays,
         timeouts: { ...current.timeouts, ...patch.timeouts },
         queue: { ...current.queue, ...patch.queue },
         agents: mergeOverrides(current.agents, patch.agents),

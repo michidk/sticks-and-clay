@@ -134,3 +134,19 @@ test("the image provider defaults to the gateway for saved files and is patchabl
   expect((await updateRuntimeSettings({ textPreset: "claude" }, path)).imageProvider).toBe("openai");
   await expect(updateRuntimeSettings({ imageProvider: "other" }, path)).rejects.toThrow();
 });
+
+test("Done board age defaults for existing files, persists and validates updates", async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), "studio-settings-"));
+  temporary.push(directory);
+  const path = resolve(directory, "settings.json");
+  const { boardDoneHideAfterDays: _omitted, ...saved } = runtimeSettingsDefaults();
+  await writeFile(path, JSON.stringify(saved));
+  expect((await loadRuntimeSettings(path)).boardDoneHideAfterDays).toBe(5);
+  expect((await updateRuntimeSettings({ boardDoneHideAfterDays: 12 }, path)).boardDoneHideAfterDays).toBe(12);
+  expect((await updateRuntimeSettings({ queue: { paused: true } }, path)).boardDoneHideAfterDays).toBe(12);
+  expect((await updateRuntimeSettings({ boardDoneHideAfterDays: 0 }, path)).boardDoneHideAfterDays).toBe(0);
+  expect((await loadRuntimeSettings(path)).boardDoneHideAfterDays).toBe(0);
+  for (const value of [-1, 1.5, 36501, "5"]) {
+    await expect(updateRuntimeSettings({ boardDoneHideAfterDays: value }, path)).rejects.toThrow();
+  }
+});

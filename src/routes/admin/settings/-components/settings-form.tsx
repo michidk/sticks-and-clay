@@ -52,6 +52,7 @@ export function SettingsForm() {
         json({
           textPreset: settings.textPreset,
           imageProvider: settings.imageProvider,
+          boardDoneHideAfterDays: settings.boardDoneHideAfterDays,
           timeouts: settings.timeouts,
           generationDefaults: settings.generationDefaults,
         }, "PATCH"),
@@ -119,7 +120,7 @@ export function SettingsForm() {
             {timeoutFields.map(([key, label, help]) => (
               <Label key={key}>
                 {label}<span>{help} · minutes</span>
-                <Input type="number" min="1" max="1440" step="1" required
+                <Input type="number" min="1" max="1440" step="any" required
                   value={settings.timeouts[key] / 60_000}
                   onChange={(event) => setTimeout(key, Number(event.target.value) * 60_000)} />
               </Label>
@@ -163,6 +164,21 @@ export function SettingsForm() {
                   <SelectItem value="1536x1024">Landscape</SelectItem>
                 </SelectContent>
               </Select>
+            </Label>
+          </div>
+        </Card>
+        <Card className="panel settings-section">
+          <div className="settings-section-heading">
+            <h2>Board</h2>
+            <p>Hide older accepted assets from the Done column. They remain available in their project collections and history.</p>
+          </div>
+          <div className="settings-grid">
+            <Label>
+              <span>Hide Done assets after (days)</span>
+              <Input type="number" min={0} max={36500} step={1} required
+                value={settings.boardDoneHideAfterDays}
+                onChange={(event) => setSettings({ ...settings, boardDoneHideAfterDays: Number(event.target.value) })} />
+              <small>Days since the asset's last recorded update. Set to 0 to keep all Done assets visible.</small>
             </Label>
           </div>
         </Card>
