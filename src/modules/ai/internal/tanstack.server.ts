@@ -17,7 +17,15 @@ import { imagePart } from "../../../lib/storage.server";
 import { textRoleProfile } from "../config.server";
 import { textGenerationFailure } from "./timeouts";
 import { assertJobActive, JobCancelled } from "../../../lib/queue.server";
+import { isTransientTextFailure, retryTransient } from "./transient-retry";
 export async function draftBrief(args: RunInput) {
+  return retryTransient(async () => {
+    await assertJobActive();
+    return draftBriefAttempt(args);
+  }, isTransientTextFailure);
+}
+
+async function draftBriefAttempt(args: RunInput) {
   const checkpointKey = args.stepId
     ? `step:${args.stepId}`
     : "direct:" + args.role;

@@ -1,5 +1,6 @@
 import { UnsupportedResolution } from "../../../lib/resolution";
 import { z } from "zod";
+import { isDnsFailure, retryTransient } from "./transient-retry";
 
 export type ImageUsage = {
   input_tokens: number;
@@ -20,7 +21,7 @@ export type ImageApiResult = {
 };
 export type ImageSize = `${number}x${number}`;
 
-/** One request, no automatic retries: failed/ambiguous requests stay in audit history. */
+/** Retry only DNS failures before delivery; never replay an ambiguous image request. */
 export async function requestImage(args: {
   provider: { key: string; url: string };
   model: string;
@@ -53,7 +54,7 @@ export async function requestImage(args: {
     headers["Content-Type"] = "application/json";
     body = JSON.stringify({ ...fields, n: 1 });
   }
-  const response = await fetch(
+  const response = await retryTransient(() => fetch(
     `${args.provider.url.replace(/\/$/, "")}/images/${args.references.length ? "edits" : "generations"}`,
     {
       method: "POST",
@@ -62,7 +63,7 @@ export async function requestImage(args: {
       signal: args.signal,
       redirect: "error",
     },
-  );
+  ), isDnsFailure, { signal: args.signal });
   if (!response.ok) {
     if (response.status === 400 || response.status === 422) {
       const parsed = z.object({ error: z.object({ param: z.string().nullable().optional(), code: z.string().nullable().optional() }) })

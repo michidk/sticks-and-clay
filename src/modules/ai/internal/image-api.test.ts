@@ -120,3 +120,17 @@ test("unsupported size reports the exact resolution without a fallback request",
     expect(calls).toBe(1);
   } finally { server.stop(true); }
 });
+
+test("an image provider server failure is not replayed or exposed", async () => {
+  let calls = 0;
+  const server = Bun.serve({ port: 0, fetch: () => {
+    calls++;
+    return new Response("private provider detail", { status: 500 });
+  } });
+  try {
+    await expect(requestImage({ ...base, provider: {
+      key: "test-only", url: `http://127.0.0.1:${server.port}/v1`,
+    } })).rejects.toThrow("Image API request failed (HTTP 500). Check provider availability and model support.");
+    expect(calls).toBe(1);
+  } finally { server.stop(true); }
+});
