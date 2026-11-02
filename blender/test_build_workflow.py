@@ -72,6 +72,36 @@ finish_asset(material_mode="textured")
             finally:
                 server.DATA = previous
 
+    async def test_authored_origin_survives_export_and_preview(self):
+        previous = server.DATA
+        with tempfile.TemporaryDirectory() as directory:
+            server.DATA = pathlib.Path(directory)
+            cap = '12345678-1234-1234-1234-123456789abc'
+            (server.DATA / 'capabilities').mkdir()
+            (server.DATA / 'capabilities' / f'{cap}.json').write_text(json.dumps({'directory': 'model', 'role': 'builder'}))
+            try:
+                code = '''import assetkit as kit
+group=kit.root("Projectile")
+mat=kit.color_material("Snow",(.9,.95,1,1))
+kit.rounded_box("Snowball",(.4,.4,.4),(0,0,0),material=mat,owner=group)
+finish_asset(material_mode="poly",origin="authored")
+'''
+                result = await server.execute_blender_code(cap, code)
+                self.assertTrue(result['ok'], result['log'])
+                self.assertEqual(result['metrics']['origin'], 'authored')
+                for node in result['metrics']['readiness']['nodes']:
+                    self.assertEqual(node['pivot'], [0, 0, 0])
+                payload = (server.DATA / 'model/asset.glb').read_bytes()
+                document = json.loads(payload[20:20 + int.from_bytes(payload[12:16], 'little')])
+                for node in document['nodes']:
+                    self.assertEqual(node.get('translation', [0, 0, 0]), [0, 0, 0])
+                preview = await server.asset_workspace({'capability': cap, 'operation': 'run', 'mode': 'quick'})
+                self.assertTrue(preview['ok'], preview['log'])
+                self.assertEqual(payload, (server.DATA / 'model/asset.glb').read_bytes())
+                self.assertTrue((server.DATA / 'model/preview/front.png').is_file())
+            finally:
+                server.DATA = previous
+
     async def test_draft_final_failure_and_rebuild(self):
         previous=server.DATA
         with tempfile.TemporaryDirectory() as directory:

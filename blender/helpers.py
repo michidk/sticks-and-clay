@@ -2,7 +2,9 @@ import bpy,json,os,struct
 from mathutils import Vector
 bpy.ops.object.select_all(action='SELECT')
 bpy.ops.object.delete(use_global=False)
-def finish_asset(material_mode="textured", sprites=None, lod_ratios=None, **_legacy_options):
+def finish_asset(material_mode="textured", sprites=None, lod_ratios=None, origin="ground-center", **_legacy_options):
+    if origin not in ("ground-center", "authored"):
+        raise ValueError("origin must be ground-center or authored")
     target=globals().get('PARAMS',{}).get('spriteTarget')
     if target:
         from assetkit.sprites import sample_frames
@@ -28,7 +30,8 @@ def finish_asset(material_mode="textured", sprites=None, lod_ratios=None, **_leg
     parts=[o for o in scene.objects if o.type in ('MESH','EMPTY','ARMATURE') and not o.get('studio_environment')]
     for obj in parts:
         if obj != root and obj.parent is None and not obj.get('asset_socket'):kit.parent(obj,root)
-    root.location-=offset
+    if origin == "ground-center":
+        root.location-=offset
     bpy.context.view_layer.update()
     bpy.ops.object.select_all(action='DESELECT')
     for obj in parts:obj.select_set(True)
@@ -66,9 +69,11 @@ def finish_asset(material_mode="textured", sprites=None, lod_ratios=None, **_leg
         materials.append({'name':mat.name,'images':[n.image.name for n in nodes if n.type=='TEX_IMAGE' and n.image],'normalMap':any(n.type=='NORMAL_MAP' for n in nodes)})
     from assetkit.readiness import inspect_asset
     readiness=inspect_asset(parts,dimensions)
-    metrics={'triangles':tris,'dimensions':dimensions,'origin':'ground-center','materials':materials,'bytes':len(payload),'blenderVersion':bpy.app.version_string,'helperVersion':kit.VERSION,'readiness':readiness,'preview':preview}
+    metrics={'triangles':tris,'dimensions':dimensions,'origin':origin,'materials':materials,'bytes':len(payload),'blenderVersion':bpy.app.version_string,'helperVersion':kit.VERSION,'readiness':readiness,'preview':preview}
     open(os.path.join(OUTPUT_DIR,'metrics.json'),'w').write(json.dumps(metrics))
-    span=max(dimensions);center=Vector((0,0,dimensions[2]/2))
+    span=max(dimensions);center=(lo+hi)/2
+    if origin == "ground-center":center-=offset
+    floor_z=0 if origin == "ground-center" else lo.z
     scene.render.engine='CYCLES';scene.cycles.samples=4 if preview else 16
     scene.render.resolution_x=384 if preview else 768;scene.render.resolution_y=scene.render.resolution_x;scene.render.resolution_percentage=100
     scene.render.image_settings.file_format='PNG'
@@ -76,12 +81,12 @@ def finish_asset(material_mode="textured", sprites=None, lod_ratios=None, **_leg
     background=next(n for n in scene.world.node_tree.nodes if n.type=='BACKGROUND')
     background.inputs['Color'].default_value=(0.25,0.25,0.25,1)
     background.inputs['Strength'].default_value=0.35
-    bpy.ops.mesh.primitive_plane_add(size=span*200,location=(0,0,0))
+    bpy.ops.mesh.primitive_plane_add(size=span*200,location=(center.x,center.y,floor_z))
     floor=bpy.context.object;floor['studio_environment']=True
     mat=bpy.data.materials.new('Studio floor');mat.use_nodes=True
     bsdf=next(n for n in mat.node_tree.nodes if n.type=='BSDF_PRINCIPLED');bsdf.inputs['Base Color'].default_value=(0.13,0.15,0.18,1);bsdf.inputs['Roughness'].default_value=0.85;floor.data.materials.append(mat)
     for loc,energy,size in [((span*2,-span*3,span*4),1100,span*2),((-span*3,-span,span*2),700,span*3),((0,span*3,span*3),900,span*2)]:
-        bpy.ops.object.light_add(type='AREA',location=loc);light=bpy.context.object;light['studio_environment']=True;light.data.energy=energy*span**2/4;light.data.shape='DISK';light.data.size=size;light.rotation_euler=(center-light.location).to_track_quat('-Z','Y').to_euler()
+        bpy.ops.object.light_add(type='AREA',location=center+Vector(loc) if origin == 'authored' else loc);light=bpy.context.object;light['studio_environment']=True;light.data.energy=energy*span**2/4;light.data.shape='DISK';light.data.size=size;light.rotation_euler=(center-light.location).to_track_quat('-Z','Y').to_euler()
     bpy.ops.object.camera_add();camera=bpy.context.object;camera['studio_environment']=True;scene.camera=camera;camera.data.type='ORTHO';camera.data.ortho_scale=span*1.65
     for name,position,zoom in [('front',(1.3,-1.8,1.1),1),('rear',(-1.4,1.8,1),1),('detail',(0.4,-1.7,0.6),0.8)]:
         camera.location=center+Vector(position)*span;camera.rotation_euler=(center-camera.location).to_track_quat('-Z','Y').to_euler();camera.data.ortho_scale=span*1.65*zoom;scene.render.filepath=os.path.join(OUTPUT_DIR,name+'.png');bpy.ops.render.render(write_still=True)

@@ -57,6 +57,8 @@ Measured style comparisons are advisory: GLB material factors, base-color factor
 
 ## Reproducible versions
 
+Model exports default to ground-center placement. Builders use `finish_asset(origin="authored")` for centered projectiles, grip pivots and other required authored origins. This preserves asset transforms while placing the preview floor and cameras around its bounds. Metrics record the selected origin policy. Color-only image materials use `material_mode="textured"`; normal maps are optional, and other slots may remain flat-colored. `poly` mode remains reserved for flat and vertex colors.
+
 New source bundles contain `asset.py`, `render.py`, `params.json`, `helpers.py`, `assetkit/`, `rebuild.py`, script revisions, `build-config.json`, `build-request.json`, source `.blend`, original `source.glb`, cleaned delivery `asset.glb`, textures, copied authorized inputs, metrics, optional sprites/LODs and `build-manifest.json`. The manifest records file hashes, saved run input, instructions and Blender/helper versions. The source and cleaned delivery are distinct because platform cleanup can alter delivery geometry.
 
 Extract the ZIP to a new directory and run:
