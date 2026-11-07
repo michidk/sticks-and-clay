@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/db/client";
 import { assetEntries, assetVersions, batches, projects } from "@/db/schema";
@@ -47,7 +48,11 @@ integration("global board keeps asset identity, project labels and project filte
 
 integration("Done board age uses the latest asset update and hides whole entries only", async () => {
   const { assetHistory } = await import("@/db/schema");
-  const { loadRuntimeSettings, saveRuntimeSettings } = await import("./runtime-settings.server");
+  const { loadRuntimeSettings, saveRuntimeSettings, RUNTIME_SETTINGS_PATH } = await import("./runtime-settings.server");
+  const previousSettings = await readFile(RUNTIME_SETTINGS_PATH).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  });
   const settings = await loadRuntimeSettings();
   const projectId = crypto.randomUUID();
   const batchId = crypto.randomUUID();
@@ -91,7 +96,9 @@ integration("Done board age uses the latest asset update and hides whole entries
     expect(boardColumns(entry.ideas, entry.models, entry.batches).done).toHaveLength(2);
     expect((await getGlobalBoard()).projects.find(({ project }) => project.id === projectId)?.models).toHaveLength(5);
   } finally {
-    await saveRuntimeSettings(settings);
+    // Preserve absence too: writing defaults would override later environment settings.
+    if (previousSettings === undefined) await rm(RUNTIME_SETTINGS_PATH, { force: true });
+    else await writeFile(RUNTIME_SETTINGS_PATH, previousSettings);
     await db.delete(assetVersions).where(eq(assetVersions.projectId, projectId));
     await db.delete(assetEntries).where(eq(assetEntries.projectId, projectId));
     await db.delete(batches).where(eq(batches.projectId, projectId));
