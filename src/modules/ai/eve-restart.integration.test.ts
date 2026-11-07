@@ -17,8 +17,15 @@ for (const failure of ["session.failed", "turn.failed", "snapshot-rejected", "ex
       : { summary: "Photographed", limitations: [] };
     const previousTimeout = process.env.AGENT_TIMEOUT_MS;
     const timeout = AbortSignal.timeout;
+    let judgeDeadlines = 0;
     const timeoutSpy = role === "judge" ? spyOn(AbortSignal, "timeout").mockImplementation(
-      ms => timeout(ms === 60_000 ? 250 : ms),
+      // Only the interrupted legacy turn needs a short deadline. Give its
+      // replacement enough time for HTTP and database work on a busy CI runner.
+      ms => {
+        if (ms !== 60_000) return timeout(ms);
+        const interrupted = failure === "expired-legacy-judge" && judgeDeadlines++ === 0;
+        return timeout(interrupted ? 250 : 2_000);
+      },
     ) : undefined;
     if (role === "judge") process.env.AGENT_TIMEOUT_MS = "60000";
     const event = (type: string, data: unknown, id: string) => ({
