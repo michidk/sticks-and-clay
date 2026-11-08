@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:17.11-alpine
+        image: postgres:17.11-alpine@sha256:3540c0362c809df084ffac0ae69fe794515f9de92692f02178bcdce0ef0302ac
         env:
           POSTGRES_DB: studio_test
           POSTGRES_USER: studio
@@ -41,7 +41,7 @@ jobs:
           bun-version: 1.4.2
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: "3.11"
+          python-version: "3.15"
       - run: bun install --frozen-lockfile
       - run: |
           python -m venv .venv
