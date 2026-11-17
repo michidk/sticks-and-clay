@@ -65,16 +65,32 @@ export async function requestImage(args: {
     },
   ), isDnsFailure, { signal: args.signal });
   if (!response.ok) {
+    let reason: string | undefined;
     if (response.status === 400 || response.status === 422) {
-      const parsed = z.object({ error: z.object({ param: z.string().nullable().optional(), code: z.string().nullable().optional() }) })
+      const parsed = z.object({ error: z.object({ param: z.string().nullable().optional(), code: z.string().nullable().optional(), type: z.string().nullable().optional() }) })
         .safeParse(await response.json().catch(() => null));
       if (parsed.success && (parsed.data.error.param === "size" || ["invalid_size", "unsupported_size"].includes(parsed.data.error.code ?? "")))
         throw new UnsupportedResolution(`Output dimension error: the image provider rejected ${fields.size}. Choose a model that supports this size or explicitly change the resolution. No fallback size was used.`);
+      reason = providerReason(parsed.success ? parsed.data.error : undefined);
     }
-    // Provider response bodies can echo credentials or prompt text. Keep them private.
+    // Provider response bodies can echo credentials or prompt text. Keep them private; only a
+    // short identifier such as `moderation_blocked` is reported and logged.
+    console.warn(`Image API request failed: HTTP ${response.status}${reason ? ` (${reason})` : ""}`);
+    if (reason && SAFETY_REASONS.has(reason))
+      throw new Error(
+        `The image provider's safety system declined this request (${reason}). Resume to try again, or reword the brief or requested change.`,
+      );
     throw new Error(
-      `Image API request failed (HTTP ${response.status}). ${response.status === 401 || response.status === 403 ? "Check provider credentials and image access." : "Check provider availability and model support."}`,
+      `Image API request failed (HTTP ${response.status}${reason ? `, ${reason}` : ""}). ${response.status === 401 || response.status === 403 ? "Check provider credentials and image access." : "Check provider availability and model support."}`,
     );
   }
   return (await response.json()) as ImageApiResult;
+}
+
+const SAFETY_REASONS = new Set(["moderation_blocked", "content_policy_violation", "safety_violation"]);
+
+/** The provider's error code or type, only when it is a plain identifier rather than free text. */
+function providerReason(error?: { code?: string | null; type?: string | null }) {
+  const reason = error?.code || error?.type;
+  return reason && /^[a-z0-9_.-]{1,64}$/i.test(reason) ? reason : undefined;
 }

@@ -134,3 +134,24 @@ test("an image provider server failure is not replayed or exposed", async () => 
     expect(calls).toBe(1);
   } finally { server.stop(true); }
 });
+
+test("a provider rejection names its error code without exposing the message", async () => {
+  const responses = [
+    { error: { code: "moderation_blocked", type: "image_generation_user_error", message: "private prompt echo" } },
+    { error: { code: null, type: "invalid_request_error", message: "private prompt echo" } },
+    { error: { code: "free text with spaces", message: "private prompt echo" } },
+  ];
+  const server = Bun.serve({ port: 0, fetch: () => Response.json(responses.shift(), { status: 400 }) });
+  try {
+    const provider = { key: "test-only", url: `http://127.0.0.1:${server.port}/v1` };
+    const failure = (promise: Promise<unknown>) => promise.then(() => "", (error: Error) => error.message);
+    const safety = await failure(requestImage({ ...base, provider }));
+    expect(safety).toContain("safety system declined this request (moderation_blocked)");
+    expect(await failure(requestImage({ ...base, provider }))).toBe(
+      "Image API request failed (HTTP 400, invalid_request_error). Check provider availability and model support.",
+    );
+    const opaque = await failure(requestImage({ ...base, provider }));
+    expect(opaque).toBe("Image API request failed (HTTP 400). Check provider availability and model support.");
+    for (const message of [safety, opaque]) expect(message).not.toContain("private");
+  } finally { server.stop(true); }
+});
