@@ -125,14 +125,24 @@ Keep `.env`, credentials, generated assets, evaluation output, build output, Pyt
 
 ### Dependency audit exception
 
-`bun run audit` ignores only `GHSA-hp3w-g68c-fv3c`, the unbounded floating-point
+`bun run audit` ignores two advisories without a patched release. The first is
+`GHSA-hp3w-g68c-fv3c`, the unbounded floating-point
 precision advisory in `sprintf-js`, which has no patched release. The pinned
 `just-bash` 3.6.0 dependency validates precision before calling that formatter.
 `src/lib/sandbox.test.ts` sends the advisory's oversized precision inputs through
 the real shell and checks that it rejects them while the next command still
 works. The app also disables Eve's default shell tools. Remove this exception
-when the dependency publishes a fix or drops the affected package. Other
-advisories still fail CI.
+when the dependency publishes a fix or drops the affected package.
+
+The second is `GHSA-fc5q-39xc-vjpf`, a ReDoS through repeated extglobs in
+`picomatch` 4.0.7 and earlier. Only build tooling uses it (Vite through
+`tinyglobby`, and TanStack Start and the router generator), matching glob
+patterns from the repository's own configuration; the production server bundle
+does not contain it, and no request reaches it. Remove this exception once a
+patched `picomatch` is published. Other advisories still fail CI.
+
+An override lifts `fast-xml-parser`, used by `just-bash`, to the 5.12 line, which
+fixes `GHSA-474x-hrwr-fgx4` within the range `just-bash` declares.
 
 `guarded-fetch` pins an affected Undici release; the dependency override replaces
 only `undici@7.29.0` with patched 7.30.0, leaving Eve's separate Undici 8 dependency
