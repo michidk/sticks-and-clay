@@ -2,5 +2,15 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "github>michidk/workflows//templates/presets/renovate"
+  ],
+  "packageRules": [
+    {
+      // CI's Python matches the runtime image (Debian bookworm, Python 3.11), and
+      // CadQuery's OCP wheels lag new Python releases. Change it with the image.
+      "description": "Keep the CI Python version in step with the runtime image",
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["python"],
+      "enabled": false
+    }
   ]
 }
