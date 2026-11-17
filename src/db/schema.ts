@@ -129,7 +129,11 @@ export const assetVersions = pgTable("asset_versions", {
   parentModelId: text("parent_model_id"),
   sourceRunId: text("source_run_id"),
   changePrompt: text("change_prompt"),
+  /** Legacy single-part reference; new versions record `objectReferences`. */
   objectReference: jsonb("object_reference").$type<ObjectReference>(),
+  objectReferences: jsonb("object_references").$type<ObjectReference[]>(),
+  /** Images the owner attached to the change request, stored as reference keys. */
+  changeImages: jsonb("change_images").$type<string[]>(),
   branchKind: text("branch_kind").$type<"iterate" | "fork">(),
   status: text().default("queued").notNull(),
   phase: text().default("Queued").notNull(),

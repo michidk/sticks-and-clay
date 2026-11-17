@@ -168,7 +168,7 @@ Material tests check every recipe, seed determinism, physical normal derivatives
 
 ### Referencing a model part
 
-Select a mesh in the 3D view or scene inspector before writing a change request. Its name and hierarchy appear above the composer; remove the reference with its close button, click empty space in the viewer, or press Escape while the viewer is focused. Iterate and Fork variant send that reference with the selected saved version. Changing versions clears the selection. The submitted message keeps a link to its source version, and the builder receives the object name, parent path and archived GLB identifier.
+Select meshes in the 3D view or scene inspector before writing a change request. Each selected part appears as a chip in the composer (up to eight), with its hierarchy on hover; remove one with its close button. Clicking empty space or pressing Escape clears the viewer highlight but keeps the chips. Iterate and Fork variant send the parts with the selected saved version. Changing versions clears them. The submitted message keeps a link to its source version per part, and the builder receives each object name, parent path and archived GLB identifier.
 
 New modeling prompts require stable descriptive names and meaningful parent hierarchies so parts remain identifiable across passes. Existing assets retain their original naming; ambiguous references must be reported by the builder rather than silently matched to another part.
 

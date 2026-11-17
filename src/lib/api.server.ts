@@ -60,7 +60,9 @@ async function draftBrief<
   const { result, runId } = await runRole(args);
   return { ...result, runId };
 }
-import { readStoredFile } from "./storage.server";
+import { getStorage, readStoredFile, upload } from "./storage.server";
+import { validateImageFile } from "./image-file";
+import { MAX_CHANGE_IMAGES } from "./object-reference";
 import { fileMimeType } from "./storage/path";
 import { prepareReferences, retainedNotes } from "./reference-images.server";
 import { readWorkerHeartbeat } from "./worker-control.server";
@@ -947,8 +949,21 @@ export async function api(request: Request) {
       request.method === "POST"
     ) {
       const id = uuid.parse(path[1]);
-      const input = branchInput.parse(await request.json());
-      if (input.variation && (input.kind !== "fork" || input.objectReference))
+      // The composer sends multipart so attached images travel with the change; agents send JSON.
+      const form = request.headers.get("content-type")?.includes("multipart/form-data")
+        ? await request.formData()
+        : undefined;
+      const input = branchInput.parse(form ? JSON.parse(String(form.get("input") ?? "{}")) : await request.json());
+      const attachments = form?.getAll("images").filter((value): value is File => value instanceof File && value.size > 0) ?? [];
+      if (attachments.length > MAX_CHANGE_IMAGES)
+        throw new Error(`Attach at most ${MAX_CHANGE_IMAGES} images to a change`);
+      await Promise.all(attachments.map(validateImageFile));
+      const objectReferences = input.objectReferences?.length
+        ? input.objectReferences
+        : input.objectReference ? [input.objectReference] : [];
+      if (new Set(objectReferences.map((item) => item.nodeId)).size !== objectReferences.length)
+        throw new Error("Each selected part can be referenced once");
+      if (input.variation && (input.kind !== "fork" || objectReferences.length || attachments.length))
         throw new Error("Variations create a new asset from the whole model");
       const [parent] = await db.select().from(assetVersions).where(eq(assetVersions.id, id));
       if (!parent) return reply({ error: "Model not found" }, 404);
@@ -993,10 +1008,10 @@ export async function api(request: Request) {
         ? input.name || (input.variation ? `${parent.name} variation` : undefined)
         : parent.name;
       if (!name) throw new Error("Name the fork");
-      if (input.objectReference) {
+      if (objectReferences.length) {
         const saved = z.object({ artifacts: z.object({ glb: z.string() }) }).safeParse(source.result);
         if (source.role !== "builder" || !saved.success ||
-            input.objectReference.glb !== saved.data.artifacts.glb) {
+            objectReferences.some((item) => item.glb !== saved.data.artifacts.glb)) {
           throw new Error("The selected object belongs to a different model version. Select it again.");
         }
       }
@@ -1019,56 +1034,65 @@ export async function api(request: Request) {
         : asset.references;
       const workshop = assetSnapshot(project, variationImage ? { ...asset, references: variationReferences } : asset, input.useCurrentStyle ? undefined : parentBatch.workshop ?? undefined);
       assertNotArchived(project);
-      await db.transaction(async (tx) => {
-        await tx.insert(batches).values({
-          id: batchId,
-          visualTargetVersion: 1,
-          visualTargetMode: input.visualTargetMode ?? asset.input.visualTargetMode ?? "review",
-          projectId: parent.projectId,
-          prompt: change,
-          count: 1,
-          judgeIterations: input.judgeIterations,
-          design: parentBatch.design,
-          designVersion: parentBatch.designVersion,
-          imageSize: parentBatch.imageSize,
-          spriteTarget: parentBatch.spriteTarget,
-          workshop,
-          status: "building",
+      const changeImages: string[] = [];
+      try {
+        for (const file of attachments) changeImages.push(await upload(file));
+        await db.transaction(async (tx) => {
+          await tx.insert(batches).values({
+            id: batchId,
+            visualTargetVersion: 1,
+            visualTargetMode: input.visualTargetMode ?? asset.input.visualTargetMode ?? "review",
+            projectId: parent.projectId,
+            prompt: change,
+            count: 1,
+            judgeIterations: input.judgeIterations,
+            design: parentBatch.design,
+            designVersion: parentBatch.designVersion,
+            imageSize: parentBatch.imageSize,
+            spriteTarget: parentBatch.spriteTarget,
+            workshop,
+            status: "building",
+          });
+          const assetId = input.kind === "iterate" ? parent.assetId : crypto.randomUUID();
+          if (input.kind === "fork") await tx.insert(assetEntries).values({
+            id: assetId, projectId: parent.projectId, title: name, batchId, inIdea: false,
+            input: { ...asset.input, prompt: fullPrompt, count: 1, judgeIterations: input.judgeIterations, visualTargetMode: input.visualTargetMode ?? asset.input.visualTargetMode ?? "review" },
+            references: variationReferences, referenceNotes: asset.referenceNotes,
+          });
+          await tx.insert(assetVersions).values({
+            id: modelId,
+            assetId,
+            projectId: parent.projectId,
+            batchId,
+            name,
+            prompt: fullPrompt,
+            parentModelId: parent.id,
+            sourceRunId: source.id,
+            changePrompt: change,
+            objectReferences: objectReferences.length ? objectReferences : undefined,
+            changeImages: changeImages.length ? changeImages : undefined,
+            branchKind: input.kind,
+          });
+          await tx.insert(jobs).values({
+            id: crypto.randomUUID(),
+            kind: "model",
+            targetId: modelId,
+            checkpoint: {
+              "production-plan-needed": "yes",
+              "branch-references": JSON.stringify([
+                ...changeImages,
+                ...(isFlatRole(source.role)
+                  ? [(source.result as any).key]
+                  : []),
+                ...(workshop.references || []),
+              ]),
+            },
+          });
         });
-        const assetId = input.kind === "iterate" ? parent.assetId : crypto.randomUUID();
-        if (input.kind === "fork") await tx.insert(assetEntries).values({
-          id: assetId, projectId: parent.projectId, title: name, batchId, inIdea: false,
-          input: { ...asset.input, prompt: fullPrompt, count: 1, judgeIterations: input.judgeIterations, visualTargetMode: input.visualTargetMode ?? asset.input.visualTargetMode ?? "review" },
-          references: variationReferences, referenceNotes: asset.referenceNotes,
-        });
-        await tx.insert(assetVersions).values({
-          id: modelId,
-          assetId,
-          projectId: parent.projectId,
-          batchId,
-          name,
-          prompt: fullPrompt,
-          parentModelId: parent.id,
-          sourceRunId: source.id,
-          changePrompt: change,
-          objectReference: input.objectReference,
-          branchKind: input.kind,
-        });
-        await tx.insert(jobs).values({
-          id: crypto.randomUUID(),
-          kind: "model",
-          targetId: modelId,
-          checkpoint: {
-            "production-plan-needed": "yes",
-            "branch-references": JSON.stringify([
-              ...(isFlatRole(source.role)
-                ? [(source.result as any).key]
-                : []),
-              ...(workshop.references || []),
-            ]),
-          },
-        });
-      });
+      } catch (error) {
+        await Promise.allSettled(changeImages.map((key) => getStorage().delete(key)));
+        throw error;
+      }
       return reply({ id: modelId }, 201);
     }
     if (path[0] === "models" && path[1] && path[2] === "accept" && request.method === "POST") {

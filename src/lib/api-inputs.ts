@@ -2,7 +2,7 @@ import { z } from "zod";
 import { effortSchema, imageSizeSchema, resolutionSchema } from "./contracts";
 import { materialSchema } from "./materials";
 import { spriteOptionsSchema } from "./sprites";
-import { objectReferenceSchema } from "./object-reference";
+import { MAX_OBJECT_REFERENCES, objectReferenceSchema } from "./object-reference";
 import { startingPointSchema } from "./starting-point";
 import { assetTemplates } from "./asset-templates";
 
@@ -49,6 +49,7 @@ export const branchInput = z.object({
   variation: z.boolean().default(false),
   useCurrentStyle: z.boolean().default(false),
   objectReference: objectReferenceSchema.optional(),
+  objectReferences: z.array(objectReferenceSchema).max(MAX_OBJECT_REFERENCES).optional(),
   sourceRunId: uuid,
   prompt: z.string().trim().min(3).max(12000),
   variationContext: z.string().trim().max(12000).default(""),

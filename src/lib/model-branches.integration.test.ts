@@ -1,4 +1,4 @@
-import { referencedChange } from "./object-reference";
+import { referencedChange, versionObjectReferences } from "./object-reference";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { db } from "../db/client";
@@ -146,7 +146,7 @@ integration(
       expect(referenced.status).toBe(201);
       const referencedId = (await referenced.json()).id;
       const [referencedModel] = await db.select().from(assetVersions).where(eq(assetVersions.id, referencedId));
-      expect(referencedModel.objectReference).toEqual(objectReference);
+      expect(referencedModel.objectReferences).toEqual([objectReference]);
       expect(referencedModel.changePrompt).toBe("Widen this part");
       expect(referencedModel.prompt).toContain("Widen this part");
       expect(referencedModel.prompt).not.toContain("Selected object from saved version");
@@ -160,13 +160,34 @@ integration(
       expect((await overLimit.json()).error).toContain("12,000-character limit");
       expect((await db.select({ id: assetVersions.id }).from(assetVersions))).toHaveLength(beforeOverLimit.length);
       const builderInput = await roleInput("builder", {
-        version: 2, design: "# Snapshotted design", name: "Marker", request: referencedChange(referencedModel.prompt, runId, referencedModel.objectReference!),
+        version: 2, design: "# Snapshotted design", name: "Marker", request: referencedChange(referencedModel.prompt, runId, versionObjectReferences(referencedModel)),
         capability: "poly", directory: "/tmp/fixture", previous: "models/source.blend", feedback: "null", stage: "geometry", productionPlan: "None", target: "None",
       });
       expect(builderInput).toContain(`Selected object from saved version ${runId}`);
       expect(builderInput).toContain('"path": [');
       const reloaded = await (await api(new Request(`http://localhost/api/projects/${projectId}`))).json();
-      expect(reloaded.assetVersions.find((item: { id: string }) => item.id === referencedId).objectReference).toEqual(objectReference);
+      expect(reloaded.assetVersions.find((item: { id: string }) => item.id === referencedId).objectReferences).toEqual([objectReference]);
+      // The composer sends multipart with several parts and attached images; images lead the references.
+      const handle = { ...objectReference, nodeId: "0/0/2", name: "handle", path: ["Scene", "marker", "handle"] };
+      const png = new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0])], "sketch.png", { type: "image/png" });
+      const attachedForm = (images: File[], references = [objectReference, handle]) => {
+        const form = new FormData();
+        form.set("input", JSON.stringify({ kind: "iterate", sourceRunId: runId, prompt: "Match the sketch", judgeIterations: 0, objectReferences: references }));
+        for (const image of images) form.append("images", image);
+        return api(new Request(`http://localhost/api/models/${modelId}/branch`, { method: "POST", body: form }));
+      };
+      expect((await attachedForm([png], [objectReference, objectReference])).status).toBe(400);
+      expect((await attachedForm([png, png, png, png, png])).status).toBe(400);
+      expect((await attachedForm([new File(["not an image"], "notes.png", { type: "image/png" })])).status).toBe(400);
+      const attached = await attachedForm([png]);
+      expect(attached.status).toBe(201);
+      const attachedId = (await attached.json()).id as string;
+      const [attachedModel] = await db.select().from(assetVersions).where(eq(assetVersions.id, attachedId));
+      const [attachedJob] = await db.select().from(jobs).where(eq(jobs.targetId, attachedId));
+      expect(attachedModel.objectReferences).toEqual([objectReference, handle]);
+      expect(attachedModel.changeImages).toHaveLength(1);
+      expect(attachedModel.changeImages![0]).toMatch(/^references\/.+\.png$/);
+      expect(JSON.parse(attachedJob.checkpoint["branch-references"])[0]).toBe(attachedModel.changeImages![0]);
       const wrongSource = await api(
         new Request(`http://localhost/api/models/${id}/branch`, {
           method: "POST",
