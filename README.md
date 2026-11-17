@@ -49,7 +49,7 @@ Assets keep one identity from Ideas through Ready, In progress, Review, and
 Done. Each generation creates a version; accepting the result is your decision.
 Use the global board to review all projects, with project labels and filtering.
 Done assets hide after five days without a recorded update. Change the age limit
-in Runtime settings, or set it to 0 to show all Done assets.
+in Admin → Settings, or set it to 0 to show all Done assets.
 Assets can contain named parts and carry their own reference images. New
 versions freeze their design and references. See [the asset vocabulary and
 lifecycle](docs/asset-lifecycle.md).
@@ -106,7 +106,7 @@ flowchart LR
    requests fixes until the asset passes or review rounds are spent. Major or
    critical findings block a pass.
 6. **Review.** Accept finished assets, open Iterate to view the asset beside its
-   conversation and add a change request or new mockups,
+   conversation and add a change request with selected parts or attached images,
    or fork a variant. From a saved model, create a variation that copies its
    prompt and render as a reference image, with optional context. The stage
    strip and the global board track everything

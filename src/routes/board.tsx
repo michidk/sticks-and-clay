@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { Board } from "@/components/board";
 import { CardsSkeleton } from "@/components/loading";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -38,17 +39,23 @@ function GlobalBoard() {
   }, []);
   const filtered = entries?.filter((entry) => !projectId || entry.project.id === projectId) ?? [];
   return <main>
-    <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-      <div><h1>Asset board</h1><p className="muted">Ideas, versions and reviews across your projects.</p></div>
-      <div className="grid gap-2 min-w-52"><Label htmlFor="board-project">Project</Label>
+    <section className="page-header">
+      <div><h1>Board</h1><p className="muted">Ideas, versions and reviews across your projects.</p></div>
+      <div className="page-actions board-filter"><Label htmlFor="board-project">Project</Label>
         <Select value={projectId ?? "all"} onValueChange={(value) => void navigate({ search: { projectId: value === "all" ? undefined : value } })}><SelectTrigger id="board-project"><SelectValue /></SelectTrigger><SelectContent>
           <SelectItem value="all">All projects</SelectItem>
           {entries?.map(({ project }) => <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>)}
         </SelectContent></Select>
       </div>
-    </div>
+    </section>
     {error && <Alert variant="destructive"><AlertDescription>{error} <Button variant="ghost" size="sm" onClick={() => refresh().catch((error) => setError(error instanceof Error ? error.message : "Could not load the board"))}>Retry</Button></AlertDescription></Alert>}
-    {!entries && !error ? <CardsSkeleton label="Loading asset board" count={5} covers={false} /> : <Board projects={filtered} showProjects onRefresh={refresh} />}
-    {entries && !entries.length && <p className="muted mt-4">Create a project to start adding assets.</p>}
+    {!entries && !error ? <CardsSkeleton label="Loading board" count={5} covers={false} /> : <Board projects={filtered} showProjects onRefresh={refresh} />}
+    {entries && !entries.length && <Empty className="empty">
+      <EmptyHeader>
+        <EmptyTitle>No projects yet</EmptyTitle>
+        <EmptyDescription>Create a project to start adding assets.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent><Button variant="outline" asChild><Link to="/projects">Go to projects</Link></Button></EmptyContent>
+    </Empty>}
   </main>;
 }

@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { request, json } from "@/lib/client";
 import { editPixelCanvas, pixelEditInput } from "@/lib/pixel-edit";
@@ -66,7 +66,7 @@ export function PixelEditor({ modelId, projectId, sourceRunId }: { modelId: stri
     <Button variant="outline" onClick={() => void load()}>Edit pixels</Button>
     <Dialog open={open} onOpenChange={next => { if (!busy) setOpen(next); }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>Edit pixels</DialogTitle><DialogDescription>Save as a new Version. The original stays intact. Use Iterate on the saved Version to continue with AI.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle>Edit pixels</DialogTitle><DialogDescription>Save as a new version. The original stays intact. Use Iterate on the saved version to continue with AI.</DialogDescription></DialogHeader>
         {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
         {busy && !grid && <p role="status">Loading pixels…</p>}
         {grid && <>
@@ -102,7 +102,7 @@ export function PixelEditor({ modelId, projectId, sourceRunId }: { modelId: stri
             }} />
           <div className="flex gap-2"><Button variant="outline" disabled={busy || !edits.length} onClick={() => setEdits(current => current.slice(0, -1))}>Undo</Button><Button variant="outline" disabled={busy || !edits.length} onClick={() => setEdits([])}>Reset</Button></div>
         </>}
-        <DialogFooter><Button variant="outline" disabled={busy} onClick={() => setOpen(false)}>Cancel</Button><Button disabled={busy || !edits.length} onClick={() => void save()}>{busy ? "Saving…" : "Save new Version"}</Button></DialogFooter>
+        <DialogFooter><DialogClose asChild><Button variant="outline" disabled={busy}>Cancel</Button></DialogClose><Button disabled={busy || !edits.length} onClick={() => void save()}>{busy ? "Saving…" : "Save new version"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   </>;

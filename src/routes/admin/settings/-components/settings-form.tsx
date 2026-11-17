@@ -76,7 +76,7 @@ export function SettingsForm() {
   return (
     <form className="settings-stack" onSubmit={submit}>
       {error && <Alert variant="destructive" className="error"><AlertDescription>{error}</AlertDescription></Alert>}
-      {saved && <Alert className="border-[#d3e0bd] bg-[#e5efcf] text-[#466630]"><AlertDescription className="text-inherit">Runtime settings saved.</AlertDescription></Alert>}
+      {saved && <Alert variant="success"><AlertDescription>Runtime settings saved.</AlertDescription></Alert>}
       {settings && <>
         <Card className="panel settings-section">
           <div className="settings-section-heading">

@@ -1,6 +1,7 @@
 import { Download } from "lucide-react";
 import { z } from "zod";
 import { AssetImage } from "@/components/asset-image";
+import { useLightbox } from "@/components/image-lightbox";
 import { SpritePlayer } from "@/components/sprite-player";
 import { Button } from "@/components/ui/button";
 import { fileUrl } from "@/lib/client";
@@ -21,6 +22,7 @@ const label = (id: string, key: string) =>
  * downloads (baseline-aligned sheet, its layout, Unity and Godot import descriptions, GIF and layers). Versions saved
  * before these files existed show nothing. */
 export function PixelExports({ exports, review }: { exports: unknown; review?: string }) {
+  const openLightbox = useLightbox();
   const parsed = files.safeParse(exports);
   if (!parsed.success && !review) return null;
   // Stored JSON does not keep key order, so files are listed in a fixed order.
@@ -40,10 +42,11 @@ export function PixelExports({ exports, review }: { exports: unknown; review?: s
         <div>
           <h2>Review sheet</h2>
           <p className="muted text-sm">What the reviewer saw: the zoomed grid, 1x on dark and light, 2x and 3x, silhouette, values and palette.</p>
-          <a href={fileUrl(review)} target="_blank" rel="noreferrer" className="mt-3 block">
+          <button type="button" className="mt-3 block w-full cursor-zoom-in" aria-label="Open review sheet full size"
+            onClick={() => openLightbox([{ src: fileUrl(review), title: "Review sheet", pixelated: true }])}>
             <AssetImage src={fileUrl(review)} width={1280} alt="Review sheet of this version"
               className="w-full rounded-lg border" />
-          </a>
+          </button>
         </div>
       )}
       {entries.length > 0 && (

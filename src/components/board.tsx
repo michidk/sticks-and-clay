@@ -1,41 +1,30 @@
 import { RenameButton } from "@/components/rename";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Boxes, Check, Play, Trash2, Undo2, Images, Square } from "lucide-react";
+import { Boxes, Check, Play, Undo2, Images, Square } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Empty, EmptyDescription, EmptyHeader } from "@/components/ui/empty";
 import { AssetImage } from "@/components/asset-image";
 import { StatusBadge } from "@/components/status";
-import { AssetReferences } from "@/components/asset-references";
-import { assetStage, boardColumns, boardStages, boardStageTitles, latestSourceRun } from "@/lib/board";
+import { AssetCardActions, AssetReferencesDialog } from "@/components/asset-card-actions";
+import { boardColumns, boardStages, boardStageTitles, latestSourceRun } from "@/lib/board";
 import type { BoardAsset, BoardProject, BoardVersion } from "@/lib/board-data";
 import { fileUrl, json, request } from "@/lib/client";
 import { usePending } from "@/hooks/use-pending";
 import { GenerationDialog } from "@/routes/projects/$projectId/-components/generation-dialog";
-import { GraphicVariant } from "@/routes/projects/$projectId/-components/graphic-variant";
-import { ReopenAsIdea } from "@/routes/projects/$projectId/-components/reopen-as-idea";
-import { ideaBrief, ideaSettings, ideaTitle, useIdeaActions } from "@/routes/projects/$projectId/-components/asset-drafts";
+import { DiscardIdea, ideaBrief, ideaSettings, ideaTitle, useIdeaActions } from "@/routes/projects/$projectId/-components/asset-drafts";
 
 type Context = { entry: BoardProject; showProject: boolean; onRefresh: () => Promise<unknown> };
 function ProjectLabel({ entry, showProject }: Pick<Context, "entry" | "showProject">) {
   return showProject ? <Link to="/projects/$projectId" params={{ projectId: entry.project.id }}><Badge variant="outline">{entry.project.name}</Badge></Link> : null;
 }
-function References({ asset, projectId, onRefresh }: { asset?: BoardAsset; projectId: string; onRefresh: Context["onRefresh"] }) {
-  const [open, setOpen] = useState(false);
-  if (!asset) return null;
-  return <>
-    <Button size="sm" variant="ghost" onClick={() => setOpen(true)}><Images size={14} /> References</Button>
-    <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>Asset references</DialogTitle><DialogDescription>Changes apply to future versions. Saved versions keep their original references.</DialogDescription></DialogHeader>
-      {open && <AssetReferences projectId={projectId} assetId={asset.id} references={asset.references ?? []} referenceNotes={asset.referenceNotes ?? {}} onRefresh={onRefresh} />}
-    </DialogContent></Dialog>
-  </>;
-}
 function IdeaCard({ idea, entry, showProject, onRefresh }: Context & { idea: BoardAsset }) {
   const { project } = entry;
   const actions = useIdeaActions(project.id, onRefresh);
   const [editing, setEditing] = useState(false);
+  const [referencing, setReferencing] = useState(false);
   const ready = project.status === "ready" && !project.archivedAt;
   return <li className="board-card">
     <ProjectLabel entry={entry} showProject={showProject} />
@@ -50,9 +39,10 @@ function IdeaCard({ idea, entry, showProject, onRefresh }: Context & { idea: Boa
         <Button size="sm" disabled={!ready || actions.isPending(idea, "generate")} onClick={() => actions.act(idea, "generate")}><Play size={14} /> Start</Button>
         <Button size="icon-sm" variant="ghost" aria-label="Back to ideas" title="Back to ideas" disabled={!!project.archivedAt || actions.isPending(idea, "ready")} onClick={() => actions.act(idea, "ready")}><Undo2 size={14} /></Button>
       </> : <Button size="sm" variant="outline" disabled={!!project.archivedAt || actions.isPending(idea, "ready")} onClick={() => actions.act(idea, "ready")}><Check size={14} /> Mark ready</Button>}
-      <Button size="icon-sm" variant="ghost" aria-label="Discard asset" disabled={!!project.archivedAt || actions.isPending(idea, "discard")} onClick={() => actions.act(idea, "discard")}><Trash2 size={14} /></Button>
-      {!project.archivedAt && <References asset={idea} projectId={project.id} onRefresh={onRefresh} />}
+      {!project.archivedAt && <Button size="sm" variant="ghost" onClick={() => setReferencing(true)}><Images size={14} /> References</Button>}
+      <DiscardIdea title={ideaTitle(idea)} disabled={!!project.archivedAt} busy={actions.isPending(idea, "discard")} error={actions.error} onConfirm={() => actions.act(idea, "discard")} />
     </div>
+    {!project.archivedAt && <AssetReferencesDialog projectId={project.id} asset={idea} open={referencing} onOpenChange={setReferencing} onRefresh={onRefresh} />}
     {editing && <GenerationDialog assetType={project.assetType} key={idea.id} idea={idea} projectId={project.id} designVersion={project.designVersion} ready={ready} isGraphics={project.assetType !== "model"} open onOpenChange={setEditing} onRefresh={onRefresh} onSaved={async () => { await onRefresh(); }} />}
   </li>;
 }
@@ -68,39 +58,38 @@ function useBoardAction(onRefresh: Context["onRefresh"]) {
 }
 function VersionCard({ version, root, count, entry, showProject, onRefresh }: Context & { version: BoardVersion; root: BoardVersion; count: number }) {
   const { project } = entry;
-  const { pending, error, send } = useBoardAction(onRefresh);
   const asset = entry.assets?.find((asset) => asset.id === version.assetId);
   const name = asset?.title || version.name.replaceAll("_", " ");
   const image = version.artifacts?.image;
   const renders = version.artifacts?.renders;
   const cover = typeof image === "string" ? image : Array.isArray(renders) && typeof renders[0] === "string" ? renders[0] : version.visualTarget;
   const link = { to: "/projects/$projectId/models/$modelId" as const, params: { projectId: project.id, modelId: version.id } };
-  const stage = assetStage(version);
+  const search = { view: version.artifacts ? "3d" : "target", section: "review" } as const;
   const isGraphics = project.assetType !== "model";
   return <li className="board-card">
     <ProjectLabel entry={entry} showProject={showProject} />
-    <Link {...link} search={{ view: isGraphics ? "target" : version.artifacts ? "3d" : "target", section: "review" }} className="board-cover" aria-label={`Open ${name}`}>
+    <Link {...link} search={search} className="board-cover" aria-label={`Open ${name}`}>
       {cover ? <AssetImage src={fileUrl(cover)} alt={name} width={320} /> : <Boxes size={28} strokeWidth={1} aria-hidden="true" />}
     </Link>
     <div className="flex items-center justify-between gap-2">
-      {version.assetId ? <Link className="board-card-title" to="/projects/$projectId/assets/$assetId" params={{ projectId: project.id, assetId: version.assetId }}>{name}</Link> : <Link className="board-card-title" {...link} search={{ view: isGraphics ? "target" : version.artifacts ? "3d" : "target", section: "review" }}>{name}</Link>}
+      {version.assetId ? <Link className="board-card-title" to="/projects/$projectId/assets/$assetId" params={{ projectId: project.id, assetId: version.assetId }}>{name}</Link> : <Link className="board-card-title" {...link} search={search}>{name}</Link>}
       {asset && <RenameButton kind="asset" name={name} endpoint={`projects/${project.id}/assets/${asset.id}`} onSaved={onRefresh} />}
     </div>
-    <div className="board-card-meta"><StatusBadge status={version.status} verdict={version.verdict} /><span className="muted">Version {count}</span></div>
-    {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-    {!project.archivedAt && <div className="board-card-actions">
-      {stage === "review" && <>
-        <GraphicVariant projectId={project.id} kind="iterate" model={version} sourceRunId={latestSourceRun(entry.runs, version.id)} designReady={project.status === "ready"} onSaved={onRefresh} />
-        <Button size="sm" disabled={pending.has(`models/${version.id}/accept`)} onClick={() => send(`models/${version.id}/accept`, { accepted: true })}><Check size={14} /> Accept</Button>
-
-      </>}
-      {stage === "done" && <Button size="sm" variant="ghost" disabled={pending.has(`models/${version.id}/accept`)} onClick={() => send(`models/${version.id}/accept`, { accepted: false })}><Undo2 size={14} /> Back to review</Button>}
-      {stage === "progress" && !["failed", "cancelled"].includes(version.status) && <Button size="sm" variant="outline" disabled={pending.has(`models/${version.id}/abort`)} title="Stop generating and return to the previous state" onClick={() => send(`models/${version.id}/abort`, {})}><Square size={14} /> {pending.has(`models/${version.id}/abort`) ? "Stopping…" : "Abort"}</Button>}
-      {version.status === "failed" && <Button size="sm" variant="outline" disabled={pending.has(`models/${version.id}/retry`)} onClick={() => send(`models/${version.id}/retry`, {})}>Resume</Button>}
-      {version.status === "awaiting_approval" && <Button size="sm" variant="outline" asChild><Link {...link} search={{ view: "target", section: "review" }}>Review target</Link></Button>}
-      <References asset={asset} projectId={project.id} onRefresh={onRefresh} />
-      <ReopenAsIdea id={root.id} name={name} onDone={onRefresh} />
-    </div>}
+    <div className="board-card-meta"><StatusBadge status={version.status} verdict={version.verdict} accepted={Boolean(version.acceptedAt)} /><span className="muted">Version {count}</span></div>
+    <AssetCardActions
+      className="board-card-actions"
+      projectId={project.id}
+      version={version}
+      name={name}
+      asset={asset}
+      rootId={root.id}
+      versions={count}
+      isGraphics={isGraphics}
+      archived={Boolean(project.archivedAt)}
+      designReady={project.status === "ready"}
+      sourceRunId={latestSourceRun(entry.runs, version.id)}
+      onRefresh={onRefresh}
+    />
   </li>;
 }
 function PendingCard({ batch, owed, entry, showProject, onRefresh }: Context & { batch: BoardProject["batches"][number]; owed: number }) {
@@ -122,7 +111,7 @@ export function Board({ projects, showProjects = false, onRefresh }: { projects:
     const batches = entry.batches.map((batch) => ({ ...batch, count: batch.count - entry.models.filter((version) => version.batchId === batch.id && version.assetId && draftIds.has(version.assetId)).length }));
     return { entry, columns: boardColumns(entry.ideas, versions, batches) };
   });
-  return <section className="board-section" aria-label="Asset board"><div className="board">
+  return <section className="board-section" aria-label="Board"><div className="board">
     {boardStages.map((stage) => {
       const count = entries.reduce((sum, item) => sum + item.columns[stage].length, 0);
       return <section key={stage} className="board-column" aria-labelledby={`board-${stage}`}>
@@ -133,7 +122,7 @@ export function Board({ projects, showProjects = false, onRefresh }: { projects:
             : card.kind === "pending" ? <PendingCard key={card.batch.id} {...context} batch={card.batch} owed={card.owed} />
             : <VersionCard key={card.asset.id} {...context} version={card.asset} root={card.root} count={card.attempts} />;
         }))}</ul>
-        {!count && <p className="board-empty muted">Nothing here</p>}
+        {!count && <Empty className="empty-compact"><EmptyHeader><EmptyDescription>Nothing here</EmptyDescription></EmptyHeader></Empty>}
       </section>;
     })}
   </div></section>;

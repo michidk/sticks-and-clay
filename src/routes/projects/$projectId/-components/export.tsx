@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Download, LoaderCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Empty } from "@/components/ui/empty";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { AssetImage } from "@/components/asset-image";
@@ -51,7 +52,7 @@ export function ExportPanel({ projectId, projectName, models }: {
     <div className="export-toolbar">
       <div className="flex items-center gap-2">
         <Switch id="export-done-only" checked={doneOnly} onCheckedChange={setDoneOnly} />
-        <Label htmlFor="export-done-only">Only done items</Label>
+        <Label htmlFor="export-done-only">Only done assets</Label>
       </div>
       <Button variant="ghost" size="sm" disabled={!listed.length}
         onClick={() => setExcluded(chosen.length ? new Set(listed.map((m: any) => m.id)) : new Set())}>
@@ -68,15 +69,17 @@ export function ExportPanel({ projectId, projectName, models }: {
       Exported {archive.assets} {archive.assets === 1 ? "asset" : "assets"} and {archive.files} files. <a className="underline" href={archive.url} download={fileName}>Download again</a>
     </p>}
     {!listed.length ? <Empty className="empty">
-      <h2>{doneOnly ? "No done items yet" : "No finished assets yet"}</h2>
-      <p>{doneOnly ? "Accept assets in the Review stage, or include every finished asset." : "Finished assets appear here once generation completes."}</p>
-      {doneOnly && finished.length > 0 && <Button variant="outline" onClick={() => setDoneOnly(false)}>Include all finished</Button>}
+      <EmptyHeader>
+        <EmptyTitle>{doneOnly ? "No done assets yet" : "No finished assets yet"}</EmptyTitle>
+        <EmptyDescription>{doneOnly ? "Accept assets in the Review stage, or include every finished asset." : "Finished assets appear here once generation completes."}</EmptyDescription>
+      </EmptyHeader>
+      {doneOnly && finished.length > 0 && <EmptyContent><Button variant="outline" onClick={() => setDoneOnly(false)}>Include all finished</Button></EmptyContent>}
     </Empty> : <ul className="export-list">
       {listed.map((m: any) => {
         const name = m.name.replaceAll("_", " ");
         const cover = m.artifacts?.image || m.artifacts?.renders?.[0] || m.visualTarget;
         return <li key={m.id}>
-          <input id={`export-${m.id}`} type="checkbox" className="workshop-checkbox" checked={!excluded.has(m.id)} onChange={() => toggle(m.id)} />
+          <Checkbox id={`export-${m.id}`} checked={!excluded.has(m.id)} onCheckedChange={() => toggle(m.id)} />
           <span className="export-thumb">{cover && <AssetImage src={fileUrl(cover)} alt="" width={320} />}</span>
           <Label htmlFor={`export-${m.id}`}>{name}</Label>
           {m.acceptedAt ? <StatusBadge tone="done">Done</StatusBadge> : <StatusBadge tone="warning">Review</StatusBadge>}

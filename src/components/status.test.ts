@@ -15,3 +15,11 @@ test("maps workflow statuses and verdicts to one tone and label", () => {
   expect(statusInfo("cancelled").tone).toBe("queued");
   expect(statusInfo("review").label).toBe("Review design");
 });
+
+test("asset versions read as waiting for review until the owner accepts them", () => {
+  expect(statusInfo("done", null, false)).toEqual({ tone: "warning", label: "Ready for review" });
+  expect(statusInfo("done", "approved", false)).toEqual({ tone: "done", label: "Approved" });
+  expect(statusInfo("done", "limit_reached", false).label).toBe("Completed with issues");
+  expect(statusInfo("done", "limit_reached", true)).toEqual({ tone: "done", label: "Done" });
+  expect(statusInfo("running", null, false).tone).toBe("running");
+});

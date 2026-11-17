@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -105,7 +106,7 @@ function QueuePage() {
     <div className="admin-page queue-page">
       <section className="page-heading queue-heading">
         <div>
-          <h1>Generation queue</h1>
+          <h1>Queue</h1>
           <p className="lede">
             Design, builds, photography, reviews, planning, mockups and drafts.
             Name and brief drafts start immediately and appear here while running.
@@ -135,14 +136,14 @@ function QueuePage() {
             </div>
           </div>
           <div className="queue-control-actions">
-            <label>
+            <Label>
               Concurrent jobs
               <Select value={String(control.concurrency)} disabled={busy}
                 onValueChange={(value) => updateControl({ concurrency: Number(value) })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Concurrent jobs"><SelectValue /></SelectTrigger>
                 <SelectContent>{[1, 2, 3, 4].map((value) => <SelectItem key={value} value={String(value)}>{value}</SelectItem>)}</SelectContent>
               </Select>
-            </label>
+            </Label>
             <Button variant={control.paused ? "default" : "outline"} disabled={busy}
               onClick={() => updateControl({ paused: !control.paused })}>
               {control.paused ? <Play aria-hidden="true" /> : <Pause aria-hidden="true" />}

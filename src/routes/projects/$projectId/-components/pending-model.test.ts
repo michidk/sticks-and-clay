@@ -21,5 +21,6 @@ test("a failed batch missing its model keeps a recovery card", () => {
   );
   expect(html).toContain("model-card");
   expect(html).toContain("Planner returned 0 models");
-  expect(html).toContain("Resume batch");
+  expect(html).toContain(">Resume<");
+  expect(html).toContain("Asset");
 });

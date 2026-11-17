@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   createRootRoute,
   HeadContent,
+  Link,
   Outlet,
   Scripts,
   useRouterState,
@@ -33,16 +34,24 @@ export const Route = createRootRoute({
   ),
   errorComponent: ({ error }) => (
     <main>
-      <h1>Something needs attention</h1>
+      <section className="page-header">
+        <div>
+          <h1>Something needs attention</h1>
+        </div>
+      </section>
       <Alert variant="destructive" className="error">
         <AlertDescription className="min-w-0 break-words">
           {error instanceof Error ? error.message : String(error)}
         </AlertDescription>
       </Alert>
-      <Button variant="outline" onClick={() => window.location.reload()}>
-        Reload page
-      </Button>
-      <a href="/projects">Return to projects</a>
+      <div className="error-page-actions">
+        <Button onClick={() => window.location.reload()}>
+          Reload page
+        </Button>
+        <Button variant="outline" asChild>
+          <Link to="/projects">Return to projects</Link>
+        </Button>
+      </div>
     </main>
   ),
 });

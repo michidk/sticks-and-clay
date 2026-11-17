@@ -7,7 +7,7 @@ function McpPage() {
   return <div className="admin-page">
     <section className="page-heading">
       <div>
-        <h1>MCP</h1>
+        <h1>MCP server</h1>
         <p className="lede">Choose what connected assistants such as ChatGPT, Claude and Codex can do.</p>
       </div>
     </section>

@@ -3,6 +3,7 @@ import { ModelViewer } from "@/components/ui/model-viewer/lazy";
 import { Button } from "@/components/ui/button";
 import { fileUrl } from "@/lib/client";
 import { AssetImage } from "@/components/asset-image";
+import { useLightbox } from "@/components/image-lightbox";
 
 const schema = z.record(z.string(), z.string());
 const labels: Record<string, string> = { script: "CadQuery source", step: "STEP", stl: "STL", glb: "GLB", source: "Source bundle", metrics: "Measurements", manifest: "Manifest", inputStep: "Input STEP" };
@@ -10,6 +11,7 @@ const viewSchema = z.array(z.object({ key: z.string(), label: z.string() }));
 const metricSchema = z.object({ dimensionsMm: z.object({ x: z.number(), y: z.number(), z: z.number() }), solidCount: z.number(),
   checks: z.array(z.object({ name: z.string(), state: z.string(), actual: z.number().nullable() })) });
 export function CadExports({ exports, previews, analysis }: { exports: unknown; previews: unknown; analysis: unknown }) {
+  const openLightbox = useLightbox();
   const parsed = schema.safeParse(exports);
   const views = viewSchema.safeParse(previews), metrics = metricSchema.safeParse(analysis);
   if (!parsed.success) return null;
@@ -25,10 +27,11 @@ export function CadExports({ exports, previews, analysis }: { exports: unknown; 
       <Button key={id} asChild variant="outline" size="sm"><a href={fileUrl(parsed.data[id])} download>{label}</a></Button>,
     ] : [])}</div>
     {views.success && <><h2>Review views</h2><div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {views.data.map((view) => <a key={view.key} href={fileUrl(view.key)} target="_blank" rel="noreferrer" className="rounded-lg border p-2">
+      {views.data.map((view, index) => <button key={view.key} type="button" className="cursor-zoom-in rounded-lg border p-2 text-left"
+        onClick={() => openLightbox(views.data.map((item) => ({ src: fileUrl(item.key), title: item.label })), index)}>
         <AssetImage src={fileUrl(view.key)} width={640} alt={view.label} className="aspect-square w-full rounded" />
         <p className="m-0 text-xs text-muted-foreground">{view.label}</p>
-      </a>)}
+      </button>)}
     </div></>}
   </section>;
 }

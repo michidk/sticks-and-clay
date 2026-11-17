@@ -32,7 +32,9 @@ The viewer pauses rendering and animation while hidden. Failed model loads offer
 
 ## Object references
 
-The model page controls `selectedMesh` through `onSelectedMeshChange` and resolves its name and parent path from `onInspect`. Selection appears in the change composer and is scoped to the displayed saved GLB. Submitted references are stored with the model's source run and appended to that model's agent input; subsequent branches do not inherit stale selection metadata. The API rejects a reference whose GLB differs from the selected source run.
+The model page controls `selectedMesh` through `onSelectedMeshChange` and resolves its name and parent path from `onInspect`. Each selected part is pinned in the change composer (up to eight), scoped to the displayed saved GLB; deselecting in the viewer keeps pinned parts, and each chip removes its own. Submitted references are stored in `objectReferences` with the model's source run and appended to that model's agent input; versions saved before multi-part selection keep their single `objectReference`. Subsequent branches do not inherit stale selection metadata. The API rejects duplicate parts and any reference whose GLB differs from the selected source run.
+
+The composer, shared with the graphic page, also accepts up to four PNG, JPG or WebP images by paste, drop or the attach button. It then posts the branch as multipart (`input` JSON plus `images` files); agents may still post JSON. Attached images are stored as reference keys in the version's `changeImages`, lead the job's branch references (after any visual target), and are announced in the version request. They belong to that version only and are not added to the asset's references.
 
 The upstream selection fix keeps outline helpers out of material overrides, picking and hierarchy counts. Empty-space clicks and Escape clear selection; orbit drags do not select. Upstream browser tests capture the selected GLB before and after a shading change, measure its orange outline pixels, and exercise controlled selection, repeated clicks, clearing and source replacement.
 

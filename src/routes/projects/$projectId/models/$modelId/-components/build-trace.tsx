@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, Lightbulb, MessageSquare, Wrench, XCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { TextSkeleton } from "@/components/loading";
+import { useLightbox } from "@/components/image-lightbox";
 import { StatusBadge } from "@/components/status";
 import { fileUrl, money, previewUrl, request } from "@/lib/client";
 import { roleLabel } from "@/lib/queue-view";
@@ -27,6 +28,7 @@ const toolCalls = (run: TraceRun) => {
 
 /** What each agent did to build this version, step by step, from its saved session events. */
 export function BuildTrace({ modelId, working }: { modelId: string; working: boolean }) {
+  const openLightbox = useLightbox();
   const [runs, setRuns] = useState<TraceRun[] | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -49,7 +51,6 @@ export function BuildTrace({ modelId, working }: { modelId: string; working: boo
   }, [modelId, working]);
   return <div className="space-y-4">
     <div>
-      <h2>Debug</h2>
       <p className="muted">How the agents built this version: what they planned, each tool they used, and the renders they looked at. Full prompts and raw events are under Activity.</p>
     </div>
     {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
@@ -79,9 +80,10 @@ export function BuildTrace({ modelId, working }: { modelId: string; working: boo
                 {step.ok === undefined && run.status === "running" && <span className="muted"> · running</span>}
                 {step.note && <span className={`block text-sm ${step.ok === false ? "text-destructive" : "muted"} break-words`}>{step.note}</span>}
                 {!!step.images?.length && <div className="mt-1 flex flex-wrap gap-1">{step.images.map((key, imageIndex) =>
-                  <a key={key + imageIndex} href={fileUrl(key)} target="_blank" rel="noreferrer" title={step.views?.[imageIndex]}>
+                  <button key={key + imageIndex} type="button" title={step.views?.[imageIndex]} className="cursor-zoom-in"
+                    onClick={() => openLightbox(step.images!.map((image, index) => ({ src: fileUrl(image), title: step.views?.[index] ?? "Render the agent inspected" })), imageIndex)}>
                     <img src={previewUrl(key, 320)} alt={`${step.views?.[imageIndex] ?? "Render"} the agent inspected`} loading="lazy" className="h-16 w-16 rounded border object-cover" />
-                  </a>)}</div>}
+                  </button>)}</div>}
               </> : <p className={`whitespace-pre-wrap break-words ${tone} ${step.kind === "result" ? "font-medium" : ""}`}>
                 {step.kind === "think" ? `Thinking: ${step.text}` : step.text}
               </p>}

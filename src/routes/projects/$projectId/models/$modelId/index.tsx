@@ -1,7 +1,7 @@
 import { RenameButton } from "@/components/rename";
 import { describeError } from "@/lib/error-message";
 import type { ModelInspection } from "@/components/ui/model-viewer";
-import type { ObjectReference } from "@/lib/object-reference";
+import { MAX_OBJECT_REFERENCES, type ObjectReference } from "@/lib/object-reference";
 import { objectReferenceFromNode } from "./-lib/selection";
 import { ModelChecks } from "./-components/checks";
 import { queueKindLabels } from "@/lib/queue-view";
@@ -22,7 +22,8 @@ import {
   LoaderCircle,
 } from "lucide-react";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { StatusBadge } from "@/components/status";
+import { Progress, StatusBadge } from "@/components/status";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -45,12 +46,10 @@ import { TriangleCount } from "@/components/triangle-count";
 import { LightboxProvider } from "@/components/image-lightbox";
 import { request, json, fileUrl, costSummary } from "@/lib/client";
 import { collectionAssetGroups } from "@/lib/project-summary";
-import { AssetReferences } from "@/components/asset-references";
 import { History } from "../../-components/history";
 import { DeleteAsset } from "../../-components/delete-asset";
 import { ReopenAsIdea } from "../../-components/reopen-as-idea";
 import { GraphicDetail } from "./-components/graphic-detail";
-import { ModelPipeline } from "./-components/pipeline";
 import { ModelConversation } from "./-components/model-conversation";
 import { ModelMedia } from "./-components/media";
 import { ReviewNotes } from "./-components/review";
@@ -84,7 +83,9 @@ function ModelPage() {
     glb: string | undefined;
     value: ModelInspection;
   } | null>(null);
-  const [objectReference, setObjectReference] = useState<ObjectReference | null>(null);
+  // Parts pinned as context for the next change; the viewer highlights the focused one.
+  const [objectReferences, setObjectReferences] = useState<ObjectReference[]>([]);
+  const [focusedMesh, setFocusedMesh] = useState<string | null>(null);
   const model = data?.assetVersions.find((item) => item.id === modelId);
   const versions = data?.versions.filter((item) => item.modelId === modelId) ?? [];
   const selected = model ? resolveBuild(model, versions, search.version) : undefined;
@@ -93,7 +94,8 @@ function ModelPage() {
     setInspection({ glb: displayedGlb, value });
   }, [displayedGlb]);
   useEffect(() => {
-    setObjectReference(null);
+    setObjectReferences([]);
+    setFocusedMesh(null);
   }, [modelId, displayedGlb]);
   useEffect(() => {
     let active = true;
@@ -118,6 +120,9 @@ function ModelPage() {
       clearTimeout(timer);
     };
   }, [projectId, modelId]);
+  const reload = async () => {
+    setData(await request<Workspace>(`projects/${projectId}?summary=true`));
+  };
   const updateSearch = (change: Partial<typeof search>) =>
     navigate({ search: { ...search, ...change }, resetScroll: false });
   const back = (
@@ -140,7 +145,7 @@ function ModelPage() {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : (
-          <LoadingRegion label="Opening model">
+          <LoadingRegion label="Opening asset">
             <div className="model-detail-loading">
               <Skeleton className="h-10 w-2/3" />
               <Skeleton className="h-5 w-1/3" />
@@ -160,24 +165,26 @@ function ModelPage() {
         projectId={projectId}
         modelId={modelId}
         selectedRunId={search.version}
-        reload={async () => setData(await request<Workspace>(`projects/${projectId}?summary=true`))}
+        reload={reload}
       />
     );
   if (!model || !selected)
     return (
       <main className="model-detail-page">
         {back}
-        <div className="model-detail-empty">
-          <Boxes size={36} />
-          <h1>Model not found</h1>
-          <p>This model is not part of this project.</p>
-        </div>
+        <Empty className="empty">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><Boxes /></EmptyMedia>
+            <EmptyTitle>Model not found</EmptyTitle>
+            <EmptyDescription>It is not part of this project, or it was deleted.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       </main>
     );
   const asset = data.assets?.find((asset) => asset.id === model.assetId);
   const name = asset?.title || model.name.replaceAll("_", " ");
   const artifacts = selected.artifacts;
-  const selectedObject = objectReference?.glb === artifacts?.glb ? objectReference : null;
+  const selectedObjects = objectReferences.filter((item) => item.glb === artifacts?.glb);
   const checkedVersion =
     selected.version ||
     versions.find(
@@ -233,27 +240,29 @@ function ModelPage() {
     setError("");
     try {
       await request("models/" + modelId + "/retry", json({}));
-      setData(await request<Workspace>(`projects/${projectId}?summary=true`));
+      await reload();
     } catch (error) {
       setError((error as Error).message);
     } finally {
       setBusy(false);
     }
   }
+  const archived = !!data.project.archivedAt;
+  const working = !["done", "failed", "cancelled"].includes(model.status);
+  // A failed step already shows its error in the story; repeat only an error no step recorded.
+  const stepShowsError = !!model.error && runs.some((run) => run.error === model.error);
   const notice = (model.error || model.status === "failed") && (
-    <div className="studio-chat-notice">
-      {model.error && (
-        <Alert variant="destructive">
-          <AlertDescription>{describeError(model.error)}</AlertDescription>
-        </Alert>
-      )}
-      {model.status === "failed" && (
-        <Button variant="outline" onClick={resume} disabled={busy}>
-          {busy && <LoaderCircle className="spin" size={16} />}
-          {busy ? "Resuming…" : "Resume model"}
-        </Button>
-      )}
-    </div>
+    <Alert variant="destructive" className="studio-failure">
+      <AlertDescription>
+        {model.error && !stepShowsError ? describeError(model.error) : "Generation stopped before this version finished."}
+        {model.status === "failed" && !archived && (
+          <Button variant="outline" size="sm" onClick={resume} disabled={busy}>
+            {busy && <LoaderCircle className="spin" size={16} />}
+            {busy ? "Resuming…" : "Resume"}
+          </Button>
+        )}
+      </AlertDescription>
+    </Alert>
   );
   return (
     <LightboxProvider>
@@ -313,8 +322,23 @@ function ModelPage() {
                 )}
               </nav>
             </div>
-            <div className="flex items-center gap-2"><h1>{name}</h1>
-              {asset && <RenameButton kind="asset" name={name} endpoint={`projects/${projectId}/assets/${asset.id}`} onSaved={async () => setData(await request<Workspace>(`projects/${projectId}?summary=true`))} />}
+            <div className="studio-title-row">
+              <h1>{name}</h1>
+              {asset && <RenameButton kind="asset" name={name} endpoint={`projects/${projectId}/assets/${asset.id}`} onSaved={reload} />}
+              {!archived && (
+                <div className="studio-title-actions">
+                  <ReopenAsIdea
+                    id={model.id}
+                    name={name}
+                    onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "idea" } })}
+                  />
+                  <DeleteAsset
+                    id={model.id}
+                    name={name}
+                    onDeleted={() => navigate({ to: "/projects/$projectId", params: { projectId } })}
+                  />
+                </div>
+              )}
             </div>
             <div className="model-detail-meta">
               <StatusBadge status={model.status} verdict={model.verdict} />
@@ -326,27 +350,11 @@ function ModelPage() {
               {model.name !== name && (
                 <span className="model-detail-filename">{model.name}</span>
               )}
-              {!data.project.archivedAt && (
-                <ReopenAsIdea
-                  id={model.id}
-                  name={name}
-                  onDone={() => navigate({ to: "/projects/$projectId", params: { projectId }, search: { tab: "idea" } })}
-                />
-              )}
-              {!data.project.archivedAt && (
-                <DeleteAsset
-                  id={model.id}
-                  name={name}
-                  onDeleted={() => navigate({ to: "/projects/$projectId", params: { projectId } })}
-                />
-              )}
             </div>
+            {working && (
+              <Progress value={model.progress} label={model.phase} status={model.status} />
+            )}
           </header>
-          {!data.project.archivedAt && data.assets?.filter((asset) => asset.id === model.assetId).map((asset) => <details key={asset.id} className="m-4">
-            <summary className="cursor-pointer">Asset references</summary>
-            <AssetReferences projectId={projectId} assetId={asset.id} references={asset.references} referenceNotes={asset.referenceNotes}
-              onRefresh={async () => setData(await request<Workspace>(`projects/${projectId}?summary=true`))} />
-          </details>)}
           <ModelConversation
             key={"story-" + model.id}
             projectId={projectId}
@@ -354,8 +362,15 @@ function ModelPage() {
             workspace={data}
             versions={versions}
             selectedVersionId={checkedVersion?.id || search.version}
-            objectReference={selectedObject}
-            onClearObject={() => setObjectReference(null)}
+            objectReferences={selectedObjects}
+            onRemoveObject={(nodeId) => {
+              setObjectReferences((items) => items.filter((item) => item.nodeId !== nodeId));
+              setFocusedMesh((focused) => (focused === nodeId ? null : focused));
+            }}
+            onClearObjects={() => {
+              setObjectReferences([]);
+              setFocusedMesh(null);
+            }}
             notice={notice}
             onInspect={(version) => {
               void updateSearch({ version, view: "3d" });
@@ -372,9 +387,7 @@ function ModelPage() {
                 search: { view: "3d", section: "review" },
               })
             }
-            onRefresh={async () =>
-              setData(await request<Workspace>(`projects/${projectId}?summary=true`))
-            }
+            onRefresh={reload}
           />
         </aside>
         <section className="studio-preview" aria-label="Model preview">
@@ -418,11 +431,11 @@ function ModelPage() {
                   }
                 >
                   <SelectTrigger
-                    aria-label="Viewing version"
+                    aria-label="Viewing build"
                     className="model-version-picker"
                   >
                     <HistoryIcon size={14} />
-                    <SelectValue placeholder="Choose version" />
+                    <SelectValue placeholder="Choose build" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="latest">Latest build</SelectItem>
@@ -484,12 +497,12 @@ function ModelPage() {
               {selected.missing && (
                 <Alert variant="destructive">
                   <AlertDescription>
-                    This build is no longer available for this version.{" "}
+                    This build is no longer available.{" "}
                     <Button
                       variant="link"
                       onClick={() => updateSearch({ version: undefined })}
                     >
-                      View latest version
+                      View latest build
                     </Button>
                   </AlertDescription>
                 </Alert>
@@ -501,18 +514,26 @@ function ModelPage() {
                     artifacts={artifacts}
                     target={selected.target}
                     name={model.name}
-                    selectedMesh={selectedObject?.nodeId ?? null}
+                    selectedMesh={focusedMesh}
                     onInspect={reportInspection}
                     onSelectedMeshChange={(nodeId) => {
-                      setObjectReference(
+                      setFocusedMesh(nodeId);
+                      const reference =
                         artifacts?.glb && checkedVersion?.status === "done"
                           ? objectReferenceFromNode(
                               artifacts.glb,
                               inspection?.glb === artifacts.glb ? inspection.value : null,
                               nodeId,
                             )
-                          : null,
-                      );
+                          : null;
+                      // Selecting another part adds it; deselecting keeps the pinned parts.
+                      if (reference)
+                        setObjectReferences((items) =>
+                          items.some((item) => item.nodeId === reference.nodeId) ||
+                          items.length >= MAX_OBJECT_REFERENCES
+                            ? items
+                            : [...items, reference],
+                        );
                     }}
                   />
                 </TabsContent>
@@ -557,7 +578,7 @@ function ModelPage() {
                     </dd>
                   </div>
                   <div>
-                    <dt>Model estimate</dt>
+                    <dt>Estimated cost</dt>
                     <dd>
                       {costSummary(cost)}
                       <small>
@@ -565,26 +586,12 @@ function ModelPage() {
                         {versions.length === 1 ? "" : "s"}
                         {unpriced
                           ? ` · ${unpriced} request${unpriced === 1 ? "" : "s"} not yet priced`
-                          : " · all attempts"}
+                          : " · all requests"}
                       </small>
                     </dd>
                   </div>
                 </dl>
               </div>
-              <ModelPipeline
-                key={"pipeline-" + model.id}
-                model={model}
-                runs={runs}
-                versions={versions}
-                onInspect={(version, view, section) => {
-                  void updateSearch({ version, view, section });
-                  scrollToWorkbench(
-                    section === "activity"
-                      ? "model-detail-notes"
-                      : "model-preview",
-                  );
-                }}
-              />
               <aside
                 id="model-detail-notes"
                 className="model-inspector"
@@ -629,7 +636,7 @@ function ModelPage() {
                     {search.section === "tools" && (
                       <VersionActions
                         key={checkedVersion?.id || modelId}
-                        archived={!!data.project.archivedAt}
+                        archived={archived}
                         judgeIterations={data.batches.find((batch) => batch.id === model.batchId)?.judgeIterations ?? 2}
                         projectId={projectId}
                         modelId={modelId}
@@ -644,7 +651,7 @@ function ModelPage() {
                       />
                     )}
                     {search.section === "debug" && (
-                      <BuildTrace modelId={modelId} working={!["done", "failed", "cancelled"].includes(model.status)} />
+                      <BuildTrace modelId={modelId} working={working} />
                     )}
                     {search.section === "activity" && (
                       <History runs={runs} models={[model]} />
@@ -656,7 +663,7 @@ function ModelPage() {
                             <article
                               key={version.id}
                               className={
-                                version.id === search.version
+                                version.id === checkedVersion?.id
                                   ? "is-selected"
                                   : ""
                               }
@@ -675,7 +682,7 @@ function ModelPage() {
                               </p>
                               {!version.artifacts && (
                                 <p className="muted">
-                                  No verified export saved for this attempt.
+                                  No verified export saved for this build.
                                 </p>
                               )}
                               {version.judges.length ? (
@@ -691,7 +698,7 @@ function ModelPage() {
                                 ))
                               ) : (
                                 <p className="muted">
-                                  No judge review for this attempt.
+                                  No judge review for this build.
                                 </p>
                               )}
                               <details>
@@ -719,13 +726,13 @@ function ModelPage() {
                           ))}
                         </div>
                       ) : (
-                        <div className="model-detail-empty">
-                          <HistoryIcon size={30} />
-                          <h3>No build history yet</h3>
-                          <p>
-                            Attempts appear here as the model is built.
-                          </p>
-                        </div>
+                        <Empty>
+                          <EmptyHeader>
+                            <EmptyMedia variant="icon"><HistoryIcon /></EmptyMedia>
+                            <EmptyTitle>No builds yet</EmptyTitle>
+                            <EmptyDescription>Builds appear here as the model is made.</EmptyDescription>
+                          </EmptyHeader>
+                        </Empty>
                       ))}
                   </TabsContent>
                 </Tabs>

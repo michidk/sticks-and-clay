@@ -22,7 +22,7 @@ const sections = [
   },
   {
     to: "/admin/mcp",
-    label: "MCP",
+    label: "MCP server",
     description: "Assistant access",
     icon: KeyRound,
   },

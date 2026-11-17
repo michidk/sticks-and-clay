@@ -9,7 +9,8 @@ import { SpriteExport } from "./sprite-export";
 import { AssetImage } from "@/components/asset-image";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function VersionActions({
   projectId,
@@ -186,7 +187,7 @@ export function VersionActions({
             <Textarea id="variation-context" value={variationContext} onChange={(event) => setVariationContext(event.target.value)} maxLength={12000} placeholder="For example: make the handle shorter and use dark bronze." rows={4} />
           </div>
           <DialogFooter>
-            <Button variant="outline" disabled={busy} onClick={() => setVariationOpen(false)}>Cancel</Button>
+            <DialogClose asChild><Button variant="outline" disabled={busy}>Cancel</Button></DialogClose>
             <Button disabled={busy || !sourceRunId} onClick={() => void createVariation()}>{busy ? "Creating variation…" : "Create variation"}</Button>
           </DialogFooter>
         </DialogContent>
@@ -215,13 +216,11 @@ export function VersionActions({
           <legend>Select issues to repair</legend>
           {findings.map((f, i) => (
             <label key={i} className="workshop-issue">
-              <input
-                type="checkbox"
-                className="workshop-checkbox"
+              <Checkbox
                 checked={selected.includes(i)}
-                onChange={(e) =>
+                onCheckedChange={(checked) =>
                   setSelected(
-                    e.target.checked
+                    checked === true
                       ? [...selected, i]
                       : selected.filter((n) => n !== i),
                   )

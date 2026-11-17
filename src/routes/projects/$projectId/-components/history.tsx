@@ -6,7 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Empty } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/status";
 import { Card } from "@/components/ui/card";
@@ -186,23 +186,31 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
         </div>
       )}
       {!!runs.length && !filtered.length && (
-        <Empty>
-          <h3>No matching requests</h3>
-          <Button
-            variant="outline"
-            onClick={() => {
-              setAssetFilter("all");
-              setRoleFilter("all");
-              setStatusFilter("all");
-            }}
-          >
-            Clear filters
-          </Button>
+        <Empty className="empty-compact">
+          <EmptyHeader>
+            <EmptyTitle>No matching requests</EmptyTitle>
+            <EmptyDescription>Try another asset, action or outcome filter.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAssetFilter("all");
+                setRoleFilter("all");
+                setStatusFilter("all");
+              }}
+            >
+              Clear filters
+            </Button>
+          </EmptyContent>
         </Empty>
       )}
       {!runs.length && (
         <Empty className="empty">
-          No AI requests yet.
+          <EmptyHeader>
+            <EmptyTitle>No AI requests yet</EmptyTitle>
+            <EmptyDescription>Design, mockup and generation requests appear here with their estimated cost.</EmptyDescription>
+          </EmptyHeader>
         </Empty>
       )}
       {groups.map((group) => (
@@ -342,7 +350,8 @@ export function History({ runs, models }: { runs: any[]; models: any[] }) {
                         <AssetImage
                           src={fileUrl(key)}
                           alt="Photographer render"
-                          style={{ maxHeight: 280, objectFit: "contain" }}
+                          className="history-render"
+                          fit="contain"
                         />
                       </a>
                     ))}

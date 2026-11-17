@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -332,19 +333,12 @@ function ProjectsPage() {
                         : undefined
                     }
                   >
-                    <div
-                      className="project-cover"
-                      style={{ aspectRatio: "16 / 9", height: "auto" }}
-                    >
+                    <div className="project-cover project-cover-wide">
                       {cover ? (
                         <AssetImage
                           src={fileUrl(cover)}
                           alt={`${p.name} ${p.thumbnail ? "collection render" : "reference image"}`}
-                          style={
-                            p.thumbnail || p.assetType !== "model"
-                              ? { objectFit: p.thumbnail ? "cover" : "contain", padding: p.thumbnail ? 0 : 14 }
-                              : undefined
-                          }
+                          fit={!p.thumbnail && p.assetType !== "model" ? "contain" : undefined}
                         />
                       ) : (
                         <div className="abstract">
@@ -387,14 +381,8 @@ function ProjectsPage() {
                       <div className="project-card-status">
                         <span>
                           {p.collection?.total || 0}{" "}
-                          {p.assetType !== "model"
-                            ? p.collection?.total === 1
-                              ? "graphic"
-                              : "graphics"
-                            : p.collection?.total === 1
-                              ? "model"
-                              : "models"}{" "}
-                          · {p.collection?.completed || 0} completed
+                          {p.collection?.total === 1 ? "asset" : "assets"}{" "}
+                          · {p.collection?.completed || 0} finished
                         </span>
                         {!!p.collection?.attention && (
                           <span>{p.collection.attention} need{p.collection.attention === 1 ? "s" : ""} attention</span>
@@ -429,19 +417,23 @@ function ProjectsPage() {
             );
           })}
           {!visibleProjects.length && !!projects.length && (
-            <div className="collection-no-results">
-              <h3>No matching projects</h3>
-              <p>Try another search or filter.</p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setQuery("");
-                  setStatusFilter("all");
-                }}
-              >
-                Show all projects
-              </Button>
-            </div>
+            <Empty className="empty-compact col-span-full">
+              <EmptyHeader>
+                <EmptyTitle>No matching projects</EmptyTitle>
+                <EmptyDescription>Try another search or filter.</EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setQuery("");
+                    setStatusFilter("all");
+                  }}
+                >
+                  Show all projects
+                </Button>
+              </EmptyContent>
+            </Empty>
           )}
           {!visibleProjects.some((p) => p.archivedAt) && newProjectCard}
         </div>

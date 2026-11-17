@@ -6,6 +6,7 @@ import { Check, LoaderCircle, Pencil, Play, Trash2 } from "lucide-react";
 import { StatusBadge } from "@/components/status";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { json, request } from "@/lib/client";
 import { usePending } from "@/hooks/use-pending";
 import type { GenerationInput } from "@/lib/api-inputs";
@@ -35,19 +36,59 @@ export function useIdeaActions(projectId: string, onRefresh: () => Promise<unkno
   const pending = usePending();
   const [error, setError] = useState("");
   const isPending = (idea: { id: string }, action: IdeaAction) => pending.has(`${idea.id}:${action}`);
-  const act = (idea: AssetDraft, action: IdeaAction) => pending.run(`${idea.id}:${action}`, async () => {
-    setError("");
-    try {
-      const base = `projects/${projectId}/assets/${idea.id}`;
-      if (action === "generate") await request(`${base}/generate`, json({}));
-      else if (action === "discard") await request(base, { method: "DELETE" });
-      else await request(`${base}/ready`, json({ ready: !idea.readyAt }));
-      await onRefresh();
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Could not update this asset");
-    }
-  });
+  /** Resolves to whether the action succeeded; a failure is kept in `error`. */
+  const act = async (idea: AssetDraft, action: IdeaAction) => {
+    let ok = false;
+    await pending.run(`${idea.id}:${action}`, async () => {
+      setError("");
+      try {
+        const base = `projects/${projectId}/assets/${idea.id}`;
+        if (action === "generate") await request(`${base}/generate`, json({}));
+        else if (action === "discard") await request(base, { method: "DELETE" });
+        else await request(`${base}/ready`, json({ ready: !idea.readyAt }));
+        ok = true;
+        await onRefresh();
+      } catch (error) {
+        setError(error instanceof Error ? error.message : "Could not update this asset");
+      }
+    });
+    return ok;
+  };
   return { isPending, error, act };
+}
+
+/** Discard an unstarted idea behind a confirmation. */
+export function DiscardIdea({ title, disabled, busy, error, onConfirm }: {
+  title: string;
+  disabled?: boolean;
+  busy: boolean;
+  /** The latest action error, shown inside the dialog while it is open. */
+  error?: string;
+  onConfirm: () => Promise<boolean>;
+}) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Button size="icon-sm" variant="ghost" aria-label={`Discard ${title}`} title="Discard asset" disabled={disabled || busy} onClick={() => setOpen(true)}>
+      <Trash2 size={15} />
+    </Button>
+    <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
+      <DialogContent showCloseButton={!busy}>
+        <DialogHeader>
+          <DialogTitle className="pr-6">Discard {title}?</DialogTitle>
+          <DialogDescription>
+            This removes the unstarted asset with its brief, settings and references. Nothing has been generated for it yet. It cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        {error && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
+        <DialogFooter>
+          <DialogClose asChild><Button variant="outline" disabled={busy}>Cancel</Button></DialogClose>
+          <Button variant="destructive" disabled={busy} onClick={() => void onConfirm().then((ok) => { if (ok) setOpen(false); })}>
+            {busy ? <LoaderCircle size={15} className="spin" /> : <Trash2 size={15} />} {busy ? "Discarding…" : "Discard asset"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </>;
 }
 type IdeaAction = "generate" | "discard" | "ready";
 
@@ -105,9 +146,7 @@ export function AssetDrafts({ projectId, designVersion, ideas, isGraphics, ready
                   <Button size="icon-sm" variant="ghost" aria-label="Edit asset" onClick={() => setEditing(idea)}>
                     <Pencil size={15} />
                   </Button>
-                  <Button size="icon-sm" variant="ghost" aria-label="Discard asset" disabled={isPending(idea, "discard")} onClick={() => act(idea, "discard")}>
-                    <Trash2 size={15} />
-                  </Button>
+                  <DiscardIdea title={ideaTitle(idea)} busy={isPending(idea, "discard")} error={error} onConfirm={() => act(idea, "discard")} />
                 </div>
               </td>
             </tr>;

@@ -10,7 +10,7 @@ function SettingsPage() {
     <div className="admin-page">
       <section className="page-heading">
         <div>
-          <h1>Runtime settings</h1>
+          <h1>Settings</h1>
           <p className="lede">
             Timeouts and defaults for new generation work.
           </p>

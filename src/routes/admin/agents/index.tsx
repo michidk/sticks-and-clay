@@ -118,7 +118,7 @@ function AgentsPage() {
     <div className="admin-page agents-page">
       <section className="page-heading">
         <div>
-          <h1>Agents & AI roles</h1>
+          <h1>Agents</h1>
           <p className="lede">
             Tune models and reasoning for new requests. Existing sessions retain
             their saved configuration.

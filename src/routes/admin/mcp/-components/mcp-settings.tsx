@@ -83,7 +83,7 @@ export function McpSettings() {
   return (
     <div className="settings-stack">
       {error && <Alert variant="destructive" className="error"><AlertDescription>{error}</AlertDescription></Alert>}
-      {message && <Alert className="border-[#d3e0bd] bg-[#e5efcf] text-[#466630]"><AlertDescription className="text-inherit">{message}</AlertDescription></Alert>}
+      {message && <Alert variant="success"><AlertDescription>{message}</AlertDescription></Alert>}
 
       <Card className="panel settings-section">
         <div className="settings-section-heading">

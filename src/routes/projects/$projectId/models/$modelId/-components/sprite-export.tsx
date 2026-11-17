@@ -1,4 +1,5 @@
 import { describeError } from "@/lib/error-message";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useExportHistory } from "@/modules/asset-builds/use-export-history";
 import {
   exportHistorySchema,
@@ -129,12 +130,10 @@ export function SpriteExport({
           )}
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="workshop-issue">
-              <input
-                className="workshop-checkbox"
-                type="checkbox"
+              <Checkbox
                 checked={options.pixel}
-                onChange={(e) =>
-                  setOptions({ ...options, pixel: e.target.checked })
+                onCheckedChange={(checked) =>
+                  setOptions({ ...options, pixel: checked === true })
                 }
               />
               <span>Pixel art</span>
@@ -214,16 +213,14 @@ export function SpriteExport({
                 ))}
               </SelectContent>
             </Select>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
+            <label className="workshop-issue">
+              <Checkbox
                 checked={options.loop}
-                className="h-4 w-4 shrink-0 accent-primary"
-                onChange={(e) =>
-                  setOptions({ ...options, loop: e.target.checked })
+                onCheckedChange={(checked) =>
+                  setOptions({ ...options, loop: checked === true })
                 }
               />
-              Loop animation (exclude repeated endpoint)
+              <span>Loop animation (exclude repeated endpoint)</span>
             </label>
             <Label>Pivot anchor</Label>
             <Select

@@ -13,15 +13,26 @@ import {
 } from "@/components/ui/dialog";
 import { json, request } from "@/lib/client";
 
-/** Create a new idea from this asset's brief and settings; the asset itself is left as it is. */
+/**
+ * Create a new idea from this asset's brief and settings; the asset itself is left as it is.
+ * Pass `open` and `onOpenChange` to open the dialog from elsewhere (such as a menu); no trigger is rendered then.
+ */
 export function ReopenAsIdea({
-  id, name, onDone,
+  id, name, onDone, open: controlledOpen, onOpenChange,
 }: {
   id: string;
   name: string;
   onDone: (result: { id: string; title: string | null }) => unknown;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function submit() {
@@ -41,10 +52,12 @@ export function ReopenAsIdea({
   }
   return (
     <>
-      <Button variant="ghost" size="icon-sm" aria-label={`Reopen ${name} as a new idea`} title="Reopen as new idea"
-        onClick={() => { setError(""); setOpen(true); }}>
-        <Lightbulb size={15} />
-      </Button>
+      {!controlled && (
+        <Button variant="ghost" size="icon-sm" aria-label={`Reopen ${name} as a new idea`} title="Reopen as new idea"
+          onClick={() => { setError(""); setOpen(true); }}>
+          <Lightbulb size={15} />
+        </Button>
+      )}
       <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
         <DialogContent showCloseButton={!busy}>
           <DialogHeader>

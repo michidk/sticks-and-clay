@@ -1,4 +1,5 @@
 import { reviewImageNumbers } from "../-lib/review-images";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { AssetImage } from "@/components/asset-image";
 import { useLightbox } from "@/components/image-lightbox";
 import { renderGallery } from "./media";
@@ -25,14 +26,16 @@ export function ReviewNotes({
   const gallery = renderGallery(renders);
   if (!review)
     return (
-      <div className="model-detail-empty">
-        <ClipboardCheck size={30} />
-        <h3>No review recorded</h3>
-        <p>
-          This build has no judge feedback yet. A build without judging will
-          not receive a judge score.
-        </p>
-      </div>
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon"><ClipboardCheck /></EmptyMedia>
+          <EmptyTitle>No review recorded</EmptyTitle>
+          <EmptyDescription>
+            This build has no judge feedback yet. A build without judging does
+            not receive a score.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   const findings = review.improvements || [];
   const severities = Object.entries(

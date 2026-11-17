@@ -1,6 +1,6 @@
 import { describeError } from "@/lib/error-message";
 import { VisualTargetReview } from "./visual-target-review";
-import type { ObjectReference } from "@/lib/object-reference";
+import { versionObjectReferences, type ObjectReference } from "@/lib/object-reference";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -13,7 +13,6 @@ import {
   Image,
   LoaderCircle,
   ScanEye,
-  Send,
   Bot,
   X,
   Crosshair,
@@ -21,10 +20,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { request, json, fileUrl } from "@/lib/client";
 import { AssetImage } from "@/components/asset-image";
+import { AssetReferences } from "@/components/asset-references";
+import { StatusBadge } from "@/components/status";
+import { useLightbox } from "@/components/image-lightbox";
 import { pipelineSteps } from "../-lib/pipeline";
 import {
   buildLabel,
@@ -32,6 +33,7 @@ import {
   type Build,
   type Workspace,
 } from "../-lib/model";
+import { ChangeComposer, branchRequest } from "./change-composer";
 
 const roleIcons = {
   "visual-target": Image,
@@ -45,8 +47,9 @@ export function ModelConversation({
   workspace,
   versions,
   selectedVersionId,
-  objectReference,
-  onClearObject,
+  objectReferences,
+  onRemoveObject,
+  onClearObjects,
   notice,
   onInspect,
   onReview,
@@ -58,16 +61,17 @@ export function ModelConversation({
   workspace: Workspace;
   versions: Build[];
   selectedVersionId?: string;
-  objectReference: ObjectReference | null;
-  onClearObject: () => void;
+  objectReferences: ObjectReference[];
+  onRemoveObject: (nodeId: string) => void;
+  onClearObjects: () => void;
   notice?: ReactNode;
   onInspect: (id: string) => void;
   onReview: (id: string) => void;
   onCreated: (id: string) => void;
   onRefresh: () => Promise<void>;
 }) {
+  const openLightbox = useLightbox();
   const [kind, setKind] = useState<"iterate" | "fork">("iterate");
-  const [prompt, setPrompt] = useState("");
   const [name, setName] = useState("");
   const [rounds, setRounds] = useState(
     workspace.batches.find((batch) => batch.id === model.batchId)
@@ -89,6 +93,8 @@ export function ModelConversation({
   const parent = workspace.assetVersions.find(
     (item) => item.id === model.parentModelId,
   );
+  const asset = workspace.assets?.find((item) => item.id === model.assetId);
+  const archived = !!workspace.project.archivedAt;
   const updates =
     workspace.designUpdates?.filter((item) => item.modelId === model.id) || [];
   const latestStep = steps.at(-1);
@@ -97,39 +103,23 @@ export function ModelConversation({
     const node = feed.current;
     if (node) node.scrollTop = node.scrollHeight;
   }, [model.id, scrollKey]);
-  const canSubmit =
-    !busy &&
-    !!source &&
-    (!objectReference || objectReference.glb === source.artifacts?.glb) &&
-    prompt.trim().length >= 3 &&
-    (kind !== "fork" || !!name.trim()) &&
-    Number.isInteger(rounds) &&
-    rounds >= 0 &&
-    rounds <= 5;
-  async function createBranch() {
-    if (!source) return;
-    setBusy(true);
-    setError("");
-    try {
-      const result = await request<{ id: string }>(
-        `models/${model.id}/branch`,
-        json({
-          kind,
-          sourceRunId: source.id,
-          prompt,
-          objectReference: objectReference ?? undefined,
-          name: kind === "fork" ? name : undefined,
-          judgeIterations: rounds,
-        }),
-      );
-      setPrompt("");
-      onClearObject();
-      onCreated(result.id);
-    } catch (failure) {
-      setError((failure as Error).message);
-    } finally {
-      setBusy(false);
-    }
+  const changeImages = model.changeImages ?? [];
+  async function createBranch({ prompt, images }: { prompt: string; images: File[] }) {
+    if (!source) throw new Error("Needs a saved Blender version to continue from.");
+    if (kind === "fork" && !name.trim()) throw new Error("Name the fork");
+    const result = await request<{ id: string }>(
+      `models/${model.id}/branch`,
+      branchRequest({
+        kind,
+        sourceRunId: source.id,
+        prompt,
+        objectReferences: objectReferences.length ? objectReferences : undefined,
+        name: kind === "fork" ? name : undefined,
+        judgeIterations: rounds,
+      }, images),
+    );
+    onClearObjects();
+    onCreated(result.id);
   }
   async function updateDesign() {
     if (!source) return;
@@ -173,17 +163,37 @@ export function ModelConversation({
               </Link>
             </small>
             <p>{model.changePrompt}</p>
-            {model.objectReference && model.sourceRunId && (
+            {changeImages.length > 0 && (
+              <div className="chat-change-images">
+                {changeImages.map((key, index) => (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-label={`Open attached image ${index + 1}`}
+                    onClick={() =>
+                      openLightbox(
+                        changeImages.map((item, position) => ({ src: fileUrl(item), title: `Attached image ${position + 1}` })),
+                        index,
+                      )
+                    }
+                  >
+                    <AssetImage src={fileUrl(key)} alt="" loading="lazy" />
+                  </button>
+                ))}
+              </div>
+            )}
+            {model.sourceRunId && versionObjectReferences(model).map((reference) => (
               <Link
+                key={reference.nodeId}
                 className="chat-object-reference"
                 to="/projects/$projectId/models/$modelId"
                 params={{ projectId, modelId: parent.id }}
-                search={{ view: "3d", section: "review", version: model.sourceRunId }}
-                title={model.objectReference.path.join(" / ")}
+                search={{ view: "3d", section: "review", version: model.sourceRunId! }}
+                title={reference.path.join(" / ")}
               >
-                <Crosshair size={14} /> {model.objectReference.name} · View source version
+                <Crosshair size={14} /> {reference.name} · View source version
               </Link>
-            )}
+            ))}
           </div>
         )}
         <details className="chat-message is-user chat-brief">
@@ -203,6 +213,7 @@ export function ModelConversation({
                   : "";
           // Finished steps fold to one line; the latest step stays open.
           const settled = step !== latestStep && step.state !== "Running";
+          const findings = step.review?.improvements.length ?? 0;
           return (
             <details
               key={step.run.id}
@@ -225,7 +236,8 @@ export function ModelConversation({
                 </span>
                 <ChevronDown size={14} className="chat-agent-chevron" aria-hidden="true" />
               </summary>
-              <p>
+              {/* A review's full text lives in the Review tab; the story keeps its opening lines. */}
+              <p className={step.review ? "is-clamped" : undefined}>
                 {step.review?.summary ||
                   step.run.result?.summary ||
                   (step.run.error ? describeError(step.run.error) : "") ||
@@ -233,16 +245,6 @@ export function ModelConversation({
                     ? model.phase
                     : "Recorded in Activity.")}
               </p>
-              {step.review && (
-                <div className="chat-review-summary">
-                  <strong>{step.review.score}/100</strong>
-                  <span>
-                    {step.review.passed ? "Passed" : "Changes requested"} ·{" "}
-                    {step.review.improvements.length} finding
-                    {step.review.improvements.length === 1 ? "" : "s"}
-                  </span>
-                </div>
-              )}
               {step.version && (
                 <div className="chat-message-actions">
                   {step.review && (
@@ -251,7 +253,7 @@ export function ModelConversation({
                       size="sm"
                       onClick={() => onReview(step.version!.id)}
                     >
-                      Read review
+                      Read review · {findings} finding{findings === 1 ? "" : "s"}
                     </Button>
                   )}
                   <Button
@@ -276,16 +278,16 @@ export function ModelConversation({
           <div key={child.id} className="chat-message is-note">
             <GitBranch size={13} />
             <span>
-              {child.branchKind === "fork" ? "Fork" : "Version"}:{" "}
+              {child.branchKind === "fork" ? "Fork" : "New version"}:{" "}
               <Link
                 to="/projects/$projectId/models/$modelId"
                 params={{ projectId, modelId: child.id }}
                 search={{ view: "3d", section: "review" }}
               >
                 {child.name.replaceAll("_", " ")}
-              </Link>{" "}
-              · {child.status}
+              </Link>
             </span>
+            <StatusBadge status={child.status} />
           </div>
         ))}
         {model.status === "awaiting_approval" && model.visualTarget && <VisualTargetReview
@@ -293,64 +295,51 @@ export function ModelConversation({
         />}
         {notice}
       </div>
-      {model.status !== "awaiting_approval" && <div className="studio-chat-compose">
-        <p className="studio-compose-source">
-          {source
-            ? `${kind === "fork" ? "Forking" : "Continuing"} from ${buildLabel(source)} · Ctrl or ⌘ + Enter sends`
-            : "Needs a saved Blender version to continue from."}
-        </p>
-        {objectReference ? (
-          <div className="studio-object-reference" aria-label="Referenced object">
-            <Crosshair size={16} aria-hidden="true" />
-            <div>
-              <strong>{objectReference.name}</strong>
-              <small>{objectReference.path.join(" / ")}</small>
+      {model.status !== "awaiting_approval" && (
+        <ChangeComposer
+          key={model.id}
+          hint={
+            source
+              ? `${kind === "fork" ? "Forking" : "Continuing"} from ${buildLabel(source)} · Ctrl or ⌘ + Enter sends`
+              : "Needs a saved Blender version to continue from."
+          }
+          disabled={!source || archived || !objectReferences.every((item) => item.glb === source.artifacts?.glb)}
+          placeholder={
+            objectReferences.length
+              ? "Describe what should change in the selected parts…"
+              : "Describe the change. Select parts in the 3D view, or paste or drop images, to point at it…"
+          }
+          sendLabel={kind === "fork" ? "Create fork" : "Iterate model"}
+          rounds={rounds}
+          onRoundsChange={setRounds}
+          onSubmit={createBranch}
+          context={objectReferences.length ? objectReferences.map((reference) => (
+            <span key={reference.nodeId} className="studio-compose-part" title={reference.path.join(" / ")}>
+              <Crosshair size={13} aria-hidden="true" />
+              <span>{reference.name}</span>
+              <button
+                type="button"
+                aria-label={`Remove part ${reference.name}`}
+                onClick={() => onRemoveObject(reference.nodeId)}
+              >
+                <X size={13} />
+              </button>
+            </span>
+          )) : undefined}
+          beforeBox={kind === "fork" && (
+            <div className="studio-compose-field">
+              <Label htmlFor="fork-name">Variant name</Label>
+              <Input
+                id="fork-name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                maxLength={100}
+                placeholder="New variant name"
+              />
             </div>
-            <Button type="button" variant="ghost" size="icon" aria-label="Remove object reference" onClick={onClearObject}>
-              <X size={16} />
-            </Button>
-          </div>
-        ) : source && (
-          <p className="studio-compose-source">Select a part in the 3D view or inspector to reference it here.</p>
-        )}
-        {kind === "fork" && (
-          <div className="studio-compose-field">
-            <Label htmlFor="fork-name">Variant name</Label>
-            <Input
-              id="fork-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              maxLength={100}
-              placeholder="New variant name"
-            />
-          </div>
-        )}
-        <div className="studio-compose-box">
-          <Textarea
-            id="continuation-prompt"
-            aria-label="What should change?"
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            onKeyDown={(event) => {
-              if (
-                (event.metaKey || event.ctrlKey) &&
-                event.key === "Enter" &&
-                canSubmit
-              ) {
-                event.preventDefault();
-                void createBranch();
-              }
-            }}
-            maxLength={12000}
-            placeholder="Describe the shape, construction or materials you want changed…"
-            rows={3}
-          />
-          <div className="studio-compose-row">
-            <div
-              className="conversation-mode"
-              role="group"
-              aria-label="Continuation type"
-            >
+          )}
+          modes={
+            <div className="conversation-mode" role="group" aria-label="Continuation type">
               <Button
                 type="button"
                 size="sm"
@@ -367,107 +356,104 @@ export function ModelConversation({
                 aria-pressed={kind === "fork"}
                 onClick={() => setKind("fork")}
               >
-                Fork asset
+                Fork variant
               </Button>
             </div>
-            <Label
-              htmlFor="continuation-rounds"
-              className="studio-compose-rounds"
-            >
-              Review rounds
-              <Input
-                id="continuation-rounds"
-                type="number"
-                min={0}
-                max={5}
-                value={rounds}
-                onChange={(event) => setRounds(Number(event.target.value))}
-              />
-            </Label>
-            <Button
-              type="button"
-              size="icon"
-              aria-label={kind === "fork" ? "Create fork" : "Iterate model"}
-              title={kind === "fork" ? "Create fork" : "Iterate model"}
-              disabled={!canSubmit}
-              onClick={createBranch}
-            >
-              {busy ? <LoaderCircle className="spin" /> : <Send />}
-            </Button>
-          </div>
-        </div>
-        <details className="studio-compose-design">
-          <summary>Use this model in the design</summary>
-          <div className="conversation-design">
-            <p>
-              AI drafts a new design revision using the model and references.
-              One selected render joins the project references. Review and
-              approve the draft in the project workspace.
-            </p>
-            <ImageChoice
-              name="design-view"
-              legend="Render to add as a reference"
-              value={String(view)}
-              onChange={(value) => setView(Number(value))}
-              disabled={busy}
-              emptyText="No renders are archived for this build yet."
-              options={
-                source?.artifacts?.renders?.map((key, index) => ({
-                  value: String(index),
-                  key,
-                  label: `View ${index + 1}`,
-                })) || []
-              }
-            />
-            {workspace.project.references.length >= 6 && (
-              <ImageChoice
-                name="replace-reference"
-                legend="Reference to replace"
-                value={replaceReference}
-                onChange={setReplaceReference}
-                disabled={busy}
-                options={workspace.project.references.map((key, index) => ({
-                  value: key,
-                  key,
-                  label: `Reference ${index + 1}`,
-                }))}
-              />
-            )}
-            <Button
-              variant="outline"
-              disabled={
-                busy ||
-                !source?.artifacts?.renders?.length ||
-                (workspace.project.references.length >= 6 &&
-                  !replaceReference) ||
-                workspace.designUpdates?.some((item) =>
-                  ["queued", "running", "cancelling"].includes(item.status),
-                )
-              }
-              onClick={updateDesign}
-            >
-              Draft design update
-            </Button>
-            {workspace.project.references.length >= 6 && (
-              <small>
-                The selected reference will be replaced in the new draft.
-                Existing batches keep their snapshots.
-              </small>
-            )}
-            {updates[0] && (
-              <small>
-                Latest design update: {updates[0].status}
-                {updates[0].error ? ` · ${updates[0].error}` : ""}
-              </small>
-            )}
-          </div>
-        </details>
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-      </div>}
+          }
+          footer={
+            <>
+              {asset && !archived && (
+                <details className="studio-compose-design">
+                  <summary>
+                    Asset references{asset.references.length ? ` · ${asset.references.length}` : ""}
+                  </summary>
+                  <div className="conversation-design">
+                    <p>Saved with the asset and used by every later version, unlike images attached to one change.</p>
+                    <AssetReferences
+                      projectId={projectId}
+                      assetId={asset.id}
+                      references={asset.references}
+                      referenceNotes={asset.referenceNotes}
+                      onRefresh={onRefresh}
+                    />
+                  </div>
+                </details>
+              )}
+              <details className="studio-compose-design">
+                <summary>Use this model in the design</summary>
+                <div className="conversation-design">
+                  <p>
+                    AI drafts a new design revision using the model and references.
+                    One selected render joins the project references. Review and
+                    approve the draft in the project workspace.
+                  </p>
+                  <ImageChoice
+                    name="design-view"
+                    legend="Render to add as a reference"
+                    value={String(view)}
+                    onChange={(value) => setView(Number(value))}
+                    disabled={busy}
+                    emptyText="No renders are archived for this build yet."
+                    options={
+                      source?.artifacts?.renders?.map((key, index) => ({
+                        value: String(index),
+                        key,
+                        label: `View ${index + 1}`,
+                      })) || []
+                    }
+                  />
+                  {workspace.project.references.length >= 6 && (
+                    <ImageChoice
+                      name="replace-reference"
+                      legend="Reference to replace"
+                      value={replaceReference}
+                      onChange={setReplaceReference}
+                      disabled={busy}
+                      options={workspace.project.references.map((key, index) => ({
+                        value: key,
+                        key,
+                        label: `Reference ${index + 1}`,
+                      }))}
+                    />
+                  )}
+                  <Button
+                    variant="outline"
+                    disabled={
+                      busy ||
+                      !source?.artifacts?.renders?.length ||
+                      (workspace.project.references.length >= 6 &&
+                        !replaceReference) ||
+                      workspace.designUpdates?.some((item) =>
+                        ["queued", "running", "cancelling"].includes(item.status),
+                      )
+                    }
+                    onClick={updateDesign}
+                  >
+                    Draft design update
+                  </Button>
+                  {workspace.project.references.length >= 6 && (
+                    <small>
+                      The selected reference will be replaced in the new draft.
+                      Existing batches keep their snapshots.
+                    </small>
+                  )}
+                  {updates[0] && (
+                    <small>
+                      Latest design update: {updates[0].status}
+                      {updates[0].error ? ` · ${updates[0].error}` : ""}
+                    </small>
+                  )}
+                  {error && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              </details>
+            </>
+          }
+        />
+      )}
     </>
   );
 }

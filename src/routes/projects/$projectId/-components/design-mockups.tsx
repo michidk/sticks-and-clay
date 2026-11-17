@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AssetImage } from "@/components/asset-image";
 import { useLightbox } from "@/components/image-lightbox";
 import { Progress, StatusBadge } from "@/components/status";
@@ -125,7 +127,7 @@ export function DesignMockupStep({
                 <article className="chat-message is-user">
                   <small>You · design v{job.version}</small>
                   {job.baseId && (
-                    <p>{jobBase ? <AssetImage src={fileUrl(jobBase.key)} alt="Mockup being revised" className="mockup-chat-base" style={{ objectFit: "contain" }} /> : "Revise a mockup"}</p>
+                    <p>{jobBase ? <AssetImage src={fileUrl(jobBase.key)} alt="Mockup being revised" className="mockup-chat-base" fit="contain" /> : "Revise a mockup"}</p>
                   )}
                   <p>{job.hint || (job.baseId ? "Offer a different take." : `Generate ${job.count} mockup${job.count === 1 ? "" : "s"}.`)}</p>
                 </article>
@@ -140,7 +142,7 @@ export function DesignMockupStep({
                       {made.map((item) => (
                         <button type="button" key={item.id} aria-label="Inspect mockup"
                           onClick={() => openLightbox(gallery, items.findIndex((entry) => entry.id === item.id))}>
-                          <AssetImage src={fileUrl(item.key)} alt="Mockup" style={{ objectFit: "cover" }} />
+                          <AssetImage src={fileUrl(item.key)} alt="Mockup" fit="cover" />
                         </button>
                       ))}
                     </div>
@@ -162,7 +164,7 @@ export function DesignMockupStep({
           {error && <Alert variant="destructive" role="alert"><AlertDescription>{error}</AlertDescription></Alert>}
           {base && (
             <div className="mockup-base-chip">
-              <AssetImage src={fileUrl(base.key)} alt="Mockup to revise" style={{ objectFit: "cover" }} />
+              <AssetImage src={fileUrl(base.key)} alt="Mockup to revise" fit="cover" />
               <span>Revising this mockup</span>
               <Button type="button" size="icon-xs" variant="ghost" aria-label="Stop revising this mockup" onClick={() => setBaseId(null)}><X /></Button>
             </div>
@@ -209,17 +211,20 @@ export function DesignMockupStep({
           </div>
         </div>
         {!items.length ? (
-          <div className="empty-note">
-            <ImagePlus size={28} strokeWidth={1.2} />
-            <p>No mockups yet. They are concept previews, not final assets.</p>
-          </div>
+          <Empty className="empty-compact">
+            <EmptyHeader>
+              <EmptyMedia variant="icon"><ImagePlus aria-hidden="true" /></EmptyMedia>
+              <EmptyTitle>No mockups yet</EmptyTitle>
+              <EmptyDescription>They are concept previews, not final assets.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div className="mockup-grid">
             {items.map((item, index) => (
               <figure key={item.id} className={isReference(item) ? "mockup-card is-accepted" : "mockup-card"}>
                 <button type="button" className="mockup-card-image" aria-label={`Inspect mockup ${items.length - index}`}
                   onClick={() => openLightbox(gallery, index)}>
-                  <AssetImage src={fileUrl(item.key)} alt={gallery[index].title} className="aspect-[3/2] w-full" style={{ objectFit: "contain" }} />
+                  <AssetImage src={fileUrl(item.key)} alt={gallery[index].title} className="aspect-[3/2] w-full" fit="contain" />
                 </button>
                 <figcaption>
                   <div className="mockup-card-meta">
@@ -278,12 +283,17 @@ export function DesignMockupStep({
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="mockup-reference-target">Use for</Label>
-            <select id="mockup-reference-target" className="w-full rounded-md border bg-background p-2" value={referenceTarget} onChange={(event) => setReferenceTarget(event.target.value)} disabled={Boolean(busy)}>
-              <option value="design">Project design</option>
-              {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.title || "Untitled asset"}</option>)}
-            </select>
+            <Select value={referenceTarget} onValueChange={setReferenceTarget} disabled={Boolean(busy)}>
+              <SelectTrigger id="mockup-reference-target" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="design">Project design</SelectItem>
+                {assets.map((asset) => <SelectItem key={asset.id} value={asset.id}>{asset.title || "Untitled asset"}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
-          {referencing && <AssetImage src={fileUrl(referencing.key)} alt="Mockup being used as a reference" className="w-full rounded-lg bg-muted" style={{ objectFit: "contain", maxHeight: 260 }} />}
+          {referencing && <AssetImage src={fileUrl(referencing.key)} alt="Mockup being used as a reference" className="mockup-reference-preview w-full rounded-lg bg-muted" fit="contain" />}
           <div className="space-y-2">
             <Label htmlFor="mockup-note">Context (optional)</Label>
             <Textarea id="mockup-note" value={note} maxLength={1000} rows={4}

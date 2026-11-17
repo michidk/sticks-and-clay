@@ -19,7 +19,7 @@ import { WorkerNotice } from "@/components/worker-notice";
 import { MaterialPanel } from "./-components/materials";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Empty } from "@/components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { assetStage, boardStages, boardStageTitles, latestSourceRun, type BoardStage } from "@/lib/board";
@@ -35,7 +35,7 @@ import { markdownColorComponents } from "@/components/markdown-color";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { z } from "zod";
-import { Activity as ActivityIcon, Columns3, Plus } from "lucide-react";
+import { Activity as ActivityIcon, Columns3, Download, Plus } from "lucide-react";
 import { request, json, costSummary, fileUrl, previewUrl } from "../../../lib/client";
 import { assetTypeLabels, type AssetType } from "@/lib/asset-types";
 import { PendingModel } from "./-components/pending-model";
@@ -137,7 +137,6 @@ function ProjectPage() {
   const p = data.project,
     rs = data.runs;
   const isGraphics = p.assetType !== "model";
-  const assetPlural = isGraphics ? "graphics" : "models";
   const assetSingular = isGraphics ? "graphic" : "model";
   const ready = p.status === "ready";
   if (!["ready", "review"].includes(p.status)) {
@@ -248,11 +247,11 @@ function ProjectPage() {
     { id: "export", title: "Export", count: stageCounts.done, hint: "Download a zip" },
   ] satisfies { id: ProjectTab; title: string; hint: string; count?: number; warn?: boolean }[];
   const stageEmpty: Record<BoardStage, [string, string]> = {
-    idea: [`No ${assetPlural} yet`, `Add a brief for the ${assetPlural} you want, or let AI propose a set from the design.`],
+    idea: ["No assets yet", `Add a brief for the assets you want, or let AI propose a set from the design.`],
     ready: ["Nothing marked ready", "Mark an idea ready when its brief is final. Starting works from either stage."],
     progress: ["Nothing in progress", "Start a ready idea to queue generation."],
-    review: ["Nothing to review", `Finished ${assetPlural} wait here for your decision.`],
-    done: ["Nothing accepted yet", `Accept reviewed ${assetPlural} to mark them done.`],
+    review: ["Nothing to review", "Finished assets wait here for your decision."],
+    done: ["Nothing accepted yet", "Accept reviewed assets to mark them done."],
   };
   return (
     <main className="project-overview">
@@ -265,17 +264,27 @@ function ProjectPage() {
           <div className="page-meta">
             <StatusBadge tone={state.tone as any}>{state.label}</StatusBadge>
             <span>{assetTypeLabels[p.assetType as AssetType]}</span>
-            <button type="button" aria-label={`Activity: ${rs.length} AI requests, estimated cost ${costSummary(total.cost)}`} title="View activity" aria-pressed={activeTab === "history"} onClick={() => setTab("history")}>
-              <ActivityIcon size={13} aria-hidden="true" />
-              {rs.length} {rs.length === 1 ? "request" : "requests"} · {costSummary(total.cost)}
-              {total.unpriced ? ` (${total.unpriced} unpriced)` : ""}
-            </button>
+            <Button variant="link" size="bare" className="page-meta-link" asChild>
+              <Link
+                to="/projects/$projectId"
+                params={{ projectId }}
+                search={{ tab: "history" }}
+                resetScroll={false}
+                aria-label={`Activity: ${rs.length} AI requests, estimated cost ${costSummary(total.cost)}`}
+                title="View activity"
+                aria-current={activeTab === "history" ? "page" : undefined}
+              >
+                <ActivityIcon size={13} aria-hidden="true" />
+                {rs.length} {rs.length === 1 ? "request" : "requests"} · {costSummary(total.cost)}
+                {total.unpriced ? ` (${total.unpriced} unpriced)` : ""}
+              </Link>
+            </Button>
           </div>
         </div>
         <div className="page-actions">
           <Button variant="outline" asChild>
             <Link to="/board" search={{ projectId }}>
-              <Columns3 size={16} /> Project board
+              <Columns3 size={16} /> Board
             </Link>
           </Button>
           <ProjectActionsMenu
@@ -298,7 +307,7 @@ function ProjectPage() {
       )}
       {!ready && (
         <p className="note">
-          Approve the design reference to start generating {assetPlural}.
+          Approve the design reference to start generating assets.
           Ideas can be saved before approval.
         </p>
       )}
@@ -341,9 +350,13 @@ function ProjectPage() {
         )}
         {activeTab === "mockups" && !ready && (
           <Empty className="empty">
-            <h2>Mockups need an approved design</h2>
-            <p>Approve the design reference first. Mockups are paid concept images generated from it.</p>
-            <Button onClick={() => setTab("design")}>Review design</Button>
+            <EmptyHeader>
+              <EmptyTitle>Mockups need an approved design</EmptyTitle>
+              <EmptyDescription>Approve the design reference first. Mockups are paid concept images generated from it.</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button onClick={() => setTab("design")}>Review design</Button>
+            </EmptyContent>
           </Empty>
         )}
         {activeTab === "mockups" && ready && (
@@ -396,7 +409,7 @@ function ProjectPage() {
             <div className="stage-head">
               <div>
                 <h2>Export</h2>
-                <p className="muted">Zip every saved file of the accepted {assetPlural}. Collection renders follow below.</p>
+                <p className="muted">Zip every saved file of the accepted assets. Collection renders follow below.</p>
               </div>
             </div>
             <ExportPanel projectId={projectId} projectName={p.name} models={data.assetVersions} />
@@ -411,9 +424,11 @@ function ProjectPage() {
                   <section className="panel collection-preview" key={b.id}>
                     <div className="section-title">
                       <h3>Every finished {assetSingular} in this batch</h3>
-                      <a href={fileUrl(b.preview.sheet)} download>
-                        Download sheet
-                      </a>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={fileUrl(b.preview.sheet)} download>
+                          <Download size={14} aria-hidden="true" /> Download sheet
+                        </a>
+                      </Button>
                     </div>
                     <div className="collection-renders">
                       <a
@@ -441,9 +456,11 @@ function ProjectPage() {
                   <section className="panel collection-preview" key={b.id}>
                     <div className="section-title">
                       <h3>Scale lineup and demo scene</h3>
-                      <a href={fileUrl(b.preview.blend)} download>
-                        Download demo scene
-                      </a>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={fileUrl(b.preview.blend)} download>
+                          <Download size={14} aria-hidden="true" /> Download demo scene
+                        </a>
+                      </Button>
                     </div>
                     <div className="collection-renders">
                       <a
@@ -485,7 +502,7 @@ function ProjectPage() {
                 {stageCounts[stage] > 0 && !["idea", "ready"].includes(stage) && (
                   <Input
                     aria-label="Search collection"
-                    placeholder={`Search ${assetPlural}`}
+                    placeholder="Search assets"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                   />
@@ -500,10 +517,14 @@ function ProjectPage() {
             </div>
             {!stageCounts[stage] ? (
               <Empty className="empty">
-                <h2>{stageEmpty[stage][0]}</h2>
-                <p>{stageEmpty[stage][1]}</p>
+                <EmptyHeader>
+                  <EmptyTitle>{stageEmpty[stage][0]}</EmptyTitle>
+                  <EmptyDescription>{stageEmpty[stage][1]}</EmptyDescription>
+                </EmptyHeader>
                 {stage === "idea" && ready && (
-                  <Button variant="outline" onClick={() => setTab("mockups")}>Generate mockups first</Button>
+                  <EmptyContent>
+                    <Button variant="outline" onClick={() => setTab("mockups")}>Generate mockups first</Button>
+                  </EmptyContent>
                 )}
               </Empty>
             ) : ["idea", "ready"].includes(stage) ? (
@@ -541,7 +562,7 @@ function ProjectPage() {
                       data.assetVersions.find((x: any) => x.id === root.parentModelId);
                     const lineage = [
                       group && group.assets.length > 1
-                        ? `Iteration ${group.assets.length}`
+                        ? `Version ${group.assets.length}`
                         : "",
                       forkParent
                         ? `Fork of ${forkParent.name.replaceAll("_", " ")}`
@@ -582,11 +603,16 @@ function ProjectPage() {
                     );
                   })}
                   {!visibleModels.length && !visiblePending.length && (
-                    <Empty className="collection-no-results">
-                      <h3>No matching {assetPlural}</h3>
-                      <Button variant="outline" onClick={() => setQuery("")}>
-                        Show all
-                      </Button>
+                    <Empty className="empty-compact col-span-full">
+                      <EmptyHeader>
+                        <EmptyTitle>No matching assets</EmptyTitle>
+                        <EmptyDescription>Try another search.</EmptyDescription>
+                      </EmptyHeader>
+                      <EmptyContent>
+                        <Button variant="outline" onClick={() => setQuery("")}>
+                          Show all
+                        </Button>
+                      </EmptyContent>
                     </Empty>
                   )}
                 </div>

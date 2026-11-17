@@ -4,14 +4,14 @@ import { BuildTrace } from "./build-trace";
 import { useState } from "react";
 import { z } from "zod";
 import { useNavigate } from "@tanstack/react-router";
-import { Download, LoaderCircle } from "lucide-react";
+import { Download, ImageOff, LoaderCircle } from "lucide-react";
 import { AssetImage } from "@/components/asset-image";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { LightboxProvider, useLightbox } from "@/components/image-lightbox";
 import { StatusBadge } from "@/components/status";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { costSummary, fileUrl, json, request } from "@/lib/client";
 import { describeError } from "@/lib/error-message";
 import { isFlatRole } from "@/lib/asset-types";
@@ -65,7 +65,13 @@ function GraphicDetailContent({ data, projectId, modelId, selectedRunId, reload 
     return (
       <main className="model-detail-page">
         {back}
-        <div className="model-detail-empty"><h1>Graphic not found</h1><p>It is not part of this project, or it was deleted.</p></div>
+        <Empty className="empty">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><ImageOff /></EmptyMedia>
+            <EmptyTitle>Graphic not found</EmptyTitle>
+            <EmptyDescription>It is not part of this project, or it was deleted.</EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       </main>
     );
   const asset = data.assets?.find((asset) => asset.id === model.assetId);
@@ -107,7 +113,7 @@ function GraphicDetailContent({ data, projectId, modelId, selectedRunId, reload 
   const format = (key?: string) => (key?.endsWith(".svg") ? "SVG" : "PNG");
   const pixelated = data.project.assetType === "pixel";
   const gallery = builds.map((build: any, index) => ({
-    pixelated, src: fileUrl(build.result.key), title: `${name} · review round ${index + 1}`, caption: reviewOf(build)?.summary,
+    pixelated, src: fileUrl(build.result.key), title: `${name} · Build ${index + 1}`, caption: reviewOf(build)?.summary,
   }));
 
   async function act(action: () => Promise<unknown>) {
@@ -158,15 +164,17 @@ function GraphicDetailContent({ data, projectId, modelId, selectedRunId, reload 
           )}
         </div>
       </section>
-      {(error || model.error) && (
-        <Alert variant="destructive" role="alert" className="error">
-          <AlertDescription>{error || describeError(model.error)}</AlertDescription>
+      {(error || model.error || model.status === "failed") && (
+        <Alert variant="destructive" className="studio-failure">
+          <AlertDescription>
+            {error || (model.error ? describeError(model.error) : "Generation stopped before this version finished.")}
+            {model.status === "failed" && !archived && (
+              <Button variant="outline" size="sm" disabled={busy} onClick={() => void act(() => request(`asset-versions/${modelId}/retry`, json({})))}>
+                {busy && <LoaderCircle className="spin" size={16} />} Resume
+              </Button>
+            )}
+          </AlertDescription>
         </Alert>
-      )}
-      {model.status === "failed" && (
-        <Button variant="outline" disabled={busy} onClick={() => void act(() => request(`asset-versions/${modelId}/retry`, json({})))}>
-          {busy && <LoaderCircle className="spin" size={16} />} Resume
-        </Button>
       )}
       {model.status === "awaiting_approval" && model.visualTarget && !archived && (
         <VisualTargetReview key={model.visualTarget} modelId={modelId} target={model.visualTarget} onRefresh={reload} />
@@ -174,15 +182,17 @@ function GraphicDetailContent({ data, projectId, modelId, selectedRunId, reload 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)]">
         <GraphicConversation key={modelId} projectId={projectId} modelId={modelId}
           sourceRunId={current?.id} asset={asset} runs={runs} prompt={model.prompt}
+          changePrompt={model.sourceRunId ? model.changePrompt : undefined} changeImages={model.changeImages}
+          defaultRounds={batch?.judgeIterations ?? 2}
           working={working} archived={archived} designReady={data.project.status === "ready"}
           onRefresh={reload} />
         <div className="order-1 min-w-0 space-y-6 lg:order-2">
-        <Card className="panel">
+        <section className="panel" aria-label="Graphic">
           {currentKey ? (
             <button type="button" aria-label="Open full size" className="block w-full"
               onClick={() => openLightbox(liveCanvas && currentKey ? [{ pixelated, src: fileUrl(currentKey), title: `${name} · construction in progress` }] : gallery, liveCanvas ? 0 : Math.max(0, builds.findIndex((build) => build.id === current?.id)))}>
               <AssetImage src={fileUrl(currentKey)} width={1280} pixelated={pixelated} alt={name}
-                className="mx-auto aspect-square w-full max-w-[640px] rounded-lg bg-white" style={{ objectFit: "contain" }} />
+                className="graphic-stage mx-auto aspect-square w-full max-w-[640px] rounded-lg" style={{ objectFit: "contain" }} />
             </button>
           ) : (
             <p className="muted">{working ? "Generating. The image appears here when it is ready." : "No image was saved for this graphic."}</p>
@@ -193,8 +203,7 @@ function GraphicDetailContent({ data, projectId, modelId, selectedRunId, reload 
               <div className="mt-3 flex flex-wrap gap-4">
                 {nativePreviews.map((preview) => (
                   <figure key={preview.key} className="space-y-2">
-                    <div className="flex h-24 w-24 items-center justify-center rounded-md border"
-                      style={{ backgroundColor: preview.dark ? "#18181b" : "#ffffff" }}>
+                    <div className={"svg-size-preview " + (preview.dark ? "is-dark" : "is-light")}>
                       <AssetImage src={fileUrl(preview.key)} width="full" alt={preview.label}
                         style={{ width: preview.size, height: preview.size, imageRendering: "auto" }} />
                     </div>
@@ -215,7 +224,7 @@ function GraphicDetailContent({ data, projectId, modelId, selectedRunId, reload 
                     <button type="button" className="block w-full" aria-label={`Open ${part.name} full size`}
                       onClick={() => openLightbox(partGallery, index)}>
                       <AssetImage src={fileUrl(part.key)} width={640} alt={part.name}
-                        className="aspect-square w-full bg-white" style={{ objectFit: "contain" }} />
+                        className="graphic-stage aspect-square w-full" style={{ objectFit: "contain" }} />
                     </button>
                     <div className="flex items-center justify-between gap-2 p-3">
                       <span className="min-w-0 break-words">{part.name}</span>
@@ -231,11 +240,11 @@ function GraphicDetailContent({ data, projectId, modelId, selectedRunId, reload 
           {pixelated && current && <PixelExports exports={(current.result as any)?.exports} review={(current.result as any)?.review} />}
           {data.project.assetType === "cad" && current && <CadExports exports={(current.result as any)?.exports} previews={(current.result as any)?.previews} analysis={(current.result as any)?.analysis} />}
           {builds.length > 1 && (
-            <ul className="mt-4 flex flex-wrap gap-2" aria-label="Review rounds">
+            <ul className="mt-4 flex flex-wrap gap-2" aria-label="Builds">
               {builds.map((build: any, index) => (
                 <li key={build.id}>
-                  <button type="button" aria-pressed={build.id === current?.id} aria-label={`Review round ${index + 1}`}
-                    className="block size-20 overflow-hidden rounded-md border bg-white aria-pressed:ring-2 aria-pressed:ring-primary"
+                  <button type="button" aria-pressed={build.id === current?.id} aria-label={`Build ${index + 1}`}
+                    className="graphic-stage block size-20 overflow-hidden rounded-md border aria-pressed:ring-2 aria-pressed:ring-primary"
                     onClick={() => setPicked(build.id)}>
                     <AssetImage src={fileUrl(build.result.key)} width={320} pixelated={pixelated} alt="" className="size-full" style={{ objectFit: "contain" }} />
                   </button>
@@ -243,33 +252,29 @@ function GraphicDetailContent({ data, projectId, modelId, selectedRunId, reload 
               ))}
             </ul>
           )}
-        </Card>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {target && model.status !== "awaiting_approval" && <Card className="panel">
+        </section>
+        <div className={target && model.status !== "awaiting_approval" ? "grid gap-4 sm:grid-cols-2" : "grid gap-4"}>
+          {target && model.status !== "awaiting_approval" && <section className="panel">
             <h2>Visual target</h2>
             <p className="muted">Design reference used to construct this asset.</p>
             <button type="button" className="block w-full" aria-label="Open visual target"
               onClick={() => openLightbox([{ src: fileUrl(target), title: "Visual target" }])}>
               <AssetImage src={fileUrl(target)} alt="Visual target" className="aspect-square w-full rounded-md" style={{ objectFit: "contain" }} />
             </button>
-          </Card>}
-          <Card className="panel">
+          </section>}
+          <section className="panel">
             <h2>Review</h2>
             {review?.summary ? (
               <ReviewNotes review={review} />
             ) : (
-              <p className="muted">{working ? "The review appears when the first build is judged." : "This round was not reviewed."}</p>
+              <p className="muted">{working ? "The review appears when the first build is judged." : "This build was not reviewed."}</p>
             )}
-          </Card>
-          <Card className="panel">
-            <h2>Prompt</h2>
-            <p className="whitespace-pre-wrap">{model.prompt}</p>
-          </Card>
+          </section>
         </div>
       </div>
       </div>
-      <details className="panel p-4">
-        <summary className="cursor-pointer">Debug: how the agents made this</summary>
+      <details className="panel graphic-debug">
+        <summary>Debug: how the agents made this</summary>
         <div className="mt-4"><BuildTrace modelId={modelId} working={working} /></div>
       </details>
 

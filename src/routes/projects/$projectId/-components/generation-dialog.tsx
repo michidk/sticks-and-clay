@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MarkdownTextarea } from "@/components/markdown-textarea";
 import {
@@ -344,7 +345,7 @@ export function GenerationDialog({
                 </div>
               </div>
               {type === "graphic" && <div className="flex items-center gap-2">
-                <input id="idea-transparent" type="checkbox" className="workshop-checkbox" checked={transparentBackground} onChange={(event) => setTransparentBackground(event.target.checked)} />
+                <Checkbox id="idea-transparent" checked={transparentBackground} onCheckedChange={(value) => setTransparentBackground(value === true)} />
                 <Label htmlFor="idea-transparent">Transparent background</Label>
               </div>}
               {isGraphics && type !== "cad" && (
@@ -376,7 +377,7 @@ export function GenerationDialog({
               </p>
               {hasVisualTarget(type) && <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <input id="skip-visual-mock" type="checkbox" className="workshop-checkbox" checked={skipVisualMock} onChange={(event) => setSkipVisualMock(event.target.checked)} />
+                  <Checkbox id="skip-visual-mock" checked={skipVisualMock} onCheckedChange={(value) => setSkipVisualMock(value === true)} />
                   <Label htmlFor="skip-visual-mock">Skip visual mock</Label>
                 </div>
                 <p className="muted">{skipVisualMock ? "Build directly from the approved design and brief, without generating a concept image." : "Generate a visual target first. Review, revise, and approve it before asset construction starts."}</p>
@@ -384,15 +385,11 @@ export function GenerationDialog({
               {!isGraphics && (
                 <div className="idea-sprite">
                   <div className="idea-sprite-toggle">
-                    <input
+                    <Checkbox
                       id="idea-sprite"
-                      type="checkbox"
                       name="spriteTarget"
-                      className="workshop-checkbox"
                       checked={spriteEnabled}
-                      onChange={(event) =>
-                        setSpriteEnabled(event.target.checked)
-                      }
+                      onCheckedChange={(value) => setSpriteEnabled(value === true)}
                     />
                     <Label htmlFor="idea-sprite">Build for sprite delivery</Label>
                   </div>

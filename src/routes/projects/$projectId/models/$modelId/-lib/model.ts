@@ -52,6 +52,8 @@ export type Model = {
   sourceRunId?: string | null;
   changePrompt?: string | null;
   objectReference?: ObjectReference | null;
+  objectReferences?: ObjectReference[] | null;
+  changeImages?: string[] | null;
   branchKind?: "iterate" | "fork" | null;
   status: string;
   phase: string;

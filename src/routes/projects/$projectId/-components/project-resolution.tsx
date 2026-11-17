@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { ResolutionFields, resolutionFromForm } from "@/components/resolution-fields";
 import { workshopSchema, type Workshop } from "@/lib/workshop";
 import { request, json } from "@/lib/client";
@@ -23,7 +25,10 @@ export function ProjectResolution({ projectId, type, workshop, disabled, onSaved
   return <form onSubmit={save} className="panel mb-6 space-y-3">
     <fieldset disabled={disabled || busy} className="space-y-3">
       <ResolutionFields key={workshop?.version ?? 0} type={type} value={workshop?.resolution} />
-      {type === "graphic" && <label className="flex items-center gap-2"><input name="transparentBackground" type="checkbox" defaultChecked={workshop?.transparentBackground !== false} /> Transparent background</label>}
+      {type === "graphic" && <div className="flex items-center gap-2">
+        <Checkbox id="project-transparent" name="transparentBackground" defaultChecked={workshop?.transparentBackground !== false} />
+        <Label htmlFor="project-transparent">Transparent background</Label>
+      </div>}
       <p className="muted">Applies to future versions. Each asset can override this setting.</p>
       <Button type="submit" variant="outline">{busy ? "Saving…" : "Save project resolution"}</Button>
     </fieldset>

@@ -80,11 +80,10 @@ Project references describe shared visual direction. Asset references describe
 one asset. Uploads use the same image picker in either case. A mockup can be
 attached to the project design or a specific asset, with a note explaining
 what to use from it. Iterate opens the asset detail workspace with its
-conversation beside the preview. For graphics, SVG, pixel art and CAD, the
-composer accepts new mockups or reference uploads and saves them to the asset
-before queuing the next version. Existing asset references remain available in
-Saved asset references. In the 3D workspace, save uploads under Asset references
-before sending a change request.
+conversation beside the preview. On every asset type the composer accepts up to
+four images pasted, dropped or attached to one change request; they guide that
+version only and are kept with it. To give every later version an image, add it
+under Asset references below the composer.
 
 Starting a version freezes its approved design, settings, parts, reference
 images, and reference notes. Later edits affect future versions. They never
@@ -142,7 +141,7 @@ asset title; original version filenames remain available on the model page.
 ### Done visibility on the board
 
 The global board, including its project filter, hides Done assets after five
-days without a recorded update. Runtime settings → Board → Hide Done assets
+days without a recorded update. Admin → Settings → Board → Hide Done assets
 after (days) changes this limit; 0 disables hiding. Age uses the latest asset
 history event, version creation, or acceptance timestamp, so editing or accepting
 an asset refreshes its visibility. The board counts only visible Done assets.

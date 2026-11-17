@@ -1,10 +1,8 @@
 import { RenameButton } from "@/components/rename";
-import { assetStage } from "@/lib/board";
-import { AssetReferences } from "@/components/asset-references";
+import { AssetCardActions } from "@/components/asset-card-actions";
 import { describeError } from "@/lib/error-message";
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Boxes, Check, Download, Square } from "lucide-react";
+import { Boxes } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,11 +11,8 @@ import { ModelViewer } from "@/components/ui/model-viewer/lazy";
 import { ViewerSkeleton } from "@/components/loading";
 import { TriangleCount } from "@/components/triangle-count";
 import { Progress, StatusBadge } from "@/components/status";
-import { costSummary, fileUrl, json, request } from "@/lib/client";
-import { GraphicVariant } from "./graphic-variant";
+import { costSummary, fileUrl } from "@/lib/client";
 import { queueKindLabels } from "@/lib/queue-view";
-import { DeleteAsset } from "./delete-asset";
-import { ReopenAsIdea } from "./reopen-as-idea";
 
 const finished = ["done", "failed", "cancelled"];
 
@@ -71,9 +66,6 @@ export function AssetCard({
   onReturnedToIdea?: () => void;
   activeJobs?: { id: string; kind: string; status: string }[];
 }) {
-  const [resuming, setResuming] = useState(false);
-  const [accepting, setAccepting] = useState(false);
-  const [approving, setApproving] = useState(false);
   const m = model;
   const name = asset?.title || m.name.replaceAll("_", " ");
   const modelLink = {
@@ -82,52 +74,9 @@ export function AssetCard({
   };
   const working = !finished.includes(m.status);
   const outdated = !!batch && batch.designVersion < currentDesignVersion;
-  async function approveTarget() {
-    setApproving(true);
-    try {
-      await request(`models/${m.id}/visual-target`, json({ action: "approve", target: m.visualTarget }));
-      await onRefresh();
-    } catch (error) {
-      onError(error instanceof Error ? error.message : "Could not approve visual target");
-    } finally {
-      setApproving(false);
-    }
-  }
-  async function abort() {
-    setResuming(true);
-    try {
-      await request("asset-versions/" + m.id + "/abort", json({}));
-      await onRefresh();
-    } catch (e) {
-      onError((e as Error).message);
-    } finally {
-      setResuming(false);
-    }
-  }
-  async function accept() {
-    setAccepting(true);
-    try {
-      await request("models/" + m.id + "/accept", json({ accepted: true }));
-      await onRefresh();
-    } catch (e) {
-      onError((e as Error).message);
-    } finally {
-      setAccepting(false);
-    }
-  }
-  async function resume() {
-    setResuming(true);
-    try {
-      await request("asset-versions/" + m.id + "/retry", json({}));
-      await onRefresh();
-    } catch (e) {
-      onError((e as Error).message);
-    } finally {
-      setResuming(false);
-    }
-  }
   return (
     <Card className="model-card">
+
       <div className={`model-cover${isGraphics ? " graphic-cover" : ""}`}>
         {isGraphics && m.artifacts?.image ? (
           <Link className="model-cover-image" {...modelLink} search={{ view: "3d", section: "review" }}>
@@ -164,7 +113,7 @@ export function AssetCard({
             )}
           </Link>
         )}
-        <StatusBadge status={m.status} verdict={m.verdict === "limit_reached" ? m.verdict : undefined} />
+        <StatusBadge status={m.status} verdict={m.verdict} accepted={Boolean(m.acceptedAt)} />
         {!isGraphics && m.artifacts && (
           <Button
             variant="outline"
@@ -245,92 +194,29 @@ export function AssetCard({
           </span>
           <span>Est. {costSummary(cost)}</span>
         </div>
-        <div className="card-actions">
-          {m.status === "awaiting_approval" && m.visualTarget && !archived && (
-            <Button disabled={approving || resuming} onClick={approveTarget}>
-              <Check size={14} /> {approving ? "Approving…" : "Approve & build"}
-            </Button>
-          )}
-          {working && !archived && (
-            <Button variant="outline" disabled={approving || resuming || activeJobs.some((job) => job.status === "cancelling")} onClick={abort}
-              title="Stop generating. The asset returns to its previous state; the attempt stays in history.">
-              <Square size={14} /> {resuming ? "Stopping…" : "Abort"}
-            </Button>
-          )}
-          {m.status === "failed" && (
-            <Button variant="outline" disabled={resuming} onClick={resume}>
-              {resuming ? "Resuming…" : "Resume"}
-            </Button>
-          )}
-          {assetStage(m) === "review" && !archived && !working && (
-            <Button disabled={accepting} onClick={accept}>
-              <Check size={14} /> {accepting ? "Accepting…" : "Accept"}
-            </Button>
-          )}
-          {(outdated || assetStage(m) === "review") && !archived && !working && (
-            <GraphicVariant
-              projectId={projectId}
-              kind="iterate"
-              iterateLabel={outdated ? "Regenerate" : "Iterate"}
-              model={m}
-              sourceRunId={sourceRunId}
-              designReady={designReady}
-              onSaved={onRefresh}
-            />
-          )}
-          {renderFailure && onResumeBatch && (
-            <Button
-              variant="outline"
-              disabled={resumingBatch}
-              onClick={() => onResumeBatch(renderFailure.id)}
-            >
-              Retry renders
-            </Button>
-          )}
-          <Button variant="outline" asChild>
-            <Link {...modelLink} search={{ view: "3d", section: "review" }}>
-              {isGraphics ? "Open" : "Open model"}
-            </Link>
-          </Button>
-          {isGraphics && m.artifacts?.image && (
-            <>
-              <Button variant="outline" asChild>
-                <a href={fileUrl(m.artifacts.image)} download>
-                  <Download size={14} /> {m.artifacts?.format === "svg" ? "SVG" : "PNG"}
-                </a>
-              </Button>
-              <GraphicVariant
-              projectId={projectId}
-                model={m}
-                sourceRunId={sourceRunId}
-                onSaved={onRefresh}
-              />
-            </>
-          )}
-          {!isGraphics && m.artifacts && (
-            <>
-              <Button variant="ghost" asChild>
-                <a href={fileUrl(m.artifacts.glb)} download>
-                  <Download size={14} /> GLB
-                </a>
-              </Button>
-              <Button variant="ghost" asChild>
-                <a href={fileUrl(m.artifacts.blend)} download>
-                  Blender source
-                </a>
-              </Button>
-            </>
-          )}
-          {deleteTarget && !archived && (
-            <ReopenAsIdea id={deleteTarget.id} name={name} onDone={async () => { await onRefresh(); onReturnedToIdea?.(); }} />
-          )}
-          {deleteTarget && !archived && (
-            <DeleteAsset id={deleteTarget.id} name={name} versions={deleteTarget.versions}
-              onDeleted={onRefresh} />
-          )}
-        </div>
+        <AssetCardActions
+          className="card-actions"
+          projectId={projectId}
+          version={m}
+          name={name}
+          asset={asset}
+          rootId={deleteTarget?.id}
+          versions={deleteTarget?.versions}
+          isGraphics={isGraphics}
+          archived={archived}
+          designReady={designReady}
+          outdated={outdated}
+          sourceRunId={sourceRunId}
+          renderFailure={renderFailure}
+          resumingBatch={resumingBatch}
+          onResumeBatch={onResumeBatch}
+          cancelling={activeJobs.some((job) => job.status === "cancelling")}
+          onRefresh={onRefresh}
+          onError={onError}
+          onReturnedToIdea={onReturnedToIdea}
+        />
       </div>
-    {asset && !archived && <details className="m-4"><summary className="cursor-pointer">Asset references</summary><AssetReferences projectId={projectId} assetId={asset.id} references={asset.references} referenceNotes={asset.referenceNotes} onRefresh={onRefresh} /></details>}
-      </Card>
+    </Card>
+
   );
 }

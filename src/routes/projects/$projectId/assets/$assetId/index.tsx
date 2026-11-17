@@ -4,6 +4,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AssetLifecycle } from "@/components/board";
 import { AssetReferences } from "@/components/asset-references";
 import { WorkspaceSkeleton } from "@/components/loading";
+import { Breadcrumbs } from "@/components/breadcrumbs";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { StatusBadge } from "@/components/status";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -46,16 +48,26 @@ function AssetPage() {
   const asset = data?.assets.find((asset) => asset.id === assetId);
   const versions = data?.assetVersions.filter((version) => version.assetId === assetId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) ?? [];
   return <main>
-    <Link to="/projects/$projectId" params={{ projectId }} search={{}}>Back to project</Link>
+    <Breadcrumbs items={[
+      { label: "Projects", link: { to: "/projects" } },
+      { label: data?.project.name || "Project", link: { to: "/projects/$projectId", params: { projectId } } },
+    ]} />
     {error && <Alert variant="destructive"><AlertDescription>{error} <Button variant="ghost" size="sm" onClick={() => refresh().catch((error) => setError(error instanceof Error ? error.message : "Could not load this asset"))}>Retry</Button></AlertDescription></Alert>}
     {!data && !error && <WorkspaceSkeleton />}
-    {data && !asset && <p className="muted mt-6">Asset not found in this project.</p>}
+    {data && !asset && <Empty className="empty"><EmptyHeader><EmptyTitle>Asset not found</EmptyTitle><EmptyDescription>It is not part of this project, or it was deleted.</EmptyDescription></EmptyHeader></Empty>}
     {data && asset && <>
-      <header className="my-6"><p className="muted">{data.project.name} · Asset</p><div className="flex items-center gap-2"><h1>{ideaTitle(asset)}</h1><RenameButton kind="asset" name={ideaTitle(asset)} endpoint={`projects/${projectId}/assets/${asset.id}`} onSaved={refresh} /></div><p className="whitespace-pre-wrap mt-3">{ideaBrief(asset)}</p>{!data.project.archivedAt && <Button className="mt-4" variant="outline" onClick={() => setEditing(true)}>Edit asset</Button>}</header>
+      <section className="page-header">
+        <div>
+          <div className="flex items-center gap-2"><h1>{ideaTitle(asset)}</h1><RenameButton kind="asset" name={ideaTitle(asset)} endpoint={`projects/${projectId}/assets/${asset.id}`} onSaved={refresh} /></div>
+          <div className="page-meta"><span>{versions.length} version{versions.length === 1 ? "" : "s"}</span></div>
+        </div>
+        {!data.project.archivedAt && <div className="page-actions"><Button variant="outline" onClick={() => setEditing(true)}>Edit asset</Button></div>}
+      </section>
+      <p className="asset-page-brief">{ideaBrief(asset)}</p>
       {asset.input.parts?.length ? <section className="mb-6"><h2>Parts</h2><ul>{asset.input.parts.map((part) => <li key={part.name}><strong>{part.name}</strong> · {part.brief}</li>)}</ul></section> : null}
       {editing && <GenerationDialog assetType={data.project.assetType} idea={asset} projectId={projectId} designVersion={data.project.designVersion} ready={data.project.status === "ready" && !data.project.archivedAt} isGraphics={data.project.assetType !== "model"} open onOpenChange={setEditing} onRefresh={refresh} onSaved={async () => { await refresh(); }} />}
       <AssetLifecycle entry={{ ...data, models: data.assetVersions }} assetId={assetId} onRefresh={refresh} />
-      {!data.project.archivedAt && <section className="my-8"><h2>References for future versions</h2><p className="muted mb-4">Saved versions keep their original design and references.</p><AssetReferences projectId={projectId} assetId={assetId} references={asset.references ?? []} referenceNotes={asset.referenceNotes ?? {}} onRefresh={refresh} /></section>}
+      {!data.project.archivedAt && <section className="my-8"><h2>Asset references</h2><p className="muted mb-4">Saved versions keep their original design and references.</p><AssetReferences projectId={projectId} assetId={assetId} references={asset.references ?? []} referenceNotes={asset.referenceNotes ?? {}} onRefresh={refresh} /></section>}
       <section className="my-8"><h2>Version history</h2>
         {!versions.length ? <p className="muted">This asset has no generated versions yet.</p> : <ul className="space-y-3 mt-4">{versions.map((version, index) => <li key={version.id} className="flex flex-wrap items-center gap-3">
           <Link to="/projects/$projectId/models/$modelId" params={{ projectId, modelId: version.id }} search={{ view: data.project.assetType === "model" ? "3d" : "target", section: "review" }}>Version {versions.length - index}</Link>

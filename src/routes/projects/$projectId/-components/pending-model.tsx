@@ -19,7 +19,6 @@ export function PendingModel({
   assetType: AssetType;
 }) {
   const failed = batch.status === "failed";
-  const noun = assetType !== "model" ? "graphic" : "model";
   return (
     <Card className="model-card pending-model">
       <div className="model-cover">
@@ -40,7 +39,7 @@ export function PendingModel({
       </div>
       <div className="project-body">
         <h3>
-          {`${noun[0].toUpperCase() + noun.slice(1)}${batch.count > 1 ? ` ${index + 1} of ${batch.count}` : ""}`}
+          {`Asset${batch.count > 1 ? ` ${index + 1} of ${batch.count}` : ""}`}
         </h3>
         <p>{batch.prompt || `Proposed by AI from the design reference.`}</p>
         {failed ? (
@@ -56,7 +55,7 @@ export function PendingModel({
             label={
               batch.status === "queued"
                 ? "Waiting for the planner"
-                : `Planning the ${noun} brief`
+                : "Planning the asset brief"
             }
           />
         )}
@@ -68,7 +67,7 @@ export function PendingModel({
         {failed && (
           <div className="card-actions">
             <Button variant="outline" disabled={busy} onClick={onResume}>
-              Resume batch
+              Resume
             </Button>
           </div>
         )}

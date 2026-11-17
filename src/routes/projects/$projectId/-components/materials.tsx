@@ -367,7 +367,7 @@ export function MaterialPanel({ projectId }: { projectId: string }) {
                     ).toFixed(2)}
                   </p>
                   {job.validation.warnings.map((warning: string) => (
-                    <p key={warning} className="text-amber-800">
+                    <p key={warning} className="text-warning">
                       {warning}
                     </p>
                   ))}

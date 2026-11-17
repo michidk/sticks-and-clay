@@ -15,7 +15,10 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { request, json } from "@/lib/client";
-/** Fork into another asset, or create a new version of this asset. */
+/**
+ * Fork into another asset, or create a new version of this asset.
+ * For a fork, pass `open` and `onOpenChange` to open the dialog from elsewhere (such as a menu); no trigger is rendered then.
+ */
 export function GraphicVariant({
   model,
   projectId,
@@ -24,6 +27,9 @@ export function GraphicVariant({
   kind = "fork",
   designReady = true,
   iterateLabel = "Iterate",
+  size,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   model: any;
   projectId: string;
@@ -32,11 +38,20 @@ export function GraphicVariant({
   kind?: "fork" | "iterate";
   designReady?: boolean;
   iterateLabel?: "Iterate" | "Regenerate";
+  size?: "sm" | "default";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const navigate = useNavigate();
   const iterate = kind === "iterate";
-  const [open, setOpen] = useState(false),
-    [name, setName] = useState(model.name + " variant"),
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const controlled = !iterate && controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
+  const [name, setName] = useState(model.name + " variant"),
     [prompt, setPrompt] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -63,22 +78,22 @@ export function GraphicVariant({
   }
   return (
     <>
-      <Button
+      {!controlled && <Button
         variant="outline"
-        size={iterate ? "sm" : undefined}
+        size={size ?? (iterate ? "sm" : undefined)}
         disabled={!sourceRunId || (iterate && !designReady)}
         title={iterate && !designReady ? "Approve the design before generating a new version" : undefined}
         onClick={() => iterate
           ? void navigate({ to: "/projects/$projectId/models/$modelId", params: { projectId, modelId: model.id }, search: { view: "3d", section: "review", version: sourceRunId }, hash: "continuation-prompt" })
           : setOpen(true)}
       >
-        {iterate ? iterateLabel : "Fork asset"}
-      </Button>
+        {iterate ? iterateLabel : "Fork variant"}
+      </Button>}
       {!open && error && <p role="status">{error}</p>}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Fork asset</DialogTitle>
+            <DialogTitle>Fork variant</DialogTitle>
             <DialogDescription>
               Creates a separate asset from this saved build. The original asset and its history are kept. Paid generation request.
             </DialogDescription>

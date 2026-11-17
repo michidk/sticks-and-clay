@@ -7,7 +7,7 @@ function DiagnosticsPage() {
   return <div className="admin-page diagnostics-page">
     <section className="page-heading">
       <div>
-        <h1>System diagnostics</h1>
+        <h1>Diagnostics</h1>
         <p className="lede">Live service health, capacity, effective configuration, and recent operational failures.</p>
       </div>
     </section>

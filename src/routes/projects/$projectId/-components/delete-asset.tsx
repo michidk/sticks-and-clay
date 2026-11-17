@@ -13,17 +13,28 @@ import {
 } from "@/components/ui/dialog";
 import { request } from "@/lib/client";
 
-/** Delete a generated asset, with its iterations, behind a confirmation. Its AI request records and costs stay. */
+/**
+ * Delete a generated asset, with its versions, behind a confirmation. Its AI request records and costs stay.
+ * Pass `open` and `onOpenChange` to open the confirmation from elsewhere (such as a menu); no trigger is rendered then.
+ */
 export function DeleteAsset({
-  id, name, versions = 1, disabled, onDeleted,
+  id, name, versions = 1, disabled, onDeleted, open: controlledOpen, onOpenChange,
 }: {
   id: string;
   name: string;
   versions?: number;
   disabled?: boolean;
   onDeleted: () => unknown;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : uncontrolledOpen;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setUncontrolledOpen(next);
+    onOpenChange?.(next);
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function remove() {
@@ -46,10 +57,12 @@ export function DeleteAsset({
   }
   return (
     <>
-      <Button variant="ghost" size="icon-sm" aria-label={`Delete ${name}`} disabled={disabled}
-        onClick={() => { setError(""); setOpen(true); }}>
-        <Trash2 size={15} />
-      </Button>
+      {!controlled && (
+        <Button variant="ghost" size="icon-sm" aria-label={`Delete ${name}`} disabled={disabled}
+          onClick={() => { setError(""); setOpen(true); }}>
+          <Trash2 size={15} />
+        </Button>
+      )}
       <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
         <DialogContent showCloseButton={!busy}>
           <DialogHeader>
