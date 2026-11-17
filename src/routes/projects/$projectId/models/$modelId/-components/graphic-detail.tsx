@@ -180,7 +180,7 @@ function GraphicDetailContent({ data, projectId, modelId, selectedRunId, reload 
         <VisualTargetReview key={model.visualTarget} modelId={modelId} target={model.visualTarget} onRefresh={reload} />
       )}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)]">
-        <GraphicConversation key={modelId} projectId={projectId} modelId={modelId}
+        <GraphicConversation key={modelId} projectId={projectId} assetType={data.project.assetType ?? "graphic"} modelId={modelId}
           sourceRunId={current?.id} asset={asset} runs={runs} prompt={model.prompt}
           changePrompt={model.sourceRunId ? model.changePrompt : undefined} changeImages={model.changeImages}
           defaultRounds={batch?.judgeIterations ?? 2}

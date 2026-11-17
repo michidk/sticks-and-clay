@@ -172,7 +172,7 @@ integration(
       const png = new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0])], "sketch.png", { type: "image/png" });
       const attachedForm = (images: File[], references = [objectReference, handle]) => {
         const form = new FormData();
-        form.set("input", JSON.stringify({ kind: "iterate", sourceRunId: runId, prompt: "Match the sketch", judgeIterations: 0, objectReferences: references }));
+        form.set("input", JSON.stringify({ kind: "iterate", sourceRunId: runId, prompt: "Match the sketch", judgeIterations: 0, objectReferences: references, visualTargetMode: "skip" }));
         for (const image of images) form.append("images", image);
         return api(new Request(`http://localhost/api/models/${modelId}/branch`, { method: "POST", body: form }));
       };
@@ -185,6 +185,8 @@ integration(
       const [attachedModel] = await db.select().from(assetVersions).where(eq(assetVersions.id, attachedId));
       const [attachedJob] = await db.select().from(jobs).where(eq(jobs.targetId, attachedId));
       expect(attachedModel.objectReferences).toEqual([objectReference, handle]);
+      // The composer builds straight from the saved version unless the owner asks for a new target.
+      expect((await db.select().from(batches).where(eq(batches.id, attachedModel.batchId)))[0].visualTargetMode).toBe("skip");
       expect(attachedModel.changeImages).toHaveLength(1);
       expect(attachedModel.changeImages![0]).toMatch(/^references\/.+\.png$/);
       expect(JSON.parse(attachedJob.checkpoint["branch-references"])[0]).toBe(attachedModel.changeImages![0]);

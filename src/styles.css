@@ -1941,3 +1941,5 @@ a.board-card-title:hover { text-decoration: underline; }
 @media (max-width: 600px) { .error-page-actions > * { flex: 1 1 0; } }
 .board-filter { align-items: center; gap: 10px; }
 .board-filter [data-slot="select-trigger"] { min-width: 200px; }
+.studio-compose-row:has(> .studio-compose-target) { flex-wrap: wrap; row-gap: 8px; }
+.studio-compose-target { order: 10; flex-basis: 100%; display: flex; flex-direction: row; justify-content: flex-start; align-items: center; gap: 8px; padding: 2px 4px 0; font-size: 12px; font-weight: 500; color: var(--muted-foreground); cursor: pointer; }

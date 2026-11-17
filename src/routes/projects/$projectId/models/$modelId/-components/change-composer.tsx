@@ -3,6 +3,7 @@ import { ImagePlus, LoaderCircle, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { IMAGE_MIME_TYPES, MAX_IMAGE_BYTES } from "@/lib/image-file";
@@ -36,6 +37,8 @@ export function ChangeComposer({
   sendLabel,
   disabled,
   allowEmpty = false,
+  visualTarget,
+  onVisualTargetChange,
   onSubmit,
 }: {
   /** One line above the box: what the change continues from. */
@@ -52,6 +55,9 @@ export function ChangeComposer({
   disabled?: boolean;
   /** A blank prompt without images is allowed (graphics regenerate from the saved result). */
   allowEmpty?: boolean;
+  /** Whether the change first makes a new visual target for approval; the switch shows when this is handled. */
+  visualTarget?: boolean;
+  onVisualTargetChange?: (visualTarget: boolean) => void;
   /** Throws to show its message; resolves after the change was queued. */
   onSubmit: (input: { prompt: string; images: File[] }) => Promise<void>;
 }) {
@@ -196,6 +202,21 @@ export function ChangeComposer({
           >
             <ImagePlus />
           </Button>
+          {onVisualTargetChange && (
+            <Label
+              htmlFor="continuation-visual-target"
+              className="studio-compose-target"
+              title="On: draft a new visual target and wait for your approval. Off: build straight from the saved version."
+            >
+              <Switch
+                id="continuation-visual-target"
+                checked={!!visualTarget}
+                disabled={disabled}
+                onCheckedChange={onVisualTargetChange}
+              />
+              New visual target
+            </Label>
+          )}
           <Label htmlFor="continuation-rounds" className="studio-compose-rounds">
             Review rounds
             <Input

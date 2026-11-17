@@ -73,6 +73,8 @@ export function ModelConversation({
   const openLightbox = useLightbox();
   const [kind, setKind] = useState<"iterate" | "fork">("iterate");
   const [name, setName] = useState("");
+  // A change builds straight from the saved version unless the owner asks for a new target.
+  const [visualTarget, setVisualTarget] = useState(false);
   const [rounds, setRounds] = useState(
     workspace.batches.find((batch) => batch.id === model.batchId)
       ?.judgeIterations ?? 2,
@@ -116,6 +118,7 @@ export function ModelConversation({
         objectReferences: objectReferences.length ? objectReferences : undefined,
         name: kind === "fork" ? name : undefined,
         judgeIterations: rounds,
+        visualTargetMode: visualTarget ? "review" : "skip",
       }, images),
     );
     onClearObjects();
@@ -312,6 +315,8 @@ export function ModelConversation({
           sendLabel={kind === "fork" ? "Create fork" : "Iterate model"}
           rounds={rounds}
           onRoundsChange={setRounds}
+          visualTarget={visualTarget}
+          onVisualTargetChange={setVisualTarget}
           onSubmit={createBranch}
           context={objectReferences.length ? objectReferences.map((reference) => (
             <span key={reference.nodeId} className="studio-compose-part" title={reference.path.join(" / ")}>

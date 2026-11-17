@@ -7,13 +7,16 @@ import { AssetImage } from "@/components/asset-image";
 import { useLightbox } from "@/components/image-lightbox";
 import { request, json, fileUrl } from "@/lib/client";
 import type { Workspace } from "../-lib/model";
+import { hasVisualTarget } from "@/lib/visual-target";
+import type { AssetType } from "@/lib/asset-types";
 import { ChangeComposer, branchRequest } from "./change-composer";
 
 const conversationResult = z.object({ summary: z.string().optional() });
 
 /** The graphic's story and the same change composer as the 3D page. */
-export function GraphicConversation({ projectId, modelId, sourceRunId, asset, runs, prompt, changePrompt, changeImages, defaultRounds, working, archived, designReady, onRefresh }: {
+export function GraphicConversation({ projectId, assetType, modelId, sourceRunId, asset, runs, prompt, changePrompt, changeImages, defaultRounds, working, archived, designReady, onRefresh }: {
   projectId: string;
+  assetType: AssetType;
   modelId: string;
   sourceRunId?: string;
   asset: NonNullable<Workspace["assets"]>[number] | undefined;
@@ -30,11 +33,13 @@ export function GraphicConversation({ projectId, modelId, sourceRunId, asset, ru
   const navigate = useNavigate();
   const openLightbox = useLightbox();
   const [rounds, setRounds] = useState(defaultRounds);
+  // A change builds straight from the saved result unless the owner asks for a new target.
+  const [visualTarget, setVisualTarget] = useState(false);
   const disabled = working || archived || !designReady || !sourceRunId;
   async function send({ prompt: change, images }: { prompt: string; images: File[] }) {
     if (!sourceRunId) return;
     const result = change
-      ? await request<{ id: string }>(`asset-versions/${modelId}/branch`, branchRequest({ kind: "iterate", sourceRunId, prompt: change, judgeIterations: rounds }, images))
+      ? await request<{ id: string }>(`asset-versions/${modelId}/branch`, branchRequest({ kind: "iterate", sourceRunId, prompt: change, judgeIterations: rounds, visualTargetMode: visualTarget ? "review" : "skip" }, images))
       : await request<{ id: string }>(`asset-versions/${modelId}/regenerate`, json({}));
     await navigate({ to: "/projects/$projectId/models/$modelId", params: { projectId, modelId: result.id }, search: { view: "3d", section: "review" } });
     await onRefresh();
@@ -93,6 +98,8 @@ export function GraphicConversation({ projectId, modelId, sourceRunId, asset, ru
           sendLabel="Generate version"
           rounds={rounds}
           onRoundsChange={setRounds}
+          visualTarget={visualTarget}
+          onVisualTargetChange={hasVisualTarget(assetType) ? setVisualTarget : undefined}
           onSubmit={send}
           footer={asset && (
             <details className="studio-compose-design">
