@@ -151,3 +151,34 @@ integration("one saved SVG construction contract reaches every planned asset unc
     expect((await db.select().from(batches).where(eq(batches.id, t.batchId)))[0].design).toBe("Green switches");
   } finally { await t.cleanup(); }
 });
+
+integration("planner names each asset after its own version when the rows share a creation time", async () => {
+  const t = await fixture();
+  try {
+    // Same timestamp for every row, and asset ids sorted opposite to their versions, as one transaction writes them.
+    const createdAt = new Date("2026-01-01T00:00:00Z");
+    const assets = ["ffffffff-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"];
+    const versionIds = [...assets].reverse().map((id) => id.replace("-8000-", "-9000-"));
+    await db.delete(assetVersions).where(eq(assetVersions.batchId, t.batchId));
+    await db.delete(assetEntries).where(eq(assetEntries.projectId, t.projectId));
+    for (const [index, id] of assets.entries()) {
+      await db.insert(assetEntries).values({ id, projectId: t.projectId, title: "Two wall switches", input: { prompt: "Two wall switches", count: 1 }, batchId: t.batchId, inIdea: false, createdAt } as never);
+      await db.insert(assetVersions).values({ id: versionIds[index], assetId: id, projectId: t.projectId, batchId: t.batchId, name: "Two wall switches", prompt: "Two wall switches", createdAt });
+    }
+    const [planner] = await db.select().from(jobs).where(eq(jobs.id, t.jobId));
+    await jobContext.run({ id: t.jobId, checkpoint: planner.checkpoint }, () => executeJob("plan", t.batchId));
+    const versions = await db.select().from(assetVersions).where(eq(assetVersions.batchId, t.batchId));
+    const entries = await db.select().from(assetEntries).where(eq(assetEntries.batchId, t.batchId));
+    expect(versions.map((version) => version.name).sort()).toEqual(["First switch", "Second switch"]);
+    for (const version of versions) {
+      const entry = entries.find((item) => item.id === version.assetId);
+      expect(entry?.title).toBe(version.name);
+      expect(entry?.input.prompt).toBe(version.prompt);
+    }
+  } finally {
+    const created = await db.select({ id: assetVersions.id }).from(assetVersions).where(eq(assetVersions.projectId, t.projectId));
+    if (created.length) await db.delete(jobs).where(inArray(jobs.targetId, created.map((row) => row.id)));
+    await db.delete(assetVersions).where(eq(assetVersions.projectId, t.projectId));
+    await t.cleanup();
+  }
+});
