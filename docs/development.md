@@ -1,6 +1,6 @@
 # Development and operations
 
-Use the [README](../README.md#run-locally) for installation. This application runs one web process, one worker, one Eve process, and one loopback Blender service against PostgreSQL. It is intended for a single owner. The web UI and ordinary API require an authenticated reverse proxy when exposed outside your machine. MCP has its own OAuth authentication.
+Use the [README](../README.md#-quick-start) for installation. This application runs one web process, one worker, one Eve process, and one loopback Blender service against PostgreSQL. It is intended for a single owner. The web UI and ordinary API require an authenticated reverse proxy when exposed outside your machine. For the MCP network boundary and connection instructions, see [Connect an agent](mcp.md).
 
 ## Source map
 
