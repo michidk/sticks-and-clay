@@ -25,8 +25,6 @@
 <a href="https://github.com/michidk/sticks-and-clay/actions/workflows/image.yml">
 <img alt="Image" src="https://github.com/michidk/sticks-and-clay/actions/workflows/image.yml/badge.svg"></a>
 <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-<img alt="MCP: 54 tools" src="https://img.shields.io/badge/MCP-54%20tools-264d3c.svg">
-<img alt="Blender 4.5 LTS" src="https://img.shields.io/badge/Blender-4.5%20LTS-e87d0d.svg">
 </p>
 
 ---
@@ -42,7 +40,7 @@ charge at every step that matters.
 <p align="center">
   <img src=".github/images/model-review.png"
     alt="The approved Paloma Sedan in the interactive 3D viewer, with a 91/100 review score"
-    width="1200">
+    width="800">
 </p>
 
 Assets keep one identity from Ideas through Ready, In progress, Review, and
@@ -116,7 +114,7 @@ flowchart LR
 <p align="center">
   <img src=".github/images/design-chat.png"
     alt="Design chat with three revisions, revert buttons, and the approved design reference"
-    width="1200">
+    width="800">
 </p>
 
 ## 🤖 Connect your agent over MCP
@@ -203,7 +201,7 @@ configuration, scopes, and deployment behind an auth proxy.
 <p align="center">
   <img src=".github/images/board.png"
     alt="Project board with Ideas, Ready, In progress, Review and Done columns"
-    width="1200">
+    width="800">
 </p>
 
 ## 🧰 Tech stack
